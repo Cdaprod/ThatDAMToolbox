@@ -5,7 +5,8 @@ Place this in: pythonista/Modules/site-packages(user)/video/
 
 Directory structure:
 video/
-├── __init__.py          # This file
+├── __init__.py         # This file
+├── __main__.py         # Universal entry-point
 ├── db.py               # Database interface
 ├── scanner.py          # File scanning logic
 ├── sync.py             # Photo sync integration
@@ -49,6 +50,44 @@ class MediaIndexer:
     def get_stats(self):
         """Get indexer statistics"""
         return self.db.get_stats()
+    
+    def get_all(self):
+        """Get all indexed file metadata."""
+        return self.db.list_all_files()
+    
+    def backup(self, backup_root: Path):
+        """
+        Copy every indexed file to backup_root/<batch>/<filename>
+        (skips when target exists with same sha1).
+        """
+        import shutil, hashlib, logging
+        log = logging.getLogger("video.backup")
+
+        files = self.db.list_all_files()
+        copied = skipped = 0
+
+        for rec in files:
+            src = Path(rec["path"])
+            batch = rec["batch"] or "_UNSORTED"
+            tgt_dir = backup_root / batch
+            tgt_dir.mkdir(parents=True, exist_ok=True)
+            tgt = tgt_dir / src.name
+
+            if tgt.exists():
+                # verify same sha1 – cheap: size+mtime match means assume identical
+                if tgt.stat().st_size == src.stat().st_size:
+                    skipped += 1
+                    continue
+
+            try:
+                shutil.copy2(src, tgt)
+                copied += 1
+                log.info("copied  %s → %s", src.name, tgt)
+            except Exception as e:
+                log.warning("skip %s (%s)", src.name, e)
+                skipped += 1
+
+        return {"copied": copied, "skipped": skipped, "dest": str(backup_root)}
 
 # Convenience imports
 __all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync']

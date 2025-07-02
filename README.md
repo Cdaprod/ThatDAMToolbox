@@ -28,3 +28,33 @@ indexer = MediaIndexer()
 indexer.scan()
 recent = indexer.get_recent()
 ```  
+
+## Shortcuts JSON Example
+
+### A. single step
+
+```json
+{
+  "action": "backup",
+  "backup_root": "/Volumes/Media/B/Video/_MASTER"
+}
+``` 
+
+### B. workflow
+
+```json
+{
+  "workflow": [
+    {
+      "action": "sync_album",
+      "root": "/Volumes/Media/B/Video",
+      "album": "My Album",
+      "category": "edit",
+      "copy": true
+    },
+    { "action": "scan",   "root": "/Volumes/Media/B/Video/_INCOMING" },
+    { "action": "backup", "backup_root": "/Volumes/Media/B/Video/_MASTER" },
+    { "action": "stats" }
+  ]
+}
+``` 

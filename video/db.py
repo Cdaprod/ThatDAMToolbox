@@ -104,6 +104,13 @@ class MediaDB:
             return cx.execute(
                 "SELECT * FROM files WHERE batch = ? ORDER BY mtime DESC", (batch_name,)
             ).fetchall()
+
+    def list_all_files(self) -> list[Dict[str, Any]]:
+        """Return every row from the files table as a list of dicts."""
+        with self.conn() as cx:
+            rows = cx.execute("SELECT * FROM files ORDER BY created_at").fetchall()
+        # sqlite3.Row is dict-compatible
+        return [dict(row) for row in rows]
     
     def get_stats(self) -> Dict[str, Any]:
         """Get database statistics"""
