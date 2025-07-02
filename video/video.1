@@ -1,0 +1,170 @@
+.\" -----------------------------------------------------------------
+.\" video(1) – Media-Indexer Std-Lib Prototype
+.\" -----------------------------------------------------------------
+.TH video 1 "2025-07-02" "Media-Indexer 0.9" "User Commands"
+.SH NAME
+video \- scan, sync, back-up and inspect media libraries using only the Python standard library
+.SH SYNOPSIS
+.B python3 \-m video
+.RI [ global-opts ]
+.IR command
+.RI [ command-opts ]
+
+.B python3 video/__main__.py
+.RI [ global-opts ]
+.IR command
+.RI [ command-opts ]
+
+.SH DESCRIPTION
+\fBvideo\fP is a self-contained media indexer designed to run on
+Pythonista (iOS) and ordinary CPython (Linux/macOS/RPi) with **no
+external dependencies**.  
+It keeps a tiny SQLite catalogue inside Pythonista while reading or
+copying media to an SMB share, and exposes the same functionality
+through:
+
+.IP \(bu
+CLI flags (standard sub-commands)  
+.IP \(bu
+JSON workflows on \fBstdin\fP (ideal for Shortcuts)  
+.IP \(bu
+Environment variables and an optional INI file (\fIvideo.cfg\fP) for
+persistent defaults
+
+.SH GLOBAL OPTIONS
+.TP
+\fB--use-runner\fR
+Execute commands through the new dataclass-based \fIrunner\fP layer
+(rather than legacy inline handlers).
+.TP
+\fB-h\fR, \fB--help\fR
+Show top-level usage.
+
+.SH COMMANDS
+.TP
+.BR scan
+Index a directory tree.
+.RS
+\fB--root\fR DIR   directory to scan (default VIDEO_ROOT)  
+\fB--workers\fR N  thread pool size (default 4)
+.RE
+.TP
+.BR sync_\fIalbum\fR
+Copy one Photos album to SMB and index the files.
+.RS
+\fB--root\fR DIR      SMB path (_INCOMING/… is added automatically)  
+\fB--album\fR NAME    leaf album name (omit to pop a picker on iOS)  
+\fB--category\fR edit|digital (default edit)  
+\fB--no-copy\fR       dry-run, only update metadata
+.RE
+.TP
+.BR backup
+Copy every indexed file into a long-term archive tree.
+.RS
+\fB--backup_root\fR DIR  destination root  
+\fB--dry-run\fR          print how many files \fBwould\fP copy
+.RE
+.TP
+.BR stats
+Show DB statistics (JSON).
+.TP
+.BR recent
+Show N most-recently indexed files.
+.RS
+\fB-n\fR N (default 10)
+.RE
+.TP
+.BR dump
+Dump all metadata.
+.RS
+\fB--format\fR json|csv (default json)
+.RE
+
+.SH JSON WORKFLOW
+If stdin is \fBnot\fP a TTY the tool tries to read a JSON object. Two
+shapes are accepted:
+
+.nf
+{ "action": "stats" }
+
+{ "workflow": [
+    { "action": "sync_album", "root": "...", "album":"Summer", "no-copy":true },
+    { "action": "backup",     "backup_root": "...", "dry_run":true },
+    { "action": "stats" }
+] }
+.fi
+
+Each step may include \fB"use_runner": true\fP to invoke the dataclass
+API.
+
+.SH CONFIGURATION
+.ta 3c 6c
+\fBPrecedence\fP (highest first):
+
+1.  CLI flags / stdin-JSON  
+2.  Environment vars  
+3.  \fI~/video/video.cfg\fP (or path in $VIDEO_CFG)  
+4.  Hard-coded defaults
+
+.TP
+\fBVIDEO_ROOT\fR
+Default root for scans & syncs.
+.TP
+\fBVIDEO_BACKUP\fR
+Default \fIbackup_root\fP.
+.TP
+\fBVIDEO_WORKERS\fR
+Default worker count for scans.
+.TP
+\fBVIDEO_LOG\fR
+Logging level (DEBUG, INFO, …).
+
+\fIvideo.cfg\fP example:
+
+.nf
+[paths]
+root   = /Volumes/Media/B/Video
+backup = /Volumes/Media/B/Video/_MASTER
+
+[run]
+workers = 6
+.fi
+
+.SH EXAMPLES
+.TP
+Dry-run an album sync on a Raspberry Pi:
+.nf
+$ python3 -m video sync_album \\
+        --root /mnt/SMB/B/Video \\
+        --album "My Album" --no-copy
+.fi
+.TP
+Dry-run a backup:
+.nf
+$ python3 -m video backup \\
+        --backup_root /mnt/SMB/B/Video/_MASTER --dry-run
+.fi
+.TP
+Full workflow piped in:
+.nf
+$ printf '%s' '{
+  "workflow":[
+    {"action":"scan","root":"/mnt/SMB/B/Video/_INCOMING"},
+    {"action":"stats"}
+  ]}' | python3 -m video
+.fi
+.TP
+On iOS Shortcuts:  
+"Run Script (Pythonista)" ➜ Module Name = \fBvideo\fP ➜ Pass JSON in
+"Input".
+
+.SH FILES
+.ta 4c
+\fI~/media_index.sqlite3\fP     default SQLite catalogue  
+\fI~/video/video.cfg\fP         optional config file
+
+.SH SEE ALSO
+python(1), sqlite3(1), Shortcuts.app
+
+.SH AUTHOR
+Generated in collaboration with an OpenAI assistant • July 2025
