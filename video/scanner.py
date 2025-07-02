@@ -33,17 +33,24 @@ class Scanner:
     
     def __init__(self, db, root_path: Optional[Path] = None):
         self.db = db
-        self.root_path = root_path or (Path.home() / "video_root" / "_INCOMING")
+
+        # ── resolve scan-root in a single line ──────────────────────────
+        self.root_path: Path = (
+            Path(root_path)                               if root_path else
+            Path(os.getenv("VIDEO_ROOT", ""))             if os.getenv("VIDEO_ROOT") else
+            config.get_path("paths", "root")              or
+            Path.home() / "video_root"
+        ) / "_INCOMING"
+        # ────────────────────────────────────────────────────────────────
+
         self.cache: WeakValueDictionary = WeakValueDictionary()
         self.logger = logging.getLogger("media_scanner")
-        
-        # Ensure logging is configured
         if not self.logger.handlers:
-            handler = logging.StreamHandler()
-            handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-            self.logger.addHandler(handler)
+            h = logging.StreamHandler()
+            h.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+            self.logger.addHandler(h)
             self.logger.setLevel(logging.INFO)
-    
+                
     def is_media_file(self, path: Path) -> bool:
         """Check if file is a supported media type"""
         ext = path.suffix.lower()
