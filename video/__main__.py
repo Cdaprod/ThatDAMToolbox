@@ -64,15 +64,20 @@ def _resolve_path(cli_val, env_key, cfg_val) -> Path | None:
     return None
 
 def _json_from_stdin() -> Dict[str, Any] | None:
-    raw = sys.stdin.read()
-    if not raw.strip():
+    # If stdin is a TTY, don’t attempt to read (prevents blocking)
+    if sys.stdin.isatty():
         return None
+
+    raw = sys.stdin.read()
+    if not raw or not raw.strip():
+        return None
+
     try:
         return json.loads(raw)
     except json.JSONDecodeError as exc:
         log.error("Invalid JSON on stdin: %s", exc)
         sys.exit(1)
-
+        
 def _normalise_steps(js: Dict[str, Any]) -> list[Dict[str, Any]]:
     """Turn {…} or {"workflow":[…]} into a list of step dicts."""
     if not js:
