@@ -1,5 +1,6 @@
 # video/scanner.py
 """File scanning and indexing module - pure stdlib"""
+from . import config        # <- Give access to video/config.py
 
 import hashlib
 import mimetypes
