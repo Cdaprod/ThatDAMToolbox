@@ -41,9 +41,13 @@ if __package__ is None:
     sys.path.insert(0, project_dir)
     __package__ = os.path.basename(video_pkg)
 
-from . import config
-from . import MediaIndexer
-
+try:
+    # when run as a package (python -m video)
+    from . import config, MediaIndexer
+except ImportError:
+    # when run as a script (python video/__main__.py)
+    from video import config, MediaIndexer
+    
 log = logging.getLogger("video.cli")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 

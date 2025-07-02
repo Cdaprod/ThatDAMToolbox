@@ -2,8 +2,8 @@
 from pathlib import Path
 import configparser, os
 
-_cfg = configparser.ConfigParser()
-_cfg.read(Path.home() / "video" / "video.cfg")   # optional
+_cfg_path = Path(os.getenv("VIDEO_CFG", Path.home() / "video" / "video.cfg"))
+_cfg.read(_cfg_path)
 
 def get(section: str, key: str, default: str | None = None) -> str | None:
     return _cfg.get(section, key, fallback=default)
