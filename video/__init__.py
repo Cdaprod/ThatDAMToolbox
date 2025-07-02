@@ -19,6 +19,11 @@ Usage:
     recent = indexer.get_recent()
 """
 
+#!/usr/bin/env python3
+from __future__ import annotations
+from pathlib import Path      # ← ADD THIS
+import logging
+
 from .db import MediaDB
 from .scanner import Scanner
 from .sync import PhotoSync
