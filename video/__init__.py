@@ -97,4 +97,5 @@ class MediaIndexer:
         return {"copied": copied, "skipped": skipped, "dest": str(backup_root)}
         
 # Convenience imports
+from . import config as config
 __all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync']
