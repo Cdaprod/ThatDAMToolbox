@@ -57,37 +57,39 @@ class MediaIndexer:
     
     def backup(self, backup_root: Path):
         """
-        Copy every indexed file to backup_root/<batch>/<filename>
-        (skips when target exists with same sha1).
+        Copy indexed files to backup_root/<batch>/<filename>.
+        Skips any file whose sha1 is already in the copies table.
         """
-        import shutil, hashlib, logging
+        import shutil, logging
         log = logging.getLogger("video.backup")
 
-        files = self.db.list_all_files()
         copied = skipped = 0
 
-        for rec in files:
+        # Use the new generator to stream rows
+        for rec in self.db.iter_all_files():
             src = Path(rec["path"])
+            sha1 = rec["sha1"]
             batch = rec["batch"] or "_UNSORTED"
             tgt_dir = backup_root / batch
             tgt_dir.mkdir(parents=True, exist_ok=True)
             tgt = tgt_dir / src.name
 
-            if tgt.exists():
-                # verify same sha1 – cheap: size+mtime match means assume identical
-                if tgt.stat().st_size == src.stat().st_size:
-                    skipped += 1
-                    continue
+            # Strong idempotence: skip if we've already recorded this sha1
+            if self.db.already_copied(sha1):
+                skipped += 1
+                continue
 
             try:
                 shutil.copy2(src, tgt)
+                # record in copies table so future runs skip it
+                self.db.remember_copy(sha1, tgt)
                 copied += 1
-                log.info("copied  %s → %s", src.name, tgt)
+                log.info("copied %s → %s", src.name, tgt)
             except Exception as e:
                 log.warning("skip %s (%s)", src.name, e)
                 skipped += 1
 
         return {"copied": copied, "skipped": skipped, "dest": str(backup_root)}
-
+        
 # Convenience imports
 __all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync']

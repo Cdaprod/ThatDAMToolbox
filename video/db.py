@@ -112,6 +112,12 @@ class MediaDB:
         # sqlite3.Row is dict-compatible
         return [dict(row) for row in rows]
     
+    def iter_all_files(self):
+        """Yield one file-row dict at a time (memory-efficient)."""
+        with self.conn() as cx:
+            for row in cx.execute("SELECT * FROM files ORDER BY created_at"):
+                yield dict(row)
+    
     def get_stats(self) -> Dict[str, Any]:
         """Get database statistics"""
         with self.conn() as cx:
