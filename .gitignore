@@ -1,0 +1,119 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+*.pyo
+*.pyd
+
+# ---- Notebooks ----
+*.ipynb_checkpoints/
+notebooks/*.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# ---- Environments ----
+.env
+.env.*
+*.env
+example.env
+
+# ---- OS Junk ----
+.DS_Store
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+
+# ---- Editor / Tooling ----
+.vscode/
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# ---- Build & Dist ----
+build/
+dist/
+*.log
+*.tmp
+*.bak
+*.swp
+*.lock
+
+# ---- Output Data ----
+*.csv
+*.json
+*.xml
+*.sqlite3
+*.db
+*.zip
+*.gz
+*.tar
+*.tar.gz
+
+# ---- Metadata/output folders ----
+/metadata/
+metadata/
+metadata/*
+
+# ---- Video / Large files ----
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.flv
+*.wmv
+*.ogg
+*.gif
+*.jpg
+*.jpeg
+*.png
+*.tif
+*.tiff
+*.bmp
+*.yuv
+*.yuv420p
+*.raw
+*.pt
+
+# ---- Custom (Your paths) ----
+/B
+/B/
+/B:/
+/B:/**
+/scripts/__pycache__/
+/scripts/__pycache__/*
+/scripts/pycache__/
+/scripts/pycache__/*
+FilmboxData/*
+public/index.html
+yolov8n.pt
+
+# ---- Docker ----
+*.pid
+#docker-compose.override.yaml
+#docker-compose.override.yml
+.docker-compose*
+
+# ---- Coverage/testing ----
+.coverage
+.tox/
+.nox/
+.pytest_cache/
+htmlcov/
+
+# ---- Credentials ----
+credentials.json
+secrets.json
+*.pem
+*.key
+*.crt
+
+# ---- Misc ----
+# If you have generated or temporary files, add patterns here
+
+# ---- Uncomment to ignore these if needed ----
+# /scripts/cli.py
+# /scripts/processor.disabled
