@@ -26,6 +26,13 @@ except ImportError:
 
 log = logging.getLogger("video.scanner")
 
+import os
+from pathlib import Path
+import logging
+from typing import Generator
+
+log = logging.getLogger("video.scanner")
+
 def safe_iter_files(root: Path) -> Generator[Path, None, None]:
     """
     Recursively yield all files under `root`, but:
@@ -38,17 +45,35 @@ def safe_iter_files(root: Path) -> Generator[Path, None, None]:
     while stack:
         current = stack.pop()
         try:
-            for entry in current.iterdir():
-                if entry.name in SKIP_DIRS:
-                    continue
-                if entry.is_dir():
-                    stack.append(entry)
-                elif entry.is_file():
-                    yield entry
-        except PermissionError:
-            log.warning("🔒 permission denied, skipping: %s", current)
-            continue
+            # Use os.scandir for finer-grained control
+            with os.scandir(current) as it:
+                for entry in it:
+                    name = entry.name
+                    if name in SKIP_DIRS:
+                        continue
 
+                    # Is it a directory?
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(Path(entry.path))
+                            continue
+                    except PermissionError:
+                        log.warning("🔒 cannot access dir: %s", entry.path)
+                        continue
+
+                    # Is it a file?
+                    try:
+                        if entry.is_file(follow_symlinks=False):
+                            yield Path(entry.path)
+                    except PermissionError:
+                        log.warning("🔒 cannot access file: %s", entry.path)
+                        continue
+
+        except PermissionError:
+            log.warning("🔒 cannot scan directory: %s", current)
+            continue
+            
+            
 class Scanner:
     """File scanner for media indexing"""
     
