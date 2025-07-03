@@ -8,7 +8,11 @@ video/
 ├── __init__.py         # This file
 ├── __main__.py         # Universal entry-point
 ├── db.py               # Database interface
+├── cli.py              # all CLI parsing / dispatch
+├── commands.py         # dataclasses
 ├── scanner.py          # File scanning logic
+├── probe.py            # Tech-metadata (duration_s, codec, resolution)
+├── preview.py          # Builds previews
 ├── sync.py             # Photo sync integration
 └── schema.sql          # Database schema
 
@@ -98,4 +102,5 @@ class MediaIndexer:
         
 # Convenience imports
 from . import config as config
-__all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync']
+from .cli import run_cli as _run_cli      # optional: importable CLI entry-point
+__all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync', 'config']

@@ -12,6 +12,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Generator, Optional, Set, Dict, Any
 from weakref import WeakValueDictionary
 
+from .probe   import probe_media
+from .preview import generate_preview
+
 # Try to import media detection modules (stdlib only)
 try:
     import imghdr
@@ -215,14 +218,19 @@ class Scanner:
         height = int.from_bytes(f.read(2), 'little')
         return width, height
     
+    # ───────────────────────── Integration Point ───────────────────────── #
+    # Tech-metadata (duration_s, codec, resolution)
+    # Call probe_media() ▸ merge returned dict into metadata
+    # ...
+    
     def analyze_file(self, path: Path, use_full_hash: bool = False) -> Dict[str, Any]:
         """Analyze a single file and return metadata"""
         try:
             stat = path.stat()
-            
+
             # Use full hash or quick hash
             file_hash = self.full_hash(path) if use_full_hash else self.quick_hash(path)
-            
+
             # Guess MIME type
             mime_type, _ = mimetypes.guess_type(path.name)
             if not mime_type:
@@ -235,15 +243,38 @@ class Scanner:
                     mime_type = f"audio/{ext[1:]}"
                 else:
                     mime_type = "application/octet-stream"
-            
+
             # Get dimensions for images
             width, height = None, None
             if mime_type and mime_type.startswith('image/'):
                 width, height = self.detect_image_dimensions(path)
-            
+
+            # ---- ffprobe/tech metadata ----
+            extras = probe_media(path) or {}
+            if extras:
+                meta_stream  = extras.get("streams", [{}])[0]
+                duration     = extras["format"].get("duration")
+                duration_s   = float(duration) if duration else None
+                codec        = meta_stream.get("codec_name")
+                width        = meta_stream.get("width")  or width
+                height       = meta_stream.get("height") or height
+            else:
+                duration_s = None
+                codec      = None
+
+            # ---- preview thumb ----
+            prev_root = (
+                config.get_path("paths", "preview_root")
+                or (path.parent / ".previews")
+            )
+            preview_jpg = Path(prev_root) / f"{file_hash}.jpg"
+            preview_path = None
+            if generate_preview(path, preview_jpg):
+                preview_path = preview_jpg.as_posix()
+
             # Determine batch from parent directory
             batch = path.parent.name if path.parent.name != "_INCOMING" else None
-            
+
             return {
                 'id': file_hash,
                 'path': path.as_posix(),
@@ -252,16 +283,18 @@ class Scanner:
                 'mime': mime_type,
                 'width_px': width,
                 'height_px': height,
-                'duration_s': None,  # Would need ffprobe for video duration
+                'duration_s': duration_s,
                 'batch': batch,
-                'sha1': file_hash,  # For compatibility with existing sync code
-                'created_at': datetime.now().isoformat()
+                'sha1': file_hash,
+                'created_at': datetime.now().isoformat(),
+                'codec': codec,
+                'preview_path': preview_path
             }
-            
+
         except Exception as e:
             self.logger.error(f"Error analyzing {path}: {e}")
             return None
-    
+            
     def process_file(self, path: Path) -> bool:
         """Process a single file"""
         if not path.is_file() or not self.is_media_file(path):
@@ -303,7 +336,7 @@ class Scanner:
         
         return processed
     
-    def bulk_scan(self, root_path: Optional[Path] = None, workers: int = 4) -> Dict[str, int]:
+    def bulk_scan(self, root_path: Optional[Path] = None, workers: int = 0) -> Dict[str, int]:
         """Scan files in parallel"""
         scan_root = root_path or self.root_path
 
@@ -321,13 +354,12 @@ class Scanner:
         processed = 0
         errors = 0
 
-        # ─── process in parallel ─────────────────────────────────────────
-        with ThreadPoolExecutor(max_workers=workers) as executor:
+        max_workers = workers or (os.cpu_count() or 2) * 2  # ← New
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_path = {
                 executor.submit(self.process_file, path): path
                 for path in all_files
             }
-
             for future in as_completed(future_to_path):
                 path = future_to_path[future]
                 try:
