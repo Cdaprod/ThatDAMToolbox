@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional, Set, Dict, Any
+from typing import Generator, Optional, Set, Dict, Any
 from weakref import WeakValueDictionary
 
 # Try to import media detection modules (stdlib only)
@@ -23,6 +23,31 @@ try:
         sndhdr = None  # Not available in Python 3.13+
 except ImportError:
     imghdr = wave = aifc = sndhdr = None
+
+log = logging.getLogger("video.scanner")
+
+def safe_iter_files(root: Path) -> Generator[Path, None, None]:
+    """
+    Recursively yield all files under `root`, but:
+     • Skip unreadable dirs (PermissionError)
+     • Ignore common trash folders
+    """
+    SKIP_DIRS = {"$RECYCLE.BIN", "System Volume Information", ".Trash-1000"}
+    stack = [root]
+
+    while stack:
+        current = stack.pop()
+        try:
+            for entry in current.iterdir():
+                if entry.name in SKIP_DIRS:
+                    continue
+                if entry.is_dir():
+                    stack.append(entry)
+                elif entry.is_file():
+                    yield entry
+        except PermissionError:
+            log.warning("🔒 permission denied, skipping: %s", current)
+            continue
 
 class Scanner:
     """File scanner for media indexing"""
@@ -245,7 +270,7 @@ class Scanner:
         
         processed = 0
         try:
-            for path in directory.rglob("*"):
+            for path in safe_iter_files(directory):
                 if self.process_file(path):
                     processed += 1
         except Exception as e:
@@ -256,29 +281,28 @@ class Scanner:
     def bulk_scan(self, root_path: Optional[Path] = None, workers: int = 4) -> Dict[str, int]:
         """Scan files in parallel"""
         scan_root = root_path or self.root_path
-        
+
         if not scan_root.exists():
             self.logger.warning(f"Scan root does not exist: {scan_root}")
             return {'processed': 0, 'errors': 0}
-        
+
         self.logger.info(f"Starting scan of {scan_root}")
-        
-        # Collect all files to process
-        all_files = []
-        for path in scan_root.rglob("*"):
-            if path.is_file() and self.is_media_file(path):
-                all_files.append(path)
-        
+
+        # ─── collect files safely ────────────────────────────────────────
+        all_files = [p for p in safe_iter_files(scan_root)
+                     if self.is_media_file(p)]
+        self.logger.info("Queued %d files for processing", len(all_files))
+
         processed = 0
         errors = 0
-        
-        # Process files in parallel
+
+        # ─── process in parallel ─────────────────────────────────────────
         with ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_path = {
-                executor.submit(self.process_file, path): path 
+                executor.submit(self.process_file, path): path
                 for path in all_files
             }
-            
+
             for future in as_completed(future_to_path):
                 path = future_to_path[future]
                 try:
@@ -287,6 +311,10 @@ class Scanner:
                 except Exception as e:
                     self.logger.error(f"Error processing {path}: {e}")
                     errors += 1
-        
+
         self.logger.info(f"Scan complete: {processed} processed, {errors} errors")
-        return {'processed': processed, 'errors': errors, 'total_files': len(all_files)}
+        return {
+            'processed': processed,
+            'errors': errors,
+            'total_files': len(all_files),
+        }
