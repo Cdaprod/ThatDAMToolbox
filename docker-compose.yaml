@@ -1,39 +1,43 @@
+# docker-compose.yml
+
 name: That DAM Toolbox
 
 services:
   video-api:
     build:
       context: .
-      dockerfile: Dockerfile       # the one with the multi-arch stages
-      # Uncomment to force stdlib server inside the container
+      dockerfile: Dockerfile       # ← multi-arch Dockerfile, as above
+      # Uncomment for server fallback:
       # args:
       #   - VIDEO_FORCE_STDHTTP=1
     image: cdaprod/video:dev
-    platform: linux/arm64          # or linux/arm64 on a Pi 5; remove for auto
+    platform: linux/arm64          # ← for Pi 5; remove for auto/amd64 dev
     ports:
-      - "8080:8080"                # API (FastAPI or stdlib)
+      - "8080:8080"                # Expose API server (FastAPI or stdlib)
     environment:
-      # Force lightweight server: VIDEO_FORCE_STDHTTP=1
+      # Uncomment to force pure Python stdlib HTTP (for minimal or testing)
+      # VIDEO_FORCE_STDHTTP: "1"
       TZ: "America/New_York"
     volumes:
-      # Mount your media and database locations
-      - ./data/media:/media
-      - ./data/db:/workspace/db
+      - ./video:/workspace/video   # ← live source mount for hot reloading
+      - ./data/media:/media        # ← your media source
+      - ./data/db:/workspace/db    # ← local db/data
     restart: unless-stopped
+    command: uvicorn video.api:app --host 0.0.0.0 --port 8080 --reload
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # Optional one-shot CLI side-car example
+  # ---- Optional one-shot CLI runner sidecar ----
   video-cli:
     image: cdaprod/video:dev
     entrypoint: ["python", "-m", "video"]
-    command: ["stats"]
+    command: ["stats"]                   # or any CLI command
     volumes:
       - ./data/media:/media
       - ./data/db:/workspace/db
     depends_on:
       - video-api
-    profiles: ["cli"]              # run with: docker compose --profile cli run video-cli
+    profiles: ["cli"]                    # run with: docker compose --profile cli run video-cli
