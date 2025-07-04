@@ -208,23 +208,47 @@ class MediaDB:
 
     # ─── New utility methods ────────────────────────────────────────────
 
-    def search_files(self, q: str, mime: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:    
-        """Full-text search over path, mime, batch using FTS5 (no alias in MATCH)."""
+    def search_files(
+            self, q: str,
+            mime: Optional[str] = None,
+            limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Search by prefix via FTS; fall back to LIKE if term is a stop-word."""
         with self.conn() as cx:
-            sql = """
+            # ---------- 1. try FTS (fast path) ------------------------------
+            sql_fts = """
                 SELECT f.*
                   FROM files_fts
                   JOIN files f ON files_fts.rowid = f.rowid
                  WHERE files_fts MATCH ?
             """
-            params: List[Any] = [f"{q}*"]
+            params: List[Any] = [f"{q.strip()}*"]
             if mime:
-                sql += " AND f.mime = ?"
+                sql_fts += " AND f.mime = ?"
                 params.append(mime)
-            sql += " LIMIT ?"
+            sql_fts += " LIMIT ?"
             params.append(limit)
 
-            rows = cx.execute(sql, params).fetchall()
+            rows = cx.execute(sql_fts, params).fetchall()
+            if rows:
+                return [dict(r) for r in rows]
+
+            # ---------- 2. fall back to LIKE (stop-word safe) ---------------
+            like = f"%{q.strip()}%"
+            sql_like = """
+                SELECT *
+                  FROM files
+                 WHERE (path  LIKE ? OR
+                        batch LIKE ?)
+            """
+            like_params: List[Any] = [like, like]
+            if mime:
+                sql_like += " AND mime = ?"
+                like_params.append(mime)
+            sql_like += " ORDER BY mtime DESC LIMIT ?"
+            like_params.append(limit)
+
+            rows = cx.execute(sql_like, like_params).fetchall()
             return [dict(r) for r in rows]
             
     def clean_all(self) -> int:
