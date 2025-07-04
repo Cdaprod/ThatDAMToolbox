@@ -13,7 +13,6 @@ import importlib.util as _iu
 from typing import Optional
 
 def _have_docker() -> bool:
-    """True if `docker info` succeeds."""
     docker = shutil.which("docker")
     if not docker:
         return False
@@ -29,14 +28,7 @@ def start_server(
     *,
     use_docker: Optional[bool] = None
 ):
-    """
-    Launch the API server:
-
-    1) Docker container if use_docker==True or (use_docker is None and Docker exists)
-    2) FastAPI+Uvicorn if installed
-    3) stdlib HTTPServer fallback
-    """
-    # decide
+    """Entry point ONLY called by the serve CLI action."""
     if use_docker is None:
         use_docker = os.getenv("VIDEO_USE_DOCKER") == "1" or _have_docker()
 
@@ -52,17 +44,26 @@ def start_server(
         subprocess.run(cmd)
         return
 
-    # in-process path
     force_std = os.getenv("VIDEO_FORCE_STDHTTP") == "1"
     have_fastapi = _iu.find_spec("fastapi") is not None
     have_uvicorn = _iu.find_spec("uvicorn") is not None
 
     if not force_std and have_fastapi and have_uvicorn:
-        # FastAPI/Uvicorn
         from video.api import app
         import uvicorn
+        # Print endpoints banner here, not in api.py
+        print("INFO: 📚  Available endpoints:")
+        print("INFO:   POST /batches          - Create batch (with pre-flight transcode)")
+        print("INFO:   GET  /batches          - List batches")
+        print("INFO:   GET  /batches/{name}   - Get batch details")
+        print("INFO:   DEL  /batches/{name}   - Delete batch")
+        print("INFO:   POST /transcode        - Transcode single file")
+        print("INFO:   POST /cli              - Execute CLI command")
+        print("INFO:   GET  /jobs             - List all jobs")
+        print("INFO:   GET  /jobs/{id}        - Get job status")
+        print("INFO:   DEL  /jobs/{id}        - Delete job")
+        print("INFO:   GET  /health           - Health check")
         uvicorn.run(app, host=host, port=port, workers=2)
     else:
-        # stdlib HTTPServer
         from video.server import serve
         serve(host=host, port=port)

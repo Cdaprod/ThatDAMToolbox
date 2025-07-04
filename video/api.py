@@ -153,7 +153,7 @@ async def backup(source: str, destination: Optional[str] = None):
     return run_cli_from_json(json.dumps(cmd))
     
 # ── auto-include plug-in routers --------------------------------------------
-from . import modules                      # namespace package
+from . import modules   # namespace package
 
 for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
     if not mod.name.split('.')[-1].startswith("__"):

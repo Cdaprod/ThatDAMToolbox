@@ -1,6 +1,6 @@
 from pathlib import Path
 from argparse import ArgumentParser, Namespace
-from .extractor import MotionExtractor
+from .motion_extractor import MotionExtractor
 from video.cli import register          # decorator from core
 
 @register("motion_extract", help="extract motion frames from a video")

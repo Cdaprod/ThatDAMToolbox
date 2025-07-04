@@ -263,14 +263,9 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
 
 # ─── top-level ---------------------------------------------------------------
 def run_cli(argv: List[str] | None = None) -> None:
-    # Parse everything first
     ns = build_parser().parse_args(argv)
 
-    # ── If user asked for "serve", spin up the server and exit ────────────────
     if ns.action == "serve":
-        import os
-        if ns.force_stdlib:
-            os.environ["VIDEO_FORCE_STDHTTP"] = "1"
         from video.bootstrap import start_server
         start_server(host=ns.host, port=ns.port,
                      use_docker=ns.docker if hasattr(ns, "docker") else None)
