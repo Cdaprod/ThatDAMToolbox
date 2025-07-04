@@ -1,9 +1,18 @@
 # video/commands.py
-from dataclasses import dataclass, asdict
+#!/usr/bin/env python3
+"""All of your command dataclasses and functions for `video`."""
+
+from __future__ import annotations
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Union
-import json
 
+# ← THIS is critical so @register works below:
+from .cli import register
+
+import json
+from dataclasses import dataclass, asdict
+
+# ─── Parameter dataclasses ─────────────────────────
 @dataclass
 class ScanParams:
     root: Optional[Path]
@@ -159,6 +168,8 @@ def create_params_from_dict(action: str, data: Dict[str, Any]) -> CommandParams:
     else:
         raise ValueError(f"Unknown action: {action}")
 
+
+# ─── Command Implementations ─────────────────────────
 # stats and recent can just return built-in types (dict or list[dict])
 @register("transcode", help="HW-transcode to H.264 or HEVC")
 def cmd_transcode(args):
