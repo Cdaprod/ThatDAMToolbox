@@ -9,7 +9,7 @@ services:
       # args:
       #   - VIDEO_FORCE_STDHTTP=1
     image: cdaprod/video:dev
-    platform: linux/amd64          # or linux/arm64 on a Pi 5; remove for auto
+    platform: linux/arm64          # or linux/arm64 on a Pi 5; remove for auto
     ports:
       - "8080:8080"                # API (FastAPI or stdlib)
     environment:
