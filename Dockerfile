@@ -18,7 +18,7 @@
 FROM python:3.11-slim-bookworm AS base
 LABEL maintainer="cdaprod.dev" \
       org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
-      org.opencontainers.image.description="FastAPI / stdlib API + CLI for the Media-Indexer toolbox" \
+      org.opencontainers.image.description="That DAM Toolbox - FastAPI / stdlib API + CLI + Modular Plugin System for the Media-Indexer toolbox" \
       org.opencontainers.image.version="0.1.0"
 
 ENV DEBIAN_FRONTEND=noninteractive \
