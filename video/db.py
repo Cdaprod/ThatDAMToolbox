@@ -208,14 +208,14 @@ class MediaDB:
 
     # ─── New utility methods ────────────────────────────────────────────
 
-    def search_files(self, q: str, mime: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
-        """Full-text search over path, mime, batch using FTS5"""
+    def search_files(self, q: str, mime: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:    
+        """Full-text search over path, mime, batch using FTS5 (no alias in MATCH)."""
         with self.conn() as cx:
             sql = """
-                SELECT f.* 
-                  FROM files_fts ft 
-                  JOIN files f ON ft.rowid = f.rowid 
-                 WHERE ft MATCH ?
+                SELECT f.*
+                  FROM files_fts
+                  JOIN files f ON files_fts.rowid = f.rowid
+                 WHERE files_fts MATCH ?
             """
             params: List[Any] = [f"{q}*"]
             if mime:
@@ -226,7 +226,7 @@ class MediaDB:
 
             rows = cx.execute(sql, params).fetchall()
             return [dict(r) for r in rows]
-
+            
     def clean_all(self) -> int:
         """Delete all file records and their FTS entries; return number removed"""
         with self.conn() as cx:
