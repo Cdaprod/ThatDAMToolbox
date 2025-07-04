@@ -50,3 +50,40 @@ def remove_network_path(idx):
     _cfg.set("paths", "network_paths", ", ".join(str(x) for x in lst))
     _write_cfg()
     return removed
+
+def get_network_paths(section: str = "paths", key: str = "network_paths") -> list[Path]:
+    """
+    Read a comma-separated list of network mounts from [paths] network_paths
+    """
+    val = get(section, key)
+    if not val:
+        return []
+    return [
+        Path(p.strip()).expanduser()
+        for p in val.split(",")
+        if p.strip()
+    ]
+
+def get_network_globs(section="paths", key="network_globs") -> list[Path]:
+    val = get(section, key)
+    if not val:
+        return []
+    out = []
+    for pat in val.split(","):
+        for p in Path().glob(pat.strip()):
+            out.append(p)
+    return out
+
+def get_all_roots() -> list[Path]:
+    roots = []
+    primary = get_path("paths", "root")
+    if primary: roots.append(primary)
+    roots += get_network_paths()
+    roots += get_network_globs()
+    # dedupe & filter exists
+    seen = set(); final = []
+    for p in roots:
+        if p.exists() and p not in seen:
+            seen.add(p); final.append(p)
+    return final
+ 

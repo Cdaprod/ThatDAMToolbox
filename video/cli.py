@@ -23,27 +23,34 @@ def build_parser() -> argparse.ArgumentParser:
                                 description="Media bridge / DAM toolbox")
     sub = p.add_subparsers(dest="action")
 
+    # scan
     scan = sub.add_parser("scan", help="index a directory")
     scan.add_argument("--root", type=Path)
     scan.add_argument("--workers", type=int, default=4)
 
+    # sync
     sync = sub.add_parser("sync_album", help="sync an iOS Photos album")
     sync.add_argument("--root", type=Path, required=True)
     sync.add_argument("--album")
     sync.add_argument("--category", default="edit", choices=["edit", "digital"])
     sync.add_argument("--copy", action="store_true", default=True)
 
+    # stats
     sub.add_parser("stats", help="database statistics")
 
+    # resent
     recent = sub.add_parser("recent", help="recently indexed files")
     recent.add_argument("-n", "--limit", type=int, default=10)
 
+    # dump
     dump = sub.add_parser("dump", help="dump DB rows")
     dump.add_argument("--format", choices=["json", "csv"], default="json")
 
+    # backup
     back = sub.add_parser("backup", help="copy to backup root")
     back.add_argument("--backup_root", type=Path, required=True)
 
+    # search
     search = sub.add_parser("search", help="FTS search")
     search.add_argument("query")
     search.add_argument("--mime")
@@ -52,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     clean = sub.add_parser("clean", help="wipe DB (danger!)")
     clean.add_argument("--confirm", action="store_true")
 
+    # paths 
     paths = sub.add_parser("paths", help="manage network paths")
     paths_sub = paths.add_subparsers(dest="cmd")
 
@@ -62,6 +70,38 @@ def build_parser() -> argparse.ArgumentParser:
 
     rm = paths_sub.add_parser("remove", help="remove a path by index")
     rm.add_argument("index", type=int, help="index from list")
+    
+    batches = sub.add_parser("batches", help="work with batches")
+    batches_sub = batches.add_subparsers(dest="cmd")
+
+    # list all batches
+    batches_sub.add_parser("list", help="list all batches")
+
+    # show media in a specific batch
+    show = batches_sub.add_parser("show", help="show media files in a batch")
+    show.add_argument("batch_name", help="name of the batch to display")
+
+    # add a new Photos-album batch (sync + index)
+    batch_add = batches_sub.add_parser(
+        "add",
+        help="sync & index a Photos album as a new batch"
+    )
+    batch_add.add_argument(
+        "--root", "-r",
+        type=Path,
+        help="SMB root path (defaults to VIDEO_ROOT or config [paths] root)"
+    )
+    batch_add.add_argument(
+        "--album", "-a",
+        required=True,
+        help="Exact leaf name of the iOS Photos album to sync"
+    )
+    batch_add.add_argument(
+        "--category", "-c",
+        default="edit",
+        choices=["edit","digital"],
+        help="Album category (edit|digital)"
+    )
     
     return p
 
@@ -141,6 +181,45 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
             removed = config.remove_network_path(idx)
             return {"removed": str(removed)}
     
+    if action == "batches":
+        cmd = step.get("cmd")
+        if cmd == "list":
+            return idx.db.get_stats()["by_batch"]
+
+        if cmd == "show":
+            batch_name = step.get("batch_name")
+            if not batch_name:
+                return {"error": "batch_name is required"}
+            files = idx.db.list_by_batch(batch_name)
+            return [dict(file) for file in files]
+        
+        if cmd == "add":
+            # 1) sync album into <root>/_INCOMING/<album>
+            root = _resolve_path(
+                step.get("root"),
+                "VIDEO_ROOT",
+                config.get_path("paths", "root")
+            )
+            sync_args = {
+                "root": str(root),
+                "album": step["album"],
+                "category": step.get("category", "edit")
+            }
+            res = idx.sync.sync_album_from_args(sync_args)
+
+            # 2) index that folder
+            dest = Path(res.get("dest", ""))
+            scan_res = {}
+            if dest.exists():
+                scan_res = idx.scanner.bulk_scan(dest, workers=step.get("workers", 0))
+
+            return {
+                "batch":  res.get("album"),
+                "synced": res.get("synced"),
+                "skipped": res.get("skipped"),
+                "scan":   scan_res
+            }    
+            
     return {"error": f"unknown action {action}"}
 
 # ─── top-level ---------------------------------------------------------------
