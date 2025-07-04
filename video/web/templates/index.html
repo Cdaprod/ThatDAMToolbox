@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Batch Video Upload & Inspector{% endblock %}
+
+{% block body %}
+<div class="container">
+  <!-- Everything inside is *exactly* what you pasted ------->
+  <!-- (I only removed the <script> tags and BASE constant) -->
+
+  <div class="glass-card">
+    <h1>📹 Batch Video Upload</h1>
+
+    <form id="uploadForm" class="upload-form">
+      <div class="file-input-wrapper">
+        <input type="file" name="files" multiple accept="video/*"
+               required class="file-input" id="fileInput" />
+        <label for="fileInput" class="file-input-label" id="fileLabel">
+          📁 Select Video Files
+        </label>
+      </div>
+
+      <input type="text" name="batch"
+             placeholder="Batch name (optional)" />
+
+      <button type="submit" class="btn">🚀 Upload Batch</button>
+    </form>
+
+    <div id="result" class="result-area" style="display:none;"></div>
+  </div>
+
+  <div class="glass-card">
+    <h2>📂 Existing Batches</h2>
+    <button onclick="listBatches()" class="btn btn-secondary"
+            style="margin-bottom:1rem;">🔄 Refresh Batch List</button>
+    <div id="batches" class="loading">Loading batches…</div>
+  </div>
+
+  <div class="glass-card">
+    <h2>🎬 Batch Videos</h2>
+    <div id="videos" class="empty-state">
+      Select a batch above to view its videos.
+    </div>
+  </div>
+</div>
+{% endblock %}

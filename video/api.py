@@ -7,9 +7,29 @@ import uuid
 import logging
 
 from .cli import run_cli_from_json
+from .web import templates, static
 
 app = FastAPI(title="Video DAM API")
 log = logging.getLogger("video.api")
+
+# Expose /static/style.css, /static/app.js, …
+app.mount("/static", static, name="static")
+
+# ---------------------------------------------------------------------------
+# Root HTML page  →  http://<host>:<port>/
+# ---------------------------------------------------------------------------
+@app.get("/", include_in_schema=False)
+async def home(request: Request):
+    """
+    Pretty HTML front-end (upload form, batch browser).
+    Purely optional – JSON API routes still work as before.
+    """
+    return templates.TemplateResponse("index.html",
+                                      {"request": request})
+
+# ---------------------------------------------------------------------------
+# Routing →  http://<host>:<port>/<path>
+# ---------------------------------------------------------------------------
 
 # In-memory job store
 _jobs: Dict[str, Dict[str, Any]] = {}
