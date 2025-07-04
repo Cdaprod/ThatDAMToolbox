@@ -8,7 +8,7 @@ services:
       # Uncomment to force stdlib server inside the container
       # args:
       #   - VIDEO_FORCE_STDHTTP=1
-    image: cdaprod/video:dev
+    #image: cdaprod/video:dev
     platform: linux/amd64          # or linux/arm64 on a Pi 5; remove for auto
     ports:
       - "8080:8080"                # API (FastAPI or stdlib)
@@ -28,7 +28,7 @@ services:
 
   # Optional one-shot CLI side-car example
   video-cli:
-    image: cdaprod/video:dev
+    #image: cdaprod/video:dev
     entrypoint: ["python", "-m", "video"]
     command: ["stats"]
     volumes:
