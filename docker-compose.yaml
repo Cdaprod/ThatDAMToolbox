@@ -23,7 +23,8 @@ services:
       - ./data/media:/media        # ← your media source
       - ./data/db:/workspace/db    # ← local db/data
     restart: unless-stopped
-    command: uvicorn video.api:app --host 0.0.0.0 --port 8080 --reload
+    entrypoint: ["python","-m","video"]
+    command: ["serve", "--host", "0.0.0.0", "--port", "8080"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
