@@ -15,3 +15,6 @@ rich>=13.7                            # nicer CLI / log output
 
 #    Optional: Polished GUIs
 textual==0.54
+
+#   Frame Extractor Module
+opencv-python-headless>=4.5.0

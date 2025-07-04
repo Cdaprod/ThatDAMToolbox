@@ -6,6 +6,9 @@ import sys, json, argparse, logging, io, csv, os
 from pathlib import Path
 from typing import Any, Dict, List
 
+import pkgutil     # <--- ADD THIS
+import importlib   # <--- ADD THIS
+
 # ─── command registry decorator ────────────────────────────────────────────
 COMMAND_REGISTRY: dict[str, dict] = {}
 
@@ -19,7 +22,7 @@ def register(name: str, **meta):
         return func
     return decorator
 
-from . import MediaIndexer, config
+from . import MediaIndexer, config, modules
 from .commands import (
     ScanParams, SyncAlbumParams, BackupParams, RecentParams, DumpParams,
     SearchParams, CleanParams,
@@ -43,6 +46,9 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, default=8080)
     serve.add_argument("--force-stdlib", action="store_true",
                        help="ignore FastAPI even if installed")
+    
+    serve.add_argument("--docker", action="store_true",
+                       help="launch via host Docker engine")
     
     # scan
     scan = sub.add_parser("scan", help="index a directory")
@@ -123,6 +129,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["edit","digital"],
         help="Album category (edit|digital)"
     )
+    
+    # ── let `video.modules.` plug-ins extend argparse ----------------------------------------
+    for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
+        m = importlib.import_module(mod.name)
+        if hasattr(m, "add_parser"):
+            m.add_parser(sub)
     
     return p
 
@@ -242,6 +254,11 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
                 "scan":   scan_res
             }    
             
+    
+        if action in COMMAND_REGISTRY:
+            # let plug-in verbs run (pass as argparse.Namespace for symmetry)
+            return COMMAND_REGISTRY[action]["func"](argparse.Namespace(**step))
+    
     return {"error": f"unknown action {action}"}
 
 # ─── top-level ---------------------------------------------------------------
@@ -252,13 +269,13 @@ def run_cli(argv: List[str] | None = None) -> None:
     # ── If user asked for "serve", spin up the server and exit ────────────────
     if ns.action == "serve":
         import os
-        # honor the --force-stdlib flag
         if ns.force_stdlib:
             os.environ["VIDEO_FORCE_STDHTTP"] = "1"
         from video.bootstrap import start_server
-        start_server(host=ns.host, port=ns.port)
+        start_server(host=ns.host, port=ns.port,
+                     use_docker=ns.docker if hasattr(ns, "docker") else None)
         return
-
+    
     # ── Otherwise fall back to normal CLI dispatch ──────────────────────────────
     idx = MediaIndexer()
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/modules/motion_extractor/motion_extractor.py
+
 Motion Frame Extractor - Drop-in Module for Python Applications
 
 A self-contained module for extracting frames with motion from video files.

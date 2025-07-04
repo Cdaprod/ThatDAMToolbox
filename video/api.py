@@ -8,11 +8,10 @@ import logging
 from .cli import run_cli_from_json
 
 app = FastAPI(title="Video DAM API")
-logger = logging.getLogger("video.api")
+log = logging.getLogger("video.api")
 
 # In-memory job store
 _jobs: Dict[str, Dict[str, Any]] = {}
-
 
 class ScanRequest(BaseModel):
     directory: str
@@ -31,6 +30,22 @@ class BatchCreateRequest(BaseModel):
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "video-api"}
+
+# ── generic CLI proxy --------------------------------------------------------
+class CLIRequest(BaseModel):
+    """Arbitrary CLI step; must include an 'action' key."""
+    action: str
+    params: Dict[str, Any] = {}
+
+@app.post("/cli")
+def cli_proxy(req: CLIRequest):
+    """POST JSON {action:.., params:{...}} → run_cli_from_json()"""
+    step = {"action": req.action, **req.params}
+    try:
+        return json.loads(run_cli_from_json(json.dumps(step)))
+    except Exception as e:
+        log.exception("CLI proxy failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Stats
 @app.get("/stats")
@@ -136,3 +151,12 @@ async def sync_album(album: str):
 async def backup(source: str, destination: Optional[str] = None):
     cmd = {"action":"backup","backup_root":destination or "/backup","dry_run":False}
     return run_cli_from_json(json.dumps(cmd))
+    
+# ── auto-include plug-in routers --------------------------------------------
+from . import modules                      # namespace package
+
+for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
+    m = importlib.import_module(mod.name)
+    if hasattr(m, "router"):
+        app.include_router(m.router)
+        log.info("Included router from %s", mod.name)
