@@ -57,6 +57,12 @@ ENV PATH=$PATH:/home/appuser/.local/bin
 COPY --chown=appuser:appuser video/ /workspace/video
 COPY --chown=appuser:appuser run_video.py /workspace/
 
+# Auto-install all plugin requirements.txt (if any exist)
+RUN set -e; \
+    cd /workspace/video/modules; \
+    find . -name "requirements.txt" | xargs cat | sort | uniq > /tmp/all-module-reqs.txt; \
+    pip install --no-cache-dir --user -r /tmp/all-module-reqs.txt || true
+
 EXPOSE 8080
 
 # ── Runtime behaviour ───────────────────────────────────────────────────────
