@@ -160,3 +160,19 @@ def create_params_from_dict(action: str, data: Dict[str, Any]) -> CommandParams:
         raise ValueError(f"Unknown action: {action}")
 
 # stats and recent can just return built-in types (dict or list[dict])
+@register("transcode", help="HW-transcode to H.264 or HEVC")
+def cmd_transcode(args):
+    from . import hwaccel
+    if not hwaccel.has_vc7():
+        print("No VideoCore VII detected – falling back is TODO.")
+        return
+    hwaccel.transcode_hw(args.src, args.dst, vcodec=args.codec)
+
+@register("thumbnails", help="GPU thumbnail sheet generator")
+def cmd_thumbs(args):
+    from . import hwaccel, preview
+    from pathlib import Path
+    Path(args.out).mkdir(parents=True, exist_ok=True)
+    for i, frame in enumerate(hwaccel.frame_iter_hw(args.src)):
+        if i % args.step == 0:
+            preview.save_thumbnail(frame, Path(args.out)/f"{i:04d}.jpg")

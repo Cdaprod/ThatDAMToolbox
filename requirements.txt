@@ -1,0 +1,14 @@
+# ── Core web stack ─────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1          # + httptools, uvloop on CPython/-musl
+pydantic>=2.8,<3.0
+
+# ── Media / data helpers (all pure-Python wheels) ──────────────
+numpy>=1.26
+opencv-python-headless>=4.10          # thumbnails / probe frames
+ffmpeg-python>=0.2.0                  # convenience wrapper (uses system ffmpeg)
+rich>=13.7                            # nicer CLI / log output
+
+# ── Optional: if you use SQLModel / SQLite / Postgres, pin here
+# sqlmodel~=0.0.16
+# psycopg[binary]~=3.1

@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  video-api:
+    build:
+      context: .
+      dockerfile: Dockerfile       # the one with the multi-arch stages
+      # Uncomment to force stdlib server inside the container
+      # args:
+      #   - VIDEO_FORCE_STDHTTP=1
+    image: cdaprod/video:dev
+    platform: linux/amd64          # or linux/arm64 on a Pi 5; remove for auto
+    ports:
+      - "8080:8080"                # API (FastAPI or stdlib)
+    environment:
+      # Force lightweight server: VIDEO_FORCE_STDHTTP=1
+      TZ: "America/New_York"
+    volumes:
+      # Mount your media and database locations
+      - ./data/media:/media
+      - ./data/db:/workspace/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Optional one-shot CLI side-car example
+  video-cli:
+    image: cdaprod/video:dev
+    entrypoint: ["python", "-m", "video"]
+    command: ["stats"]
+    volumes:
+      - ./data/media:/media
+      - ./data/db:/workspace/db
+    depends_on:
+      - video-api
+    profiles: ["cli"]              # run with: docker compose --profile cli run video-cli

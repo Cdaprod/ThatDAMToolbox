@@ -240,6 +240,28 @@ def run_cli(argv: List[str] | None = None) -> None:
     else:
         print(json.dumps([serialize_result(r) for r in out], indent=2, ensure_ascii=False, default=str))
 
+# ─── programmatic helper ------------------------------------------------------
+def run_cli_from_json(json_str: str) -> str:
+    """
+    Run one CLI 'step' specified as a JSON string and
+    return the raw stdout that run_cli() would have printed.
+    This avoids touching global sys.stdin/sys.argv.
+    """
+    import io
+    stdout_buf = io.StringIO()
+    _orig_stdout = sys.stdout
+    try:
+        sys.stdout = stdout_buf                 # capture
+        step = json.loads(json_str)
+        # Re-use existing plumbing ↓
+        idx = MediaIndexer()
+        result = dispatch(idx, step)
+        print(json.dumps(serialize_result(result),
+                         indent=2, ensure_ascii=False, default=str))
+        return stdout_buf.getvalue()
+    finally:
+        sys.stdout = _orig_stdout
+
 # allow `python -m video.cli`
 if __name__ == "__main__":
     run_cli()
