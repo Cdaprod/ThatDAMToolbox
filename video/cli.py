@@ -140,7 +140,8 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
 
     if action == "recent":
         p = RecentParams(limit=step.get("limit", 10))
-        return idx.get_recent(p.limit)
+        rows = idx.get_recent(p.limit)
+        return [dict(row) for row in rows]  # Convert each row to a dict
 
     if action == "dump":
         p = DumpParams(fmt=step.get("format", "json"))
