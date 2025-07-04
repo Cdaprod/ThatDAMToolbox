@@ -11,4 +11,4 @@ from . import commands    # registers CLI verb via decorator
 from . import routes      # exposes FastAPI router (if FastAPI path active)
 
 # 2) Re-export convenience class for direct importers
-from .extractor import MotionExtractor           # noqa: F401
+from .motion_extractor import MotionExtractor           # noqa: F401
