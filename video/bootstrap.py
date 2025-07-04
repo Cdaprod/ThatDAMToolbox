@@ -16,14 +16,28 @@ from typing import Optional
 _log = logging.getLogger("video.bootstrap")
 
 def _banner(app) -> None:
-    """Log the public FastAPI routes once."""
-    _log.info("📚  Available endpoints:")
-    for r in sorted(app.routes, key=lambda _r: _r.path):
-        if r.include_in_schema is False:
-            continue
-        methods = ",".join(m for m in r.methods if m not in ("HEAD", "OPTIONS"))
-        _log.info("  %-7s %s", methods, r.path)
+    """
+    Log a neat one-liner for every real API route (skip docs, HEAD/OPTIONS,
+    and special Mount routes such as the /static handler).
+    """
+    from fastapi.routing import APIRoute      # local import → avoids hard dep
+    from starlette.routing import Mount
 
+    _log.info("📚  Available endpoints:")
+
+    for r in sorted(app.routes, key=lambda _r: getattr(_r, "path", "")):
+
+        # Skip documentation, OpenAPI JSON, etc.
+        if isinstance(r, APIRoute):
+            if not getattr(r, "include_in_schema", True):
+                continue
+            methods = [m for m in r.methods if m not in ("HEAD", "OPTIONS")]
+            _log.info("  %-7s %s", ",".join(methods), r.path)
+
+        # Ignore Mount objects (/static) – they have no .methods/.include_in_schema
+        elif isinstance(r, Mount):
+            continue
+            
 def _have_docker() -> bool:
     exe = shutil.which("docker")
     if not exe:
