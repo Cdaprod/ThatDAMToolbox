@@ -106,6 +106,8 @@ from .cli import run_cli as _run_cli      # optional: importable CLI entry-point
 
 import pkgutil, importlib
 for mod in pkgutil.iter_modules(__path__, prefix=f"{__name__}.modules."):
-    importlib.import_module(mod.name)     # ← executes your plug-in’s __init__.py
-
+    # Ignore any modules/packages that start with "__"
+    if not mod.name.split('.')[-1].startswith("__"):
+        importlib.import_module(mod.name)
+        
 __all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync', 'config']

@@ -156,7 +156,8 @@ async def backup(source: str, destination: Optional[str] = None):
 from . import modules                      # namespace package
 
 for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
-    m = importlib.import_module(mod.name)
-    if hasattr(m, "router"):
-        app.include_router(m.router)
-        log.info("Included router from %s", mod.name)
+    if not mod.name.split('.')[-1].startswith("__"):
+        m = importlib.import_module(mod.name)
+        if hasattr(m, "router"):
+            app.include_router(m.router)
+            log.info("✔ added %s", mod.name)
