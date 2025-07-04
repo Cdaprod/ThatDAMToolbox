@@ -12,3 +12,6 @@ rich>=13.7                            # nicer CLI / log output
 # ── Optional: if you use SQLModel / SQLite / Postgres, pin here
 # sqlmodel~=0.0.16
 # psycopg[binary]~=3.1
+
+#    Optional: Polished GUIs
+textual==0.54

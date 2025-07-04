@@ -26,6 +26,7 @@ from .commands import (
     ScanResult, SyncResult, BackupResult,
     serialize_result
 )
+from .bootstrap import start_server
 
 log = logging.getLogger("video.cli")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -36,6 +37,13 @@ def build_parser() -> argparse.ArgumentParser:
                                 description="Media bridge / DAM toolbox")
     sub = p.add_subparsers(dest="action")
 
+    # serve
+    serve = sub.add_parser("serve", help="start the Video API server")
+    serve.add_argument("--host", default="0.0.0.0")
+    serve.add_argument("--port", type=int, default=8080)
+    serve.add_argument("--force-stdlib", action="store_true",
+                       help="ignore FastAPI even if installed")
+    
     # scan
     scan = sub.add_parser("scan", help="index a directory")
     scan.add_argument("--root", type=Path)
@@ -238,21 +246,39 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
 
 # ─── top-level ---------------------------------------------------------------
 def run_cli(argv: List[str] | None = None) -> None:
+    # Parse everything first
+    ns = build_parser().parse_args(argv)
+
+    # ── If user asked for "serve", spin up the server and exit ────────────────
+    if ns.action == "serve":
+        import os
+        # honor the --force-stdlib flag
+        if ns.force_stdlib:
+            os.environ["VIDEO_FORCE_STDHTTP"] = "1"
+        from video.bootstrap import start_server
+        start_server(host=ns.host, port=ns.port)
+        return
+
+    # ── Otherwise fall back to normal CLI dispatch ──────────────────────────────
     idx = MediaIndexer()
 
+    # allow JSON-over-stdin workflows
     stdin_obj = _json_from_stdin()
     if stdin_obj is not None:
-        steps = stdin_obj["workflow"] if "workflow" in stdin_obj else [stdin_obj]
+        steps = stdin_obj.get("workflow", [stdin_obj])
     else:
-        ns = build_parser().parse_args(argv)
+        # dispatch a single ns.action
         steps = [vars(ns)]
 
+    # Execute and print
     out: list[Any] = [dispatch(idx, s) for s in steps]
     if len(out) == 1:
-        print(json.dumps(serialize_result(out[0]), indent=2, ensure_ascii=False, default=str))
+        print(json.dumps(serialize_result(out[0]),
+                         indent=2, ensure_ascii=False, default=str))
     else:
-        print(json.dumps([serialize_result(r) for r in out], indent=2, ensure_ascii=False, default=str))
-
+        print(json.dumps([serialize_result(r) for r in out],
+                         indent=2, ensure_ascii=False, default=str))
+                         
 # ─── programmatic helper ------------------------------------------------------
 def run_cli_from_json(json_str: str) -> str:
     """
