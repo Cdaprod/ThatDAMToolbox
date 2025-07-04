@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File
 from pathlib import Path
 import tempfile
-from .extractor import MotionExtractor
+from .motion_extractor import MotionExtractor
 
 router = APIRouter(prefix="/motion", tags=["motion"])
 
