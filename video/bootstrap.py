@@ -1,34 +1,53 @@
 #!/usr/bin/env python3
 """
-Bootstrapping helper for video API:
+Smart bootstrap for the *video* API:
 
-• If Docker engine is available, spins up the cdaprod/video:latest container
-• Else if FastAPI+Uvicorn installed, runs that in‐process
-• Else falls back to pure-stdlib HTTPServer
+• If Docker is available → run the pre-built container
+• Else if FastAPI+Uvicorn installed → run in-process
+• Else → fall back to the pure-stdlib HTTP server
 """
-import os
-import shutil
-import subprocess
-import importlib.util as _iu
+from __future__ import annotations
+import os, shutil, subprocess, importlib.util as _iu, logging
 from typing import Optional
 
+# --------------------------------------------------------------------------- #
+# helpers                                                                     #
+# --------------------------------------------------------------------------- #
+_log = logging.getLogger("video.bootstrap")
+
+def _banner(app) -> None:                     # FastAPI imported later → loose type
+    """Log the public FastAPI routes once."""
+    _log.info("📚  Available endpoints:")
+    for r in sorted(app.routes, key=lambda _r: _r.path):
+        if r.include_in_schema is False:
+            continue                          # skip /docs, /openapi.json, etc.
+        methods = ",".join(m for m in r.methods if m not in ("HEAD", "OPTIONS"))
+        _log.info("  %-7s %s", methods, r.path)
+
 def _have_docker() -> bool:
-    docker = shutil.which("docker")
-    if not docker:
+    exe = shutil.which("docker")
+    if not exe:
         return False
     try:
-        subprocess.check_output([docker, "info"], stderr=subprocess.DEVNULL)
+        subprocess.check_output([exe, "info"], stderr=subprocess.DEVNULL)
         return True
     except Exception:
         return False
 
+# --------------------------------------------------------------------------- #
+# public entry-point                                                          #
+# --------------------------------------------------------------------------- #
 def start_server(host: str = "0.0.0.0",
                  port: int = 8080,
                  *,
                  use_docker: Optional[bool] = None,
-                 **uvicorn_opts):          # ← catch any extra CLI flags
+                 **uvicorn_opts) -> None:
+    """
+    Decide **once** where to run the API and launch it.
 
-    """Entry point ONLY called by the serve CLI action."""
+    Called by:  `python -m video serve …`  or  `video.cli → serve`
+    """
+    # ── 1) Docker host-level container ──────────────────────────────────────
     if use_docker is None:
         use_docker = os.getenv("VIDEO_USE_DOCKER") == "1" or _have_docker()
 
@@ -40,30 +59,25 @@ def start_server(host: str = "0.0.0.0",
             "-e", "VIDEO_FORCE_STDHTTP=0",
             image
         ]
-        print(f"🛳️  launching host container: {' '.join(cmd)}")
-        subprocess.run(cmd)
-        return
+        _log.info("🛳️  launching host container: %s", " ".join(cmd))
+        subprocess.run(cmd, check=True)
+        return                                   # never returns on success
 
-    force_std = os.getenv("VIDEO_FORCE_STDHTTP") == "1"
-    have_fastapi = _iu.find_spec("fastapi") is not None
-    have_uvicorn = _iu.find_spec("uvicorn") is not None
+    # ── 2) In-process (FastAPI or stdlib fallback) ──────────────────────────
+    force_std  = os.getenv("VIDEO_FORCE_STDHTTP") == "1"
+    have_fast  = _iu.find_spec("fastapi")  is not None
+    have_uci   = _iu.find_spec("uvicorn") is not None
 
-    if not force_std and have_fastapi and have_uvicorn:
-        from video.api import app
+    if not force_std and have_fast and have_uci:
+        from video.api import app               # local import = cheap if unused
         import uvicorn
-        # Print endpoints banner here, not in api.py
-        print("INFO: 📚  Available endpoints:")
-        print("INFO:   POST /batches          - Create batch (with pre-flight transcode)")
-        print("INFO:   GET  /batches          - List batches")
-        print("INFO:   GET  /batches/{name}   - Get batch details")
-        print("INFO:   DEL  /batches/{name}   - Delete batch")
-        print("INFO:   POST /transcode        - Transcode single file")
-        print("INFO:   POST /cli              - Execute CLI command")
-        print("INFO:   GET  /jobs             - List all jobs")
-        print("INFO:   GET  /jobs/{id}        - Get job status")
-        print("INFO:   DEL  /jobs/{id}        - Delete job")
-        print("INFO:   GET  /health           - Health check")
-        uvicorn.run(app, host=host, port=port, workers=2)
+
+        _banner(app)
+
+        # default workers=2 unless caller overrides via **uvicorn_opts
+        uvicorn.run(app, host=host, port=port,
+                    workers=uvicorn_opts.pop("workers", 2),
+                    **uvicorn_opts)
     else:
         from video.server import serve
         serve(host=host, port=port)
