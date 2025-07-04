@@ -27,3 +27,26 @@ def get_path(section: str, key: str, default: str | None = None) -> Path | None:
     """
     val = get(section, key, default)
     return Path(val) if val else None
+
+def _write_cfg():
+    with open(_cfg_path, "w") as f:
+        _cfg.write(f)
+
+def add_network_path(path_str):
+    lst = get_network_paths()
+    p = Path(path_str).expanduser()
+    if str(p) not in [str(x) for x in lst]:
+        _cfg.set("paths", "network_paths", ", ".join([str(x) for x in lst] + [str(p)]))
+        _write_cfg()
+        return True
+    return False  # duplicate
+
+def remove_network_path(idx):
+    lst = get_network_paths()
+    try:
+        removed = lst.pop(idx)
+    except IndexError:
+        raise ValueError("Invalid index")
+    _cfg.set("paths", "network_paths", ", ".join(str(x) for x in lst))
+    _write_cfg()
+    return removed

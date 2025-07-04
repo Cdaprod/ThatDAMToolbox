@@ -52,6 +52,17 @@ def build_parser() -> argparse.ArgumentParser:
     clean = sub.add_parser("clean", help="wipe DB (danger!)")
     clean.add_argument("--confirm", action="store_true")
 
+    paths = sub.add_parser("paths", help="manage network paths")
+    paths_sub = paths.add_subparsers(dest="cmd")
+
+    paths_sub.add_parser("list", help="show network paths")
+
+    add = paths_sub.add_parser("add", help="add a new network path")
+    add.add_argument("path", type=Path, help="directory or glob to add")
+
+    rm = paths_sub.add_parser("remove", help="remove a path by index")
+    rm.add_argument("index", type=int, help="index from list")
+    
     return p
 
 # ─── helpers ------------------------------------------------------------------
@@ -117,6 +128,19 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
         removed = idx.db.clean_all()
         return {"removed": removed}
 
+    elif action == "paths":
+        cmd = step.get("cmd")
+        if cmd == "list":
+            return [str(p) for p in config.get_network_paths()]
+        elif cmd == "add":
+            path = step["path"]
+            ok = config.add_network_path(str(path))
+            return {"added": str(path)} if ok else {"error": "duplicate"}
+        elif cmd == "remove":
+            idx = step["index"]
+            removed = config.remove_network_path(idx)
+            return {"removed": str(removed)}
+    
     return {"error": f"unknown action {action}"}
 
 # ─── top-level ---------------------------------------------------------------
