@@ -212,6 +212,19 @@ input[type="text"]::placeholder {
   font-style: italic;
 }
 
+.upload-details summary {
+  cursor:pointer;
+  font-weight:600;
+  padding:.5rem 0;
+  color:#64b5f6;
+}
+
+.video-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:.75rem;
+}
+
 /* Mobile optimizations */
 @media (max-width: 480px) {
   .container {
