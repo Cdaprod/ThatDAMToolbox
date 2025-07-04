@@ -1,3 +1,4 @@
+<!-- base.html  (the minimal working version) -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,14 +7,15 @@
 
   <!-- CSS -->
   <link rel="stylesheet"
-        href="{{ url_for('static', path='style.css') }}">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+        href="{{ url_for('static', path='styles.css') }}" />  <!-- ← s-s-match -->
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   {% block head %}{% endblock %}
 </head>
 <body>
   {% block body %}{% endblock %}
 
-  <!-- JS – loaded once at the very end -->
+  <!-- bundled JavaScript (move your long <script> into this file) -->
   <script src="{{ url_for('static', path='app.js') }}"></script>
 </body>
 </html>
