@@ -6,6 +6,19 @@ import sys, json, argparse, logging, io, csv, os
 from pathlib import Path
 from typing import Any, Dict, List
 
+# ─── command registry decorator ────────────────────────────────────────────
+COMMAND_REGISTRY: dict[str, dict] = {}
+
+def register(name: str, **meta):
+    """
+    Decorator used by commands.py to self-register callable CLI verbs.
+    Stores `func` and optional metadata in COMMAND_REGISTRY.
+    """
+    def decorator(func):
+        COMMAND_REGISTRY[name] = {"func": func, **meta}
+        return func
+    return decorator
+
 from . import MediaIndexer, config
 from .commands import (
     ScanParams, SyncAlbumParams, BackupParams, RecentParams, DumpParams,
@@ -265,3 +278,5 @@ def run_cli_from_json(json_str: str) -> str:
 # allow `python -m video.cli`
 if __name__ == "__main__":
     run_cli()
+    
+__all__ = ["run_cli", "run_cli_from_json", "register", "COMMAND_REGISTRY"]
