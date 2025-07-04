@@ -13,6 +13,13 @@ class MediaDB:
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or (Path.home() / "media_index.sqlite3")
         self._init_db()
+        try:
+            self._repair_fts()
+        except Exception as e:
+            # Log but never block startup; users don't need to know
+            import logging
+            logging.getLogger("video.db").warning(f"FTS repair skipped: {e}")
+
 
     def _init_db(self):
         """Initialize database schema and perform migrations"""
@@ -226,4 +233,26 @@ class MediaDB:
             total = cx.execute("SELECT COUNT(*) FROM files").fetchone()[0]
             cx.execute("DELETE FROM files")
             cx.execute("DELETE FROM files_fts")
+        # Always ensure FTS is rebuilt after destructive ops
+        self._repair_fts()
         return total
+
+    def _repair_fts(self) -> int:
+        """
+        Ensure files_fts contains all files rows (backfill for FTS triggers).
+        Returns the number of rows added.
+        """
+        with self.conn() as cx:
+            has_fts = cx.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='files_fts'").fetchone()
+            if not has_fts:
+                return 0
+            missing_rowids = cx.execute("""
+                SELECT rowid, path, mime, batch FROM files
+                WHERE rowid NOT IN (SELECT rowid FROM files_fts)
+            """).fetchall()
+            for row in missing_rowids:
+                cx.execute(
+                    "INSERT INTO files_fts(rowid, path, mime, batch) VALUES (?, ?, ?, ?)",
+                    (row["rowid"], row["path"], row["mime"], row["batch"])
+                )
+            return len(missing_rowids)
