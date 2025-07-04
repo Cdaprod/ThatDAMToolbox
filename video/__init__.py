@@ -104,10 +104,19 @@ class MediaIndexer:
 from . import config as config
 from .cli import run_cli as _run_cli      # optional: importable CLI entry-point
 
-import pkgutil, importlib
+import pkgutil, importlib, os
+
+import logging
+log = logging.getLogger("video.plugins")
+
 for mod in pkgutil.iter_modules(__path__, prefix=f"{__name__}.modules."):
-    # Ignore any modules/packages that start with "__"
-    if not mod.name.split('.')[-1].startswith("__"):
+    leaf = mod.name.split('.')[-1]
+    if leaf.startswith("__"):
+        continue
+    # Only import if the actual file or directory exists in modules/
+    mod_path = os.path.join(os.path.dirname(__file__), 'modules', leaf)
+    if os.path.isdir(mod_path) or os.path.isfile(mod_path + '.py'):
         importlib.import_module(mod.name)
+        log.info(f"Loaded plugin: {mod.name}")
         
 __all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync', 'config']
