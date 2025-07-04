@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uuid
 import logging
+import json
 
 from .cli import run_cli_from_json
 from .web import templates, static
