@@ -22,12 +22,12 @@ def _have_docker() -> bool:
     except Exception:
         return False
 
-def start_server(
-    host: str = "0.0.0.0",
-    port: int = 8080,
-    *,
-    use_docker: Optional[bool] = None
-):
+def start_server(host: str = "0.0.0.0",
+                 port: int = 8080,
+                 *,
+                 use_docker: Optional[bool] = None,
+                 **uvicorn_opts):          # ← catch any extra CLI flags
+
     """Entry point ONLY called by the serve CLI action."""
     if use_docker is None:
         use_docker = os.getenv("VIDEO_USE_DOCKER") == "1" or _have_docker()
