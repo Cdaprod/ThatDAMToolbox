@@ -150,14 +150,28 @@ def _resolve_path(cli_val, env_key, cfg_val) -> Path | None:
     if os.getenv(env_key): return Path(os.getenv(env_key))
     return cfg_val
 
+@dataclass
+class ScanResult:
+    total: int = 0
+    new_files: int = 0
+    updated_files: int = 0
+    errors: int = 0
+
 # ─── dispatcher ---------------------------------------------------------------
 def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
     action = step.get("action", "scan")
 
     if action == "scan":
         p = ScanParams(
-            root=_resolve_path(step.get("root"), "VIDEO_ROOT", config.get_path("paths", "root")),
-            workers=step.get("workers", 4))
+            root=_resolve_path(
+                step.get("root"),
+                "VIDEO_ROOT",
+                config.get_path("paths", "root")
+            ),
+            workers=step.get("workers", 4)
+        )
+        # The dict returned by idx.scan() may or may not contain "total".
+        # With defaults in ScanResult that’s fine.
         return ScanResult(**idx.scan(p.root, p.workers))
 
     if action == "sync_album":

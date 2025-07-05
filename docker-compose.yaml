@@ -19,6 +19,7 @@ services:
       # VIDEO_FORCE_STDHTTP: "1"
       TZ: "America/New_York"
     volumes:
+      - /mnt/b/Video:/mnt/b/Video  # ← network source mount
       - ./video:/workspace/video   # ← live source mount for hot reloading
       - ./data/media:/media        # ← your media source
       - ./data/db:/workspace/db    # ← local db/data
