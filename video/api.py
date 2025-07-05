@@ -1,13 +1,13 @@
 # /video/api.py
 import pkgutil, importlib
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uuid
 import logging
 import json
 
+from . import modules
 from .cli import run_cli_from_json
 from .web import templates, static
 
@@ -184,10 +184,3 @@ for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
         if hasattr(m, "router"):
             app.include_router(m.router)
             log.info("✔ added %s", mod.name)
-        # NEW: if the module exposes PUBLIC_FRAMES_DIR, mount it once
-        if hasattr(m, "PUBLIC_FRAMES_DIR"):
-            mount_path = f"/{mod.name.split('.')[-1]}/frames"
-            app.mount(mount_path,
-                      StaticFiles(directory=m.PUBLIC_FRAMES_DIR),
-                      name=f"{mod.name}-frames")
-            log.info("✔ static %s → %s", mount_path, m.PUBLIC_FRAMES_DIR)
