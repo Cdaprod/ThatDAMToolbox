@@ -158,51 +158,45 @@ listBatches();
 // ──────────────────────────────────────────
 $('#motionInput').addEventListener('change', e => {
   const lbl = $('#motionLabel');
-  lbl.textContent = e.target.files.length
-    ? `📹 ${e.target.files[0].name}`
-    : '📁 Select a Video File';
+  const files = e.target.files;
+  lbl.textContent = files.length
+    ? `📹  ${files.length} file${files.length > 1 ? 's' : ''} selected`
+    : '📁  Select video file(s)';
 });
 
 $('#motionForm').onsubmit = async e => {
   e.preventDefault();
-  const file  = $('#motionInput').files[0];
+
+  const files = $('#motionInput').files;
   const out   = $('#motionResult');
-  const frameBox = $('#frames');
+  const box   = $('#frames');
 
-  if (!file) return;
+  if (!files.length) return;
 
+  // build multipart/form-data  →  field name **files**
   const form = new FormData();
-  form.append('video', file);
+  [...files].forEach(f => form.append('files', f));
 
   out.style.display = 'block';
-  out.textContent   = '⏳ Processing…';
-  frameBox.innerHTML = '';
+  out.textContent   = '⏳ Extracting motion frames…';
+  box.innerHTML     = '';
 
   try {
-    // 1) submit job
-    const job = await fetchJson(`${BASE}/motion/extract`, {
-      method: 'POST',
-      body  : form
+    // 1) call the API
+    const res = await fetchJson(`${BASE}/motion/extract`, {
+      method : 'POST',
+      body   : form              // <- real options object, not "{ … }"
     });
 
-    // 2) poll until done
-    let poll;
-    const pollJob = async () => {
-      const j = await fetchJson(`${BASE}/motion/result/${job.job}`);
-      if (j.status === 'done') {
-        clearInterval(poll);
-        out.textContent = `✅ ${j.frames.length} frames extracted`;
-        frameBox.innerHTML = j.frames.map(u =>
-          `<img src="${u}" style="max-width:45%;border-radius:8px;">`).join('');
-      }
-      if (j.status === 'error') {
-        clearInterval(poll);
-        out.textContent = '❌ ' + j.error;
-      }
-    };
-    poll = setInterval(pollJob, 2000);
-    pollJob();                        // immediate first check
+    // 2) show results
+    const allFrames = res.results.flatMap(r => r.frames);   // URLs we built server-side
+    out.textContent = `✅  ${allFrames.length} frames extracted`;
+
+    box.innerHTML = allFrames.map(u =>
+      `<img src="${u}" style="max-width:46%;margin:2%;border-radius:8px;">`
+    ).join('');
+
   } catch (err) {
-    out.textContent = '❌ ' + err.message;
+    out.textContent = '❌  ' + err.message;
   }
 };
