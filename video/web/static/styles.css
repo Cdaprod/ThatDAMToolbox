@@ -225,6 +225,10 @@ input[type="text"]::placeholder {
   gap:.75rem;
 }
 
+/* styles.css – simple 2-column grid */
+.grid-two { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem }
+.prevImg  { width:100%; border-radius:8px; background:#111 }
+
 /* Mobile optimizations */
 @media (max-width: 480px) {
   .container {

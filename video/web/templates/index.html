@@ -59,5 +59,26 @@
     <div id="motionResult" class="result-area" style="display:none;"></div>
     <div id="frames" style="display:flex;flex-wrap:wrap;gap:.5rem;"></div>
   </div>
+  <div class="glass-card">
+    <h2>📺 Live Previews</h2>
+
+    <div class="grid-two">
+      <div>
+        <select class="capDev"></select>
+        <img class="prevImg">
+      </div>
+      <div>
+        <select class="capDev"></select>
+        <img class="prevImg">
+      </div>
+    </div>
+
+    <button id="startAll" class="btn-small">▶ Start both</button>
+  </div>
+  <div class="glass-card">
+    <h2>🛰️  Witness Record</h2>
+    <button class="btn" onclick="startWitness()">⚡ Start 60-s take</button>
+    <pre id="witResult" class="result-area" style="display:none;"></pre>
+  </div>
 </div>
 {% endblock %}

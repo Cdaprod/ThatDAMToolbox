@@ -210,3 +210,48 @@ $('#motionForm').onsubmit = async e => {
     out.textContent = '❌ ' + err.message;
   }
 };
+
+/* video/web/static/app.js – add after DOM loaded */
+async function fillDevices() {
+  const sel = $('#capDevice');
+  const devs = await fetchJson(`${BASE}/hwcapture/devices`);
+  sel.innerHTML = devs.map(d => `<option value="${d.path}">${d.path}
+        (${d.width}×${d.height}@${d.fps|0})</option>`).join('');
+}
+$('#startPrev').onclick = () => {
+  const dev = $('#capDevice').value;
+  $('#previewImg').src = `${BASE}/hwcapture/stream?device=${encodeURIComponent(dev)}`;
+};
+fillDevices();
+
+async function initMultiPreview() {
+  const devices = await fetchJson(`${BASE}/hwcapture/devices`);
+  document.querySelectorAll('.capDev').forEach((sel, idx) => {
+    sel.innerHTML = devices.map(d =>
+      `<option value="${d.path}">${d.path} (${d.width}×${d.height})</option>`
+    ).join('');
+    sel.selectedIndex = idx % devices.length;   // pick /dev/video0, /dev/video1
+  });
+}
+
+$('#startAll').onclick = () => {
+  document.querySelectorAll('.grid-two div').forEach(div => {
+    const dev = div.querySelector('.capDev').value;
+    div.querySelector('.prevImg').src =
+      `${BASE}/hwcapture/stream?device=${encodeURIComponent(dev)}&width=640&height=360`;
+  });
+};
+
+initMultiPreview();
+
+/* Witness Camera Teaser */
+async function startWitness() {
+  const out = $("#witResult");
+  out.style.display = "block";
+  out.textContent = "🚀 starting…";
+  try {
+    const r = await fetchJson(`${BASE}/hwcapture/witness_record?duration=60`,
+                              {method:"POST"});
+    out.textContent = JSON.stringify(r, null, 2);
+  } catch (e) { out.textContent = "❌ " + e.message; }
+}
