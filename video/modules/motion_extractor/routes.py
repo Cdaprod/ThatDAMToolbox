@@ -38,14 +38,3 @@ async def extract_motion(files: List[UploadFile] = File(...)):
         })
 
     return {"results": results}
-
-from fastapi.staticfiles import StaticFiles
-
-# mount only if running under FastAPI (import guard avoids stdlib path issues)
-try:
-    from fastapi import FastAPI
-    frames_app = FastAPI()
-    frames_app.mount("/", StaticFiles(directory=PUBLIC_FRAMES_DIR), name="frames")
-    router.mount("/frames", frames_app)     # → /motion/frames/…
-except ImportError:
-    pass
