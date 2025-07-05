@@ -16,23 +16,28 @@ from fastapi.staticfiles import StaticFiles
 
 from .motion_extractor import MotionExtractor
 
+
 # --------------------------------------------------------------------------- #
 # config / helpers                                                            #
 # --------------------------------------------------------------------------- #
 router = APIRouter(prefix="/motion", tags=["motion"])
-_log    = logging.getLogger("video.motion")
+_log   = logging.getLogger("video.motion")
 
 # Where we publish the JPGs  (docker & bare-metal friendly)
-PUBLIC_FRAMES_DIR = Path("/workspace/web_frames")   # change if you like
+PUBLIC_FRAMES_DIR = Path("/workspace/web_frames")
 PUBLIC_FRAMES_DIR.mkdir(parents=True, exist_ok=True)
 
+
 def _save_upload(upload: UploadFile) -> Path:
-    """Persist an UploadFile to a temp location and return the path."""
+    """
+    Persist an UploadFile to a temp location and return that file path.
+    """
     suffix   = Path(upload.filename or "").suffix or ".mp4"
     tmp_path = Path(tempfile.gettempdir()) / f"vid_{uuid.uuid4()}{suffix}"
     with tmp_path.open("wb") as fp:
         shutil.copyfileobj(upload.file, fp)
     return tmp_path
+
 
 # --------------------------------------------------------------------------- #
 # REST – extract                                                              #
@@ -40,8 +45,9 @@ def _save_upload(upload: UploadFile) -> Path:
 @router.post("/extract")
 async def extract_motion(files: List[UploadFile] = File(...)):
     """
-    Accept 1-N <input type=file name="files"> parts.
-    Returns stats **and** the public URL for every extracted frame.
+    Accept 1-N "files" parts (multipart/form-data).
+    Returns, for each video, statistics **and** the public URLs of the
+    extracted motion frames so the front-end can show them immediately.
     """
     if not files:
         raise HTTPException(status_code=400, detail="no files supplied")
@@ -65,15 +71,16 @@ async def extract_motion(files: List[UploadFile] = File(...)):
         results.append({
             "filename"    : up.filename,
             "frames_saved": saved,
-            "frames"      : frame_urls          # what the UI will render
+            "frames"      : frame_urls,
         })
 
         _log.info("extracted %d motion frames from %s", saved, up.filename)
 
     return {"results": results}
 
+
 # --------------------------------------------------------------------------- #
-# static mount – /motion/frames/…                                             #
+# Static mount –  /motion/frames/…                                            #
 # --------------------------------------------------------------------------- #
 router.mount(
     "/frames",
