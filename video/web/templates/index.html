@@ -40,5 +40,24 @@
       Select a batch above to view its videos.
     </div>
   </div>
+  
+  <div class="glass-card">
+    <h2>🎞️ Motion Extract</h2>
+
+    <form id="motionForm" class="upload-form">
+      <div class="file-input-wrapper">
+        <input id="motionInput" type="file" name="video" accept="video/*" required
+               class="file-input">
+        <label for="motionInput" class="file-input-label" id="motionLabel">
+          📁 Select a Video File
+        </label>
+      </div>
+
+      <button type="submit" class="btn">⚡ Run Motion Extract</button>
+    </form>
+
+    <div id="motionResult" class="result-area" style="display:none;"></div>
+    <div id="frames" style="display:flex;flex-wrap:wrap;gap:.5rem;"></div>
+  </div>
 </div>
 {% endblock %}

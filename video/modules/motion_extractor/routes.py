@@ -1,9 +1,14 @@
 from fastapi import APIRouter, UploadFile, File
 from pathlib import Path
 import tempfile
+import logging
 from .motion_extractor import MotionExtractor
 
+
 router = APIRouter(prefix="/motion", tags=["motion"])
+_log    = logging.getLogger("video.motion")
+
+PUBLIC_FRAMES_DIR = Path("/workspace/web_frames")
 
 @router.post("/extract")
 async def extract_motion(file: UploadFile = File(...)):

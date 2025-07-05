@@ -152,3 +152,57 @@ window.inspectBatch = inspectBatch;
 
 /* first load ------------------------------------------------------------- */
 listBatches();
+
+// ──────────────────────────────────────────
+// Motion-extraction UI
+// ──────────────────────────────────────────
+$('#motionInput').addEventListener('change', e => {
+  const lbl = $('#motionLabel');
+  lbl.textContent = e.target.files.length
+    ? `📹 ${e.target.files[0].name}`
+    : '📁 Select a Video File';
+});
+
+$('#motionForm').onsubmit = async e => {
+  e.preventDefault();
+  const file  = $('#motionInput').files[0];
+  const out   = $('#motionResult');
+  const frameBox = $('#frames');
+
+  if (!file) return;
+
+  const form = new FormData();
+  form.append('video', file);
+
+  out.style.display = 'block';
+  out.textContent   = '⏳ Processing…';
+  frameBox.innerHTML = '';
+
+  try {
+    // 1) submit job
+    const job = await fetchJson(`${BASE}/motion/extract`, {
+      method: 'POST',
+      body  : form
+    });
+
+    // 2) poll until done
+    let poll;
+    const pollJob = async () => {
+      const j = await fetchJson(`${BASE}/motion/result/${job.job}`);
+      if (j.status === 'done') {
+        clearInterval(poll);
+        out.textContent = `✅ ${j.frames.length} frames extracted`;
+        frameBox.innerHTML = j.frames.map(u =>
+          `<img src="${u}" style="max-width:45%;border-radius:8px;">`).join('');
+      }
+      if (j.status === 'error') {
+        clearInterval(poll);
+        out.textContent = '❌ ' + j.error;
+      }
+    };
+    poll = setInterval(pollJob, 2000);
+    pollJob();                        // immediate first check
+  } catch (err) {
+    out.textContent = '❌ ' + err.message;
+  }
+};
