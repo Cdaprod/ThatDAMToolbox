@@ -167,36 +167,46 @@ $('#motionInput').addEventListener('change', e => {
 $('#motionForm').onsubmit = async e => {
   e.preventDefault();
 
-  const files = $('#motionInput').files;
-  const out   = $('#motionResult');
-  const box   = $('#frames');
+  /* ------------------------------------------------------------------ */
+  /* 1 ) grab ALL selected files (plural)                               */
+  /* ------------------------------------------------------------------ */
+  const files = $('#motionInput').files;        // <= was "file" before
+  if (!files.length) return;                    // guard
 
-  if (!files.length) return;
+  /* refs to UI elements */
+  const out  = $('#motionResult');
+  const box  = $('#frames');
 
-  // build multipart/form-data  →  field name **files**
+  /* ------------------------------------------------------------------ */
+  /* 2 ) FormData with the REQUIRED field name:  files                  */
+  /* ------------------------------------------------------------------ */
   const form = new FormData();
-  [...files].forEach(f => form.append('files', f));
+  [...files].forEach(f => form.append('files', f));   // <-- ‘files’ ✅
 
+  /* feedback */
   out.style.display = 'block';
   out.textContent   = '⏳ Extracting motion frames…';
   box.innerHTML     = '';
 
+  /* ------------------------------------------------------------------ */
+  /* 3 ) POST to /motion/extract and render the returned URLs           */
+  /* ------------------------------------------------------------------ */
   try {
-    // 1) call the API
-    const res = await fetchJson(`${BASE}/motion/extract`, {
+    const res  = await fetchJson(`${BASE}/motion/extract`, {
       method : 'POST',
-      body   : form              // <- real options object, not "{ … }"
+      body   : form
     });
 
-    // 2) show results
-    const allFrames = res.results.flatMap(r => r.frames);   // URLs we built server-side
-    out.textContent = `✅  ${allFrames.length} frames extracted`;
+    /* res = { results: [ { frames:[url,url…], … } , … ] } */
+    const frames = res.results.flatMap(r => r.frames);
 
-    box.innerHTML = allFrames.map(u =>
-      `<img src="${u}" style="max-width:46%;margin:2%;border-radius:8px;">`
-    ).join('');
+    out.textContent =
+      `✅ ${frames.length} frame${frames.length !== 1 ? 's' : ''} extracted`;
+    box.innerHTML   =
+      frames.map(u => `<img src="${u}" style="max-width:45%;margin:4px;">`)
+            .join('');
 
   } catch (err) {
-    out.textContent = '❌  ' + err.message;
+    out.textContent = '❌ ' + err.message;
   }
 };
