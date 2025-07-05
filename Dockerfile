@@ -35,8 +35,8 @@ RUN apt-get update && \
 
 # Add a non-root user for better security
 RUN useradd -ms /bin/bash appuser
-WORKDIR /workspace
 USER appuser
+WORKDIR /workspace
 
 ###############################
 # --- Stage 2: pip install ----
