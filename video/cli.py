@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys, json, argparse, logging, io, csv, os
 from pathlib import Path
 from typing import Any, Dict, List
+from dataclasses import dataclass
 
 import pkgutil     # <--- ADD THIS
 import importlib   # <--- ADD THIS
