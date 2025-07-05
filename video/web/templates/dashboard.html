@@ -1,0 +1,16 @@
+{#  /video/web/templates/dashboard.html  #}
+{% extends "base.html" %}
+{% block title %}Video Dashboard{% endblock %}
+
+{% block body %}
+<div class="dash-grid">   {# grid item – becomes the large front card #}
+
+  <section id="upload"   class="glass-card">{% include "_upload_card.html"   %}</section>
+  <section id="batches"  class="glass-card">{% include "_batch_card.html"    %}</section>
+  <section id="videos"   class="glass-card">{% include "_videos_card.html"   %}</section>
+  <section id="motion"   class="glass-card">{% include "_motion_card.html"   %}</section>
+  <section id="previews" class="glass-card">{% include "_preview_card.html"  %}</section>
+  <section id="witness"  class="glass-card">{% include "_witness_card.html"  %}</section>
+
+</div>
+{% endblock %}

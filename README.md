@@ -2,6 +2,23 @@
 ## PYTHONISTA PROTOTYPE
 ### By David Cannan — Cdaprod
 
+```mermaid
+graph TD;
+  CLI["video/ (CLI)"] -->|same code| API(FastAPI svc);
+  API -->|JSON| VanillaWeb[Vanilla JS Dashboard];
+  API -->|JSON| Streamlit[Optional Streamlit svc];
+  subgraph Storage
+    SMB[/mnt/b/] & NAS[/mnt/nas/]
+  end
+  SMB & NAS --> HostBindMount
+  HostBindMount -->|bind mounts| API
+``` 
+
+- CLI & FastAPI share the same modules – you just call scan_videos() from either.
+- Any UI (vanilla dashboard or Streamlit) only consumes the REST endpoints.
+
+---
+
 This is a logical prototype developed in Pythonista to create the pythonic math I require for indexing media.
 
 ---

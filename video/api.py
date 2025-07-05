@@ -26,8 +26,8 @@ async def home(request: Request):
     Pretty HTML front-end (upload form, batch browser).
     Purely optional – JSON API routes still work as before.
     """
-    return templates.TemplateResponse("index.html",
-                                      {"request": request})
+    # return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 # ---------------------------------------------------------------------------
 # Routing →  http://<host>:<port>/<path>

@@ -255,3 +255,26 @@ async function startWitness() {
     out.textContent = JSON.stringify(r, null, 2);
   } catch (e) { out.textContent = "❌ " + e.message; }
 }
+
+/* Dashboard Addition */
+
+document.getElementById('burger')
+        ?.addEventListener('click', () =>
+             document.getElementById('sidebar')
+                     .classList.toggle('open'));
+
+document.querySelectorAll('.nav-list button')
+        .forEach(btn => btn.addEventListener('click', e => {
+           /* highlight nav item */
+           document.querySelectorAll('.nav-list button')
+                   .forEach(b => b.classList.remove('active'));
+           btn.classList.add('active');
+
+           /* scroll target into view */
+           const id = btn.dataset.target;
+           document.getElementById(id)
+                   ?.scrollIntoView({behavior:'smooth', block:'start'});
+           /* close drawer on mobile */
+           document.getElementById('sidebar')
+                   .classList.remove('open');
+}));

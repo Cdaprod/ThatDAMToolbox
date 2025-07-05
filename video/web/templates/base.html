@@ -14,7 +14,17 @@
 </head>
 <body>
   {% block body %}{% endblock %}
+  <nav id="sidebar" class="sidebar">
+    {% include "partials/_sidebar.html" %}
+  </nav>
 
+  <main id="content">
+      {% block body %}{% endblock %}
+  </main>
+
+  <button id="burger" class="burger">
+    ☰
+  </button>
   <!-- bundled JavaScript (move your long <script> into this file) -->
   <script src="{{ url_for('static', path='app.js') }}"></script>
 </body>
