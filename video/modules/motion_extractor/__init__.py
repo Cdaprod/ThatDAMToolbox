@@ -1,3 +1,4 @@
+# .../<modules>/motion_extractor/__init__.py
 """
 Motion-Extractor plug-in for the Video toolbox.
 
@@ -5,10 +6,8 @@ Adds:
 • CLI:   `video motion_extract --video input.mp4 --out frames/`
 • REST:  POST /motion/extract
 """
+from . import routes, commands      # keep both imports
+router = routes.router              # ★ expose for the autoloader
 
-# 1) Ensure core discovers our new verb & router
-from . import commands    # registers CLI verb via decorator
-from . import routes      # exposes FastAPI router (if FastAPI path active)
-
-# 2) Re-export convenience class for direct importers
-from .motion_extractor import MotionExtractor           # noqa: F401
+# optionally re-export the class
+from .motion_extractor import MotionExtractor   # noqa: F401
