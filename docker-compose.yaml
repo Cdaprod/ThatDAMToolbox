@@ -6,40 +6,61 @@ services:
   video-api:
     build:
       context: .
-      dockerfile: Dockerfile       # ← multi-arch Dockerfile, as above
-      # Uncomment for server fallback:
-      # args:
-      #   - VIDEO_FORCE_STDHTTP=1
+      dockerfile: Dockerfile            # multi-arch build
     image: cdaprod/video:dev
-    platform: linux/arm64          # ← for Pi 5; remove for auto/amd64 dev
-    ports:
-      - "8080:8080"                # Expose API server (FastAPI or stdlib)
+    platform: linux/arm64               # Pi 5; drop for x86-64 dev
+
+    ## networking
+    network_mode: host                  # host-mode already exposes port 8080
+    # ports: ["8080:8080"]              # <-- remove (ignored in host mode)
+
+    ## time-zone & optional env
     environment:
-      # Uncomment to force pure Python stdlib HTTP (for minimal or testing)
-      # VIDEO_FORCE_STDHTTP: "1"
-      TZ: "America/New_York"
+      TZ: America/New_York
+      # VIDEO_FORCE_STDHTTP: "1"        # enable if you want stdlib HTTP
+
+    ## video devices
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+      - /dev/vchiq:/dev/vchiq
+      - /dev/dri:/dev/dri               # whole DRM dir ↔ encoders/GL
+
+    ## hot-plug any /dev/video* that appears later (major 81)
+    device_cgroup_rules:
+      - "c 81:* rmw"
+
+    ## add container user to the "video" group (GID 44 on Raspberry Pi OS)
+    group_add:
+      - "44"
+
+    ## bind-mount storage & live source
     volumes:
-      - /mnt/b/Video:/mnt/b/Video  # ← network source mount
-      - ./video:/workspace/video   # ← live source mount for hot reloading
-      - ./data/media:/media        # ← your media source
-      - ./data/db:/workspace/db    # ← local db/data
+      - /mnt/b/Video:/mnt/b/Video:ro    # NAS – read-only capture archive
+      - ./video:/workspace/video:rw     # live code hot-reload
+      - ./data/media:/media:rw          # local capture target
+      - ./data/db:/workspace/db:rw      # SQLite, thumbnails, etc.
+
     restart: unless-stopped
-    entrypoint: ["python","-m","video"]
-    command: ["serve", "--host", "0.0.0.0", "--port", "8080"]
+
+    ## run the API
+    entrypoint: ["python", "-m", "video"]
+    command:    ["serve", "--host", "0.0.0.0", "--port", "8080"]
+
+    ## simple health-probe
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # ---- Optional one-shot CLI runner sidecar ----
+  # optional one-shot CLI side-car
   video-cli:
     image: cdaprod/video:dev
     entrypoint: ["python", "-m", "video"]
-    command: ["stats"]                   # or any CLI command
+    command: ["stats"]                  # any CLI verb
     volumes:
       - ./data/media:/media
       - ./data/db:/workspace/db
-    depends_on:
-      - video-api
-    profiles: ["cli"]                    # run with: docker compose --profile cli run video-cli
+    depends_on: [video-api]
+    profiles: ["cli"]
