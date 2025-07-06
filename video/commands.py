@@ -1,4 +1,4 @@
-# video/commands.py
+# /video/commands.py
 #!/usr/bin/env python3
 """All of your command dataclasses and functions for `video`."""
 

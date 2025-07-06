@@ -1,3 +1,4 @@
+# /video/cli.py
 #!/usr/bin/env python3
 """Command–line front-end for the *video* package (pure stdlib)."""
 

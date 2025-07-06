@@ -1,3 +1,4 @@
+# /video/__main__.py
 #!/usr/bin/env python3
 """
 Smart launcher – FastAPI if available, stdlib HTTP fallback otherwise.

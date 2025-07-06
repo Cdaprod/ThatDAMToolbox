@@ -1,3 +1,4 @@
+# /video/test_script.py
 #!/usr/bin/env python3
 """
 Safe test script - just shows what would be indexed without changing anything

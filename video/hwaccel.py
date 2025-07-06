@@ -1,3 +1,4 @@
+# /video/hwaccel.py
 """
 Hardware-accelerated helpers for VideoCore VII.
 Falls back to vanilla paths automatically.

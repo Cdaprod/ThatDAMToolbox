@@ -1,3 +1,5 @@
+# /scripts/api-testing-with-curl.sh
+
 #!/bin/bash
 # Video API Testing with curl
 # Usage: bash curl_examples.sh

@@ -1,3 +1,4 @@
+# /video/bootstrap.py
 #!/usr/bin/env python3
 """
 Smart bootstrap for the *video* API:

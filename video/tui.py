@@ -1,3 +1,4 @@
+# /video/tui.py
 from textual.app import App, ComposeResult
 from textual.widgets import (
     Header, Footer, TabbedContent, Static, DataTable,

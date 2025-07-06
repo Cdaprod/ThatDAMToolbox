@@ -1,3 +1,4 @@
+# /video/__init__.py
 #!/usr/bin/env python3
 """
 Media Indexer - Pure stdlib implementation for Pythonista

@@ -1,3 +1,4 @@
+-- /video/schema.sql
 -- Database schema for media indexer
 -- This file shows you exactly what tables are created
 

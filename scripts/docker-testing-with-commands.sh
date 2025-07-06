@@ -1,3 +1,5 @@
+# /scripts/docker-testing-with-commands.sh
+
 # build for the local architecture
 docker build -t cdaprod/video:dev .
 
