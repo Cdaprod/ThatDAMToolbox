@@ -303,3 +303,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+// ──────────────────────────────────────────
+// BATCH EXPLORER: refresh + auto‐load + inspect
+// ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const refreshBtn = document.getElementById('refreshBatches');
+  const explorer   = document.getElementById('batchExplorer');
+
+  // 1) Always populate batches when the card is opened
+  if (explorer) {
+    explorer.addEventListener('toggle', () => {
+      if (explorer.open) {
+        listBatches();
+      }
+    });
+  }
+
+  // 2) Refresh button (re-use listBatches and reset videos pane)
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      listBatches();
+      const vidBox = document.getElementById('videos');
+      vidBox.innerHTML = '<div class="empty-state">Select a batch to view its videos.</div>';
+    });
+  }
+});

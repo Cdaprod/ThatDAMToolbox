@@ -47,6 +47,8 @@ body{
 ::-webkit-scrollbar-thumb   {background:var(--accent-blue);border-radius:3px;}
 ::-webkit-scrollbar-thumb:hover{background:var(--accent-cyan);}
 
+.mb-1 { margin-bottom: 1rem; }
+
 /* ──────────────────────────────────────────────────────────────
    LAYOUT FRAME
    ─────────────────────────────────────────────────────────── */
