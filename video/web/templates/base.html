@@ -1,4 +1,4 @@
-<!-- base.html  (the minimal working version) -->
+<!-- base.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -13,7 +13,6 @@
   {% block head %}{% endblock %}
 </head>
 <body>
-  {% block body %}{% endblock %}
   <nav id="sidebar" class="sidebar">
     {% include "partials/_sidebar.html" %}
   </nav>
@@ -25,7 +24,8 @@
   <button id="burger" class="burger">
     ☰
   </button>
-  <!-- bundled JavaScript (move your long <script> into this file) -->
+  <!-- bundled JavaScript -->
   <script src="{{ url_for('static', path='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
