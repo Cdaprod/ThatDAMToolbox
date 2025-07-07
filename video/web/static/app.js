@@ -5,7 +5,9 @@
 const BASE = window.location.origin;              // e.g. http://192.168.0.22:8080
 const $     = (sel, ctx = document) => ctx.querySelector(sel);
 
-/* small helpers ----------------------------------------------------------- */
+// ──────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────
 async function fetchJson(url, opt = {}) {
   const res = await fetch(url, { redirect: 'follow', ...opt });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -15,81 +17,30 @@ async function fetchJson(url, opt = {}) {
 
 function badge(n) {
   return `<span style="
-      display:inline-block;background:#26c6da;
+      display:inline-block;background:var(--accent-cyan);
       color:#fff;font-size:.75rem;font-weight:600;
       padding:2px 6px;border-radius:12px;margin-left:.5rem;">
       ${n}
     </span>`;
 }
 
-/* file-picker feedback ---------------------------------------------------- */
-$('#fileInput').addEventListener('change', e => {
-  const lbl   = $('#fileLabel');
-  const n     = e.target.files.length;
-  lbl.textContent = n
-      ? `📹 ${n} video${n > 1 ? 's' : ''} selected`
-      : '📁 Select Video Files';
-  lbl.style.color = n ? '#26c6da' : '#64b5f6';
-});
-
-/* upload ------------------------------------------------------------------ */
-$('#uploadForm').onsubmit = async e => {
-  e.preventDefault();
-
-  const files = $('#fileInput').files;
-  const batch = $('input[name="batch"]').value.trim() || 'uploads';
-  const out   = $('#result');
-
-  if (!files.length) {
-    out.innerHTML = '<div class="empty-state">📂 Choose file(s) first!</div>';
-    out.style.display = 'block';
-    return;
-  }
-
-  const form = new FormData();
-  [...files].forEach(f => form.append('files', f));
-  form.append('batch', batch);
-
-  out.style.display = 'block';
-  out.innerHTML     = '<div class="loading">⏳ Uploading…</div>';
-
-  try {
-    const data = await fetchJson(`${BASE}/batches/from-upload`, {
-      method: 'POST',
-      body  : form
-    });
-
-    /* pretty accordion ----------------------------------------------- */
-    out.innerHTML = `
-      <details open class="upload-details">
-        <summary>✅ Upload finished – click to toggle response</summary>
-        <pre class="result-area">${JSON.stringify(data, null, 2)}</pre>
-      </details>`;
-    listBatches();                                       // refresh side-panel
-  } catch (err) {
-    out.innerHTML = `<div class="empty-state">❌ ${err.message}</div>`;
-  }
-};
-
-/* batches ----------------------------------------------------------------- */
+// ──────────────────────────────────────────
+// Batch listing & inspection
+// ──────────────────────────────────────────
 async function listBatches() {
   const box = $('#batches');
+  if (!box) return;
   box.innerHTML = '<div class="loading">🔄 Loading batches…</div>';
-
   try {
     const raw = await fetchJson(`${BASE}/batches`);
-
-    /* accept every historical shape ----------------------------------- */
     let items = [];
     if (Array.isArray(raw)) {
-      items = raw;                                       // new API
+      items = raw;
     } else if (raw?.batches) {
-      items = raw.batches;                               // old wrapper
+      items = raw.batches;
     } else if (raw && typeof raw === 'object') {
-      // dict name → count from CLI
       items = Object.keys(raw).map(k => ({ id: k, count: raw[k] }));
     }
-
     renderBatchList(items);
   } catch (err) {
     box.innerHTML = `<div class="empty-state">❌ ${err.message}</div>`;
@@ -98,6 +49,7 @@ async function listBatches() {
 
 function renderBatchList(batches) {
   const box = $('#batches');
+  if (!box) return;
   if (!batches.length) {
     box.innerHTML = '<div class="empty-state">📭 No batches found.</div>';
     return;
@@ -109,29 +61,26 @@ function renderBatchList(batches) {
         const name = b.name ?? id;
         const cnt  = b.count ?? '';
         return `
-          <button class="batch-link"
-                  onclick="inspectBatch('${id}')">
+          <button class="batch-link" onclick="inspectBatch('${id}')">
             📁 ${name} ${cnt ? badge(cnt) : ''}
-          </button>`;}).join('')}
+          </button>`;
+      }).join('')}
     </div>`;
   $('#videos').innerHTML =
-      '<div class="empty-state">👆 Pick a batch to see its videos.</div>';
+    '<div class="empty-state">👆 Pick a batch to see its videos.</div>';
 }
 
-/* inspect one batch ------------------------------------------------------- */
 async function inspectBatch(batchId) {
   const box = $('#videos');
+  if (!box) return;
   box.innerHTML = '<div class="loading">⏳ Loading videos…</div>';
-
   try {
     const data = await fetchJson(`${BASE}/batches/${batchId}`);
     const vids = data?.videos ?? [];
-
     if (!vids.length) {
       box.innerHTML = '<div class="empty-state">📭 No videos in this batch.</div>';
       return;
     }
-
     box.innerHTML = `
       <div class="video-title">📂 Batch: ${data.name ?? data.id}</div>
       <div class="video-grid">
@@ -139,7 +88,7 @@ async function inspectBatch(batchId) {
           <div class="video-info">
             <div class="video-title">#${i+1} 🎞️ ${v.filename ?? 'Unknown'}</div>
             <div class="video-detail">⏱️ ${v.duration ?? '--'} s</div>
-            <div class="video-detail">📊 ${v.state   ?? '--'}</div>
+            <div class="video-detail">📊 ${v.state ?? '--'}</div>
           </div>`).join('')}
       </div>`;
   } catch (err) {
@@ -147,82 +96,37 @@ async function inspectBatch(batchId) {
   }
 }
 
-/* make inspector callable from inline onclick ---------------------------- */
 window.inspectBatch = inspectBatch;
-
-/* first load ------------------------------------------------------------- */
-listBatches();
 
 // ──────────────────────────────────────────
 // Motion-extraction UI
 // ──────────────────────────────────────────
-$('#motionInput').addEventListener('change', e => {
-  const lbl = $('#motionLabel');
-  const files = e.target.files;
-  lbl.textContent = files.length
-    ? `📹  ${files.length} file${files.length > 1 ? 's' : ''} selected`
-    : '📁  Select video file(s)';
-});
-
-$('#motionForm').onsubmit = async e => {
-  e.preventDefault();
-
-  /* ------------------------------------------------------------------ */
-  /* 1 ) grab ALL selected files (plural)                               */
-  /* ------------------------------------------------------------------ */
-  const files = $('#motionInput').files;        // <= was "file" before
-  if (!files.length) return;                    // guard
-
-  /* refs to UI elements */
-  const out  = $('#motionResult');
-  const box  = $('#frames');
-
-  /* ------------------------------------------------------------------ */
-  /* 2 ) FormData with the REQUIRED field name:  files                  */
-  /* ------------------------------------------------------------------ */
-  const form = new FormData();
-  [...files].forEach(f => form.append('files', f));   // <-- ‘files’ ✅
-
-  /* feedback */
-  out.style.display = 'block';
-  out.textContent   = '⏳ Extracting motion frames…';
-  box.innerHTML     = '';
-
-  /* ------------------------------------------------------------------ */
-  /* 3 ) POST to /motion/extract and render the returned URLs           */
-  /* ------------------------------------------------------------------ */
+async function runMotionExtract(formData, resultEl, framesEl) {
+  resultEl.style.display = 'block';
+  resultEl.textContent = '⏳ Extracting motion frames…';
+  framesEl.innerHTML     = '';
   try {
-    const res  = await fetchJson(`${BASE}/motion/extract`, {
-      method : 'POST',
-      body   : form
+    const res = await fetchJson(`${BASE}/motion/extract`, {
+      method: 'POST',
+      body: formData
     });
-
-    /* res = { results: [ { frames:[url,url…], … } , … ] } */
     const frames = res.results.flatMap(r => r.frames);
-
-    out.textContent =
-      `✅ ${frames.length} frame${frames.length !== 1 ? 's' : ''} extracted`;
-    box.innerHTML   =
-      frames.map(u => `<img src="${u}" style="max-width:45%;margin:4px;">`)
-            .join('');
-
+    resultEl.textContent = `✅ ${frames.length} frame${frames.length !== 1 ? 's' : ''} extracted`;
+    framesEl.innerHTML   = frames.map(u => `<img src="${u}" style="max-width:45%;margin:4px;">`).join('');
   } catch (err) {
-    out.textContent = '❌ ' + err.message;
+    resultEl.textContent = '❌ ' + err.message;
   }
-};
+}
 
-/* video/web/static/app.js – add after DOM loaded */
+// ──────────────────────────────────────────
+// Single preview (startPrev) & multi-preview
+// ──────────────────────────────────────────
 async function fillDevices() {
   const sel = $('#capDevice');
+  if (!sel) return;
   const devs = await fetchJson(`${BASE}/hwcapture/devices`);
-  sel.innerHTML = devs.map(d => `<option value="${d.path}">${d.path}
-        (${d.width}×${d.height}@${d.fps|0})</option>`).join('');
+  sel.innerHTML = devs.map(d => `<option value="${d.path}">${d.path} (${d.width}×${d.height}@${d.fps|0})</option>`).join('');
 }
-$('#startPrev').onclick = () => {
-  const dev = $('#capDevice').value;
-  $('#previewImg').src = `${BASE}/hwcapture/stream?device=${encodeURIComponent(dev)}`;
-};
-fillDevices();
 
 async function initMultiPreview() {
   const devices = await fetchJson(`${BASE}/hwcapture/devices`);
@@ -230,97 +134,121 @@ async function initMultiPreview() {
     sel.innerHTML = devices.map(d =>
       `<option value="${d.path}">${d.path} (${d.width}×${d.height})</option>`
     ).join('');
-    sel.selectedIndex = idx % devices.length;   // pick /dev/video0, /dev/video1
+    sel.selectedIndex = idx % devices.length;
   });
 }
 
-$('#startAll').onclick = () => {
-  document.querySelectorAll('.grid-two div').forEach(div => {
-    const dev = div.querySelector('.capDev').value;
-    div.querySelector('.prevImg').src =
-      `${BASE}/hwcapture/stream?device=${encodeURIComponent(dev)}&width=640&height=360`;
-  });
-};
-
-initMultiPreview();
-
-/* Witness Camera Teaser */
+// ──────────────────────────────────────────
+// Witness-record teaser
+// ──────────────────────────────────────────
 async function startWitness() {
-  const out = $("#witResult");
-  out.style.display = "block";
-  out.textContent = "🚀 starting…";
+  const out = $('#witResult');
+  if (!out) return;
+  out.style.display = 'block';
+  out.textContent = '🚀 starting…';
   try {
-    const r = await fetchJson(`${BASE}/hwcapture/witness_record?duration=60`,
-                              {method:"POST"});
+    const r = await fetchJson(`${BASE}/hwcapture/witness_record?duration=60`, { method: 'POST' });
     out.textContent = JSON.stringify(r, null, 2);
-  } catch (e) { out.textContent = "❌ " + e.message; }
+  } catch (e) {
+    out.textContent = '❌ ' + e.message;
+  }
 }
 
-/* Dashboard Addition */
-
-document.getElementById('burger')
-        ?.addEventListener('click', () =>
-             document.getElementById('sidebar')
-                     .classList.toggle('open'));
-
-document.querySelectorAll('.nav-list button')
-        .forEach(btn => btn.addEventListener('click', e => {
-           /* highlight nav item */
-           document.querySelectorAll('.nav-list button')
-                   .forEach(b => b.classList.remove('active'));
-           btn.classList.add('active');
-
-           /* scroll target into view */
-           const id = btn.dataset.target;
-           document.getElementById(id)
-                   ?.scrollIntoView({behavior:'smooth', block:'start'});
-           /* close drawer on mobile */
-           document.getElementById('sidebar')
-                   .classList.remove('open');
-}));
-
+// ──────────────────────────────────────────
+// DOM ready: wire up all event handlers
+// ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const burger  = document.getElementById('burger');
-  const sidebar = document.getElementById('sidebar');
+  // 1) Batch explorer panels & initial load
+  listBatches();
+  $('#refreshBatches')?.addEventListener('click', () => {
+    listBatches();
+    $('#videos').innerHTML = '<div class="empty-state">👆 Pick a batch to see its videos.</div>';
+  });
+  $('#batchExplorer')?.addEventListener('toggle', e => {
+    if (e.target.open) listBatches();
+  });
 
-  if (burger && sidebar) {
-    burger.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-    });
-  }
+  // 2) Upload form
+  $('#fileInput')?.addEventListener('change', e => {
+    const lbl = $('#fileLabel'), n = e.target.files.length;
+    lbl.textContent = n
+      ? `📹 ${n} video${n>1?'s':''} selected`
+      : '📁 Select Video Files';
+    lbl.style.color = n ? 'var(--accent-cyan)' : 'var(--accent-blue)';
+  });
+  $('#uploadForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const files = $('#fileInput').files,
+          out   = $('#result'),
+          batch = $('input[name="batch"]').value.trim() || 'uploads';
+    if (!files.length) {
+      out.innerHTML = '<div class="empty-state">📂 Choose file(s) first!</div>';
+      out.style.display = 'block';
+      return;
+    }
+    const form = new FormData();
+    [...files].forEach(f => form.append('files', f));
+    form.append('batch', batch);
+    out.style.display = 'block';
+    out.innerHTML = '<div class="loading">⏳ Uploading…</div>';
+    try {
+      const data = await fetchJson(`${BASE}/batches/from-upload`, { method:'POST', body:form });
+      out.innerHTML = `
+        <details open class="upload-details">
+          <summary>✅ Upload finished – click to toggle response</summary>
+          <pre class="result-area">${JSON.stringify(data, null,2)}</pre>
+        </details>`;
+      listBatches();
+    } catch(err) {
+      out.innerHTML = `<div class="empty-state">❌ ${err.message}</div>`;
+    }
+  });
 
-  document.querySelectorAll('.nav-list button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-list button')
-        .forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+  // 3) Motion extract
+  $('#motionInput')?.addEventListener('change', e => {
+    const lbl = $('#motionLabel'), n = e.target.files.length;
+    lbl.textContent = n
+      ? `📹 ${n} file${n>1?'s':''} selected`
+      : '📁 Select video file(s)';
+  });
+  $('#motionForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const files = $('#motionInput').files;
+    if (!files.length) return;
+    const form = new FormData(); [...files].forEach(f => form.append('files', f));
+    runMotionExtract(form, $('#motionResult'), $('#frames'));
+  });
 
-      const target = document.getElementById(btn.dataset.target);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      sidebar?.classList.remove('open');
+  // 4) Single preview controls
+  fillDevices();
+  $('#startPrev')?.addEventListener('click', () => {
+    const dev = $('#capDevice').value;
+    $('#previewImg').src = `${BASE}/hwcapture/stream?device=${encodeURIComponent(dev)}`;
+  });
+
+  // 5) Multi‐preview controls
+  initMultiPreview();
+  $('#startAll')?.addEventListener('click', () => {
+    document.querySelectorAll('.grid-two div').forEach(div => {
+      const dev = div.querySelector('.capDev').value;
+      div.querySelector('.prevImg').src =
+        `${BASE}/hwcapture/stream?device=${encodeURIComponent(dev)}&width=640&height=360`;
     });
   });
-});
 
-document.addEventListener('DOMContentLoaded', () => {
-  // ──────────────────────────────────────────
-  // BURGER & SIDEBAR TOGGLE
-  // ──────────────────────────────────────────
-  const burger  = document.getElementById('burger');
-  const sidebar = document.getElementById('sidebar');
+  // 6) Witness teaser
+  $('#startWitness')?.addEventListener('click', startWitness);
+
+  // 7) BURGER & SIDEBAR toggle
+  const burger = $('#burger'), sidebar = $('#sidebar');
   if (burger && sidebar) {
     burger.addEventListener('click', () => sidebar.classList.toggle('open'));
   }
 
-  // ──────────────────────────────────────────
-  // NAV-LIST SMOOTH SCROLL & ACTIVE STATE
-  // ──────────────────────────────────────────
+  // 8) NAV‐LIST smooth scroll & active state
   document.querySelectorAll('.nav-list button').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-list button')
-        .forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.nav-list button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const target = document.getElementById(btn.dataset.target);
       target?.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -328,27 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ──────────────────────────────────────────
-  // BATCH EXPLORER: auto-load & refresh panels
-  // ──────────────────────────────────────────
-  const explorer   = document.getElementById('batchExplorer');
-  const refreshBtn = document.getElementById('refreshBatches');
-
-  explorer?.addEventListener('toggle', () => {
-    if (explorer.open) listBatches();
-  });
-
-  refreshBtn?.addEventListener('click', () => {
-    listBatches();
-    document.getElementById('videos').innerHTML =
-      '<div class="empty-state">Select a batch to view its videos.</div>';
-  });
-
-  // ──────────────────────────────────────────
-  // HOT-PLUG CAMERAS: re-scan on preview-card open
-  // ──────────────────────────────────────────
-  const previewCard = document.getElementById('previewCard');
-  previewCard?.addEventListener('toggle', () => {
-    if (previewCard.open) initMultiPreview();
+  // 9) HOT-PLUG cameras: re-scan on preview-card open
+  $('#previewCard')?.addEventListener('toggle', e => {
+    if (e.target.open) initMultiPreview();
   });
 });
