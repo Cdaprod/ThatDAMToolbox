@@ -4,23 +4,28 @@
 
 {% block body %}
 <div class="dash-grid">
-  <section id="upload">
+  <section>
     {% include "partials/_upload_card.html" %}
   </section>
-  <section id="batches">
+  <section>
     {% include "partials/_batch_card.html" %}
   </section>
-  <section id="videos">
+  <section>
     {% include "partials/_videos_card.html" %}
   </section>
-  <section id="motion">
+  <section>
     {% include "partials/_motion_card.html" %}
   </section>
-  <section id="previews">
+  <section>
     {% include "partials/_preview_card.html" %}
   </section>
-  <section id="witness">
+  <section>
     {% include "partials/_witness_card.html" %}
   </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {# any page-specific scripts here #}
 {% endblock %}
