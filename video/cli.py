@@ -154,10 +154,9 @@ def _resolve_path(cli_val, env_key, cfg_val) -> Path | None:
 
 @dataclass
 class ScanResult:
-    total: int = 0
-    new_files: int = 0
-    updated_files: int = 0
+    processed: int = 0
     errors: int = 0
+    total_files: int = 0
 
 # ─── dispatcher ---------------------------------------------------------------
 def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
