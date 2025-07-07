@@ -36,7 +36,8 @@ services:
 
     ## bind-mount storage & live source
     volumes:
-      - /mnt/b/Video:/mnt/b/Video:ro    # NAS – read-only capture archive
+      - /mnt/b/Video:/mnt/b/Video:rw    # B – read-write working store
+      - /mnt/nas:/mnt/nas:ro            # NAS – read-only capture archive
       - ./video:/workspace/video:rw     # live code hot-reload
       - ./data/media:/media:rw          # local capture target
       - ./data/db:/workspace/db:rw      # SQLite, thumbnails, etc.
