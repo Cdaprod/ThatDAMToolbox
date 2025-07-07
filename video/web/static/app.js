@@ -47,23 +47,34 @@ async function listBatches() {
   }
 }
 
-function renderBatchList(batches) {
-  const box = $('#batches');
-  if (!batches.length) {
-    box.innerHTML = '<div class="empty-state">📭 No batches found.</div>';
-    return;
+async function inspectBatch(batchId) {
+  const box = $('#videos');
+  box.innerHTML = '<div class="loading">⏳ Loading videos…</div>';
+
+  try {
+    const data = await fetchJson(`${BASE}/batches/${batchId}`);
+    console.log('Batch data:', data);  // <-- Add this line!
+
+    const vids = data?.videos ?? [];
+
+    if (!vids.length) {
+      box.innerHTML = '<div class="empty-state">📭 No videos in this batch.</div>';
+      return;
+    }
+
+    box.innerHTML = `
+      <div class="video-title">📂 Batch: ${data.name ?? data.id ?? batchId}</div>
+      <div class="video-grid">
+        ${vids.map((v,i) => `
+          <div class="video-info">
+            <div class="video-title">#${i+1} 🎞️ ${v.filename ?? 'Unknown'}</div>
+            <div class="video-detail">⏱️ ${v.duration ?? '--'} s</div>
+            <div class="video-detail">📊 ${v.state   ?? '--'}</div>
+          </div>`).join('')}
+      </div>`;
+  } catch (err) {
+    box.innerHTML = `<div class="empty-state">❌ ${err.message}</div>`;
   }
-  box.innerHTML = `
-    <div class="batch-list">
-      ${batches.map(b => `
-        <button class="batch-link"
-                onclick="inspectBatch('${b.batch}')">
-          📁 ${b.batch} ${b.count ? badge(b.count) : ''}
-        </button>
-      `).join('')}
-    </div>`;
-  $('#videos').innerHTML =
-      '<div class="empty-state">👆 Pick a batch to see its videos.</div>';
 }
 
 async function inspectBatch(batchId) {
