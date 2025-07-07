@@ -31,18 +31,27 @@ function renderBatchList(items) {
   const box = $('#batches');
   if (!box) return;
 
-  // No batches?
+  // 1) Empty state
   if (!items.length) {
     box.innerHTML = '<div class="empty-state">📭 No batches found.</div>';
     return;
   }
 
-  // Build one button per batch
+  // 2) Build buttons with a data-batch attribute
   box.innerHTML = items.map(item => `
-    <button class="batch-link" onclick="inspectBatch('${item.batch}')">
+    <button class="batch-link" data-batch="${item.batch}">
       📁 ${item.batch} ${badge(item.count)}
     </button>
   `).join('');
+
+  // 3) Attach click handlers to each button
+  box.querySelectorAll('.batch-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const batchName = btn.dataset.batch; 
+      console.log('Clicked batch:', batchName);
+      inspectBatch(batchName);
+    });
+  });
 }
 
 async function listBatches() {
