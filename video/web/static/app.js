@@ -27,6 +27,24 @@ function badge(n) {
 // ──────────────────────────────────────────
 // Batch listing & inspection
 // ──────────────────────────────────────────
+function renderBatchList(items) {
+  const box = $('#batches');
+  if (!box) return;
+
+  // No batches?
+  if (!items.length) {
+    box.innerHTML = '<div class="empty-state">📭 No batches found.</div>';
+    return;
+  }
+
+  // Build one button per batch
+  box.innerHTML = items.map(item => `
+    <button class="batch-link" onclick="inspectBatch('${item.batch}')">
+      📁 ${item.batch} ${badge(item.count)}
+    </button>
+  `).join('');
+}
+
 async function listBatches() {
   const box = $('#batches');
   if (!box) return;
