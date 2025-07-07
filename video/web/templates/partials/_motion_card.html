@@ -1,0 +1,26 @@
+<details class="glass-card">
+  <summary>🎞️ Motion Extract</summary>
+  <div class="card-body">
+    <form id="motionForm" class="upload-form">
+      <div class="file-input-wrapper">
+        <input
+          type="file"
+          id="motionInput"
+          name="files"
+          multiple
+          accept="video/*"
+          required
+          class="file-input"
+        />
+        <label for="motionInput" class="file-input-label" id="motionLabel">
+          📁 Select Video File(s)
+        </label>
+      </div>
+
+      <button type="submit" class="btn">⚡ Run Motion Extract</button>
+    </form>
+
+    <div id="motionResult" class="result-area" style="display:none;"></div>
+    <div id="frames" style="display:flex;flex-wrap:wrap;gap:.5rem;"></div>
+  </div>
+</details>
