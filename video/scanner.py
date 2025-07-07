@@ -36,6 +36,24 @@ from typing import Generator
 
 log = logging.getLogger("video.scanner")
 
+def safe_mkdir(path: Path, logger=None) -> bool:
+    """Safely create a directory; ignore PermissionError and log."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        return True
+    except PermissionError as e:
+        if logger:
+            logger.warning(f"🔒 Cannot create directory {path}: {e}")
+        else:
+            print(f"WARNING: Cannot create directory {path}: {e}")
+        return False
+    except Exception as e:
+        if logger:
+            logger.error(f"Error creating directory {path}: {e}")
+        else:
+            print(f"ERROR: Error creating directory {path}: {e}")
+        return False
+
 def safe_iter_files(root: Path) -> Generator[Path, None, None]:
     """
     Recursively yield all files under `root`, but:
@@ -269,11 +287,19 @@ class Scanner:
                 config.get_path("paths", "preview_root")
                 or (path.parent / ".previews")
             )
-            preview_jpg = Path(prev_root) / f"{file_hash}.jpg"
+            prev_root = Path(prev_root)
+            # Ensure .previews dir exists
+            if not prev_root.exists():
+                safe_mkdir(prev_root, self.logger)
+            preview_jpg = prev_root / f"{file_hash}.jpg"
             preview_path = None
-            if generate_preview(path, preview_jpg):
-                preview_path = preview_jpg.as_posix()
-
+            try:
+                if preview_jpg.parent.exists() and generate_preview(path, preview_jpg):
+                    preview_path = preview_jpg.as_posix()
+            except PermissionError as e:
+                self.logger.warning(f"🔒 Cannot create preview for {path}: {e}")
+                preview_path = None
+                
             # Determine batch from parent directory
             batch = path.parent.name if path.parent.name != "_INCOMING" else None
 
