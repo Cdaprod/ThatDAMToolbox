@@ -19,12 +19,12 @@ services:
       TZ: America/New_York
       # VIDEO_FORCE_STDHTTP: "1"        # enable if you want stdlib HTTP
 
-    ## video devices
-    devices:
-      - /dev/video0:/dev/video0
-      - /dev/video1:/dev/video1
-      - /dev/vchiq:/dev/vchiq
-      - /dev/dri:/dev/dri               # whole DRM dir ↔ encoders/GL
+    ## video devices (unnecessary thanks to devices_cgroup_rules)
+    # devices:
+    #   - /dev/video0:/dev/video0
+    #   - /dev/video1:/dev/video1
+    #   - /dev/vchiq:/dev/vchiq
+    #   - /dev/dri:/dev/dri               # whole DRM dir ↔ encoders/GL
 
     ## hot-plug any /dev/video* that appears later (major 81)
     device_cgroup_rules:
