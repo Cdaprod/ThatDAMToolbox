@@ -9,6 +9,9 @@ import sys
 import importlib.util as _iu
 import os
 
+from video import config
+config.print_config()
+
 def _have(pkg: str) -> bool:
     return _iu.find_spec(pkg) is not None
 
