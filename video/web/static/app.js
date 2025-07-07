@@ -304,28 +304,51 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ──────────────────────────────────────────
-// BATCH EXPLORER: refresh + auto‐load + inspect
-// ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const refreshBtn = document.getElementById('refreshBatches');
+  // ──────────────────────────────────────────
+  // BURGER & SIDEBAR TOGGLE
+  // ──────────────────────────────────────────
+  const burger  = document.getElementById('burger');
+  const sidebar = document.getElementById('sidebar');
+  if (burger && sidebar) {
+    burger.addEventListener('click', () => sidebar.classList.toggle('open'));
+  }
+
+  // ──────────────────────────────────────────
+  // NAV-LIST SMOOTH SCROLL & ACTIVE STATE
+  // ──────────────────────────────────────────
+  document.querySelectorAll('.nav-list button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-list button')
+        .forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = document.getElementById(btn.dataset.target);
+      target?.scrollIntoView({ behavior:'smooth', block:'start' });
+      sidebar?.classList.remove('open');
+    });
+  });
+
+  // ──────────────────────────────────────────
+  // BATCH EXPLORER: auto-load & refresh panels
+  // ──────────────────────────────────────────
   const explorer   = document.getElementById('batchExplorer');
+  const refreshBtn = document.getElementById('refreshBatches');
 
-  // 1) Always populate batches when the card is opened
-  if (explorer) {
-    explorer.addEventListener('toggle', () => {
-      if (explorer.open) {
-        listBatches();
-      }
-    });
-  }
+  explorer?.addEventListener('toggle', () => {
+    if (explorer.open) listBatches();
+  });
 
-  // 2) Refresh button (re-use listBatches and reset videos pane)
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-      listBatches();
-      const vidBox = document.getElementById('videos');
-      vidBox.innerHTML = '<div class="empty-state">Select a batch to view its videos.</div>';
-    });
-  }
+  refreshBtn?.addEventListener('click', () => {
+    listBatches();
+    document.getElementById('videos').innerHTML =
+      '<div class="empty-state">Select a batch to view its videos.</div>';
+  });
+
+  // ──────────────────────────────────────────
+  // HOT-PLUG CAMERAS: re-scan on preview-card open
+  // ──────────────────────────────────────────
+  const previewCard = document.getElementById('previewCard');
+  previewCard?.addEventListener('toggle', () => {
+    if (previewCard.open) initMultiPreview();
+  });
 });

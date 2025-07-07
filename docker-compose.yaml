@@ -33,7 +33,10 @@ services:
     ## add container user to the "video" group (GID 44 on Raspberry Pi OS)
     group_add:
       - "44"
-
+    
+    ## grant full device access (bind-mounting /dev/video*)
+    privileged: true
+    
     ## bind-mount storage & live source
     volumes:
       - /mnt/b/Video:/mnt/b/Video:rw    # B – read-write working store
