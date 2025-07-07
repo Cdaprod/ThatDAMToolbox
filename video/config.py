@@ -78,6 +78,7 @@ def get_app_subdir(name: str) -> Path:
 INCOMING_DIR  = get_path("paths", "incoming") or get_app_subdir("_INCOMING")
 DATA_DIR      = _default_dir("VIDEO_DATA_DIR", "paths", "data_dir",      str(Path.home() / "thatdamtoolbox"))
 MEDIA_ROOT    = _default_dir("VIDEO_MEDIA_ROOT", "paths", "media_root",  str(DATA_DIR / "media"))
+PROCESSED_DIR = _default_dir("VIDEO_PROCESSED_DIR", "paths", "processed", str(DATA_DIR / "_PROCESSED"))
 PREVIEW_ROOT  = _default_dir("VIDEO_PREVIEW_ROOT", "paths", "preview_root", str(DATA_DIR / "previews"))
 DB_PATH       = _default_dir("VIDEO_DB_PATH", "paths", "db_path",        str(DATA_DIR / "db" / "media_index.sqlite3"))
 LOG_DIR       = _default_dir("VIDEO_LOG_DIR", "paths", "log_dir",        str(DATA_DIR / "logs"))
