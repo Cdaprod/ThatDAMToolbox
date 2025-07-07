@@ -84,9 +84,13 @@ LOG_DIR       = _default_dir("VIDEO_LOG_DIR", "paths", "log_dir",        str(DAT
 TMP_DIR       = _default_dir("VIDEO_TMP_DIR", "paths", "tmp_dir",        str(DATA_DIR / "tmp"))
 
 def ensure_dirs():
-    for p in [DATA_DIR, MEDIA_ROOT, PREVIEW_ROOT, LOG_DIR, TMP_DIR, DB_PATH.parent]:
+    for p in [
+        DATA_DIR, MEDIA_ROOT, PROCESSED_DIR, PREVIEW_ROOT, LOG_DIR, TMP_DIR, DB_PATH.parent,
+        INCOMING_DIR
+    ]:
         try:
             p.mkdir(parents=True, exist_ok=True)
+            print(f"✔️ Ensured directory: {p}")
         except Exception as e:
             print(f"⚠️ Could not create {p}: {e}")
 

@@ -9,7 +9,7 @@ services:
       dockerfile: Dockerfile            # multi-arch build
     image: cdaprod/video:dev
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
-
+    
     ## networking
     network_mode: host                  # host-mode already exposes port 8080
     # ports: ["8080:8080"]              # <-- remove (ignored in host mode)
@@ -39,8 +39,12 @@ services:
     
     ## bind-mount storage & live source
     volumes:
-      - /mnt/b/Video:/mnt/b/Video:rw    # B – read-write working store
-      - /mnt/nas:/mnt/nas:ro            # NAS – read-only capture archive
+      # - /mnt/b/Video:/mnt/b/Video:rw    # B – read-write working store
+      # - /mnt/nas:/mnt/nas:ro            # NAS – read-only capture archive
+    
+      - /mnt/b/Video/_INCOMING:/workspace/_INCOMING           # B – read-write working store
+      - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # NAS – read-only capture archive
+
       - ./video:/workspace/video:rw     # live code hot-reload
       - ./data/media:/media:rw          # local capture target
       - ./data/db:/workspace/db:rw      # SQLite, thumbnails, etc.

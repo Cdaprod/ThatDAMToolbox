@@ -49,25 +49,21 @@ async function listBatches() {
 
 function renderBatchList(batches) {
   const box = $('#batches');
-  if (!box) return;
   if (!batches.length) {
     box.innerHTML = '<div class="empty-state">📭 No batches found.</div>';
     return;
   }
   box.innerHTML = `
     <div class="batch-list">
-      ${batches.map(b => {
-        const id   = b.id   ?? b;
-        const name = b.name ?? id;
-        const cnt  = b.count ?? '';
-        return `
-          <button class="batch-link" onclick="inspectBatch('${id}')">
-            📁 ${name} ${cnt ? badge(cnt) : ''}
-          </button>`;
-      }).join('')}
+      ${batches.map(b => `
+        <button class="batch-link"
+                onclick="inspectBatch('${b.batch}')">
+          📁 ${b.batch} ${b.count ? badge(b.count) : ''}
+        </button>
+      `).join('')}
     </div>`;
   $('#videos').innerHTML =
-    '<div class="empty-state">👆 Pick a batch to see its videos.</div>';
+      '<div class="empty-state">👆 Pick a batch to see its videos.</div>';
 }
 
 async function inspectBatch(batchId) {
