@@ -96,11 +96,18 @@ async def search(q: str, limit: int = 50):
     return run_cli_from_json(json.dumps(cmd))
 
 # Batches
+
 @app.get("/batches")
 async def list_batches():
     cmd = {"action": "batches", "cmd": "list"}
-    return run_cli_from_json(json.dumps(cmd))
-
+    result_str = run_cli_from_json(json.dumps(cmd))
+    try:
+        # Parse the string to a Python object (list or dict)
+        batches = json.loads(result_str)
+        return batches
+    except Exception as e:
+        return {"error": "Could not decode batches", "detail": str(e)}
+    
 @app.get("/batches/{batch_name}")
 async def get_batch(batch_name: str):
     cmd = {"action": "batches", "cmd": "show", "batch_name": batch_name}
