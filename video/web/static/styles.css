@@ -69,10 +69,17 @@ body{
   display:none;cursor:pointer;
 }
 
-@media(max-width:768px){
-  .sidebar       {transform:translateX(100%);}
-  .sidebar.open  {transform:none;}
-  .burger        {display:block;}
+@media (max-width: 768px) {
+  .burger { display: block; }
+
+  /* 2) Slide sidebar off-canvas by default on mobile */
+  .sidebar {
+    transform: translateX(100%);
+  }
+  /* 3) When `.open` is added, bring it back onscreen */
+  .sidebar.open {
+    transform: translateX(0);
+  }
 }
 
 /* Main content wrapper */

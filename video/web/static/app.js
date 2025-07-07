@@ -278,3 +278,28 @@ document.querySelectorAll('.nav-list button')
            document.getElementById('sidebar')
                    .classList.remove('open');
 }));
+
+document.addEventListener('DOMContentLoaded', () => {
+  const burger  = document.getElementById('burger');
+  const sidebar = document.getElementById('sidebar');
+
+  if (burger && sidebar) {
+    burger.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+  }
+
+  document.querySelectorAll('.nav-list button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-list button')
+        .forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const target = document.getElementById(btn.dataset.target);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      sidebar?.classList.remove('open');
+    });
+  });
+});
