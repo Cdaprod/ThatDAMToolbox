@@ -1,5 +1,6 @@
 # /video/db.py
 """Database interface module - pure stdlib"""
+from .config import DB_PATH
 
 import sqlite3
 from pathlib import Path
