@@ -1,6 +1,9 @@
 # video/scanner.py
 """File scanning and indexing module - pure stdlib"""
-from . import config        # <- Give access to video/config.py
+from . import config
+from .config import MEDIA_ROOT
+from .probe   import probe_media
+from .preview import generate_preview
 
 import hashlib
 import mimetypes
@@ -11,9 +14,6 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Generator, Optional, Set, Dict, Any
 from weakref import WeakValueDictionary
-
-from .probe   import probe_media
-from .preview import generate_preview
 
 # Try to import media detection modules (stdlib only)
 try:
@@ -89,12 +89,14 @@ class Scanner:
         self.db = db
 
         # ── resolve scan-root in a single line ──────────────────────────
-        self.root_path: Path = (
-            Path(root_path)                               if root_path else
-            Path(os.getenv("VIDEO_ROOT", ""))             if os.getenv("VIDEO_ROOT") else
-            config.get_path("paths", "root")              or
-            Path.home() / "video_root"
-        ) / "_INCOMING"
+        # self.root_path: Path = (
+        #     Path(root_path)                               if root_path else
+        #     Path(os.getenv("VIDEO_ROOT", ""))             if os.getenv("VIDEO_ROOT") else
+        #     config.get_path("paths", "root")              or
+        #     Path.home() / "video_root"
+        # ) / "_INCOMING"
+        base = Path(root_path) if root_path else MEDIA_ROOT
+        self.root_path: Path = (base / "_INCOMING")
         # ────────────────────────────────────────────────────────────────
 
         self.cache: WeakValueDictionary = WeakValueDictionary()

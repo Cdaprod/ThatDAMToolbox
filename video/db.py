@@ -11,7 +11,8 @@ class MediaDB:
     """SQLite database interface for media files"""
 
     def __init__(self, db_path: Optional[Path] = None):
-        self.db_path = db_path or (Path.home() / "media_index.sqlite3")
+        # self.db_path = db_path or (Path.home() / "media_index.sqlite3")
+        self.db_path = Path(db_path) if db_path else DB_PATH
         self._init_db()
         try:
             self._repair_fts()
