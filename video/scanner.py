@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Generator, Optional, Set, Dict, Any
-from weakref import WeakValueDictionary
+# from weakref import WeakValueDictionary
 
 # Try to import media detection modules (stdlib only)
 try:
@@ -106,18 +106,18 @@ class Scanner:
     def __init__(self, db, root_path: Optional[Path] = None):
         self.db = db
 
-        # Use root_path if given, else MEDIA_ROOT
-        # (do NOT force /_INCOMING unless that's specifically what you want)
+        # Use root_path if provided, else MEDIA_ROOT (do NOT force /_INCOMING)
         self.root_path: Path = Path(root_path) if root_path else MEDIA_ROOT
 
-        self.cache: WeakValueDictionary = WeakValueDictionary()
+        # Use normal dict for cache (WeakValueDictionary can't hold dicts)
+        self.cache = dict()
         self.logger = logging.getLogger("media_scanner")
         if not self.logger.handlers:
             h = logging.StreamHandler()
             h.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
             self.logger.addHandler(h)
             self.logger.setLevel(logging.INFO)
-                
+        
     def is_media_file(self, path: Path) -> bool:
         """Check if file is a supported media type"""
         ext = path.suffix.lower()
@@ -276,18 +276,13 @@ class Scanner:
                 codec      = None
 
             # ---- preview thumb ----
-            prev_root = (
-                config.get_path("paths", "preview_root")
-                or (path.parent / ".previews")
-            )
+            prev_root = config.get_path("paths", "preview_root")
             prev_root = Path(prev_root)
-            # Ensure .previews dir exists
-            if not prev_root.exists():
-                safe_mkdir(prev_root, self.logger)
+            prev_root.mkdir(parents=True, exist_ok=True)   # ← simple, atomic, robust!
             preview_jpg = prev_root / f"{file_hash}.jpg"
             preview_path = None
             try:
-                if preview_jpg.parent.exists() and generate_preview(path, preview_jpg):
+                if generate_preview(path, preview_jpg):
                     preview_path = preview_jpg.as_posix()
             except PermissionError as e:
                 self.logger.warning(f"🔒 Cannot create preview for {path}: {e}")
