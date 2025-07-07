@@ -1,7 +1,7 @@
 # video/scanner.py
 """File scanning and indexing module - pure stdlib"""
 from . import config
-from .config import MEDIA_ROOT
+from .config import MEDIA_ROOT, INCOMING_DIR
 from .probe   import probe_media
 from .preview import generate_preview
 
@@ -106,16 +106,9 @@ class Scanner:
     def __init__(self, db, root_path: Optional[Path] = None):
         self.db = db
 
-        # ── resolve scan-root in a single line ──────────────────────────
-        # self.root_path: Path = (
-        #     Path(root_path)                               if root_path else
-        #     Path(os.getenv("VIDEO_ROOT", ""))             if os.getenv("VIDEO_ROOT") else
-        #     config.get_path("paths", "root")              or
-        #     Path.home() / "video_root"
-        # ) / "_INCOMING"
-        base = Path(root_path) if root_path else MEDIA_ROOT
-        self.root_path: Path = (base / "_INCOMING")
-        # ────────────────────────────────────────────────────────────────
+        # Use root_path if given, else MEDIA_ROOT
+        # (do NOT force /_INCOMING unless that's specifically what you want)
+        self.root_path: Path = Path(root_path) if root_path else MEDIA_ROOT
 
         self.cache: WeakValueDictionary = WeakValueDictionary()
         self.logger = logging.getLogger("media_scanner")
