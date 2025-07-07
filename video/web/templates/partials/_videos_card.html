@@ -1,8 +1,23 @@
 <details class="glass-card">
-  <summary>🎬 Batch Videos</summary>
+  <summary>🎬 Batch Explorer</summary>
   <div class="card-body">
-    <div id="videos" class="empty-state">
-      Select a batch above to view its videos.
+    <div class="grid-two">
+      <!-- Left panel: batches -->
+      <div class="batch-panel">
+        <button id="refreshBatches" class="btn btn-secondary mb-1">
+          🔄 Refresh Batches
+        </button>
+        <div id="batches" class="batch-list loading">
+          Loading batches…
+        </div>
+      </div>
+
+      <!-- Right panel: videos -->
+      <div class="video-panel">
+        <div id="videos" class="empty-state">
+          Select a batch to view its videos.
+        </div>
+      </div>
     </div>
   </div>
 </details>
