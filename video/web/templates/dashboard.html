@@ -3,29 +3,283 @@
 {% block title %}Video Dashboard{% endblock %}
 
 {% block body %}
-<div class="dash-grid">
-  <section>
-    {% include "partials/_upload_card.html" %}
-  </section>
-  <section>
-    {% include "partials/_batch_card.html" %}
-  </section>
-  <section>
-    {% include "partials/_videos_card.html" %}
-  </section>
-  <section>
-    {% include "partials/_motion_card.html" %}
-  </section>
-  <section>
-    {% include "partials/_preview_card.html" %}
-  </section>
-  <section>
-    {% include "partials/_witness_card.html" %}
-  </section>
+<div id="content">
+  <!-- Main dashboard header -->
+  <h1>🎬 Video Processing Dashboard</h1>
+  
+  <!-- Dashboard grid with proper layout -->
+  <div class="dashboard-grid">
+    
+    <!-- Primary actions row -->
+    <div class="primary-row">
+      {% include "partials/_upload_card.html" %}
+      {% include "partials/_batch_card.html" %}
+    </div>
+    
+    <!-- Video management row -->
+    <div class="video-row">
+      {% include "partials/_videos_card.html" %}
+      {% include "partials/_motion_card.html" %}
+    </div>
+    
+    <!-- Preview and monitoring row -->
+    <div class="preview-row">
+      {% include "partials/_preview_card.html" %}
+      {% include "partials/_witness_card.html" %}
+    </div>
+    
+  </div>
 </div>
+
+<!-- Include sidebar from partials -->
+{% include "partials/_sidebar.html" %}
+
+<!-- Add dashboard-specific styles -->
+<style>
+/* Dashboard grid layout */
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Row layouts */
+.primary-row,
+.video-row,
+.preview-row {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+/* Responsive grid layouts */
+@media (min-width: 768px) {
+  .primary-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .video-row {
+    grid-template-columns: 2fr 1fr;
+  }
+  
+  .preview-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    gap: 2.5rem;
+  }
+  
+  .primary-row,
+  .video-row,
+  .preview-row {
+    gap: 2rem;
+  }
+}
+
+/* Card priority styling */
+.primary-row .glass-card {
+  position: relative;
+}
+
+.primary-row .glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-gradient);
+  border-radius: 18px 18px 0 0;
+}
+
+/* Video row specific styling */
+.video-row .glass-card:first-child {
+  border-left: 3px solid var(--accent-blue);
+}
+
+.video-row .glass-card:last-child {
+  border-left: 3px solid var(--accent-green);
+}
+
+/* Preview row styling */
+.preview-row .glass-card {
+  border-left: 3px solid var(--accent-purple);
+}
+
+/* Enhanced card hover effects */
+.glass-card {
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+  border-color: var(--accent-blue);
+}
+
+/* Status indicators for each section */
+.card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.status-upload {
+  background: rgba(100, 181, 246, 0.1);
+  color: var(--accent-blue);
+  border: 1px solid rgba(100, 181, 246, 0.2);
+}
+
+.status-batch {
+  background: rgba(255, 159, 67, 0.1);
+  color: var(--accent-orange);
+  border: 1px solid rgba(255, 159, 67, 0.2);
+}
+
+.status-processing {
+  background: rgba(140, 195, 74, 0.1);
+  color: var(--accent-green);
+  border: 1px solid rgba(140, 195, 74, 0.2);
+}
+
+.status-preview {
+  background: rgba(171, 71, 188, 0.1);
+  color: var(--accent-purple);
+  border: 1px solid rgba(171, 71, 188, 0.2);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    gap: 1.5rem;
+  }
+  
+  .primary-row,
+  .video-row,
+  .preview-row {
+    gap: 1.5rem;
+  }
+  
+  /* Stack all cards on mobile */
+  .primary-row,
+  .video-row,
+  .preview-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Loading states */
+.dashboard-grid .loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  color: var(--accent-blue);
+  font-size: 1.1rem;
+}
+
+/* Section dividers */
+.dashboard-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: var(--accent-gradient);
+  border-radius: 2px;
+}
+
+/* Improved focus states */
+.glass-card:focus-within {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* Animation for card appearance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.glass-card {
+  animation: fadeInUp 0.4s ease forwards;
+}
+
+/* Stagger animation delays */
+.primary-row .glass-card:nth-child(1) { animation-delay: 0.1s; }
+.primary-row .glass-card:nth-child(2) { animation-delay: 0.2s; }
+.video-row .glass-card:nth-child(1) { animation-delay: 0.3s; }
+.video-row .glass-card:nth-child(2) { animation-delay: 0.4s; }
+.preview-row .glass-card:nth-child(1) { animation-delay: 0.5s; }
+.preview-row .glass-card:nth-child(2) { animation-delay: 0.6s; }
+</style>
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}
-  {# any page-specific scripts here #}
+{{ super() }}
+<script>
+// Enhanced dashboard interactivity
+document.addEventListener('DOMContentLoaded', () => {
+  // Add section status indicators
+  const sections = {
+    'upload-section': { icon: '📤', status: 'Ready', type: 'upload' },
+    'batch-section': { icon: '📁', status: 'Active', type: 'batch' },
+    'videos-section': { icon: '🎞️', status: 'Processing', type: 'processing' },
+    'motion-section': { icon: '🏃', status: 'Idle', type: 'processing' },
+    'preview-section': { icon: '👁️', status: 'Live', type: 'preview' },
+    'witness-section': { icon: '📹', status: 'Monitoring', type: 'preview' }
+  };
+  
+  // Add status indicators to cards
+  Object.entries(sections).forEach(([id, config]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const statusEl = document.createElement('div');
+      statusEl.className = `card-status status-${config.type}`;
+      statusEl.innerHTML = `${config.icon} ${config.status}`;
+      element.insertBefore(statusEl, element.firstChild);
+    }
+  });
+  
+  // Enhanced card interactions
+  document.querySelectorAll('.glass-card').forEach(card => {
+    card.addEventListener('mouseenter', () => {
+      card.style.borderColor = 'var(--accent-blue)';
+    });
+    
+    card.addEventListener('mouseleave', () => {
+      card.style.borderColor = 'var(--glass-stroke)';
+    });
+  });
+  
+  // Auto-refresh indicators
+  setInterval(() => {
+    const statusElements = document.querySelectorAll('.card-status');
+    statusElements.forEach(status => {
+      status.style.opacity = '0.7';
+      setTimeout(() => {
+        status.style.opacity = '1';
+      }, 200);
+    });
+  }, 5000);
+});
+</script>
 {% endblock %}

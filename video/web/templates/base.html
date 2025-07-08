@@ -25,7 +25,11 @@
     ☰
   </button>
   <!-- bundled JavaScript -->
-  <script src="{{ url_for('static', path='app.js') }}"></script>
+  <!-- Web Components for dynamic rendering -->
+  <script type="module" src="{{ url_for('static', path='components/object-renderer.js') }}"></script>
+  <script type="module" src="{{ url_for('static', path='components/batch-card.js') }}"></script>
+
+  <script type="modulr" src="{{ url_for('static', path='app.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
