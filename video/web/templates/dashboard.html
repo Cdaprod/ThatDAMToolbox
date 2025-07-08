@@ -6,33 +6,49 @@
 <div id="content">
   <!-- Main dashboard header -->
   <h1>🎬 Video Processing Dashboard</h1>
-  
   <!-- Dashboard grid with proper layout -->
   <div class="dashboard-grid">
 
     <div class="primary-row">
-      <section id="upload-section">  {% include "partials/_upload_card.html"  %}</section>
-      <section id="batch-section">   {% include "partials/_batch_card.html"   %}</section>
+      <section id="upload-section"  class="tab-panel active">
+        {% include "partials/_upload_card.html"  %}
+      </section>
+      <section id="batch-section"   class="tab-panel">
+        {% include "partials/_batch_card.html"   %}
+      </section>
     </div>
 
     <div class="video-row">
-      <section id="videos-section">  {% include "partials/_videos_card.html"  %}</section>
-      <section id="motion-section">  {% include "partials/_motion_card.html"  %}</section>
+      <section id="videos-section" class="tab-panel">
+        {% include "partials/_videos_card.html"  %}
+      </section>
+      <section id="motion-section" class="tab-panel">
+        {% include "partials/_motion_card.html"  %}
+      </section>
     </div>
 
     <div class="preview-row">
-      <section id="preview-section"> {% include "partials/_preview_card.html" %}</section>
-      <section id="witness-section"> {% include "partials/_witness_card.html" %}</section>
+      <section id="preview-section" class="tab-panel">
+        {% include "partials/_preview_card.html" %}
+      </section>
+      <section id="witness-section" class="tab-panel">
+        {% include "partials/_witness_card.html" %}
+      </section>
     </div>
-
-  </div>
+    
+  </div> 
 </div>
+{% endblock %}
 
-<!-- Include sidebar from partials -->
-{% include "partials/_sidebar.html" %}
-
+{% block head %}
+{{ super() }}
 <!-- Add dashboard-specific styles -->
 <style>
+/*  ▼  hide every panel by default; show the one that gets .active */
+.tab-panel         { display:none; }
+.tab-panel.active  { display:block; }
+
+
 /* Dashboard grid layout */
 .dashboard-grid {
   display: flex;
@@ -233,50 +249,67 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Enhanced dashboard interactivity
+/* ------------------------------------------------------------------
+   simple tab-panel controller – no external deps
+   ------------------------------------------------------------------ */
 document.addEventListener('DOMContentLoaded', () => {
-  // Add section status indicators
+  const panels  = document.querySelectorAll('.tab-panel');
+  const buttons = document.querySelectorAll('.nav-list button');
+  const sidebar = document.getElementById('sidebar');
+
+  /** swap visible panel & button highlight */
+  function activate(targetName){
+    const panelId = `${targetName}-section`;
+    panels.forEach(p => p.classList.toggle('active', p.id === panelId));
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.target === targetName));
+  }
+
+  /* first load – upload panel already has .active, mark its button */
+  buttons[0]?.classList.add('active');
+
+  /* click-handler for every nav button */
+  buttons.forEach(btn=>{
+    btn.addEventListener('click', () => {
+      activate(btn.dataset.target);
+      sidebar?.classList.remove('open');      // close drawer on mobile
+    });
+  });
+});
+</script>
+
+<!-- your existing "status indicator / hover" script below ------------->
+<script>
+/* Enhanced dashboard interactivity (unchanged) */
+document.addEventListener('DOMContentLoaded', () => {
   const sections = {
-    'upload-section': { icon: '📤', status: 'Ready', type: 'upload' },
-    'batch-section': { icon: '📁', status: 'Active', type: 'batch' },
-    'videos-section': { icon: '🎞️', status: 'Processing', type: 'processing' },
-    'motion-section': { icon: '🏃', status: 'Idle', type: 'processing' },
-    'preview-section': { icon: '👁️', status: 'Live', type: 'preview' },
-    'witness-section': { icon: '📹', status: 'Monitoring', type: 'preview' }
+    'upload-section':  { icon:'📤', status:'Ready',      type:'upload'     },
+    'batch-section':   { icon:'📁', status:'Active',     type:'batch'      },
+    'videos-section':  { icon:'🎞️', status:'Processing',type:'processing' },
+    'motion-section':  { icon:'🏃', status:'Idle',       type:'processing' },
+    'preview-section': { icon:'👁️', status:'Live',      type:'preview'    },
+    'witness-section': { icon:'📹', status:'Monitoring', type:'preview'    }
   };
-  
-  // Add status indicators to cards
-  Object.entries(sections).forEach(([id, config]) => {
-    const element = document.getElementById(id);
-    if (element) {
-      const statusEl = document.createElement('div');
-      statusEl.className = `card-status status-${config.type}`;
-      statusEl.innerHTML = `${config.icon} ${config.status}`;
-      element.insertBefore(statusEl, element.firstChild);
-    }
+
+  Object.entries(sections).forEach(([id,cfg])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const badge=document.createElement('div');
+    badge.className=`card-status status-${cfg.type}`;
+    badge.innerHTML=`${cfg.icon} ${cfg.status}`;
+    el.prepend(badge);
   });
-  
-  // Enhanced card interactions
-  document.querySelectorAll('.glass-card').forEach(card => {
-    card.addEventListener('mouseenter', () => {
-      card.style.borderColor = 'var(--accent-blue)';
-    });
-    
-    card.addEventListener('mouseleave', () => {
-      card.style.borderColor = 'var(--glass-stroke)';
-    });
+
+  document.querySelectorAll('.glass-card').forEach(card=>{
+    card.addEventListener('mouseenter',()=>card.style.borderColor='var(--accent-blue)');
+    card.addEventListener('mouseleave',()=>card.style.borderColor='var(--glass-stroke)');
   });
-  
-  // Auto-refresh indicators
-  setInterval(() => {
-    const statusElements = document.querySelectorAll('.card-status');
-    statusElements.forEach(status => {
-      status.style.opacity = '0.7';
-      setTimeout(() => {
-        status.style.opacity = '1';
-      }, 200);
+
+  setInterval(()=>{
+    document.querySelectorAll('.card-status').forEach(s=>{
+      s.style.opacity='.7';
+      setTimeout(()=>s.style.opacity='1',200);
     });
-  }, 5000);
+  },5000);
 });
 </script>
 {% endblock %}
