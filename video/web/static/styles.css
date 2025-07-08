@@ -271,9 +271,6 @@ input[type="text"]::placeholder{color:#78909c;}
    DASHBOARD GRID LAYOUT - Add this to your existing styles.css
    ─────────────────────────────────────────────────────────── */
 
-.tab-panel          { display:none; }
-.tab-panel.active   { display:block; }
-
 /* Dashboard grid layout */
 .dashboard-grid {
   display: flex;
