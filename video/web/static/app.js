@@ -587,7 +587,7 @@ function renderBatchList(items) {
 }
 
 async function listBatches() {
-  const box = $('#batches');
+  const box = $('#batchList');
   if (!box) return;
   box.innerHTML = '<div class="loading">🔄 Loading batches…</div>';
   try {
