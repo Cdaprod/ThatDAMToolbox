@@ -556,23 +556,6 @@ function badge(n) {
     </span>`;
 }
 
-// wire sidebar buttons → panel toggle
-document.addEventListener('DOMContentLoaded', () => {
-  const panels = document.querySelectorAll('.tab-panel');
-  document.querySelectorAll('.nav-list button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.target;
-      // activate matching panel, deactivate others
-      panels.forEach(sec => {
-        sec.classList.toggle('active', sec.id === target);
-      });
-      // sync button highlight
-      document.querySelectorAll('.nav-list button')
-        .forEach(b => b.classList.toggle('active', b === btn));
-    });
-  });
-});
-
 // ──────────────────────────────────────────
 // Batch listing & inspection
 // ──────────────────────────────────────────
@@ -622,36 +605,6 @@ async function listBatches() {
     box.innerHTML = `<div class="empty-state">❌ ${err.message}</div>`;
   }
 }
-
-// async function inspectBatch(batchId) {
-//   const box = $('#videos');
-//   box.innerHTML = '<div class="loading">⏳ Loading videos…</div>';
-
-//   try {
-//     const data = await fetchJson(`${BASE}/batches/${batchId}`);
-//     console.log('Batch data:', data);  // <-- Add this line!
-
-//     const vids = data?.videos ?? [];
-
-//     if (!vids.length) {
-//       box.innerHTML = '<div class="empty-state">📭 No videos in this batch.</div>';
-//       return;
-//     }
-
-//     box.innerHTML = `
-//       <div class="video-title">📂 Batch: ${data.name ?? data.id ?? batchId}</div>
-//       <div class="video-grid">
-//         ${vids.map((v,i) => `
-//           <div class="video-info">
-//             <div class="video-title">#${i+1} 🎞️ ${v.filename ?? 'Unknown'}</div>
-//             <div class="video-detail">⏱️ ${v.duration ?? '--'} s</div>
-//             <div class="video-detail">📊 ${v.state   ?? '--'}</div>
-//           </div>`).join('')}
-//       </div>`;
-//   } catch (err) {
-//     box.innerHTML = `<div class="empty-state">❌ ${err.message}</div>`;
-//   }
-// }
 
 function inspectBatch(batchId) {
   const box = $('#videos');
