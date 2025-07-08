@@ -577,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Batch listing & inspection
 // ──────────────────────────────────────────
 function renderBatchList(items) {
-  const box = $('#batches');
+  const box = $('#batchList');
   if (!box) return;
 
   // 1) Empty state

@@ -9,25 +9,22 @@
   
   <!-- Dashboard grid with proper layout -->
   <div class="dashboard-grid">
-    
-    <!-- Primary actions row -->
+
     <div class="primary-row">
-      {% include "partials/_upload_card.html" %}
-      {% include "partials/_batch_card.html" %}
+      <section id="upload-section">  {% include "partials/_upload_card.html"  %}</section>
+      <section id="batch-section">   {% include "partials/_batch_card.html"   %}</section>
     </div>
-    
-    <!-- Video management row -->
+
     <div class="video-row">
-      {% include "partials/_videos_card.html" %}
-      {% include "partials/_motion_card.html" %}
+      <section id="videos-section">  {% include "partials/_videos_card.html"  %}</section>
+      <section id="motion-section">  {% include "partials/_motion_card.html"  %}</section>
     </div>
-    
-    <!-- Preview and monitoring row -->
+
     <div class="preview-row">
-      {% include "partials/_preview_card.html" %}
-      {% include "partials/_witness_card.html" %}
+      <section id="preview-section"> {% include "partials/_preview_card.html" %}</section>
+      <section id="witness-section"> {% include "partials/_witness_card.html" %}</section>
     </div>
-    
+
   </div>
 </div>
 
