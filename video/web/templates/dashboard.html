@@ -249,37 +249,35 @@
 {% block scripts %}
 {{ super() }}
 <script>
-/* ------------------------------------------------------------------
-   simple tab-panel controller – no external deps
-   ------------------------------------------------------------------ */
 document.addEventListener('DOMContentLoaded', () => {
   const panels  = document.querySelectorAll('.tab-panel');
   const buttons = document.querySelectorAll('.nav-list button');
   const sidebar = document.getElementById('sidebar');
 
-  /** swap visible panel & button highlight */
-  function activate(targetName){
-    const panelId = `${targetName}-section`;
-    panels.forEach(p => p.classList.toggle('active', p.id === panelId));
-    buttons.forEach(b => b.classList.toggle('active', b.dataset.target === targetName));
+  function activate(target){
+    const id = `${target}-section`;
+    panels.forEach(p => p.classList.toggle('active', p.id === id));
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.target === target));
+    // reopen any <details> inside the visible panel
+    document.querySelectorAll(`#${id} details`).forEach(d => d.open = true);
   }
 
-  /* first load – upload panel already has .active, mark its button */
-  buttons[0]?.classList.add('active');
+  /* initial state */
+  if (buttons[0]) {
+    buttons[0].classList.add('active');
+    activate(buttons[0].dataset.target);
+  }
 
-  /* click-handler for every nav button */
-  buttons.forEach(btn=>{
-    btn.addEventListener('click', () => {
-      activate(btn.dataset.target);
-      sidebar?.classList.remove('open');      // close drawer on mobile
-    });
-  });
+  /* nav clicks */
+  buttons.forEach(btn => btn.addEventListener('click', () => {
+    activate(btn.dataset.target);
+    sidebar?.classList.remove('open'); // close drawer on mobile
+  }));
 });
 </script>
 
-<!-- your existing "status indicator / hover" script below ------------->
+<!-- status-indicator / hover script – keep this just once -->
 <script>
-/* Enhanced dashboard interactivity (unchanged) */
 document.addEventListener('DOMContentLoaded', () => {
   const sections = {
     'upload-section':  { icon:'📤', status:'Ready',      type:'upload'     },
@@ -290,12 +288,12 @@ document.addEventListener('DOMContentLoaded', () => {
     'witness-section': { icon:'📹', status:'Monitoring', type:'preview'    }
   };
 
-  Object.entries(sections).forEach(([id,cfg])=>{
-    const el=document.getElementById(id);
-    if(!el) return;
-    const badge=document.createElement('div');
-    badge.className=`card-status status-${cfg.type}`;
-    badge.innerHTML=`${cfg.icon} ${cfg.status}`;
+  Object.entries(sections).forEach(([id,c])=>{
+    const el = document.getElementById(id);
+    if (!el) return;
+    const badge = document.createElement('div');
+    badge.className = `card-status status-${c.type}`;
+    badge.innerHTML = `${c.icon} ${c.status}`;
     el.prepend(badge);
   });
 
@@ -304,12 +302,8 @@ document.addEventListener('DOMContentLoaded', () => {
     card.addEventListener('mouseleave',()=>card.style.borderColor='var(--glass-stroke)');
   });
 
-  setInterval(()=>{
-    document.querySelectorAll('.card-status').forEach(s=>{
-      s.style.opacity='.7';
-      setTimeout(()=>s.style.opacity='1',200);
-    });
-  },5000);
+  setInterval(()=>document.querySelectorAll('.card-status')
+    .forEach(s=>{s.style.opacity='.7';setTimeout(()=>s.style.opacity='1',200);}),5000);
 });
 </script>
 {% endblock %}
