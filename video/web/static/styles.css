@@ -462,3 +462,5 @@ input[type="text"]::placeholder{color:#78909c;}
   h1{font-size:1.25rem;}
 }
 
+/* Once the panel has been hidden, stop replaying the entry animation */
+.tab-panel:not(.active) .glass-card { animation: none !important; }
