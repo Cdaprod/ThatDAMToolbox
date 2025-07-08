@@ -5,7 +5,7 @@
 {% block body %}
 <div id="content">
   <!-- Main dashboard header -->
-  <h1>🎬 Video Processing Dashboard</h1>
+  <h1>🎬 Davids Video Processing Dashboard</h1>
   <!-- Dashboard grid with proper layout -->
   <div class="dashboard-grid">
 
@@ -235,6 +235,9 @@
 .glass-card {
   animation: fadeInUp 0.4s ease forwards;
 }
+
+/* play fadeInUp only the first time a card enters the DOM */
+.tab-panel:not(.active) .glass-card { animation: none !important; }
 
 /* Stagger animation delays */
 .primary-row .glass-card:nth-child(1) { animation-delay: 0.1s; }
