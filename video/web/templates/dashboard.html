@@ -45,9 +45,15 @@
 <!-- Add dashboard-specific styles -->
 <style>
 /*  ▼  hide every panel by default; show the one that gets .active */
-.tab-panel         { display:none; }
-.tab-panel.active  { display:block; }
-
+.tab-panel {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .25s ease;
+}
+.tab-panel.active {
+  opacity: 1;
+  visibility: visible;   /* keeps layout height */
+}
 
 /* Dashboard grid layout */
 .dashboard-grid {
@@ -235,9 +241,6 @@
 .glass-card {
   animation: fadeInUp 0.4s ease forwards;
 }
-
-/* play fadeInUp only the first time a card enters the DOM */
-.tab-panel:not(.active) .glass-card { animation: none !important; }
 
 /* Stagger animation delays */
 .primary-row .glass-card:nth-child(1) { animation-delay: 0.1s; }
