@@ -547,6 +547,12 @@ async function fetchJson(url, opt = {}) {
   return txt ? JSON.parse(txt) : null;
 }
 
+function urlFor(u) {
+  // Return absolute URL for image frames
+  return u.startsWith('http') ? u
+    : `${BASE}${u.startsWith('/') ? '' : '/'}${u}`;
+}
+
 function badge(n) {
   return `<span style="
       display:inline-block;background:var(--accent-cyan);
@@ -614,8 +620,6 @@ function inspectBatch(batchId) {
   box.append(card);
 }
 
-
-
 window.inspectBatch = inspectBatch;
 
 // ──────────────────────────────────────────
@@ -624,7 +628,7 @@ window.inspectBatch = inspectBatch;
 async function runMotionExtract(formData, resultEl, framesEl) {
   resultEl.style.display = 'block';
   resultEl.textContent = '⏳ Extracting motion frames…';
-  framesEl.innerHTML     = '';
+  framesEl.innerHTML = '';
   try {
     const res = await fetchJson(`${BASE}/motion/extract`, {
       method: 'POST',
@@ -632,7 +636,12 @@ async function runMotionExtract(formData, resultEl, framesEl) {
     });
     const frames = res.results.flatMap(r => r.frames);
     resultEl.textContent = `✅ ${frames.length} frame${frames.length !== 1 ? 's' : ''} extracted`;
-    framesEl.innerHTML   = frames.map(u => `<img src="${u}" style="max-width:45%;margin:4px;">`).join('');
+    framesEl.innerHTML = frames.map(u => `
+      <img src="${urlFor(u)}"
+           loading="lazy"
+           style="max-width:45%;margin:4px;"
+           onerror="this.style.display='none'">
+    `).join('');
   } catch (err) {
     resultEl.textContent = '❌ ' + err.message;
   }
