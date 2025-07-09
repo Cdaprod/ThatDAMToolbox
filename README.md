@@ -2,6 +2,33 @@
 ## PYTHONISTA PROTOTYPE
 ### By David Cannan — Cdaprod
 
+## DAM Core System for AI Video Embedding Hierchical Layering of Metadata Indexer
+
+```mermaid
+sequenceDiagram
+    participant UI as Browser
+    participant JS as app.js
+    participant Scan as BatchScanner
+    participant API as /video.server (FastAPI)
+    participant DAM as /api/embedding router
+    participant Store as VectorStorage
+
+    Note over UI,JS: User drops a folder into web UI
+    JS->>Scan: POST /scan?dir=/media/batch1
+    Scan->>Scan: Walk dir, find foo.mp4
+    Scan->>API: POST /api/embedding/videos/ingest {path:"/media/batch1/foo.mp4"}
+    API->>DAM: forward call
+    DAM->>Store: store L0 vector
+    DAM-->>API: {uuid:"abcd-1234", levels:{L0:1}}
+    API-->>Scan: 200 OK
+    Note right of DAM: background task<br/>generates L1–L3
+``` 
+
+
+---
+
+## Hardware/Software Related Contexts and Functional Capabilites 
+
 ```mermaid
 graph RL
     subgraph "Input Sources"

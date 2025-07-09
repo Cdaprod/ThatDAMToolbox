@@ -20,3 +20,4 @@ textual==0.54
 # ── Add-ons & Modules ─────────────────────────────────────────────
 #   Frame Extractor Module (disabled to test video.modules plugin installation)
 # opencv-python-headless>=4.5.0
+tqdm
