@@ -17,6 +17,7 @@ services:
     ## time-zone & optional env
     environment:
       TZ: America/New_York
+      UVICORN_WORKERS: "1"                  # dev: 1  •  prod: 4
       # VIDEO_FORCE_STDHTTP: "1"        # enable if you want stdlib HTTP
 
     ## video devices (unnecessary thanks to devices_cgroup_rules)
@@ -39,9 +40,7 @@ services:
     
     ## bind-mount storage & live source
     volumes:
-      # - /mnt/b/Video:/mnt/b/Video:rw    # B – read-write working store
-      # - /mnt/nas:/mnt/nas:ro            # NAS – read-only capture archive
-    
+      # - /mnt/nas:/mnt/nas:ro                                # NAS – read-only capture archive
       - /mnt/b/Video/_INCOMING:/workspace/_INCOMING           # B – read-write working store
       - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # NAS – read-only capture archive
 
@@ -53,7 +52,7 @@ services:
 
     ## run the API
     entrypoint: ["python", "-m", "video"]
-    command:    ["serve", "--host", "0.0.0.0", "--port", "8080"]
+    # command:    [stats] # Or other one CLI commands
 
     ## simple health-probe
     healthcheck:

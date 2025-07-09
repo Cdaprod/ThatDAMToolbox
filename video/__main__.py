@@ -20,13 +20,14 @@ def main():
         # Any CLI arguments → run as CLI
         from .cli import run_cli
         run_cli()
+        return
     else:
         # No arguments → start API server (FastAPI or fallback)
         _FORCE_STD = os.getenv("VIDEO_FORCE_STDHTTP") == "1"
         if not _FORCE_STD and _have("fastapi") and _have("uvicorn"):
             from video.api import app
             import uvicorn
-            uvicorn.run(app, host="0.0.0.0", port=8080, workers=2)
+            uvicorn.run(app, host="0.0.0.0", port=8080, workers=workers)
         else:
             from video.server import serve
             serve()
