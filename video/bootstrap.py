@@ -100,3 +100,15 @@ def start_server(host: str = "0.0.0.0",
     else:
         from video.server import serve
         serve(host=host, port=port)
+        
+def choose_storage():
+    backend = os.getenv("VIDEO_STORAGE", "sqlite")
+    if backend == "faiss":
+        try:
+            from video.dam.models.faiss_store import FaissStorage
+            return FaissStorage()
+        except ImportError:
+            log.warning("Faiss not installed; falling back to SQLite.")
+    return SqliteStorage()
+
+STORAGE = choose_storage()

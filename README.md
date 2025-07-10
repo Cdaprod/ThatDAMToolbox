@@ -1,8 +1,20 @@
 # MEDIA INDEXER 
-## PYTHONISTA PROTOTYPE
+## FROM PYTHONISTA PROTOTYPE... TO BEING DOCKERIZED PYTHON APPLICATION
 ### By David Cannan — Cdaprod
 
-## DAM Core System for AI Video Embedding Hierchical Layering of Metadata Indexer
+<!-- markdown-toc start - don't edit this section -->
+- [MEDIA INDEXER](#media-indexer)
+- [AI/Hierarchical Media Leveling](#dam-core-system)
+- [Hardware/Software Context](#hardwaresoftware-context)
+- [Feature Matrix](#feature-matrix)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [API Usage](#api-usage)
+- [Roadmap / Changelog](#roadmap--changelog)
+- [License](#license)
+<!-- markdown-toc end -->
+
+## DAM Core System for AI Video Embedding Hierarchical Layering of Metadata Indexer
 
 ```mermaid
 sequenceDiagram
@@ -212,29 +224,34 @@ graph RL
     class RANDOM,NULL,STDIN,VIDEO0,V4L2REQ charDevice
 ``` 
 
+## Feature Matrix
 ## Media-Indexer Bridge & DAM Toolbox -- Feature Matrix
 ### My Progress
-- [x] **Sync network media → app DB**  
+- [ ] **Abstract Base Models+Artifact Factory**  
+      _Abstract & Concrete domain layer modeling of media types and processes_
+- [ ] **Vanilla Frontend Browser API**  
+      _API + Webpage that uses Cards to seperate needs_
+- [ ] **Sync network media → app DB**  
       _Scan NAS / SMB / cloud buckets, sync by metadata_
-- [x] **Dry-run mode**  
+- [ ] **Dry-run mode**  
       _Preview every operation for assurance & observability_
 - [ ] **Deep media probe**  
       _Detect video-has-audio, extract frame thumbs, gather codec + EXIF_
-- [x] **AI metadata enrichment**  
-      _Autofill filenames, descriptions, keywords, custom fields_
-- [x] **AI still-frame extractor / handler**  
+- [ ] **AI metadata enrichment**  
+      _Autofill filenames, descriptions, keywords, custom f elds_
+- [ ] **AI still-frame extractor / handler**  
       _Smart key-frame & hero-image selection_
-- [x] **Audio-waveform sync**  
+- [ ] **Audio-waveform sync*   
       _Line up multi-cam / dual-system audio via waveform analysis_
-- [ ] **Speech-to-text + captions**  
+- [ ] **Speech-to-text +  aptions**  
       _Transcribe, delete filler words, auto-section timelines_
 - [x] **Hero + Witness cam tracker export**  
       _Generate tracking data for VFX pipelines_
 - [ ] **Batch media → Blender (network pass-thru)**  
       _Push shots / plates directly into Blender scenes_
-- [x] **iPhone Photos ingestion**  
+- [x  **iPhone Photos ingestion**  
       _Pull & batch-rename HEIC / ProRes clips from Photos app_
-- [x] **Stock-video curator**  
+- [x]x**Stock-video curator**  
       _Rate, tag, and shortlist clips for licensing_
 - [ ] **Dialogue / music removal**  
       _Separate stems or produce clean-dialogue tracks_
@@ -244,7 +261,9 @@ graph RL
       _Automate uploads & metadata mapping (e.g., Pond5, Artgrid)_
 - [ ] **End-to-end media lifecycle**  
       _Capture → Edit → Publish → Archive--all tracked in one place_
-
+- [x] **Hierchichal Video Embedding Layering**  
+      _Video → L0(L1-3) → Embeddings → Store--within Vector Database_
+      
 ---
 
 # About the web app
@@ -255,7 +274,7 @@ graph TD;
   API -->|JSON| VanillaWeb[Vanilla JS Dashboard];
   API -->|JSON| Streamlit[Optional Streamlit svc];
   subgraph Storage
-    SMB[/mnt/b/] & NAS[/mnt/nas/]
+    SMB[Workspace /mnt/b/] & NAS[Archive /mnt/nas/]
   end
   SMB & NAS --> HostBindMount
   HostBindMount -->|bind mounts| API

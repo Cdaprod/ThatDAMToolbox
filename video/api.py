@@ -10,12 +10,15 @@ from .    import modules
 from .cli import run_cli_from_json
 from .web import templates, static
 
-from video.helpers  import index_folder_as_batch
-from video.helpers  import model_validator
-from video.core     import get_manifest
-from video.models   import VideoArtifact, Slice, CardResponse
+from video.helpers      import index_folder_as_batch, model_validator
+from video.core         import get_manifest
+from video.models       import Manifest, VideoArtifact, Slice, CardResponse
+from video.storage.base import StorageEngine
+from video.bootstrap    import STORAGE  # wherever you run choose_storage()
 
 app = FastAPI(title="Video DAM API")
+router = APIRouter()
+
 log = logging.getLogger("video.api")
 
 # Expose /static/style.css, /static/app.js, …
@@ -89,6 +92,18 @@ def _cli_json(cmd: dict[str, Any]) -> Any:
     """Run CLI helper and return parsed JSON"""
     return json.loads(run_cli_from_json(json.dumps(cmd)))
 
+# ---------------------------------------------------------------------------
+# Storage Engine Router
+# ---------------------------------------------------------------------------
+
+def get_store() -> StorageEngine:
+    return STORAGE
+
+@router.get("/media/{sha1}", response_model=Manifest)
+async def get_manifest(sha1: str, store: StorageEngine = Depends(get_store)):
+    return store.get_video(sha1)
+    
+app.include_router(router)
 # ---------------------------------------------------------------------------
 # Root HTML page  →  http://<host>:<port>/
 # ---------------------------------------------------------------------------
