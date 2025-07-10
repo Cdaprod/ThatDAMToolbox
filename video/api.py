@@ -11,10 +11,10 @@ from .cli import run_cli_from_json
 from .web import templates, static
 
 from video.helpers      import index_folder_as_batch, model_validator
-from video.core         import get_manifest
-from video.models       import Manifest, VideoArtifact, Slice, CardResponse
+from video.core         import get_manifest as core_get_manifest
+from video.models       import Manifest, VideoArtifact, Slice, CardResponse, VideoCard, SceneThumb
 from video.storage.base import StorageEngine
-from video.bootstrap    import STORAGE  # wherever you run choose_storage()
+from video.bootstrap    import STORAGE          # Singleton
 
 app = FastAPI(title="Video DAM API")
 router = APIRouter()
@@ -99,9 +99,13 @@ def _cli_json(cmd: dict[str, Any]) -> Any:
 def get_store() -> StorageEngine:
     return STORAGE
 
+# Use a *different* function name so we don’t shadow `core_get_manifest`
 @router.get("/media/{sha1}", response_model=Manifest)
-async def get_manifest(sha1: str, store: StorageEngine = Depends(get_store)):
-    return store.get_video(sha1)
+async def fetch_manifest(sha1: str, store: StorageEngine = Depends(get_store)):  # 🆕
+    manifest = store.get_video(sha1)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="media not found")
+    return manifest
     
 app.include_router(router)
 # ---------------------------------------------------------------------------
@@ -173,7 +177,7 @@ async def upsert_batch(req: BatchUpsertRequest,
             raise HTTPException(400, f"{folder} is not a directory")
 
         batch_id = index_folder_as_batch(folder, batch_name=req.name)
-        manifest = get_manifest(batch_id)
+        manifest = core_get_manifest(batch_id)
         if manifest is None:
             raise HTTPException(500, "batch processing failed")
         return manifest
@@ -224,7 +228,7 @@ async def batch_cards(batch_id: str,
     Return an object-browser friendly structure:
     artifact + a couple of L1 thumbnails per video.
     """
-    manifest = get_manifest(batch_id)
+    manifest = core_get_manifest(batch_id)
     if manifest is None:
         raise HTTPException(404, "batch not found")
 

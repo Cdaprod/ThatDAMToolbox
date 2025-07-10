@@ -1,72 +1,69 @@
-# /docker-compose.yml
-
+# /docker-compose.yaml
 name: That DAM Toolbox
 
 services:
   video-api:
     build:
       context: .
-      dockerfile: Dockerfile            # multi-arch build
+      dockerfile: Dockerfile            # Multi-arch build
     image: cdaprod/video:dev
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
-    
-    ## networking
-    network_mode: host                  # host-mode already exposes port 8080
-    # ports: ["8080:8080"]              # <-- remove (ignored in host mode)
 
-    ## time-zone & optional env
+    # --- Networking (host-mode exposes 8080) ---
+    network_mode: host
+    # ports: ["8080:8080"]              # Unneeded in host mode
+
+    # --- Environment ---------------------------
     environment:
-      TZ: America/New_York
-      UVICORN_WORKERS: "1"                  # dev: 1  •  prod: 4
       PYTHONWARNINGS: "ignore::DeprecationWarning"
-      # VIDEO_FORCE_STDHTTP: "1"        # enable if you want stdlib HTTP
+      TZ: America/New_York
+      UVICORN_WORKERS: "1"              # dev: 1  •  prod: 4
+      # VIDEO_FORCE_STDHTTP: "1"        # Force stdlib HTTP (optional)
 
-    ## video devices (unnecessary thanks to devices_cgroup_rules)
+      # --- Storage backend selector -------------
+      # VIDEO_STORAGE=sqlite             # Default (no env needed)
+      # VIDEO_STORAGE=faiss              # Use Faiss vector index
+      # VIDEO_STORAGE=weaviate           # Use Weaviate backend
+      # WEAVIATE_URL=http://weaviate:8080 # For Weaviate backend
+
+    # --- Device permissions & hotplug ----------
     # devices:
     #   - /dev/video0:/dev/video0
     #   - /dev/video1:/dev/video1
     #   - /dev/vchiq:/dev/vchiq
-    #   - /dev/dri:/dev/dri               # whole DRM dir ↔ encoders/GL
-
-    ## hot-plug any /dev/video* that appears later (major 81)
+    #   - /dev/dri:/dev/dri             # DRM for encoders/GL
     device_cgroup_rules:
-      - "c 81:* rmw"
+      - "c 81:* rmw"                    # hot-plug /dev/video*
 
-    ## add container user to the "video" group (GID 44 on Raspberry Pi OS)
     group_add:
-      - "44"
-    
-    ## grant full device access (bind-mounting /dev/video*)
-    privileged: true
-    
-    ## bind-mount storage & live source
-    volumes:
-      # - /mnt/nas:/mnt/nas:ro                                # NAS – read-only capture archive
-      - /mnt/b/Video/_INCOMING:/workspace/_INCOMING           # B – read-write working store
-      - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # NAS – read-only capture archive
+      - "44"                            # video group (GID 44 on Pi OS)
+    privileged: true                    # access /dev/video*
 
-      - ./video:/workspace/video:rw     # live code hot-reload
-      - ./data/media:/media:rw          # local capture target
-      - ./data/db:/workspace/db:rw      # SQLite, thumbnails, etc.
+    # --- Storage mounts ------------------------
+    volumes:
+      # - /mnt/nas:/mnt/nas:ro                           # NAS (optional, read-only)
+      - /mnt/b/Video/_INCOMING:/workspace/_INCOMING      # Working store
+      - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # Read-only archive
+      - ./video:/workspace/video:rw                     # Live code hot-reload
+      - ./data/media:/media:rw                          # Local media
+      - ./data/db:/workspace/db:rw                      # DB, thumbnails, etc.
 
     restart: unless-stopped
 
-    ## run the API
+    # --- Entrypoint & Health -------------------
     entrypoint: ["python", "-m", "video"]
-    # command:    [stats] # Or other one CLI commands
-
-    ## simple health-probe
+    # command: [stats]                         # CLI command (optional)
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8080/health || exit 1"]
       interval: 60s
       timeout: 5s
       retries: 3
 
-  # optional one-shot CLI side-car
+  # --- Optional CLI one-shot container ---------
   video-cli:
     image: cdaprod/video:dev
     entrypoint: ["python", "-m", "video"]
-    command: ["stats"]                  # any CLI verb
+    command: ["stats"]                        # Any CLI verb
     volumes:
       - ./data/media:/media
       - ./data/db:/workspace/db
