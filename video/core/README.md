@@ -1,3 +1,3 @@
-# `app/core`
+# `video/core`
 
 ## Internal Application Logic

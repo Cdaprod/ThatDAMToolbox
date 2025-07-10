@@ -1,8 +1,8 @@
 # app/core/processor.py
 
 from typing import Dict, Any, Optional
-from app.core.artifacts.batch import BatchArtifact
-from app.core.artifacts.video import VideoArtifact
+from video.core.artifacts.batch import BatchArtifact
+from video.core.artifacts.video import VideoArtifact
 
 class BatchProcessor:
     """

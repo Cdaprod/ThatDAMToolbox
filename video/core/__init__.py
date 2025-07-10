@@ -1,10 +1,10 @@
 """
-app.core  ── High-level façade for the Artifact pipeline
+video.core  ── High-level façade for the Artifact pipeline
 ========================================================
 
 Typical usage
 -------------
-from app.core import (
+from video.core import (
     ingest_uploads, ingest_folder,
     get_manifest, pipeline         # the singleton if you need more control
 )

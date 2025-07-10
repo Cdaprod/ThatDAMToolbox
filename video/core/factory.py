@@ -8,8 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from app.core.artifacts.video import VideoArtifact
-from app.core.artifacts.batch import BatchArtifact
+from video.core.artifacts.video import VideoArtifact
+from video.core.artifacts.batch import BatchArtifact
 
 class ArtifactFactory:
     """Factory for creating VideoArtifact and BatchArtifact from various sources"""
