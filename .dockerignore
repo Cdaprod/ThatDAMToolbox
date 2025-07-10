@@ -1,0 +1,85 @@
+###############################
+#  General housekeeping
+###############################
+.git
+.gitignore
+.gitattributes
+.github/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+.idea/
+.vscode/
+*.code-workspace
+
+###############################
+#  Python artefacts
+###############################
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so                        # cython builds
+*.egg-info/
+.eggs/
+dist/
+build/
+*.wheel
+pip-wheel-metadata/
+*.coverage
+.coverage.*
+htmlcov/
+
+# Virtual-envs
+env/
+.venv/
+venv/
+.venv/*
+env/*
+venv/*
+
+###############################
+#  Node / frontend artefacts
+###############################
+# (only if you occasionally run npm/yarn here)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json            # copied later with --from if you do multi-stage
+yarn.lock
+pnpm-lock.yaml
+
+###############################
+#  Large local data / cache
+###############################
+data/
+data/**                      # your local media / DB bind-mounts
+mnt/
+mnt/**                       # NAS mounts in dev
+*_INCOMING/
+thatdamtoolbox/              # local cache; mount at runtime
+.cache/
+__pypackages__/
+
+###############################
+#  Tests & docs (not needed at runtime)
+###############################
+tests/
+docs/
+*.md
+*.rst
+README*
+CHANGELOG*
+
+###############################
+#  Docker build artefacts
+###############################
+Dockerfile*
+docker-compose*.yml
+.dockerignore                # (this file itself is ignored automatically)
