@@ -23,3 +23,10 @@ textual==0.54
 #   Frame Extractor Module (disabled to test video.modules plugin installation)
 # opencv-python-headless>=4.5.0
 tqdm
+
+# ── Deep Learning support ───────────────────────────────────────
+# PyTorch & vision; on Raspberry Pi use the official CPU wheels:
+#   pip install --extra-index-url https://download.pytorch.org/whl/raspberrypi \
+#       torch torchvision
+torch>=2.1.0
+torchvision>=0.15.0
