@@ -184,3 +184,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   app.mgr.batch.load();
   app.pm.get('theme')?.apply('dark');
 });
+
+/* ─────────────── 6.  BURGER ⇆ SIDEBAR Toggles─────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+  const burger  = document.querySelector(".burger");
+  const sidebar = document.querySelector(".sidebar");
+  if (burger && sidebar) {
+    burger.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
+    });
+  }
+});
