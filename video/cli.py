@@ -41,6 +41,15 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="video",
                                 description="Media bridge / DAM toolbox")
     sub = p.add_subparsers(dest="action")
+    
+    # ------------------------------------------------------------------
+    # Bridge all Click commands from video.dam as a single sub-parser:
+    #     $ video dam ingest /path/file.mp4  --force
+    # ------------------------------------------------------------------
+    dam = sub.add_parser("dam", help="all DAM click commands")
+    dam.add_argument("cmd",   help="DAM command (ingest, search, ...)")
+    dam.add_argument("rest",  nargs=argparse.REMAINDER,
+                     help="arguments forwarded verbatim to DAM")
 
     # serve
     serve = sub.add_parser("serve", help="start the Video API server")
@@ -132,6 +141,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Album category (edit|digital)"
     )
     
+    # -------------------------------------------------------------------
+    # add  ->  video batches add  /path/to/folder  --name MyBatch
+    # -------------------------------------------------------------------
+    add = batches_sub.add_parser("add", help="index a folder as a batch")
+    add.add_argument("folder", type=Path, help="folder full of media files")
+    add.add_argument("--name", help="optional batch name")
+    
     # ── let `video.modules.` plug-ins extend argparse ----------------------------------------
     for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
         m = importlib.import_module(mod.name)
@@ -161,6 +177,25 @@ class ScanResult:
 # ─── dispatcher ---------------------------------------------------------------
 def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
     action = step.get("action", "scan")
+
+    if action == "dam":
+        # Build a shell-style argv list and delegate to Click
+        from video.dam.commands import _commands as dam_cmds
+        import click, sys
+        # Map click command name → function
+        dam_map = {c.name: c for c in dam_cmds}
+        target = dam_map.get(step["cmd"])
+        if not target:
+            return {"error": f"DAM command {step['cmd']} not found"}
+        # Recreate Click parsing for the single command
+        try:
+            sys.argv = ["video dam " + step["cmd"]] + step.get("rest", [])
+            target.main(standalone_mode=False)
+        except SystemExit as e:
+            # Click exits 0 on success – treat any exit code ≠ 0 as error
+            if e.code != 0:
+                return {"error": f"Command exited {e.code}"}
+        return {"status": "ok"}
 
     if action == "scan":
         p = ScanParams(
@@ -242,38 +277,47 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
             files = idx.db.list_by_batch(batch_name)
             return [dict(file) for file in files]
         
+        # if cmd == "add":
+        #     # 1) sync album into <root>/_INCOMING/<album>
+        #     root = _resolve_path(
+        #         step.get("root"),
+        #         "VIDEO_ROOT",
+        #         config.get_path("paths", "root")
+        #     )
+        #     sync_args = {
+        #         "root": str(root),
+        #         "album": step["album"],
+        #         "category": step.get("category", "edit")
+        #     }
+        #     res = idx.sync.sync_album_from_args(sync_args)
+
+        #     # 2) index that folder
+        #     dest = Path(res.get("dest", ""))
+        #     scan_res = {}
+        #     if dest.exists():
+        #         scan_res = idx.scanner.bulk_scan(dest, workers=step.get("workers", 0))
+
+        #     return {
+        #         "batch":  res.get("album"),
+        #         "synced": res.get("synced"),
+        #         "skipped": res.get("skipped"),
+        #         "scan":   scan_res
+        #     }    
+
         if cmd == "add":
-            # 1) sync album into <root>/_INCOMING/<album>
-            root = _resolve_path(
-                step.get("root"),
-                "VIDEO_ROOT",
-                config.get_path("paths", "root")
+            from video.helpers import index_folder_as_batch
+            from video.core    import get_manifest
+
+            batch_id = index_folder_as_batch(
+                step["folder"],                 # <-- new single-arg key
+                batch_name=step.get("name")     # optional
             )
-            sync_args = {
-                "root": str(root),
-                "album": step["album"],
-                "category": step.get("category", "edit")
-            }
-            res = idx.sync.sync_album_from_args(sync_args)
-
-            # 2) index that folder
-            dest = Path(res.get("dest", ""))
-            scan_res = {}
-            if dest.exists():
-                scan_res = idx.scanner.bulk_scan(dest, workers=step.get("workers", 0))
-
-            return {
-                "batch":  res.get("album"),
-                "synced": res.get("synced"),
-                "skipped": res.get("skipped"),
-                "scan":   scan_res
-            }    
+            return get_manifest(batch_id)
             
-    
         if action in COMMAND_REGISTRY:
             # let plug-in verbs run (pass as argparse.Namespace for symmetry)
             return COMMAND_REGISTRY[action]["func"](argparse.Namespace(**step))
-    
+        
     return {"error": f"unknown action {action}"}
 
 # ─── top-level ---------------------------------------------------------------
