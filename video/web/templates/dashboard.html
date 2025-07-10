@@ -2,259 +2,259 @@
 
 {% block title %}Video Dashboard{% endblock %}
 
-{% block body %}
-<div id="content">
-  <h1>🎬 Davids Video Processing Dashboard 🎬</h1>
+{% block head %}
+  {{ super() }}
+  <style>
+    /* ---------- PANEL VISIBILITY ---------- */
+    .tab-panel {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .25s ease;
+    }
+    .tab-panel.active {
+      opacity: 1;
+      visibility: visible;
+    }
 
-  <div class="dashboard-grid">
+    /* ---------- DASHBOARD GRID LAYOUT ---------- */
+    .dashboard-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .primary-row,
+    .video-row,
+    .preview-row,
+    .operations-row,
+    .library-row {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: 1fr;
+    }
 
-    <div class="primary-row">
-      <section id="upload-section" class="tab-panel active">
-        {% include "partials/_upload_card.html" %}
-      </section>
-      <section id="batch-section" class="tab-panel">
-        {% include "partials/_batch_card.html" %}
-      </section>
-    </div>
+    /* Responsive: 2-column for most rows at md+ */
+    @media (min-width: 768px) {
+      .primary-row    { grid-template-columns: 1fr 1fr; }
+      .video-row      { grid-template-columns: 2fr 1fr; }
+      .preview-row,
+      .operations-row,
+      .library-row    { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 1024px) {
+      .dashboard-grid { gap: 2.5rem; }
+      .primary-row,
+      .video-row,
+      .preview-row,
+      .operations-row,
+      .library-row    { gap: 2rem; }
+    }
 
-    <div class="video-row">
-      <section id="videos-section" class="tab-panel">
-        {% include "partials/_videos_card.html" %}
-      </section>
-      <section id="motion-section" class="tab-panel">
-        {% include "partials/_motion_card.html" %}
-      </section>
-    </div>
+    /* Mobile: stack all rows, reduce gap */
+    @media (max-width: 768px) {
+      .dashboard-grid { gap: 1.5rem; }
+      .primary-row,
+      .video-row,
+      .preview-row,
+      .operations-row,
+      .library-row    { gap: 1.5rem; grid-template-columns: 1fr; }
+    }
 
-    <div class="preview-row">
-      <section id="preview-section" class="tab-panel">
-        {% include "partials/_preview_card.html" %}
-      </section>
-      <section id="witness-section" class="tab-panel">
-        {% include "partials/_witness_card.html" %}
-      </section>
-    </div>
+    /* ---------- CARD COSMETICS & ANIMATION ---------- */
+    .glass-card {
+      transition: all 0.3s ease;
+      animation: fadeInUp 0.4s ease forwards;
+    }
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+      border-color: var(--accent-blue);
+    }
+    .glass-card:focus-within {
+      outline: 2px solid var(--accent-blue);
+      outline-offset: 2px;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: none; }
+    }
+    /* Card stagger delays */
+    .primary-row    .glass-card:nth-child(1){ animation-delay:.1s; }
+    .primary-row    .glass-card:nth-child(2){ animation-delay:.2s; }
+    .video-row      .glass-card:nth-child(1){ animation-delay:.3s; }
+    .video-row      .glass-card:nth-child(2){ animation-delay:.4s; }
+    .preview-row    .glass-card:nth-child(1){ animation-delay:.5s; }
+    .preview-row    .glass-card:nth-child(2){ animation-delay:.6s; }
+    .operations-row .glass-card:nth-child(1){ animation-delay:.7s; }
+    .operations-row .glass-card:nth-child(2){ animation-delay:.8s; }
+    .library-row    .glass-card:nth-child(1){ animation-delay:.9s; }
+    .library-row    .glass-card:nth-child(2){ animation-delay:1s; }
 
-    <div class="operations-row">
-      <section id="search-section" class="tab-panel">
-        {% include "partials/_search_card.html" %}
-      </section>
-      <section id="batch-ops-section" class="tab-panel">
-        {% include "partials/_batch_ops_card.html" %}
-      </section>
-    </div>
+    /* Colored stripes */
+    .primary-row    .glass-card::before { content:''; position:absolute; top:0;left:0;right:0;height:3px;
+      background:var(--accent-gradient); border-radius:18px 18px 0 0; }
+    .video-row   .glass-card:first-child  { border-left:3px solid var(--accent-blue); }
+    .video-row   .glass-card:last-child   { border-left:3px solid var(--accent-green); }
+    .preview-row .glass-card              { border-left:3px solid var(--accent-purple); }
+    .operations-row .glass-card:first-child { border-left:3px solid var(--accent-cyan); }
+    .operations-row .glass-card:last-child  { border-left:3px solid var(--accent-orange); }
+    .library-row    .glass-card:first-child { border-left:3px solid var(--accent-indigo); }
+    .library-row    .glass-card:last-child  { border-left:3px solid var(--accent-yellow); }
 
-    <div class="library-row">
-      <section id="library-section" class="tab-panel">
-        {% include "partials/_library_card.html" %}
-      </section>
-      <section id="analytics-section" class="tab-panel">
-        {% include "partials/_analytics_card.html" %}
-      </section>
-    </div>
-  </div>
-</div>
+    /* ---------- CARD STATUS BADGES ---------- */
+    .card-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+    .status-upload      { background: rgba(100,181,246,.1);   color: var(--accent-blue);   }
+    .status-batch       { background: rgba(255,159,67,.1);    color: var(--accent-orange); }
+    .status-processing  { background: rgba(140,195,74,.1);    color: var(--accent-green);  }
+    .status-preview     { background: rgba(171,71,188,.1);    color: var(--accent-purple); }
+    .status-search      { background: rgba(38,198,218,.1);    color: var(--accent-cyan);   }
+    .status-library     { background: rgba(255,255,255,.08);  color: #fff;                 }
+    .status-analytics   { background: rgba(255,221,85,.1);    color: var(--accent-yellow); }
+    
+    /* loading & divider */
+    .dashboard-grid .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100px;
+      color: var(--accent-blue);
+      font-size: 1.1rem;
+    }
+    .dashboard-grid::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 60px; height: 3px;
+      background: var(--accent-gradient);
+      border-radius: 2px;
+    }
+  </style>
 {% endblock %}
 
-{% block head %}
-{{ super() }}
-<style>
-/* ---------- PANEL VISIBILITY ---------- */
-.tab-panel {
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity .25s ease;
-}
-.tab-panel.active {
-  opacity: 1;
-  visibility: visible;   /* keeps layout height */
-}
+{% block body %}
+  <div id="content">
+    <h1>🎬 Davids Video Processing Dashboard 🎬</h1>
+    <div class="dashboard-grid">
 
-/* ---------- DASHBOARD GRID LAYOUT ---------- */
-.dashboard-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  position: relative;
-}
-.primary-row,
-.video-row,
-.preview-row,
-.operations-row,
-.library-row {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: 1fr;
-}
+      <div class="primary-row">
+        <section id="upload-section" class="tab-panel active">
+          {% include "partials/_upload_card.html" %}
+        </section>
+        <section id="batch-section" class="tab-panel">
+          {% include "partials/_batch_card.html" %}
+        </section>
+      </div>
 
-/* Responsive: 2-column for most rows at md+ */
-@media (min-width: 768px) {
-  .primary-row    { grid-template-columns: 1fr 1fr; }
-  .video-row      { grid-template-columns: 2fr 1fr; }
-  .preview-row,
-  .operations-row,
-  .library-row    { grid-template-columns: 1fr 1fr; }
-}
-@media (min-width: 1024px) {
-  .dashboard-grid { gap: 2.5rem; }
-  .primary-row,
-  .video-row,
-  .preview-row,
-  .operations-row,
-  .library-row    { gap: 2rem; }
-}
+      <div class="video-row">
+        <section id="videos-section" class="tab-panel">
+          {% include "partials/_videos_card.html" %}
+        </section>
+        <section id="motion-section" class="tab-panel">
+          {% include "partials/_motion_card.html" %}
+        </section>
+      </div>
 
-/* Mobile: stack all rows, reduce gap */
-@media (max-width: 768px) {
-  .dashboard-grid { gap: 1.5rem; }
-  .primary-row,
-  .video-row,
-  .preview-row,
-  .operations-row,
-  .library-row    { gap: 1.5rem; grid-template-columns: 1fr; }
-}
+      <div class="preview-row">
+        <section id="preview-section" class="tab-panel">
+          {% include "partials/_preview_card.html" %}
+        </section>
+        <section id="witness-section" class="tab-panel">
+          {% include "partials/_witness_card.html" %}
+        </section>
+      </div>
 
-/* ---------- CARD COSMETICS & ANIMATION ---------- */
-.glass-card {
-  transition: all 0.3s ease;
-  animation: fadeInUp 0.4s ease forwards;
-}
-.glass-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 40px rgba(0,0,0,.45);
-  border-color: var(--accent-blue);
-}
-.glass-card:focus-within {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 2px;
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px);}
-  to   { opacity: 1; transform: none;}
-}
-/* Card stagger animation delays */
-.primary-row .glass-card:nth-child(1){animation-delay:.1s;}
-.primary-row .glass-card:nth-child(2){animation-delay:.2s;}
-.video-row   .glass-card:nth-child(1){animation-delay:.3s;}
-.video-row   .glass-card:nth-child(2){animation-delay:.4s;}
-.preview-row .glass-card:nth-child(1){animation-delay:.5s;}
-.preview-row .glass-card:nth-child(2){animation-delay:.6s;}
-.operations-row .glass-card:nth-child(1){animation-delay:.7s;}
-.operations-row .glass-card:nth-child(2){animation-delay:.8s;}
-.library-row .glass-card:nth-child(1){animation-delay:.9s;}
-.library-row .glass-card:nth-child(2){animation-delay:1s;}
+      <div class="operations-row">
+        <section id="search-section" class="tab-panel">
+          {% include "partials/_search_card.html" %}
+        </section>
+        <section id="batch-ops-section" class="tab-panel">
+          {% include "partials/_batch_ops_card.html" %}
+        </section>
+      </div>
 
-/* Colored stripes for card groups */
-.primary-row .glass-card { position: relative; }
-.primary-row .glass-card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: var(--accent-gradient);
-  border-radius: 18px 18px 0 0;
-}
-.video-row   .glass-card:first-child  { border-left: 3px solid var(--accent-blue); }
-.video-row   .glass-card:last-child   { border-left: 3px solid var(--accent-green);}
-.preview-row .glass-card              { border-left: 3px solid var(--accent-purple);}
-.operations-row .glass-card:first-child { border-left: 3px solid var(--accent-cyan); }
-.operations-row .glass-card:last-child  { border-left: 3px solid var(--accent-orange);}
-.library-row    .glass-card:first-child { border-left: 3px solid var(--accent-indigo);}
-.library-row    .glass-card:last-child  { border-left: 3px solid var(--accent-yellow);}
+      <div class="library-row">
+        <section id="library-section" class="tab-panel">
+          {% include "partials/_library_card.html" %}
+        </section>
+        <section id="analytics-section" class="tab-panel">
+          {% include "partials/_analytics_card.html" %}
+        </section>
+      </div>
 
-/* ---------- CARD STATUS BADGES ---------- */
-.card-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-}
-.status-upload     { background: rgba(100,181,246,.1);   color: var(--accent-blue);    }
-.status-batch      { background: rgba(255,159,67,.1);    color: var(--accent-orange);  }
-.status-processing { background: rgba(140,195,74,.1);    color: var(--accent-green);   }
-.status-preview    { background: rgba(171,71,188,.1);    color: var(--accent-purple);  }
-.status-search     { background: rgba(38,198,218,.1);    color: var(--accent-cyan);    }
-.status-library    { background: rgba(255,255,255,.08);  color: #fff;                  }
-.status-analytics  { background: rgba(255,221,85,.1);    color: var(--accent-yellow);  }
-
-/* ---------- OTHER ---------- */
-.dashboard-grid .loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100px;
-  color: var(--accent-blue);
-  font-size: 1.1rem;
-}
-.dashboard-grid::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 3px;
-  background: var(--accent-gradient);
-  border-radius: 2px;
-}
-</style>
+    </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
-{{ super() }}
-<script>
-/* TAB SWITCHING */
-document.addEventListener('DOMContentLoaded',()=>{
-  const panels=[...document.querySelectorAll('.tab-panel')];
-  const buttons=[...document.querySelectorAll('.nav-list button')];
-  const sidebar=document.getElementById('sidebar');
-  function activate(t){
-    const id=`${t}-section`;
-    panels.forEach(p=>p.classList.toggle('active',p.id===id));
-    buttons.forEach(b=>b.classList.toggle('active',b.dataset.target===t));
-    document.querySelectorAll(`#${id} details`).forEach(d=>d.open=true);
-  }
-  if(buttons[0]){buttons[0].classList.add('active');activate(buttons[0].dataset.target);}
-  buttons.forEach(b=>b.addEventListener('click',()=>{activate(b.dataset.target);sidebar?.classList.remove('open');}));
-});
+  {{ super() }}
+  <script>
+    /* TAB SWITCHING */
+    document.addEventListener('DOMContentLoaded',()=>{
+      const panels  = [...document.querySelectorAll('.tab-panel')];
+      const buttons = [...document.querySelectorAll('.nav-list button')];
+      const sidebar = document.getElementById('sidebar');
+      function activate(target){
+        const id = `${target}-section`;
+        panels.forEach(p=>p.classList.toggle('active', p.id===id));
+        buttons.forEach(b=>b.classList.toggle('active', b.dataset.target===target));
+        document.querySelectorAll(`#${id} details`).forEach(d=>d.open = true);
+      }
+      if (buttons[0]) {
+        buttons[0].classList.add('active');
+        activate(buttons[0].dataset.target);
+      }
+      buttons.forEach(b=>
+        b.addEventListener('click',()=>{ activate(b.dataset.target); sidebar?.classList.remove('open'); })
+      );
+    });
 
-/* BADGES & CARD-INTERACTION */
-document.addEventListener('DOMContentLoaded',()=>{
-  const sections={
-    'upload-section'   :{icon:'📤',status:'Ready',       type:'upload'},
-    'batch-section'    :{icon:'📁',status:'Active',      type:'batch'},
-    'videos-section'   :{icon:'🎞️',status:'Processing', type:'processing'},
-    'motion-section'   :{icon:'🏃',status:'Idle',        type:'processing'},
-    'preview-section'  :{icon:'👁️',status:'Live',        type:'preview'},
-    'witness-section'  :{icon:'📹',status:'Monitoring',  type:'preview'},
-    'search-section'   :{icon:'🔍',status:'Ready',       type:'search'},
-    'batch-ops-section':{icon:'☑️',status:'Idle',        type:'batch'},
-    'library-section'  :{icon:'🎞️',status:'Browsing',    type:'library'},
-    'analytics-section':{icon:'📊',status:'Up-to-date',  type:'analytics'}
-  };
-
-  /* 1 ░ Status badge injection */
-  Object.entries(sections).forEach(([id,c])=>{
-    const el=document.getElementById(id);if(!el) return;
-    const badge=document.createElement('div');
-    badge.className=`card-status status-${c.type}`;
-    badge.innerHTML=`${c.icon} ${c.status}`;
-    el.prepend(badge);
-  });
-
-  /* 2 ░ Hover border flash */
-  document.querySelectorAll('.glass-card').forEach(card=>{
-    card.addEventListener('mouseenter',()=>card.style.borderColor='var(--accent-blue)');
-    card.addEventListener('mouseleave',()=>card.style.borderColor='var(--glass-stroke)');
-  });
-
-  /* 3 ░ Pulse the badges every 5 s */
-  setInterval(()=>document.querySelectorAll('.card-status')
-    .forEach(s=>{s.style.opacity='.7';setTimeout(()=>s.style.opacity='1',200);}),5000);
-});
-</script>
+    /* BADGES & HOVER EFFECT */
+    document.addEventListener('DOMContentLoaded',()=>{
+      const sections = {
+        'upload-section'    :{icon:'📤',status:'Ready',      type:'upload'},
+        'batch-section'     :{icon:'📁',status:'Active',     type:'batch'},
+        'videos-section'    :{icon:'🎞️',status:'Processing',type:'processing'},
+        'motion-section'    :{icon:'🏃',status:'Idle',       type:'processing'},
+        'preview-section'   :{icon:'👁️',status:'Live',       type:'preview'},
+        'witness-section'   :{icon:'📹',status:'Monitoring', type:'preview'},
+        'search-section'    :{icon:'🔍',status:'Ready',      type:'search'},
+        'batch-ops-section' :{icon:'☑️',status:'Idle',       type:'batch'},
+        'library-section'   :{icon:'🎞️',status:'Browsing',   type:'library'},
+        'analytics-section' :{icon:'📊',status:'Up-to-date', type:'analytics'}
+      };
+      // inject badges
+      Object.entries(sections).forEach(([id,c])=>{
+        const el=document.getElementById(id);
+        if(!el) return;
+        const badge=document.createElement('div');
+        badge.className = `card-status status-${c.type}`;
+        badge.innerHTML = `${c.icon} ${c.status}`;
+        el.prepend(badge);
+      });
+      // hover flash
+      document.querySelectorAll('.glass-card').forEach(card=>{
+        card.addEventListener('mouseenter',()=>card.style.borderColor='var(--accent-blue)');
+        card.addEventListener('mouseleave',()=>card.style.borderColor='var(--glass-stroke)');
+      });
+      // pulse badges
+      setInterval(()=>{
+        document.querySelectorAll('.card-status').forEach(s=>{
+          s.style.opacity = '.7';
+          setTimeout(()=>s.style.opacity='1', 200);
+        });
+      }, 5000);
+    });
+  </script>
 {% endblock %}
