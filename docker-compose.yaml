@@ -18,7 +18,7 @@ services:
     environment:
       TZ: America/New_York
       UVICORN_WORKERS: "1"                  # dev: 1  •  prod: 4
-      PYTHONWARNINGS="ignore::DeprecationWarning"
+      PYTHONWARNINGS: "ignore::DeprecationWarning"
       # VIDEO_FORCE_STDHTTP: "1"        # enable if you want stdlib HTTP
 
     ## video devices (unnecessary thanks to devices_cgroup_rules)
