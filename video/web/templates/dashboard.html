@@ -7,17 +7,16 @@
   <h1>🎬 Davids Video Processing Dashboard 🎬</h1>
 
   <div class="dashboard-grid">
-    <!-- 1 ░ Upload / Batches -->
+
     <div class="primary-row">
-      <section id="upload-section"  class="tab-panel active">
+      <section id="upload-section" class="tab-panel active">
         {% include "partials/_upload_card.html" %}
       </section>
-      <section id="batch-section"   class="tab-panel">
+      <section id="batch-section" class="tab-panel">
         {% include "partials/_batch_card.html" %}
       </section>
     </div>
 
-    <!-- 2 ░ Explorer / Motion -->
     <div class="video-row">
       <section id="videos-section" class="tab-panel">
         {% include "partials/_videos_card.html" %}
@@ -27,7 +26,6 @@
       </section>
     </div>
 
-    <!-- 3 ░ Preview / Witness -->
     <div class="preview-row">
       <section id="preview-section" class="tab-panel">
         {% include "partials/_preview_card.html" %}
@@ -37,7 +35,6 @@
       </section>
     </div>
 
-    <!-- 4 ░ Search / Batch-Ops -->
     <div class="operations-row">
       <section id="search-section" class="tab-panel">
         {% include "partials/_search_card.html" %}
@@ -47,7 +44,6 @@
       </section>
     </div>
 
-    <!-- 5 ░ Library / Analytics -->
     <div class="library-row">
       <section id="library-section" class="tab-panel">
         {% include "partials/_library_card.html" %}
