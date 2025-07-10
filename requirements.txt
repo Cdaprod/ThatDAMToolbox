@@ -3,7 +3,7 @@
 fastapi==0.111.0
 uvicorn[standard]==0.30.1          # + httptools, uvloop on CPython/-musl
 pydantic>=2.8,<3.0
-package
+packaging
 
 # ── Media / data helpers (all pure-Python wheels) ──────────────
 numpy>=1.26
