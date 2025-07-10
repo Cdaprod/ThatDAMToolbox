@@ -53,16 +53,26 @@ body{
    LAYOUT FRAME
    ─────────────────────────────────────────────────────────── */
 /* Right-hand layered sidebar (desktop)  /  slide-out drawer (mobile) */
-.sidebar{
-  position:fixed;top:0;right:0;height:100vh;width:240px;z-index:10;
-  backdrop-filter:blur(36px);
-  background:var(--glass-bg);
-  border-left:1px solid var(--glass-stroke);
-  display:flex;flex-direction:column;gap:0.75rem;
-  padding:1.5rem 1rem;
-  transition:transform .3s ease;
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 240px;
+  z-index: 10;
+  overflow-y: auto;             /* THIS makes it scroll independently! */
+  backdrop-filter: blur(36px);
+  background: var(--glass-bg, #181f2b);
+  border-left: 1px solid var(--glass-stroke, #263146);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem;
   box-shadow: 0 0 32px 0 rgba(0,0,0,0.14);
+  transition: transform .3s cubic-bezier(.45,.05,.55,.95);
 }
+
+/* Nav List */
 .sidebar ul, .sidebar .nav-list {
   list-style: none;
   padding-left: 0;
@@ -71,21 +81,32 @@ body{
 .sidebar li {
   list-style: none;
 }
-/* Hamburger (shows ≤ 768 px) */
-.burger{
-  position:fixed;top:1rem;right:1rem;z-index:20;
-  width:44px;height:44px;border:none;border-radius:50%;
-  background:var(--accent-gradient);color:#fff;font-size:1.25rem;
-  display:none;cursor:pointer;
+
+/* Hamburger menu for mobile */
+.burger {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-gradient, linear-gradient(90deg,#3ed,#a5f));
+  color: #fff;
+  font-size: 1.25rem;
+  display: none;
+  cursor: pointer;
 }
+
 @media (max-width: 768px) {
   .burger { display: block; }
 
-  /* 2) Slide sidebar off-canvas by default on mobile */
+  /* Sidebar slides off canvas by default */
   .sidebar {
     transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.45,.05,.55,.95);
   }
-  /* 3) When `.open` is added, bring it back onscreen */
   .sidebar.open {
     transform: translateX(0);
   }
