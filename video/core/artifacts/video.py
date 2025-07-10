@@ -1,4 +1,4 @@
-/app/core/artifacts/video.py
+# /video/core/artifacts/video.py
 from __future__ import annotations
 import hashlib
 import json

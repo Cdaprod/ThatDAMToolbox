@@ -1,5 +1,4 @@
-# app 
-# app/core/artifacts/base.py
+# video/core/artifacts/base.py
 
 from __future__ import annotations
 from datetime import datetime
