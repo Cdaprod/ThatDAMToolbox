@@ -2,7 +2,7 @@
 import pkgutil, importlib, uuid, logging, json
 
 from pathlib    import Path
-from fastapi    import FastAPI, BackgroundTasks, HTTPException, Request
+from fastapi    import FastAPI, APIRouter, Depends, BackgroundTasks, HTTPException, Request
 from pydantic   import BaseModel, Field
 from typing     import Optional, List, Dict, Any, Annotated
 
@@ -13,7 +13,7 @@ from .web import templates, static
 from video.helpers  import index_folder_as_batch
 from video.helpers  import model_validator
 from video.core     import get_manifest
-from video.models   import VideoArtifact, Slice  # or wherever you keep them
+from video.models   import VideoArtifact, Slice, CardResponse
 
 app = FastAPI(title="Video DAM API")
 log = logging.getLogger("video.api")

@@ -1,4 +1,4 @@
-# video/models/__init__.py   (or video/core/__init__.py)
+# video/models/__init__.py
 # (If these already exist, just import them; don’t redeclare.)
 
 from pydantic import BaseModel, Field
