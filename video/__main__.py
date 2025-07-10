@@ -10,7 +10,9 @@ import importlib.util as _iu
 import os
 
 from video import config
-config.print_config()
+# config.print_config()
+
+workers = int(os.getenv("UVICORN_WORKERS", "1"))
 
 def _have(pkg: str) -> bool:
     return _iu.find_spec(pkg) is not None
