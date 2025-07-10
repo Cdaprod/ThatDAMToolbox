@@ -62,7 +62,7 @@ services:
       BACKUP_S3_SECRET_ACCESS_KEY: 'minio123'
       BACKUP_S3_USE_SSL: 'false'
       CLUSTER_HOSTNAME: 'node1'
-      # POSTGRES_HOST: postgres            # Uncomment if using Postgres
+      # POSTGRES_HOST: postgres             # Uncomment if using Postgres
       # POSTGRES_PASSWORD: weaviate
       # POSTGRES_USER: weaviate
       # POSTGRES_DB: weaviate
@@ -72,7 +72,7 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-      # postgres:                         # Uncomment if using Postgres
+      # postgres:                           # Uncomment if using Postgres
       #   condition: service_healthy
 
   video-api:
@@ -80,16 +80,17 @@ services:
       context: .
       dockerfile: Dockerfile
     image: cdaprod/video:prod
-    platform: linux/arm64                  # Remove or change for x86_64 host
+    platform: linux/arm64                   # Remove or change for x86_64 host
     environment:
       PYTHONWARNINGS: "ignore::DeprecationWarning"
       TZ: America/New_York
-      UVICORN_WORKERS: "4"                 # More workers for prod
-      # VIDEO_STORAGE: "sqlite"            # default; change to "faiss" or "weaviate" as needed
-      # WEAVIATE_URL: "http://weaviate:8080"
-    network_mode: host                     # direct access (optionally use "bridge" and ports)
-    # ports:
-    #   - "8080:8080"                     # use if not network_mode: host
+      UVICORN_WORKERS: "4"
+      VIDEO_STORAGE: "auto"                     # Default; adapter auto-selects/combines
+      WEAVIATE_URL: "http://localhost:8081"     # Only needed if using Weaviate
+      # MINIO_ENDPOINT: "http://localhost:9000" # Optional if your code needs it
+    network_mode: host            # Direct access (optionally use "bridge" and ports)
+    # ports:                      # use if not network_mode: host
+    #   - "8080:8080"
     device_cgroup_rules:
       - "c 81:* rmw"
     group_add:

@@ -21,11 +21,12 @@ services:
       # VIDEO_FORCE_STDHTTP: "1"        # Force stdlib HTTP (optional)
 
       # --- Storage backend selector -------------
-      # VIDEO_STORAGE=sqlite             # Default (no env needed)
-      # VIDEO_STORAGE=faiss              # Use Faiss vector index
-      # VIDEO_STORAGE=weaviate           # Use Weaviate backend
-      # WEAVIATE_URL=http://weaviate:8080 # For Weaviate backend
-
+      VIDEO_STORAGE: "auto" 
+      # VIDEO_STORAGE=sqlite                      # Default (no env needed)
+      # VIDEO_STORAGE=faiss                       # Use Faiss vector index
+      # VIDEO_STORAGE=weaviate                    # Use Weaviate backend
+      # WEAVIATE_URL=http://localhost:8081        # For Weaviate backend:
+      # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
     # --- Device permissions & hotplug ----------
     # devices:
     #   - /dev/video0:/dev/video0
