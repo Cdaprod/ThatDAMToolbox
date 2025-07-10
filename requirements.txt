@@ -30,3 +30,4 @@ tqdm
 #       torch torchvision
 torch>=2.1.0
 torchvision>=0.15.0
+transformers>=4.41.0     # Hugging-Face models / tokenizers
