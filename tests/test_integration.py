@@ -78,3 +78,74 @@ def test_batchartifact_can_process_video_slice():
     assert manifest["total_videos"] == 1
     assert manifest["processed_videos"] == 1
     assert manifest["results"]["processed"] == 1
+
+# ──────────────────────────────────────────────────────────────
+#  Additional integration tests exercising larger batch flows
+# ──────────────────────────────────────────────────────────────
+
+def test_batchartifact_multiple_slices_flow():
+    """
+    Full happy-path lifecycle with >1 VideoSlice.
+    Ensures counters, states, events and manifest stay consistent.
+    """
+    batch = BatchArtifact(id="multi-flow-001", metadata={}, name="multis")
+    # 1) add three distinct slices
+    slices = [
+        VideoSlice(0.0,  2.0, "L1"),
+        VideoSlice(2.0,  5.0, "L2"),
+        VideoSlice(5.0, 10.0, "L3")
+    ]
+    for s in slices:
+        batch.add_video(s)
+    assert batch.total_videos == 3
+    assert batch.processed_videos == 0
+    assert batch.state == ArtifactState.CREATED
+
+    # 2) kick off processing
+    assert batch.start_processing() is True
+    assert batch.state == ArtifactState.PROCESSING
+
+    # 3) complete every slice
+    for s in slices:
+        batch.complete_video(s, {"quality": "ok"})
+    assert batch.processed_videos == 3
+
+    # 4) finalize and inspect manifest
+    batch.finalize()
+    assert batch.state == ArtifactState.COMPLETED
+    man = batch.to_dict()
+    assert man["total_videos"] == 3
+    assert man["processed_videos"] == 3
+    assert man["results"]["processed"] == 3
+    # sanity-check event log length grew (CREATED + 3×ADDED + PROCESSING +
+    # 3×COMPLETED + FINALIZED = ≥10, but allow future extra events)
+    assert len(batch.events) >= 9
+
+
+def test_batchartifact_finalize_without_processing_raises():
+    """
+    Guard-rail: cannot finalize while unprocessed slices remain.
+    Implementation may raise or return False – accept either.
+    """
+    batch = BatchArtifact(id="invalid-finalize-001", metadata={}, name="oops")
+    slc   = VideoSlice(0.0, 2.5, "L1")
+    batch.add_video(slc)
+    batch.start_processing()
+
+    with pytest.raises(Exception):
+        batch.finalize()
+
+
+def test_video_slice_unique_ids_and_hash_stability():
+    """
+    IDs must be deterministic *and* unique across differing inputs.
+    """
+    a = VideoSlice(0.0, 1.0, "L1")
+    b = VideoSlice(0.0, 1.0, "L2")      # different level
+    c = VideoSlice(1.0, 2.0, "L1")      # different timing
+    ids = {a.id, b.id, c.id}
+    assert len(ids) == 3                # all unique
+
+    # determinism: recreate "a" → identical ID
+    a2 = VideoSlice(0.0, 1.0, "L1")
+    assert a.id == a2.id

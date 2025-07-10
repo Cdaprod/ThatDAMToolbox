@@ -37,58 +37,56 @@ log = logging.getLogger("video.cli")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # ─── parser builder -----------------------------------------------------------
+# ─── parser builder -----------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="video",
-                                description="Media bridge / DAM toolbox")
-    sub = p.add_subparsers(dest="action")
-    
-    # ------------------------------------------------------------------
-    # Bridge all Click commands from video.dam as a single sub-parser:
-    #     $ video dam ingest /path/file.mp4  --force
-    # ------------------------------------------------------------------
+    """
+    Builds and returns the root argparse parser tree.
+
+    Each `add_parser()` call under the same sub-parser object must use a
+    **unique** name.  Dest strings (`dest="…"` arguments) are likewise unique
+    per level to avoid collisions when argparse flattens the namespace.
+    """
+    p   = argparse.ArgumentParser(prog="video",
+                                  description="Media bridge / DAM toolbox")
+    sub = p.add_subparsers(dest="action", required=True)
+
+    # ───────── DAM bridge ───────────────────────────────────────────────
     dam = sub.add_parser("dam", help="all DAM click commands")
     dam.add_argument("cmd",   help="DAM command (ingest, search, ...)")
     dam.add_argument("rest",  nargs=argparse.REMAINDER,
                      help="arguments forwarded verbatim to DAM")
 
-    # serve
+    # ───────── server ───────────────────────────────────────────────────
     serve = sub.add_parser("serve", help="start the Video API server")
     serve.add_argument("--host", default="0.0.0.0")
     serve.add_argument("--port", type=int, default=8080)
     serve.add_argument("--force-stdlib", action="store_true",
                        help="ignore FastAPI even if installed")
-    
     serve.add_argument("--docker", action="store_true",
                        help="launch via host Docker engine")
-    
-    # scan
-    scan = sub.add_parser("scan", help="index a directory")
+
+    # ───────── simple one-off verbs ─────────────────────────────────────
+    scan   = sub.add_parser("scan",   help="index a directory")
     scan.add_argument("--root", type=Path)
     scan.add_argument("--workers", type=int, default=4)
 
-    # sync
-    sync = sub.add_parser("sync_album", help="sync an iOS Photos album")
+    sync   = sub.add_parser("sync_album", help="sync an iOS Photos album")
     sync.add_argument("--root", type=Path, required=True)
     sync.add_argument("--album")
     sync.add_argument("--category", default="edit", choices=["edit", "digital"])
     sync.add_argument("--copy", action="store_true", default=True)
 
-    # stats
-    sub.add_parser("stats", help="database statistics")
+    sub.add_parser("stats",  help="database statistics")
 
-    # resent
     recent = sub.add_parser("recent", help="recently indexed files")
     recent.add_argument("-n", "--limit", type=int, default=10)
 
-    # dump
     dump = sub.add_parser("dump", help="dump DB rows")
     dump.add_argument("--format", choices=["json", "csv"], default="json")
 
-    # backup
     back = sub.add_parser("backup", help="copy to backup root")
     back.add_argument("--backup_root", type=Path, required=True)
 
-    # search
     search = sub.add_parser("search", help="FTS search")
     search.add_argument("query")
     search.add_argument("--mime")
@@ -97,63 +95,47 @@ def build_parser() -> argparse.ArgumentParser:
     clean = sub.add_parser("clean", help="wipe DB (danger!)")
     clean.add_argument("--confirm", action="store_true")
 
-    # paths 
-    paths = sub.add_parser("paths", help="manage network paths")
-    paths_sub = paths.add_subparsers(dest="cmd")
+    # ───────── paths (network shares) ───────────────────────────────────
+    paths      = sub.add_parser("paths", help="manage network paths")
+    paths_sp   = paths.add_subparsers(dest="path_cmd", required=True)
 
-    paths_sub.add_parser("list", help="show network paths")
+    paths_sp.add_parser("list", help="show network paths")
 
-    add = paths_sub.add_parser("add", help="add a new network path")
-    add.add_argument("path", type=Path, help="directory or glob to add")
+    p_add = paths_sp.add_parser("add", help="add a new network path")
+    p_add.add_argument("path", type=Path, help="directory or glob to add")
 
-    rm = paths_sub.add_parser("remove", help="remove a path by index")
-    rm.add_argument("index", type=int, help="index from list")
-    
-    batches = sub.add_parser("batches", help="work with batches")
-    batches_sub = batches.add_subparsers(dest="cmd")
+    p_rm  = paths_sp.add_parser("remove", help="remove a path by index")
+    p_rm.add_argument("index", type=int, help="index from list")
 
-    # list all batches
-    batches_sub.add_parser("list", help="list all batches")
+    # ───────── batches ──────────────────────────────────────────────────
+    batches     = sub.add_parser("batches", help="batch operations")
+    batches_sp  = batches.add_subparsers(dest="batch_cmd", required=True)
 
-    # show media in a specific batch
-    show = batches_sub.add_parser("show", help="show media files in a batch")
+    batches_sp.add_parser("list", help="list all batches")
+
+    show = batches_sp.add_parser("show", help="show media files in a batch")
     show.add_argument("batch_name", help="name of the batch to display")
 
-    # add a new Photos-album batch (sync + index)
-    batch_add = batches_sub.add_parser(
-        "add",
-        help="sync & index a Photos album as a new batch"
-    )
-    batch_add.add_argument(
-        "--root", "-r",
-        type=Path,
-        help="SMB root path (defaults to VIDEO_ROOT or config [paths] root)"
-    )
-    batch_add.add_argument(
-        "--album", "-a",
-        required=True,
-        help="Exact leaf name of the iOS Photos album to sync"
-    )
-    batch_add.add_argument(
-        "--category", "-c",
-        default="edit",
-        choices=["edit","digital"],
-        help="Album category (edit|digital)"
-    )
-    
-    # -------------------------------------------------------------------
-    # add  ->  video batches add  /path/to/folder  --name MyBatch
-    # -------------------------------------------------------------------
-    add = batches_sub.add_parser("add", help="index a folder as a batch")
-    add.add_argument("folder", type=Path, help="folder full of media files")
-    add.add_argument("--name", help="optional batch name")
-    
-    # ── let `video.modules.` plug-ins extend argparse ----------------------------------------
+    # sync + index a Photos album → new batch
+    sync_add = batches_sp.add_parser("sync", help="sync album → new batch")
+    sync_add.add_argument("--root", type=Path,
+                          help="SMB root path (defaults to VIDEO_ROOT or config)")
+    sync_add.add_argument("--album", required=True,
+                          help="Exact leaf name of the iOS Photos album")
+    sync_add.add_argument("--category", default="edit",
+                          choices=["edit", "digital"])
+
+    # index an arbitrary folder → new batch
+    create = batches_sp.add_parser("create", help="index folder as new batch")
+    create.add_argument("folder", type=Path, help="folder full of media files")
+    create.add_argument("--name", help="optional batch name")
+
+    # ───────── plug-ins (video.modules.*) can extend root sub-parser ────
     for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
         m = importlib.import_module(mod.name)
         if hasattr(m, "add_parser"):
             m.add_parser(sub)
-    
+
     return p
 
 # ─── helpers ------------------------------------------------------------------
