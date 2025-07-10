@@ -1,0 +1,21 @@
+<!-- Library Card -->
+<div class="dam-component" id="library-component">
+  <div class="component-header">
+    <h2 class="component-title">Video Library</h2>
+    <button class="btn btn-secondary"
+            onclick="DAMVideoGrid.refresh()">
+      🔄 Refresh
+    </button>
+  </div>
+  <div class="component-body">
+    <div id="video-grid" class="video-grid">
+      <!-- populated by DAMVideoGrid.refresh() -->
+    </div>
+    <div class="text-center mt-4">
+      <button class="btn btn-secondary"
+              onclick="DAMVideoGrid.loadMore()">
+        Load More Videos
+      </button>
+    </div>
+  </div>
+</div>

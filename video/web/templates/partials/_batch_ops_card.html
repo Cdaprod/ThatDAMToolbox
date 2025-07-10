@@ -1,0 +1,41 @@
+<!-- Batch Ops Card -->
+<div class="dam-component" id="batch-ops-component">
+  <div class="component-header">
+    <h2 class="component-title">Batch Operations</h2>
+    <div class="video-actions">
+      <button class="btn btn-primary"
+              onclick="DAMBatch.selectAll()">☑️ Select All</button>
+      <button class="btn btn-secondary"
+              onclick="DAMBatch.clearSelection()">❌ Clear</button>
+    </div>
+  </div>
+  <div class="component-body">
+    <div class="form-group">
+      <label class="form-label" for="bulk-action">Bulk Action</label>
+      <select id="bulk-action" class="form-control">
+        <option value="">Select Action</option>
+        <option value="enrich">Enrich Metadata</option>
+        <option value="publish">Publish to Blackbox</option>
+        <option value="transcode">Transcode Format</option>
+        <option value="tag">Add Tags</option>
+        <option value="delete">Delete Selected</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Selected Items</label>
+      <div id="selected-count" class="form-control">0 items selected</div>
+    </div>
+    <button class="btn btn-primary"
+            onclick="DAMBatch.executeAction()">
+      ▶️ Execute Batch Action
+    </button>
+    <div id="batch-progress" class="hidden mt-3">
+      <div class="progress-container">
+        <div id="batch-progress-bar" class="progress-bar"></div>
+      </div>
+      <div id="batch-progress-text" class="progress-text">
+        Processing…
+      </div>
+    </div>
+  </div>
+</div>

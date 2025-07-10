@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAM Frontend Modules</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Component Base Styles */
+        .dam-component {
+            background: var(--bg-primary);
+            border-radius: 0.5rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .component-header {
+            background: var(--bg-tertiary);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .component-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .component-body {
+            padding: 1.5rem;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .btn-error {
+            background: var(--error-color);
+            color: white;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .grid-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Video Grid */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .video-card {
+            background: var(--bg-primary);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .video-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: var(--bg-tertiary);
+        }
+
+        .video-info {
+            padding: 1rem;
+        }
+
+        .video-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .video-meta {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .video-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 0.5rem;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--bg-secondary);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary-color);
+            background: var(--bg-primary);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Search Component */
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            padding-left: 2.5rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            box-shadow: var(--shadow-lg);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .search-result {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .search-result:hover {
+            background: var(--bg-secondary);
+        }
+
+        .search-result:last-child {
+            border-bottom: none;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            background: var(--bg-tertiary);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar {
+            height: 0.5rem;
+            background: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Status Indicators */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-color);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+        }
+
+        .status-processing {
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary-color);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 0.5rem;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 3000;
+            max-width: 400px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .notification-error {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .notification-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .notification-info {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .mb-1 { margin-bottom: 0.25rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-3 { margin-bottom: 0.75rem; }
+        .mb-4 { margin-bottom: 1rem; }
+
+        .mt-1 { margin-top: 0.25rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-3 { margin-top: 0.75rem; }
+        .mt-4 { margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Video Upload Component -->
+        <div class="dam-component" id="upload-component">
+            <div class="component-header">
+                <h2 class="component-title">Upload Videos</h2>
+                <button class="btn btn-primary" onclick="DAMUpload.openFileDialog()">
+                    📁 Select Files
+                </button>
+            </div>
+            <div class="component-body">
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-icon">📹</div>
+                    <h3>Drop videos here or click to select</h3>
+                    <p>Supports MP4, MOV, AVI, MKV files</p>
+                    <input type="file" id="file-input" multiple accept="video/*" style="display: none;">
+                </div>
+                <div id="upload-progress" class="hidden">
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <div class="progress-text" id="progress-text">Uploading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Component -->
+        <div class="dam-component" id="search-component">
+            <div class="component-header">
+                <h2 class="component-title">Search & Filter</h2>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="DAMSearch.toggleFilters()">
+                        🔍 Filters
+                    </button>
+                    <button class="btn btn-secondary" onclick="DAMSearch.toggleVectorSearch()">
+                        🧠 AI Search
+                    </button>
+                </div>
+            </div>
+            <div class="component-body">
+                <div class="search-container">
+                    <input type="text" class="form-control search-input" id="search-input" 
+                           placeholder="Search videos, tags, metadata..." 
+                           onkeyup="DAMSearch.handleSearch(event)">
+                    <span class="search-icon">🔍</span>
+                    <div class="search-results hidden" id="search-results"></div>
+                </div>
+                
+                <div class="grid grid-3 mt-4 hidden" id="filter-panel">
+                    <div class="form-group">
+                        <label class="form-label">Date Range</label>
+                        <input type="date" class="form-control" id="date-from">
+                        <input type="date" class="form-control mt-2" id="date-to">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">File Type</label>
+                        <select class="form-control" id="file-type">
+                            <option value="">All Types</option>
+                            <option value="mp4">MP4</option>
+                            <option value="mov">MOV</option>
+                            <option value="avi">AVI</option>
+                            <option value="mkv">MKV</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration</label>
+                        <select class="form-control" id="duration">
+                            <option value="">Any Duration</option>
+                            <option value="0-30">0-30 seconds</option>
+                            <option value="30-60">30-60 seconds</option>
+                            <option value="60-300">1-5 minutes</option>
+                            <option value="300+">5+ minutes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="hidden" id="vector-search-panel">
+                    <div class="form-group">
+                        <label class="form-label">Describe what you're looking for</label>
+                        <textarea class="form-control" id="vector-query" rows="3" 
+                                  placeholder="e.g., 'sunset over ocean', 'people dancing', 'corporate meeting'"></textarea>
+                        <button class="btn btn-primary mt-2" onclick="DAMSearch.performVectorSearch()">
+                            🔍 Search by Description
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Grid Component -->
+        <div class="dam-component" id="video-grid-component">
+            <div class="component-header">
+                <h2 class="component-title">Video Library</h2>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="DAMVideoGrid.toggleView()">
+                        📋 List View
+                    </button>
+                    <button class="btn btn-secondary" onclick="DAMVideoGrid.sortBy('date')">
+                        📅 Sort by Date
+                    </button>
+                    <button class="btn btn-secondary" onclick="DAMVideoGrid.sortBy('name')">
+                        🔤 Sort by Name
+                    </button>
+                </div>
+            </div>
+            <div class="component-body">
+                <div class="video-grid" id="video-grid">
+                    <!-- Videos will be populated here -->
+                </div>
+                <div class="text-center mt-4">
+                    <button class="btn btn-secondary" id="load-more-btn" onclick="DAMVideoGrid.loadMore()">
+                        Load More Videos
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Operations Component -->
+        <div class="dam-component" id="batch-component">
+            <div class="component-header">
+                <h2 class="component-title">Batch Operations</h2>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="DAMBatch.selectAll()">
+                        ☑️ Select All
+                    </button>
+                    <button class="btn btn-secondary" onclick="DAMBatch.clearSelection()">
+                        ❌ Clear Selection
+                    </button>
+                </div>
+            </div>
+            <div class="component-body">
+                <div class="grid grid-2 mb-4">
+                    <div class="form-group">
+                        <label class="form-label">Bulk Action</label>
+                        <select class="form-control" id="bulk-action">
+                            <option value="">Select Action</option>
+                            <option value="enrich">Enrich Metadata</option>
+                            <option value="publish">Publish to Blackbox</option>
+                            <option value="transcode">Transcode Format</option>
+                            <option value="tag">Add Tags</option>
+                            <option value="delete">Delete Selected</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Selected Items</label>
+                        <div class="form-control" id="selected-count">0 items selected</div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button class="btn btn-primary" onclick="DAMBatch.executeAction()">
+                        ▶️ Execute Batch Action
+                    </button>
+                </div>
+                <div class="hidden" id="batch-progress">
+                    <div class="progress-container">
+                        <div class="progress-bar" id="batch-progress-bar"></div>
+                    </div>
+                    <div class="progress-text" id="batch-progress-text">Processing...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Component -->
+        <div class="dam-component" id="analytics-component">
+            <div class="component-header">
+                <h2 class="component-title">Analytics & Stats</h2>
+                <button class="btn btn-secondary" onclick="DAMAnalytics.refresh()">
+                    🔄 Refresh
+                </button>
+            </div>
+            <div class="component-body">
+                <div class="grid grid-4 mb-4">
+                    <div class="text-center">
+                        <h3 id="total-videos">0</h3>
+                        <p>Total Videos</p>
+                    </div>
+                    <div class="text-center">
+                        <h3 id="total-size">0 GB</h3>
+                        <p>Total Size</p>
+                    </div>
+                    <div class="text-center">
+                        <h3 id="published-count">0</h3>
+                        <p>Published</p>
+                    </div>
+                    <div class="text-center">
+                        <h3 id="processing-count">0</h3>
+                        <p>Processing</p>
+                    </div>
+                </div>
+                <div class="grid grid-2">
+                    <div>
+                        <h4>Recent Activity</h4>
+                        <div id="recent-activity">
+                            <!-- Activity items will be populated here -->
+                        </div>
+                    </div>
+                    <div>
+                        <h4>Popular Tags</h4>
+                        <div id="popular-tags">
+                            <!-- Tags will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Video Details -->
+    <div class="modal" id="video-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Video Details</h3>
+                <button class="modal-close" onclick="DAMModal.close()">&times;</button>
+            </div>
+            <div class="modal-body" id="video-modal-body">
+                <!-- Video details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <script>
+        // Main DAM API Client
+        class DAMApi {
+            static baseUrl = '/api/dam';
+            
+            static async request(endpoint, options = {}) {
+                const url = `${this.baseUrl}${endpoint}`;
+                const config = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                };
+                
+                try {
+                    const response = await fetch(url, config);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('API request failed:', error);
+                    DAMNotification.error('API request failed: ' + error.message);
+                    throw error;
+                }
+            }
+            
+            static async uploadVideo(file, onProgress) {
+                const formData = new FormData();
+                formData.append('video', file);
+                
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const percentComplete = (e.loaded / e.total) * 100;
+                            onProgress(percentComplete);
+                        }
+                    });
+                    
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            resolve(JSON.parse(xhr.responseText));
+                        } else {
+                            reject(new Error(`Upload failed: ${xhr.status}`));
+                        }
+                    };
+                    
+                    xhr.onerror = () => reject(new Error('Upload failed'));
+                    
+                    xhr.open('POST', `${this.baseUrl}/upload`);
+                    xhr.send(formData);
+                });
+            }
+            
+            static async getVideos(params = {}) {
+                const queryString = new URLSearchParams(params).toString();
+                return this.request(`/videos?${queryString}`);
+            }
+            
+            static async searchVideos(query, filters = {}) {
+                return this.request('/search', {
+                    method: 'POST',
+                    body: JSON.stringify({ query, filters })
+                });
+            }
+            
+            static async vectorSearch(query) {
+                return this.request('/vector-search', {
+                    method: 'POST',
+                    body: JSON.stringify({ query })
+                });
+            }
+            
+            static async getVideoDetails(videoId) {
+                return this.request(`/videos/${videoId}`);
+            }
+            
+            static async deleteVideo(videoId) {
+                return this.request(`/videos/${videoId}`, {
+                    method: 'DELETE'
+                });
+            }
+            
+            static async batchOperation(action, videoIds, params = {}) {
+                return this.request('/batch', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action,
+                        video_ids: videoIds,
+                        params
+                    })
+                });
+            }
+            
+            static async getStats() {
+                return this.request('/stats');
+            }
+            
+            static async publishToBlackbox(videoIds) {
+                return this.request('/publish/blackbox', {
+                    method: 'POST',
+                    body: JSON.stringify({ video_ids: videoIds })
+                });
+            }
+        }
+
+        // Upload Component
+        class DAMUpload {
+            static init() {
+                const uploadZone = document.getElementById('upload-zone');
+                const fileInput = document.getElementById('file-input');
+                
+                uploadZone.addEventListener('click', () => fileInput.click());
+                uploadZone.addEventListener('dragover', this.handleDragOver.bind(this));
+                uploadZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                uploadZone.addEventListener('drop', this.handleDrop.bind(this));
+                
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+            }
+            
+            static handleDragOver(e) {
+                e.preventDefault();
+                e.currentTarget.classList.add('dragover');
+            }
+            
+            static handleDragLeave(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+            }
+            
+            static handleDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                this.uploadFiles(files);
+            }
+            
+            static handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                this.uploadFiles(files);
+            }
+            
+            static openFileDialog() {
+                document.getElementById('file-input').click();
+            }
+            
+            static async uploadFiles(files) {
+                const videoFiles = files.filter(file => file.type.startsWith('video/'));
+                
+                if (videoFiles.length === 0) {
+                    DAMNotification.warning('Please select video files only');
+                    return;
+                }
+                
+                const progressContainer = document.getElementById('upload-progress');
+                const progressBar = document.getElementById('progress-bar');
+                const progressText = document.getElementById('progress-text');
+                
+                progressContainer.classList.remove('hidden');
+                
+                for (let i = 0; i < videoFiles.length; i++) {
+                    const file = videoFiles[i];
+                    progressText.textContent = `Uploading ${file.name} (${i + 1}/${videoFiles.length})`;
+                    
+                    try {
+                        await DAMApi.uploadVideo(file, (progress) => {
+                            progressBar.style.width = `${progress}%`;
+                        });
+                        
+                        DAMNotification.success(`${file.name} uploaded successfully`);
+                    } catch (error) {
+                        DAMNotification.error(`Failed to upload ${file.name}: ${error.message}`);
+                    }
+                }
+                
+                progressContainer.classList.add('hidden');
+                DAMVideoGrid.refresh();
+            }
+        }
+
+        // Search Component
+
+
+       // Search Component
+       class DAMSearch {
+           static searchTimeout = null;
+
+           static init() {
+               const searchInput = document.getElementById('search-input');
+               searchInput.addEventListener('input', this.handleSearch.bind(this));
+
+               document.addEventListener('click', (e) => {
+                   if (!e.target.closest('.search-container')) {
+                       this.hideResults();
+                   }
+               });
+           }
+
+           static handleSearch(e) {
+               const query = e.target.value.trim();
+
+               clearTimeout(this.searchTimeout);
+
+               if (query.length < 2) {
+                   this.hideResults();
+                   return;
+               }
+
+               this.searchTimeout = setTimeout(() => {
+                   this.performSearch(query);
+               }, 300);
+           }
+
+           static async performSearch(query) {
+               try {
+                   const results = await DAMApi.searchVideos(query);
+                   this.displayResults(results);
+               } catch (error) {
+                   console.error('Search failed:', error);
+               }
+           }
+
+           static displayResults(results) {
+               const resultsContainer = document.getElementById('search-results');
+               resultsContainer.innerHTML = '';
+               resultsContainer.classList.remove('hidden');
+
+               if (!results || results.length === 0) {
+                   resultsContainer.innerHTML = '<div class="search-result">No results found</div>';
+                   return;
+               }
+
+               results.forEach(video => {
+                   const resultDiv = document.createElement('div');
+                   resultDiv.className = 'search-result';
+                   resultDiv.innerHTML = `
+                       <div style="display:flex;align-items:center;gap:1rem;">
+                           <img src="${video.thumbnail_url || '/static/video-thumb.jpg'}"
+                                alt="${video.title || video.filename}"
+                                style="width:64px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;">
+                           <div style="flex:1;">
+                               <div style="font-weight:600;">${video.title || video.filename}</div>
+                               <div style="font-size:0.85em;color:var(--text-secondary);">
+                                   ${video.duration ? video.duration + 's' : ''} 
+                                   ${video.size ? '· ' + (video.size / 1024 / 1024).toFixed(1) + ' MB' : ''}
+                               </div>
+                               <div class="video-tags" style="margin-top:0.25em;">
+                                   ${(video.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                               </div>
+                           </div>
+                       </div>
+                   `;
+                   // Open video modal on click
+                   resultDiv.onclick = () => DAMModal.open(video.id);
+                   resultsContainer.appendChild(resultDiv);
+               });
+           }
+
+           static hideResults() {
+               const resultsContainer = document.getElementById('search-results');
+               if (resultsContainer) {
+                   resultsContainer.classList.add('hidden');
+               }
+           }
+
+           static toggleFilters() {
+               document.getElementById('filter-panel').classList.toggle('hidden');
+           }
+
+           static toggleVectorSearch() {
+               document.getElementById('vector-search-panel').classList.toggle('hidden');
+           }
+
+           static async performVectorSearch() {
+               const query = document.getElementById('vector-query').value.trim();
+               if (!query) return;
+               try {
+                   const results = await DAMApi.vectorSearch(query);
+                   this.displayResults(results);
+               } catch (error) {
+                   DAMNotification.error('Vector search failed.');
+               }
+           }
+       }
+
+       // Minimal Modal Handler
+       class DAMModal {
+           static async open(videoId) {
+               const modal = document.getElementById('video-modal');
+               const body = document.getElementById('video-modal-body');
+               modal.classList.add('show');
+               body.innerHTML = '<div class="text-center">Loading...</div>';
+               try {
+                   const details = await DAMApi.getVideoDetails(videoId);
+                   body.innerHTML = `
+                       <video src="${details.url}" controls style="width:100%;border-radius:8px;margin-bottom:1rem;"></video>
+                       <h3>${details.title || details.filename}</h3>
+                       <div style="color:var(--text-secondary);margin-bottom:0.5em;">${details.duration}s · ${(details.size/1024/1024).toFixed(2)} MB</div>
+                       <div>${details.description || ''}</div>
+                       <div class="video-tags" style="margin-top:1em;">
+                           ${(details.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                       </div>
+                   `;
+               } catch (err) {
+                   body.innerHTML = '<div class="text-center">Error loading video details.</div>';
+               }
+           }
+           static close() {
+               document.getElementById('video-modal').classList.remove('show');
+           }
+       }
+
+       // Simple Notification Helper
+       class DAMNotification {
+           static show(message, type = 'info') {
+               const container = document.getElementById('notification-container');
+               const div = document.createElement('div');
+               div.className = `notification notification-${type} show`;
+               div.textContent = message;
+               container.appendChild(div);
+               setTimeout(() => div.remove(), 4000);
+           }
+           static success(msg) { this.show(msg, 'success'); }
+           static error(msg) { this.show(msg, 'error'); }
+           static warning(msg) { this.show(msg, 'warning'); }
+           static info(msg) { this.show(msg, 'info'); }
+       }
+
+       // VideoGrid, Batch, Analytics component init stubs
+       class DAMVideoGrid {
+           static async refresh() {
+               // Should re-query and re-render grid
+           }
+           static toggleView() { /* ... */ }
+           static sortBy(type) { /* ... */ }
+           static loadMore() { /* ... */ }
+       }
+       class DAMBatch {
+           static selectAll() { /* ... */ }
+           static clearSelection() { /* ... */ }
+           static executeAction() { /* ... */ }
+       }
+       class DAMAnalytics {
+           static refresh() { /* ... */ }
+       }
+
+       // Wire up all component inits after DOM is ready
+       document.addEventListener('DOMContentLoaded', () => {
+           DAMUpload.init();
+           DAMSearch.init();
+           // Add other inits as components are built
+       });
+   </script>
+</body>
+</html>

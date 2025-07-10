@@ -4,29 +4,30 @@
 
 {% block body %}
 <div id="content">
-  <!-- Main dashboard header -->
   <h1>🎬 Davids Video Processing Dashboard 🎬</h1>
-  <!-- Dashboard grid with proper layout -->
-  <div class="dashboard-grid">
 
+  <div class="dashboard-grid">
+    <!-- 1 ░ Upload / Batches -->
     <div class="primary-row">
       <section id="upload-section"  class="tab-panel active">
-        {% include "partials/_upload_card.html"  %}
+        {% include "partials/_upload_card.html" %}
       </section>
       <section id="batch-section"   class="tab-panel">
-        {% include "partials/_batch_card.html"   %}
+        {% include "partials/_batch_card.html" %}
       </section>
     </div>
 
+    <!-- 2 ░ Explorer / Motion -->
     <div class="video-row">
       <section id="videos-section" class="tab-panel">
-        {% include "partials/_videos_card.html"  %}
+        {% include "partials/_videos_card.html" %}
       </section>
       <section id="motion-section" class="tab-panel">
-        {% include "partials/_motion_card.html"  %}
+        {% include "partials/_motion_card.html" %}
       </section>
     </div>
 
+    <!-- 3 ░ Preview / Witness -->
     <div class="preview-row">
       <section id="preview-section" class="tab-panel">
         {% include "partials/_preview_card.html" %}
@@ -35,16 +36,34 @@
         {% include "partials/_witness_card.html" %}
       </section>
     </div>
-    
-  </div> 
+
+    <!-- 4 ░ Search / Batch-Ops -->
+    <div class="operations-row">
+      <section id="search-section" class="tab-panel">
+        {% include "partials/_search_card.html" %}
+      </section>
+      <section id="batch-ops-section" class="tab-panel">
+        {% include "partials/_batch_ops_card.html" %}
+      </section>
+    </div>
+
+    <!-- 5 ░ Library / Analytics -->
+    <div class="library-row">
+      <section id="library-section" class="tab-panel">
+        {% include "partials/_library_card.html" %}
+      </section>
+      <section id="analytics-section" class="tab-panel">
+        {% include "partials/_analytics_card.html" %}
+      </section>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block head %}
 {{ super() }}
-<!-- Add dashboard-specific styles -->
 <style>
-/*  ▼  hide every panel by default; show the one that gets .active */
+/* ---------- PANEL VISIBILITY ---------- */
 .tab-panel {
   opacity: 0;
   visibility: hidden;
@@ -55,93 +74,99 @@
   visibility: visible;   /* keeps layout height */
 }
 
-/* Dashboard grid layout */
+/* ---------- DASHBOARD GRID LAYOUT ---------- */
 .dashboard-grid {
   display: flex;
   flex-direction: column;
   gap: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
 }
-
-/* Row layouts */
 .primary-row,
 .video-row,
-.preview-row {
+.preview-row,
+.operations-row,
+.library-row {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: 1fr;
 }
 
-/* Responsive grid layouts */
+/* Responsive: 2-column for most rows at md+ */
 @media (min-width: 768px) {
-  .primary-row {
-    grid-template-columns: 1fr 1fr;
-  }
-  
-  .video-row {
-    grid-template-columns: 2fr 1fr;
-  }
-  
-  .preview-row {
-    grid-template-columns: 1fr 1fr;
-  }
+  .primary-row    { grid-template-columns: 1fr 1fr; }
+  .video-row      { grid-template-columns: 2fr 1fr; }
+  .preview-row,
+  .operations-row,
+  .library-row    { grid-template-columns: 1fr 1fr; }
 }
-
 @media (min-width: 1024px) {
-  .dashboard-grid {
-    gap: 2.5rem;
-  }
-  
+  .dashboard-grid { gap: 2.5rem; }
   .primary-row,
   .video-row,
-  .preview-row {
-    gap: 2rem;
-  }
+  .preview-row,
+  .operations-row,
+  .library-row    { gap: 2rem; }
 }
 
-/* Card priority styling */
-.primary-row .glass-card {
-  position: relative;
+/* Mobile: stack all rows, reduce gap */
+@media (max-width: 768px) {
+  .dashboard-grid { gap: 1.5rem; }
+  .primary-row,
+  .video-row,
+  .preview-row,
+  .operations-row,
+  .library-row    { gap: 1.5rem; grid-template-columns: 1fr; }
 }
 
-.primary-row .glass-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--accent-gradient);
-  border-radius: 18px 18px 0 0;
-}
-
-/* Video row specific styling */
-.video-row .glass-card:first-child {
-  border-left: 3px solid var(--accent-blue);
-}
-
-.video-row .glass-card:last-child {
-  border-left: 3px solid var(--accent-green);
-}
-
-/* Preview row styling */
-.preview-row .glass-card {
-  border-left: 3px solid var(--accent-purple);
-}
-
-/* Enhanced card hover effects */
+/* ---------- CARD COSMETICS & ANIMATION ---------- */
 .glass-card {
   transition: all 0.3s ease;
+  animation: fadeInUp 0.4s ease forwards;
 }
-
 .glass-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 16px 40px rgba(0,0,0,.45);
   border-color: var(--accent-blue);
 }
+.glass-card:focus-within {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px);}
+  to   { opacity: 1; transform: none;}
+}
+/* Card stagger animation delays */
+.primary-row .glass-card:nth-child(1){animation-delay:.1s;}
+.primary-row .glass-card:nth-child(2){animation-delay:.2s;}
+.video-row   .glass-card:nth-child(1){animation-delay:.3s;}
+.video-row   .glass-card:nth-child(2){animation-delay:.4s;}
+.preview-row .glass-card:nth-child(1){animation-delay:.5s;}
+.preview-row .glass-card:nth-child(2){animation-delay:.6s;}
+.operations-row .glass-card:nth-child(1){animation-delay:.7s;}
+.operations-row .glass-card:nth-child(2){animation-delay:.8s;}
+.library-row .glass-card:nth-child(1){animation-delay:.9s;}
+.library-row .glass-card:nth-child(2){animation-delay:1s;}
 
-/* Status indicators for each section */
+/* Colored stripes for card groups */
+.primary-row .glass-card { position: relative; }
+.primary-row .glass-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--accent-gradient);
+  border-radius: 18px 18px 0 0;
+}
+.video-row   .glass-card:first-child  { border-left: 3px solid var(--accent-blue); }
+.video-row   .glass-card:last-child   { border-left: 3px solid var(--accent-green);}
+.preview-row .glass-card              { border-left: 3px solid var(--accent-purple);}
+.operations-row .glass-card:first-child { border-left: 3px solid var(--accent-cyan); }
+.operations-row .glass-card:last-child  { border-left: 3px solid var(--accent-orange);}
+.library-row    .glass-card:first-child { border-left: 3px solid var(--accent-indigo);}
+.library-row    .glass-card:last-child  { border-left: 3px solid var(--accent-yellow);}
+
+/* ---------- CARD STATUS BADGES ---------- */
 .card-status {
   display: inline-flex;
   align-items: center;
@@ -152,52 +177,15 @@
   font-weight: 500;
   margin-bottom: 1rem;
 }
+.status-upload     { background: rgba(100,181,246,.1);   color: var(--accent-blue);    }
+.status-batch      { background: rgba(255,159,67,.1);    color: var(--accent-orange);  }
+.status-processing { background: rgba(140,195,74,.1);    color: var(--accent-green);   }
+.status-preview    { background: rgba(171,71,188,.1);    color: var(--accent-purple);  }
+.status-search     { background: rgba(38,198,218,.1);    color: var(--accent-cyan);    }
+.status-library    { background: rgba(255,255,255,.08);  color: #fff;                  }
+.status-analytics  { background: rgba(255,221,85,.1);    color: var(--accent-yellow);  }
 
-.status-upload {
-  background: rgba(100, 181, 246, 0.1);
-  color: var(--accent-blue);
-  border: 1px solid rgba(100, 181, 246, 0.2);
-}
-
-.status-batch {
-  background: rgba(255, 159, 67, 0.1);
-  color: var(--accent-orange);
-  border: 1px solid rgba(255, 159, 67, 0.2);
-}
-
-.status-processing {
-  background: rgba(140, 195, 74, 0.1);
-  color: var(--accent-green);
-  border: 1px solid rgba(140, 195, 74, 0.2);
-}
-
-.status-preview {
-  background: rgba(171, 71, 188, 0.1);
-  color: var(--accent-purple);
-  border: 1px solid rgba(171, 71, 188, 0.2);
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  .dashboard-grid {
-    gap: 1.5rem;
-  }
-  
-  .primary-row,
-  .video-row,
-  .preview-row {
-    gap: 1.5rem;
-  }
-  
-  /* Stack all cards on mobile */
-  .primary-row,
-  .video-row,
-  .preview-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Loading states */
+/* ---------- OTHER ---------- */
 .dashboard-grid .loading {
   display: flex;
   align-items: center;
@@ -206,8 +194,6 @@
   color: var(--accent-blue);
   font-size: 1.1rem;
 }
-
-/* Section dividers */
 .dashboard-grid::before {
   content: '';
   position: absolute;
@@ -219,95 +205,58 @@
   background: var(--accent-gradient);
   border-radius: 2px;
 }
-
-/* Improved focus states */
-.glass-card:focus-within {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 2px;
-}
-
-/* Animation for card appearance */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.glass-card {
-  animation: fadeInUp 0.4s ease forwards;
-}
-
-/* Stagger animation delays */
-.primary-row .glass-card:nth-child(1) { animation-delay: 0.1s; }
-.primary-row .glass-card:nth-child(2) { animation-delay: 0.2s; }
-.video-row .glass-card:nth-child(1) { animation-delay: 0.3s; }
-.video-row .glass-card:nth-child(2) { animation-delay: 0.4s; }
-.preview-row .glass-card:nth-child(1) { animation-delay: 0.5s; }
-.preview-row .glass-card:nth-child(2) { animation-delay: 0.6s; }
 </style>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const panels  = document.querySelectorAll('.tab-panel');
-  const buttons = document.querySelectorAll('.nav-list button');
-  const sidebar = document.getElementById('sidebar');
-
-  function activate(target){
-    const id = `${target}-section`;
-    panels.forEach(p => p.classList.toggle('active', p.id === id));
-    buttons.forEach(b => b.classList.toggle('active', b.dataset.target === target));
-    // reopen any <details> inside the visible panel
-    document.querySelectorAll(`#${id} details`).forEach(d => d.open = true);
+/* TAB SWITCHING */
+document.addEventListener('DOMContentLoaded',()=>{
+  const panels=[...document.querySelectorAll('.tab-panel')];
+  const buttons=[...document.querySelectorAll('.nav-list button')];
+  const sidebar=document.getElementById('sidebar');
+  function activate(t){
+    const id=`${t}-section`;
+    panels.forEach(p=>p.classList.toggle('active',p.id===id));
+    buttons.forEach(b=>b.classList.toggle('active',b.dataset.target===t));
+    document.querySelectorAll(`#${id} details`).forEach(d=>d.open=true);
   }
-
-  /* initial state */
-  if (buttons[0]) {
-    buttons[0].classList.add('active');
-    activate(buttons[0].dataset.target);
-  }
-
-  /* nav clicks */
-  buttons.forEach(btn => btn.addEventListener('click', () => {
-    activate(btn.dataset.target);
-    sidebar?.classList.remove('open'); // close drawer on mobile
-  }));
+  if(buttons[0]){buttons[0].classList.add('active');activate(buttons[0].dataset.target);}
+  buttons.forEach(b=>b.addEventListener('click',()=>{activate(b.dataset.target);sidebar?.classList.remove('open');}));
 });
-</script>
 
-<!-- status-indicator / hover script – keep this just once -->
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const sections = {
-    'upload-section':  { icon:'📤', status:'Ready',      type:'upload'     },
-    'batch-section':   { icon:'📁', status:'Active',     type:'batch'      },
-    'videos-section':  { icon:'🎞️', status:'Processing', type:'processing' },
-    'motion-section':  { icon:'🏃', status:'Idle',       type:'processing' },
-    'preview-section': { icon:'👁️', status:'Live',       type:'preview'    },
-    'witness-section': { icon:'📹', status:'Monitoring', type:'preview'    }
+/* BADGES & CARD-INTERACTION */
+document.addEventListener('DOMContentLoaded',()=>{
+  const sections={
+    'upload-section'   :{icon:'📤',status:'Ready',       type:'upload'},
+    'batch-section'    :{icon:'📁',status:'Active',      type:'batch'},
+    'videos-section'   :{icon:'🎞️',status:'Processing', type:'processing'},
+    'motion-section'   :{icon:'🏃',status:'Idle',        type:'processing'},
+    'preview-section'  :{icon:'👁️',status:'Live',        type:'preview'},
+    'witness-section'  :{icon:'📹',status:'Monitoring',  type:'preview'},
+    'search-section'   :{icon:'🔍',status:'Ready',       type:'search'},
+    'batch-ops-section':{icon:'☑️',status:'Idle',        type:'batch'},
+    'library-section'  :{icon:'🎞️',status:'Browsing',    type:'library'},
+    'analytics-section':{icon:'📊',status:'Up-to-date',  type:'analytics'}
   };
 
+  /* 1 ░ Status badge injection */
   Object.entries(sections).forEach(([id,c])=>{
-    const el = document.getElementById(id);
-    if (!el) return;
-    const badge = document.createElement('div');
-    badge.className = `card-status status-${c.type}`;
-    badge.innerHTML = `${c.icon} ${c.status}`;
+    const el=document.getElementById(id);if(!el) return;
+    const badge=document.createElement('div');
+    badge.className=`card-status status-${c.type}`;
+    badge.innerHTML=`${c.icon} ${c.status}`;
     el.prepend(badge);
   });
 
+  /* 2 ░ Hover border flash */
   document.querySelectorAll('.glass-card').forEach(card=>{
     card.addEventListener('mouseenter',()=>card.style.borderColor='var(--accent-blue)');
     card.addEventListener('mouseleave',()=>card.style.borderColor='var(--glass-stroke)');
   });
 
+  /* 3 ░ Pulse the badges every 5 s */
   setInterval(()=>document.querySelectorAll('.card-status')
     .forEach(s=>{s.style.opacity='.7';setTimeout(()=>s.style.opacity='1',200);}),5000);
 });
