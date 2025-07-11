@@ -276,8 +276,7 @@ class Scanner:
                 codec      = None
 
             # ---- preview thumb ----
-            prev_root = config.get_path("paths", "preview_root")
-            prev_root = Path(prev_root)
+            prev_root = config.get_preview_root()
             prev_root.mkdir(parents=True, exist_ok=True)   # ← simple, atomic, robust!
             preview_jpg = prev_root / f"{file_hash}.jpg"
             preview_path = None
