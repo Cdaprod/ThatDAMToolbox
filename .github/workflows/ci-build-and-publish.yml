@@ -1,0 +1,206 @@
+name: CI-Build-and-Publish
+
+on:
+  push:
+    branches: [ "**" ]
+    tags: [ "**" ]
+    paths: 
+      - "docker/*/**"
+      - ".github/workflows/ci-build-and-publish.yml"
+      - ".github/GitVersion.yml"
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.set.outputs.changed }}
+      list: ${{ steps.set.outputs.changed_services }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: set
+        run: |
+          BASE_SHA=$(git merge-base origin/main HEAD)
+          MODIFIED=$(git diff --name-only $BASE_SHA HEAD -- 'docker/*' | cut -d/ -f2 | sort -u)
+
+          if [ -z "$MODIFIED" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed_services=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CHANGED_JSON=$(echo "$MODIFIED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "changed_services=$CHANGED_JSON" >> $GITHUB_OUTPUT
+          
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed == 'true'
+    permissions:
+      contents: write
+      packages: write
+    env:
+      DOCKERHUB_USERNAME: cdaprod
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DRY_RUN: ${{ vars.DRY_RUN || 'false' }} # Set to 'true' to disable pushing, tagging, and uploading to dockerhub and ghcr.io registries
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for GitVersion
+          fetch-tags: true
+
+      - name: Setup GitVersion
+        uses: gittools/actions/gitversion/setup@v0.10.2
+        with:
+          versionSpec: '5.x'
+
+      - name: Run GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.10.2
+        with:
+          useConfigFile: true
+          configFilePath: ./.github/GitVersion.yml
+          additionalArguments: '/verbosity verbose'
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to DockerHub
+        if: env.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        if: env.GHCR_TOKEN != ''
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.GHCR_TOKEN }}
+
+      - name: Discover and build services
+        run: |
+          set +e
+
+          VERSION=${{ steps.gitversion.outputs.SemVer }}
+          SHORT_SHA=${GITHUB_SHA:0:7}
+
+          DRY_RUN=${DRY_RUN:-false}
+          if [[ -z "$DOCKERHUB_TOKEN" || "$DRY_RUN" == "true" ]]; then
+            DRY_RUN=true
+            echo "⚠️  Dry-run mode enabled (no push/tag/release)"
+          else
+            DRY_RUN=false
+          fi
+          
+          echo "" > build_report.txt
+          echo "========= BUILD REPORT =========" >> build_report.txt
+
+          declare -A BUILD_STATUS
+          FINAL_TAG=""
+
+          #for dir in docker/*; do
+          
+          CHANGED_SERVICES=${{ needs.detect-changes.outputs.list }}
+          for NAME in $(echo "$CHANGED_SERVICES" | jq -r '.[]'); do
+            dir="docker/$NAME"
+            # 1. Skip disabled dirs
+            [[ "$dir" == *".disabled"* ]] && {
+              echo "⚠️  Skipping disabled directory: $dir"
+              continue
+            }
+
+            # 2. Must be a directory
+            [ ! -d "$dir" ] && {
+              echo "⚠️  Skipping non-directory: $dir"
+              continue
+            }
+
+            # 3. Must have a Dockerfile
+            DOCKERFILE="$dir/Dockerfile"
+            [ ! -f "$DOCKERFILE" ] && {
+              echo "⚠️  Skipping missing Dockerfile in: $dir"
+              continue
+            }
+
+            # 4. Normalize service name to lowercase
+            NAME=$(basename "$dir")
+            NAME=${NAME,,}
+
+            echo "::group::Building service '$NAME'"
+
+            # 5. Detect duplicate version tag; if exists, fallback to SHORT_SHA suffix
+            TAG="$VERSION"
+            if ! $DRY_RUN; then
+              for REG in "docker.io/${DOCKERHUB_USERNAME}/$NAME" "ghcr.io/${DOCKERHUB_USERNAME}/$NAME"; do
+                if docker manifest inspect ${REG}:$TAG >/dev/null 2>&1; then
+                  FALLBACK="${VERSION}-${SHORT_SHA}"
+                  echo "⚠️  Version tag $TAG exists in $REG, using fallback tag $FALLBACK"
+                  TAG="$FALLBACK"
+                  break
+                fi
+              done
+            fi
+
+            # 5a. Capture the first TAG we settle on as FINAL_TAG for Git tagging
+            if [ -z "$FINAL_TAG" ]; then
+              FINAL_TAG="$TAG"
+              echo "FINAL_TAG=$FINAL_TAG" >> $GITHUB_ENV
+            fi
+
+            # 6. Build (and push unless dry-run)
+            BUILD_CMD="docker buildx build $dir \
+              --platform linux/amd64,linux/arm64 \
+              --tag docker.io/${DOCKERHUB_USERNAME}/$NAME:$TAG \
+              --tag docker.io/${DOCKERHUB_USERNAME}/$NAME:latest \
+              --tag ghcr.io/${DOCKERHUB_USERNAME}/$NAME:$TAG \
+              --tag ghcr.io/${DOCKERHUB_USERNAME}/$NAME:latest"
+
+            if ! $DRY_RUN; then
+              BUILD_CMD="$BUILD_CMD --push"
+            fi
+
+            # Execute build
+            eval "$BUILD_CMD"
+            if [ $? -eq 0 ]; then
+              BUILD_STATUS[$NAME]="✅ Success"
+            else
+              echo "❌ Build failed for $NAME"
+              BUILD_STATUS[$NAME]="❌ Failed"
+            fi
+
+            echo "::endgroup::"
+          done
+
+          echo "" >> build_report.txt
+          for service in "${!BUILD_STATUS[@]}"; do
+            echo "${service}: ${BUILD_STATUS[$service]}" | tee -a build_report.txt
+          done
+          echo "================================" >> build_report.txt
+          cat build_report.txt
+
+          # Summary only--do NOT exit with error
+          echo "⚠️  Build step complete. Check individual statuses above and in build_report.txt."
+
+      - name: Upload Build Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report
+          path: build_report.txt
+
+      - name: Create Git Tag and Release
+        if: github.ref_type != 'tag' && env.FINAL_TAG != ''
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a "$FINAL_TAG" -m "Release $FINAL_TAG"
+          git push origin "$FINAL_TAG"
