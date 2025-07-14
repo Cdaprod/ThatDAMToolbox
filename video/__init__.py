@@ -1,81 +1,121 @@
 # /video/__init__.py
-#!/usr/bin/env python3
 """
-Media Indexer - Pure stdlib implementation for Pythonista
-Place this in: pythonista/Modules/site-packages(user)/video/
+That DAM Toolbox – *Pythonista-friendly*, pure-stdlib façade
 
-Directory structure:
+Updated directory layout (depth ≤ 1)
+────────────────────────────────────
 video/
-├── __init__.py         # This file
-├── __main__.py         # Universal entry-point
-├── db.py               # Database interface
-├── cli.py              # all CLI parsing / dispatch
-├── commands.py         # dataclasses
-├── scanner.py          # File scanning logic
-├── probe.py            # Tech-metadata (duration_s, codec, resolution)
-├── preview.py          # Builds previews
-├── sync.py             # Photo sync integration
-└── schema.sql          # Database schema
-
-Usage:
-    from video import MediaIndexer
-    indexer = MediaIndexer()
-    indexer.scan()
-    recent = indexer.get_recent()
+├── __init__.py          # this file – high-level API
+├── __main__.py          # universal entry-point (CLI ⇄ API)
+├── api.py               # FastAPI app object (lazy import)
+├── bootstrap.py         # first-run helpers & env checks
+├── cli.py               # argparse + sub-commands
+├── commands.py          # dataclass DTOs for CLI & TUI
+├── config.py            # global settings, paths, env-vars
+├── db.py                # SQLite interface + migrations
+├── hwaccel.py           # optional FFmpeg HW acceleration helpers
+├── paths.py             # canonical path helpers (XDG, iOS, etc.)
+├── preview.py           # preview / proxy generation
+├── probe.py             # tech-metadata extraction (codec, resolution…)
+├── scanner.py           # multithreaded file walker + SHA-1 pipeline
+├── server.py            # tiny stdlib HTTP fallback
+├── sync.py              # Photos / iCloud / remote importers
+├── tui.py               # rich-based TUI frontend
+├── schema.sql           # DB schema & migrations
+├── video.cfg            # sample INI config
+├── video.1              # man-page (generated)
+├── test_script.py       # quick self-test / smoke-run
+# sub-packages (expand separately)
+├── core/                # domain logic split into bounded contexts
+├── dam/                 # digital-asset-management utilities
+├── helpers/             # misc pure-stdlib helpers
+├── models/              # pydantic / dataclass models
+├── modules/             # plugin auto-discovery root
+├── storage/             # storage back-ends (S3, MinIO, local…)
+└── web/                 # static files & SPA frontend bundle
 """
 
 #!/usr/bin/env python3
+"""
+Media Indexer – tiny façade unifying scanner ▸ DB ▸ optional Photos sync.
+
+Typical usage
+─────────────
+>>> from video import MediaIndexer
+>>> idx = MediaIndexer()
+>>> idx.scan()                      # walk & index
+>>> idx.get_recent(10)              # quick query
+>>> idx.backup(Path("/mnt/backups"))
+"""
 from __future__ import annotations
-from pathlib import Path      # ← ADD THIS
+
+from pathlib import Path
 import logging
+from typing import Any, Dict, List, Optional
 
 from .db import MediaDB
 from .scanner import Scanner
 from .sync import PhotoSync
 
+log = logging.getLogger("video")
+
+# ────────────────────────────────────────────────────────────────────────────
 class MediaIndexer:
-    """Main interface for the media indexer"""
-    
-    def __init__(self, db_path=None, root_path=None):
-        self.db = MediaDB(db_path)
-        self.scanner = Scanner(self.db, root_path)
-        self.sync = PhotoSync(self.db)
-    
-    def scan(self, root_path=None, workers=4):
-        """Scan for media files and index them"""
+    """
+    One object → all verbs.
+
+    Parameters
+    ----------
+    db_path   : Optional[Path|str]  – SQLite file (defaults in video.config)
+    root_path : Optional[Path|str]  – where to start scanning
+    """
+
+    def __init__(
+        self,
+        db_path: Path | str | None = None,
+        root_path: Path | str | None = None,
+    ) -> None:
+        self.db: MediaDB = MediaDB(db_path)
+        self.scanner: Scanner = Scanner(self.db, root_path)
+        self.sync: PhotoSync = PhotoSync(self.db)
+
+        log.debug(
+            "MediaIndexer ready (db=%s, root=%s)",
+            self.db.db_path,
+            self.scanner.root_path,
+        )
+
+    # ─────────── scanning ───────────
+    def scan(self, root_path: Path | None = None, workers: int = 4) -> Dict[str, int]:
+        """Walk `root_path` (defaults to ctor arg) and (re)index media files."""
         return self.scanner.bulk_scan(root_path, workers)
-    
-    def get_recent(self, limit=20):
-        """Get recently indexed files"""
+
+    # ─────────── queries ───────────
+    def get_recent(self, limit: int = 20) -> List[Dict[str, Any]]:
         return self.db.list_recent(limit)
-    
-    def get_by_batch(self, batch_name):
-        """Get files by batch/album name"""
+
+    def get_by_batch(self, batch_name: str) -> List[Dict[str, Any]]:
         return self.db.list_by_batch(batch_name)
-    
-    def sync_photos_album(self, album_name, category="edit"):
-        """Sync a Photos album (for iOS)"""
-        return self.sync.sync_album(album_name, category)
-    
-    def get_stats(self):
-        """Get indexer statistics"""
-        return self.db.get_stats()
-    
-    def get_all(self):
-        """Get all indexed file metadata."""
+
+    def get_all(self) -> List[Dict[str, Any]]:
         return self.db.list_all_files()
-    
-    def backup(self, backup_root: Path):
+
+    def get_stats(self) -> Dict[str, Any]:
+        return self.db.get_stats()
+
+    # ─────────── Photos / sync ───────────
+    def sync_photos_album(self, album_name: str, category: str = "edit") -> Dict[str, Any]:
+        return self.sync.sync_album(album_name, category)
+
+    # ─────────── backup helper ───────────
+    def backup(self, backup_root: Path) -> Dict[str, Any]:
         """
-        Copy indexed files to backup_root/<batch>/<filename>.
-        Skips any file whose sha1 is already in the copies table.
+        Copy **indexed** files to `backup_root/<batch>/<filename>` with strong
+        idempotence (records each SHA-1 and skips duplicates on next run).
         """
-        import shutil, logging
-        log = logging.getLogger("video.backup")
+        import shutil
 
         copied = skipped = 0
-
-        # Use the new generator to stream rows
         for rec in self.db.iter_all_files():
             src = Path(rec["path"])
             sha1 = rec["sha1"]
@@ -84,43 +124,53 @@ class MediaIndexer:
             tgt_dir.mkdir(parents=True, exist_ok=True)
             tgt = tgt_dir / src.name
 
-            # Strong idempotence: skip if we've already recorded this sha1
             if self.db.already_copied(sha1):
                 skipped += 1
                 continue
 
             try:
                 shutil.copy2(src, tgt)
-                # record in copies table so future runs skip it
                 self.db.remember_copy(sha1, tgt)
                 copied += 1
-                log.info("copied %s → %s", src.name, tgt)
-            except Exception as e:
-                log.warning("skip %s (%s)", src.name, e)
+                log.info("Copied %s → %s", src.name, tgt)
+            except Exception as exc:
+                log.warning("Skip %s (%s)", src.name, exc)
                 skipped += 1
 
         return {"copied": copied, "skipped": skipped, "dest": str(backup_root)}
-        
-# Convenience imports
-from . import config as config
-from .cli import run_cli as _run_cli      # optional: importable CLI entry-point
 
-# Ensure modules are loaded and routers are available
-from .modules import routers  # This triggers all plugin loading
+    # ─────────── one-shot convenience ───────────
+    def index_media(
+        self,
+        *,
+        scan_workers: int = 4,
+        sync_album: str | None = None,
+        sync_category: str = "edit",
+    ) -> Dict[str, Any]:
+        """
+        Single call suited to CI or GUI:
 
-# import pkgutil, importlib, os
+        1. `scan()` with the given worker count
+        2. Optionally import an iOS Photos album
+        3. Return merged statistics
+        """
+        stats = self.scan(workers=scan_workers)
+        if sync_album:
+            stats["photos_sync"] = self.sync_photos_album(sync_album, sync_category)
+        stats["db"] = self.get_stats()
+        return stats
 
-# import logging
-# log = logging.getLogger("video.plugins")
 
-# for mod in pkgutil.iter_modules(__path__, prefix=f"{__name__}.modules."):
-#     leaf = mod.name.split('.')[-1]
-#     if leaf.startswith("__"):
-#         continue
-#     # Only import if the actual file or directory exists in modules/
-#     mod_path = os.path.join(os.path.dirname(__file__), 'modules', leaf)
-#     if os.path.isdir(mod_path) or os.path.isfile(mod_path + '.py'):
-#         importlib.import_module(mod.name)
-#         log.info(f"Loaded plugin: {mod.name}")
-        
-__all__ = ['MediaIndexer', 'MediaDB', 'Scanner', 'PhotoSync', 'config', 'routers']
+# ─── Convenience exports & plugin auto-loading ───────────────────────────────
+from . import config as config  # noqa: E402
+from .cli import run_cli as _run_cli  # noqa: E402
+from .modules import routers  # noqa: E402  (triggers plugin discovery)
+
+__all__ = [
+    "MediaIndexer",
+    "MediaDB",
+    "Scanner",
+    "PhotoSync",
+    "config",
+    "routers",
+]
