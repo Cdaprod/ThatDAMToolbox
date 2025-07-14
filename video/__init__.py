@@ -33,10 +33,7 @@ video/
 ├── modules/             # plugin auto-discovery root
 ├── storage/             # storage back-ends (S3, MinIO, local…)
 └── web/                 # static files & SPA frontend bundle
-"""
 
-#!/usr/bin/env python3
-"""
 Media Indexer – tiny façade unifying scanner ▸ DB ▸ optional Photos sync.
 
 Typical usage
@@ -47,6 +44,8 @@ Typical usage
 >>> idx.get_recent(10)              # quick query
 >>> idx.backup(Path("/mnt/backups"))
 """
+#!/usr/bin/env python3
+
 from __future__ import annotations
 
 from pathlib import Path
