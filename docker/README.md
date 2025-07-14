@@ -1,4 +1,4 @@
-# David’s Video-Service Architecture (docker/README.md)
+# Container Layout for David's Media-Indexer (That DAM Toolbox)
 
 Everything you need to build, test, and run the platform’s containers lives under **`/docker/`**.  
 Each first-level directory is a *build context* for one runtime service, plus a shared **`base/`** image to keep dependencies consistent.
