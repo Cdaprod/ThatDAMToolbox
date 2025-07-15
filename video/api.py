@@ -2,7 +2,15 @@
 import pkgutil, importlib, uuid, logging, json
 
 from pathlib    import Path
-from fastapi    import FastAPI, APIRouter, Depends, BackgroundTasks, HTTPException, Request, FileResponse
+from fastapi import (
+    FastAPI,
+    APIRouter,
+    Depends,
+    BackgroundTasks,
+    HTTPException,
+    Request,
+)
+from fastapi.responses import FileResponse, HTMLResponse   # ← FileResponse comes from fastapi.responses
 from pydantic   import BaseModel, Field
 from typing     import Optional, List, Dict, Any, Annotated
 
