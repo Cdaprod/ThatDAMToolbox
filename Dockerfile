@@ -1,8 +1,9 @@
 ##############################################################################
 # /Dockerfile
-# Multi-arch container for the “video” Media-Bridge / DAM toolbox
+# 
+#  🎥 Multi-arch container for the “video” Media-Bridge / DAM toolbox 🐳
 #
-# • Works on 64-bit x86 and ARM (incl. Raspberry Pi 5)                  🎥 🐳
+# • Works on 64-bit x86 and ARM (incl. Raspberry Pi 5)
 # • Uvicorn-with-Gunicorn FastAPI stack by default
 # • Falls back to the stdlib HTTP server when FASTAPI=0 or FastAPI deps
 #   are stripped at build-time
@@ -43,9 +44,11 @@ WORKDIR /workspace
 # --- Stage 2: pip install ----
 ###############################
 FROM base AS builder
-COPY --chown=appuser:appuser requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
+COPY --chown=appuser:appuser requirements.txt setup.py /workspace/
+COPY --chown=appuser:appuser video/ /workspace/video
+RUN pip install --no-cache-dir --user -r /workspace/requirements.txt && \
+    pip install --no-cache-dir --user -e /workspace
+    
 #######################################
 # --- Stage 3: runtime / final image --
 #######################################
@@ -56,6 +59,7 @@ ENV PATH=$PATH:/home/appuser/.local/bin
 
 # Copy application code
 COPY --chown=appuser:appuser video/ /workspace/video
+COPY --chown=appuser:appuser setup.py /workspace/
 COPY --chown=appuser:appuser run_video.py /workspace/
 
 # Auto-install all plugin requirements.txt (if any exist)
