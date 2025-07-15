@@ -73,7 +73,7 @@ __pypackages__/
 tests/
 docs/
 *.rst
-*clipboard
+*clipboard*
 CHANGELOG*
 
 ###############################
