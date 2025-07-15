@@ -13,13 +13,14 @@
       </select>
     </div>
 
-    <!-- 2. Input / Output selectors -->
+    <!-- 2. Local file picker   Output filename -->
     <div class="grid-two mb-1">
       <div class="form-group">
-        <label for="ff-input-select">Input Video</label>
-        <select id="ff-input-select" class="form-control">
-          <option value="">Loading videos…</option>
-        </select>
+        <label for="ff-file-input">Select Local File</label>
+        <input type="file"
+               id="ff-file-input"
+               accept="video/*"
+               class="form-control" />
       </div>
       <div class="form-group">
         <label for="ff-output-name">Output Filename</label>
