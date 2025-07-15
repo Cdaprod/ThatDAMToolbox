@@ -105,6 +105,13 @@ class AutoStorage(StorageEngine):
     def list_videos(self, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         return self._db.list_recent(limit=limit)[offset:]
 
+    # ------------------------------------------------------------------
+    # Simple passthroughs to MediaDB that higher layers rely on
+    # ------------------------------------------------------------------
+    def list_recent(self, limit: int = 50) -> list[dict]:
+        """Return the N newest VideoArtifact rows (created DESC)."""
+        return self._db.list_recent(limit)
+
     # ---- VECTORS / SEARCH --------------------------------------------------
 
     def add_vector(self,
