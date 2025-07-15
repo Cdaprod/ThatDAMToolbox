@@ -8,6 +8,37 @@
   <link rel="stylesheet"
         href="{{ url_for('static', path='styles.css') }}" />
 
+  <!-- classic favicon – multi-size ICO -->
+  <link rel="shortcut icon"
+        href="{{ url_for('static', path='favicon/favicon.ico') }}"
+        type="image/x-icon" />
+
+  <!-- small and medium PNG fallbacks -->
+  <link rel="icon"
+        href="{{ url_for('static', path='favicon/favicon-16x16.png') }}"
+        sizes="16x16"
+        type="image/png" />
+  <link rel="icon"
+        href="{{ url_for('static', path='favicon/favicon-32x32.png') }}"
+        sizes="32x32"
+        type="image/png" />
+
+  <!-- iOS home-screen icon -->
+  <link rel="apple-touch-icon"
+        href="{{ url_for('static', path='favicon/apple-touch-icon.png') }}"
+        sizes="180x180" />
+
+  <!-- Android/Chrome PWA manifest -->
+  <link rel="manifest"
+        href="{{ url_for('static', path='favicon/site.webmanifest') }}" />
+
+  <!-- Safari pinned-tab (dark mode mask) -->
+  <link rel="mask-icon"
+        href="{{ url_for('static', path='favicon/safari-pinned-tab.svg') }}"
+        color="#FF8C00" />
+
+  <!-- theme color for mobile browsers -->
+  <meta name="theme-color" content="#0A0F1C" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   {% block head %}{% endblock %}

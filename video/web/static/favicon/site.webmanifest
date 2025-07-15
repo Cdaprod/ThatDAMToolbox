@@ -1,1 +1,21 @@
-{"name":"","short_name":"","icons":[{"src":"/android-chrome-192x192.png","sizes":"192x192","type":"image/png"},{"src":"/android-chrome-512x512.png","sizes":"512x512","type":"image/png"}],"theme_color":"#ffffff","background_color":"#ffffff","display":"standalone"}
+{
+  “name”: “Video DAM”,
+  “short_name”: “VideoDAM”,
+  “description”: “Digital Asset Management for your videos”,
+  “icons”: [
+    {
+      “src”: “/static/favicon/android-chrome-192x192.png”,
+      “sizes”: “192x192”,
+      “type”: “image/png”
+    },
+    {
+      “src”: “/static/favicon/android-chrome-512x512.png”,
+      “sizes”: “512x512”,
+      “type”: “image/png”
+    }
+  ],
+  “start_url”: “/“,
+  “display”: “standalone”,
+  “background_color”: “#FFFFFF”,
+  “theme_color”: “#0A0F1C”
+}

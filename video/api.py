@@ -2,7 +2,7 @@
 import pkgutil, importlib, uuid, logging, json
 
 from pathlib    import Path
-from fastapi    import FastAPI, APIRouter, Depends, BackgroundTasks, HTTPException, Request
+from fastapi    import FastAPI, APIRouter, Depends, BackgroundTasks, HTTPException, Request, FileResponse
 from pydantic   import BaseModel, Field
 from typing     import Optional, List, Dict, Any, Annotated
 
@@ -114,9 +114,15 @@ async def fetch_manifest(sha1: str, store: StorageEngine = Depends(get_store)): 
     return manifest
     
 app.include_router(router)
+
 # ---------------------------------------------------------------------------
 # Root HTML page  →  http://<host>:<port>/
 # ---------------------------------------------------------------------------
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("video/web/static/favicon/favicon.ico")
+
 @app.get("/", include_in_schema=False)
 async def home(request: Request):
     """

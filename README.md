@@ -1,4 +1,4 @@
-![](/video/web/static/favicon/photo.png)
+![](/video/web/static/favicon/android-chrome-512x512.png)
 
 # MEDIA INDEXER 
 ## FROM PYTHONISTA PROTOTYPE... TO BEING DOCKERIZED PYTHON APPLICATION
