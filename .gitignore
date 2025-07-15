@@ -120,3 +120,7 @@ secrets.json
 # ---- Uncomment to ignore these if needed ----
 # /scripts/cli.py
 # /scripts/processor.disabled
+!/video/web/static/favicon/photo.png
+
+!/video/web/static/favicon/thatdamtoolbox-icon.png
+

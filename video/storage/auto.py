@@ -1,3 +1,4 @@
+# video/storage/auto.py
 """
 Unified storage wrapper that makes both worlds work together:
 

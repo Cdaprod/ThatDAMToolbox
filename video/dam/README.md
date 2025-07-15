@@ -1,5 +1,7 @@
 # Video DAM System FastAPI Structure
 
+**Purpose:** searchable metadata, embeddings, FAISS index.
+
 ## Directory Structure
 ```
 video/dam/

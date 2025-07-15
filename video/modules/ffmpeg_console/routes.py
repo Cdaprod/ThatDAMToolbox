@@ -36,3 +36,9 @@ async def ffmpeg_console_api(
         "stderr": result["stderr"],
         "output_file": result["output_file"]
     }
+    
+
+@router.get("/history")
+async def ffmpeg_history(limit: int = 20):
+    # Your logic here, e.g., fetch last N ffmpeg commands from a log or DB
+    return {"history": []}

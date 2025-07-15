@@ -1,3 +1,5 @@
+![](/video/web/static/favicon/photo.png)
+
 # MEDIA INDEXER 
 ## FROM PYTHONISTA PROTOTYPE... TO BEING DOCKERIZED PYTHON APPLICATION
 ### By David Cannan — Cdaprod
