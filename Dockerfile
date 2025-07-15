@@ -44,7 +44,7 @@ WORKDIR /workspace
 # --- Stage 2: pip install ----
 ###############################
 FROM base AS builder
-COPY --chown=appuser:appuser requirements.txt setup.py /workspace/
+COPY --chown=appuser:appuser requirements.txt setup.py README.md /workspace/
 COPY --chown=appuser:appuser video/ /workspace/video
 RUN pip install --no-cache-dir --user -r /workspace/requirements.txt && \
     pip install --no-cache-dir --user -e /workspace
