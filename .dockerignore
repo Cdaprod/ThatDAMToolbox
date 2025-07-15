@@ -75,6 +75,7 @@ docs/
 *.rst
 *clipboard*
 CHANGELOG*
+*.disabled
 
 ###############################
 #  Docker build artefacts
