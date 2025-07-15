@@ -1,0 +1,22 @@
+<!-- FFmpeg Console Card -->
+<details class="glass-card" id="ffmpegCard">
+  <summary>🛠️ FFmpeg Console</summary>
+
+  <div class="card-body">
+    <textarea id="ff-input"
+              rows="3"
+              placeholder="ffmpeg -i in.mp4 -vf scale=1280:-2 out.mp4"
+              style="width:100%;min-height:96px;margin-bottom:.75rem;"></textarea>
+
+    <button class="btn" id="ff-run">
+      ▶️ Run
+    </button>
+
+    <details id="ff-history" style="margin-top:1rem;">
+      <summary style="cursor:pointer;">🕑 History</summary>
+      <ul id="ff-history-list" class="kvp" style="margin-top:.75rem;"></ul>
+    </details>
+
+    <pre id="ff-output" class="result-area" style="display:none;"></pre>
+  </div>
+</details>
