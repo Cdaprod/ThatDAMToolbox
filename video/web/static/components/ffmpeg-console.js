@@ -10,6 +10,7 @@ class FFMpegConsole {
     this.btn           = document.getElementById('ff-run');
     this.histL         = document.getElementById('ff-history-list');
     this.out           = document.getElementById('ff-output');
+    this.clearBtn      = document.getElementById('ff-clear-file');
 
     // Enhanced Quick-command presets
     this.quickCommands = {
@@ -259,20 +260,43 @@ class FFMpegConsole {
       
       const fileName = this.fileInput.files[0]?.name || 'input.mp4';
       const output   = this.outputNameEl.value || this.getDefaultOutput(key, fileName);
-      
+    
       const cmd = this.quickCommands[key].cmd
                     .replace(/\{\{input\}\}/g, fileName)
                     .replace(/\{\{output\}\}/g, output);
-      
+    
       this.txt.value = cmd;
-      
+    
       // Show description
       this.showCommandDescription(key);
     });
-
+    
+    // When user picks a file, infer output-name
+    this.fileInput.addEventListener('change', () => {
+      const file = this.fileInput.files[0];
+      if (!file) return;
+      // Only override if user hasn't typed something custom
+      if (!this.outputNameEl.value || this.outputNameEl.value === this.lastInferred) {
+        const [base, ext] = file.name.split(/\.(?=[^\.]+$)/);
+        this.lastInferred = `${base}_processed.${ext || 'mp4'}`;
+        this.outputNameEl.value = this.lastInferred;
+      }
+      // If a quick command is selected, update the command string
+      if (this.quickSelect.value) {
+        this.quickSelect.dispatchEvent(new Event('change'));
+      }
+    });
+    
+    // Clear file handler
+    this.clearBtn.addEventListener('click', () => {
+      this.fileInput.value = '';
+      this.txt.value       = '';
+      this.outputNameEl.value = '';
+    });
+    
     // Populate the select dropdown
     this.populateQuickSelect();
-
+    
     // Load history
     await this.loadHistory();
 

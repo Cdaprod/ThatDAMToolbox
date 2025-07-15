@@ -1,26 +1,28 @@
-<details class="glass-card" id="ffmpegCard">
+<details class="glass-card" id="ffmpegCard" open>
   <summary>🛠️ FFmpeg Console</summary>
-
   <div class="card-body">
 
     <!-- 1. Quick Commands -->
     <div class="form-group">
       <label for="ff-quick-select">Quick Commands:</label>
-      <select id="ff-quick-select" class="form-control">
-        <option value="">-- Select --</option>
-        <option value="trimIdle">Trim Idle Frames From Video</option>
-        <!-- add more keys here -->
-      </select>
+      <select id="ff-quick-select" class="form-control"></select>
     </div>
 
-    <!-- 2. Local file picker   Output filename -->
+    <!-- 2. Local file picker & Output filename -->
     <div class="grid-two mb-1">
       <div class="form-group">
         <label for="ff-file-input">Select Local File</label>
-        <input type="file"
-               id="ff-file-input"
-               accept="video/*"
-               class="form-control" />
+        <div class="flex items-center gap-2">
+          <input type="file"
+                 id="ff-file-input"
+                 accept="video/*"
+                 class="form-control" />
+          <button type="button"
+                  id="ff-clear-file"
+                  class="btn btn-secondary btn-small">
+            ✖️ Clear
+          </button>
+        </div>
       </div>
       <div class="form-group">
         <label for="ff-output-name">Output Filename</label>
@@ -48,6 +50,5 @@
 
     <!-- 6. Live output -->
     <pre id="ff-output" class="result-area" style="display:none;"></pre>
-
   </div>
 </details>
