@@ -1,22 +1,52 @@
-<!-- FFmpeg Console Card -->
 <details class="glass-card" id="ffmpegCard">
   <summary>🛠️ FFmpeg Console</summary>
 
   <div class="card-body">
+
+    <!-- 1. Quick Commands -->
+    <div class="form-group">
+      <label for="ff-quick-select">Quick Commands:</label>
+      <select id="ff-quick-select" class="form-control">
+        <option value="">-- Select --</option>
+        <option value="trimIdle">Trim Idle Frames From Video</option>
+        <!-- add more keys here -->
+      </select>
+    </div>
+
+    <!-- 2. Input / Output selectors -->
+    <div class="grid-two mb-1">
+      <div class="form-group">
+        <label for="ff-input-select">Input Video</label>
+        <select id="ff-input-select" class="form-control">
+          <option value="">Loading videos…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ff-output-name">Output Filename</label>
+        <input type="text"
+               id="ff-output-name"
+               class="form-control"
+               placeholder="output.mp4" />
+      </div>
+    </div>
+
+    <!-- 3. Command textarea -->
     <textarea id="ff-input"
               rows="3"
-              placeholder="ffmpeg -i in.mp4 -vf scale=1280:-2 out.mp4"
+              placeholder="ffmpeg command here"
               style="width:100%;min-height:96px;margin-bottom:.75rem;"></textarea>
 
-    <button class="btn" id="ff-run">
-      ▶️ Run
-    </button>
+    <!-- 4. Run button -->
+    <button class="btn" id="ff-run">▶️ Run</button>
 
+    <!-- 5. History of manual runs -->
     <details id="ff-history" style="margin-top:1rem;">
       <summary style="cursor:pointer;">🕑 History</summary>
       <ul id="ff-history-list" class="kvp" style="margin-top:.75rem;"></ul>
     </details>
 
+    <!-- 6. Live output -->
     <pre id="ff-output" class="result-area" style="display:none;"></pre>
+
   </div>
 </details>
