@@ -1,16 +1,24 @@
-{# -------------------------------------------------------------------------
-   Explorer Card  –  primary discovery grid
-   Drop into dashboard.html with  {% include "partials/_explorer_card.html" %}
-   ---------------------------------------------------------------------- #}
-
-<details class="glass-card" id="explorerCard" open>
-  <summary>🔎 Explorer</summary>
+<!-- partials/_explorer_card.html -->
+<details class="glass-card" id="explorerCard">
+  <summary>🔍 Explorer</summary>
 
   <div class="card-body">
-    {# The custom element we just built – it autoloads its JS #}
-    <explorer-pane
-      limit="50"            {# default – override if you like #}
-      style="width:100%;"
-    ></explorer-pane>
+
+    <!-- 1️⃣ Rich grid of recent (or batch-scoped) media -->
+    <!--    - change limit=… or add batch-id="…" if you like -->
+    <explorer-pane id="explorer-pane" limit="60"></explorer-pane>
+
+    <!-- 2️⃣ Optional raw-JSON view (collapsible) -->
+    <details id="explorer-json" style="margin-top:1rem;">
+      <summary style="cursor:pointer;">🗄️ Raw Manifest</summary>
+
+      <!-- where renderObject() will inject the tree -->
+      <div id="explorer-tree" style="padding-top:.75rem;"></div>
+
+      <button id="explorer-refresh"
+              class="btn btn-small"
+              style="margin-top:.5rem;">↻ Refresh</button>
+    </details>
+
   </div>
 </details>
