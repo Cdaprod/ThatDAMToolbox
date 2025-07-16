@@ -14,12 +14,14 @@ RUN npm install --location=global esbuild
 COPY video/web/static/components/dam-explorer.js ./src/
 
 # bundle → dam-explorer.bundle.js (ES2022, minified)
+# --- in the frontend-build stage ---
 RUN esbuild ./src/dam-explorer.js \
-      --bundle \
-      --outfile=dam-explorer.bundle.js \
-      --format=esm \
-      --target=es2022 \
-      --minify
+    --bundle \
+    --loader:.js=jsx \         # ← NEW: parse JSX in .js files
+    --outfile=dam-explorer.bundle.js \
+    --format=esm \
+    --target=es2022 \
+    --minify
 
 ############################
 # Stage 1 – Base OS image  #
