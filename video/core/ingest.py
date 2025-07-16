@@ -1,6 +1,6 @@
 from pathlib import Path
 from video.db import MediaDB
-from video.probe import probe_video        # existing tech-metadata helper
+from video.probe import probe_media        # existing tech-metadata helper
 
 DB = MediaDB()                             # singleton or DI – up to you
 
@@ -11,5 +11,5 @@ def index_file(path: str | Path, *, batch_name: str | None = None):
     3. enqueue preview / proxy generation if configured
     """
     path = Path(path)
-    meta = probe_video(path)               # width, height, duration, …
+    meta = probe_media(path)               # width, height, duration, …
     DB.upsert_file(path, batch_name, meta)
