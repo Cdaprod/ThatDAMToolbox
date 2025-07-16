@@ -2,19 +2,27 @@
  * Pure browser-ESM: every dependency imported by absolute URL
  * (no bundler, no extra <script> tags).
  * ------------------------------------------------------------------ */
-import React    from 'https://esm.sh/react@18'
-import ReactDOM from 'https://esm.sh/react-dom@18/client'
+/* ------------------------------------------------------------------
+ * Pure browser-ESM: every dependency imported by absolute URL
+ * (no bundler, no extra <script> tags).
+ * ------------------------------------------------------------------ */
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} from 'https://esm.sh/react@18';
+import ReactDOM from 'https://esm.sh/react-dom@18/client';
 
-export const __react__     = React      // re-export helpers
-export const __react_dom__ = ReactDOM
+/* helpers re-exported so the bootstrapper can grab them */
+export const __react__     = React;
+export const __react_dom__ = ReactDOM;
 
-import React, { useState, useEffect, useRef, useCallback } from "https://esm.sh/react@18";
-import ReactDOM                                           from "https://esm.sh/react-dom@18/client";
 import {
   Search, Grid, List, Upload, Trash2, Tag, Folder,
   Image, Video, FileText, MoreVertical, ChevronRight,
   ChevronDown, Eye, Move, RefreshCw, Undo2, AlertCircle, Check
-} from "https://esm.sh/lucide-react@0.357.0";
+} from 'https://esm.sh/lucide-react@0.357.0';
 
 // Mock data structure representing your content-addressable assets
 const mockAssets = [
