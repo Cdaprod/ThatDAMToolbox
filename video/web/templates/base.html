@@ -44,6 +44,7 @@
   {% block head %}{% endblock %}
 </head>
 <body>
+  <div id="app"></div>
   <div class="app-frame">
     <nav id="sidebar" class="sidebar">
       {% include "partials/_sidebar.html" %}
@@ -61,17 +62,19 @@
 
   <!-- your existing JS bundles -->
   <script type="module" 
+        src="/static/components/dam-explorer.js"></script>
+  <script type="module" 
         src="/static/components/explorer.js"></script>
   <script type="module"
         src="{{ url_for('static', path='components/ffmpeg-console.js') }}"></script>
   <script type="module"
-          src="{{ url_for('static', path='components/object-renderer.js') }}"></script>
+        src="{{ url_for('static', path='components/object-renderer.js') }}"></script>
   <script type="module"
-          src="{{ url_for('static', path='components/batch-card.js') }}"></script>
+        src="{{ url_for('static', path='components/batch-card.js') }}"></script>
   <script type="module"
-          src="{{ url_for('static', path='components/video-card.js') }}"></script>
+        src="{{ url_for('static', path='components/video-card.js') }}"></script>
   <script type="module"
-          src="{{ url_for('static', path='app.js') }}"></script>
+        src="{{ url_for('static', path='app.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
