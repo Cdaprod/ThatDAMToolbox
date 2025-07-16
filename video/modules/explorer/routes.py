@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi.responses import RedirectResponse 
 from video.bootstrap        import STORAGE                 # AutoStorage singleton
 from video.storage.base     import StorageEngine
 from video.core             import get_manifest            # core.batch → manifest
@@ -86,3 +87,26 @@ async def set_position(sha1: str, position: int = Body(..., ge=0),
     For now just save it in the DB – extend as you like.
     """
     store.set_position(sha1, position)   # ⚠️ implement in AutoStorage
+
+# --------------------------------------------------------------------------- #
+# NEW - folder list  GET /explorer/folders
+# --------------------------------------------------------------------------- #
+@router.get("/folders", summary="All folders (flat)")
+async def list_folders(store: StorageEngine = Depends(_store)):
+    """
+    Returns every *distinct* folder that currently contains media.
+    Shape expected by React:
+        [{id, name, path, parent_id}, …]
+    """
+    rows = store.list_all_folders()          # ⚠️ implement once in AutoStorage
+    return rows
+
+# --------------------------------------------------------------------------- #
+# NEW - assets in one folder  GET /explorer/assets?path=
+# --------------------------------------------------------------------------- #
+@router.get("/assets", summary="Assets directly under a folder")
+async def list_assets(path: str = Query(..., description="Folder path"),
+                      store: StorageEngine = Depends(_store)):
+    rows = store.list_assets(Path(path))     # ⚠️ implement in AutoStorage
+    # Re-use the helper that already converts DB rows → VideoCard
+    return _rows_to_cards(rows)

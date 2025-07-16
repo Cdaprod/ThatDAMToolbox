@@ -122,6 +122,16 @@ class AutoStorage(StorageEngine):
         )
         return [dict(r) for r in rows]
 
+    def list_all_folders(self) -> list[dict]:
+        """
+        SELECT DISTINCT dirname(path) …  → [{'id': …, 'name': …, 'path': …, 'parent_id': …}]
+        """
+
+    def list_assets(self, folder: Path) -> list[dict]:
+        """
+        SELECT * FROM artifacts WHERE dirname(path)=folder
+        """
+
     # ---- VECTORS / SEARCH --------------------------------------------------
 
     def add_vector(self,

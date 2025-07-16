@@ -24,60 +24,70 @@ import {
   ChevronDown, Eye, Move, RefreshCw, Undo2, AlertCircle, Check
 } from 'https://esm.sh/lucide-react@0.357.0';
 
-// Mock data structure representing your content-addressable assets
-const mockAssets = [
-  {
-    id: 'sha256:a1b2c3d4...',
-    name: 'mountain_sunset.jpg',
-    type: 'image',
-    size: 2.1,
-    dimensions: '1920x1080',
-    created: '2024-01-15T10:30:00Z',
-    modified: '2024-01-15T10:30:00Z',
-    path: '/projects/nature/photos',
-    tags: ['landscape', 'sunset', 'mountains'],
-    metadata: { camera: 'Nikon Z7', iso: 400, aperture: 'f/8' },
-    thumbnail: '/api/thumbnails/sha256:a1b2c3d4...',
-    status: 'processed'
-  },
-  {
-    id: 'sha256:e5f6g7h8...',
-    name: 'interview_raw.mp4',
-    type: 'video',
-    size: 156.8,
-    duration: '00:15:42',
-    created: '2024-01-16T14:22:00Z',
-    modified: '2024-01-16T14:22:00Z',
-    path: '/projects/documentary/footage',
-    tags: ['interview', 'raw', 'b-roll'],
-    metadata: { codec: 'h264', fps: 24, resolution: '4K' },
-    thumbnail: '/api/thumbnails/sha256:e5f6g7h8...',
-    status: 'processing'
-  },
-  {
-    id: 'sha256:i9j0k1l2...',
-    name: 'project_brief.pdf',
-    type: 'document',
-    size: 0.8,
-    pages: 12,
-    created: '2024-01-14T09:15:00Z',
-    modified: '2024-01-17T16:45:00Z',
-    path: '/projects/documentary/docs',
-    tags: ['brief', 'requirements'],
-    metadata: { author: 'David Cannan', version: '1.3' },
-    thumbnail: '/api/thumbnails/sha256:i9j0k1l2...',
-    status: 'processed'
-  }
-];
+// // Mock data structure representing your content-addressable assets
+// const mockAssets = [
+//   {
+//     id: 'sha256:a1b2c3d4...',
+//     name: 'mountain_sunset.jpg',
+//     type: 'image',
+//     size: 2.1,
+//     dimensions: '1920x1080',
+//     created: '2024-01-15T10:30:00Z',
+//     modified: '2024-01-15T10:30:00Z',
+//     path: '/projects/nature/photos',
+//     tags: ['landscape', 'sunset', 'mountains'],
+//     metadata: { camera: 'Nikon Z7', iso: 400, aperture: 'f/8' },
+//     thumbnail: '/api/thumbnails/sha256:a1b2c3d4...',
+//     status: 'processed'
+//   },
+//   {
+//     id: 'sha256:e5f6g7h8...',
+//     name: 'interview_raw.mp4',
+//     type: 'video',
+//     size: 156.8,
+//     duration: '00:15:42',
+//     created: '2024-01-16T14:22:00Z',
+//     modified: '2024-01-16T14:22:00Z',
+//     path: '/projects/documentary/footage',
+//     tags: ['interview', 'raw', 'b-roll'],
+//     metadata: { codec: 'h264', fps: 24, resolution: '4K' },
+//     thumbnail: '/api/thumbnails/sha256:e5f6g7h8...',
+//     status: 'processing'
+//   },
+//   {
+//     id: 'sha256:i9j0k1l2...',
+//     name: 'project_brief.pdf',
+//     type: 'document',
+//     size: 0.8,
+//     pages: 12,
+//     created: '2024-01-14T09:15:00Z',
+//     modified: '2024-01-17T16:45:00Z',
+//     path: '/projects/documentary/docs',
+//     tags: ['brief', 'requirements'],
+//     metadata: { author: 'David Cannan', version: '1.3' },
+//     thumbnail: '/api/thumbnails/sha256:i9j0k1l2...',
+//     status: 'processed'
+//   }
+// ];
 
-const mockFolders = [
-  { id: 'f1', name: 'Projects', path: '/projects', children: ['f2', 'f3'], expanded: true },
-  { id: 'f2', name: 'Nature Photography', path: '/projects/nature', children: ['f4'], expanded: false },
-  { id: 'f3', name: 'Documentary', path: '/projects/documentary', children: ['f5', 'f6'], expanded: true },
-  { id: 'f4', name: 'Photos', path: '/projects/nature/photos', children: [], expanded: false },
-  { id: 'f5', name: 'Footage', path: '/projects/documentary/footage', children: [], expanded: false },
-  { id: 'f6', name: 'Documents', path: '/projects/documentary/docs', children: [], expanded: false }
-];
+// const mockFolders = [
+//   { id: 'f1', name: 'Projects', path: '/projects', children: ['f2', 'f3'], expanded: true },
+//   { id: 'f2', name: 'Nature Photography', path: '/projects/nature', children: ['f4'], expanded: false },
+//   { id: 'f3', name: 'Documentary', path: '/projects/documentary', children: ['f5', 'f6'], expanded: true },
+//   { id: 'f4', name: 'Photos', path: '/projects/nature/photos', children: [], expanded: false },
+//   { id: 'f5', name: 'Footage', path: '/projects/documentary/footage', children: [], expanded: false },
+//   { id: 'f6', name: 'Documents', path: '/projects/documentary/docs', children: [], expanded: false }
+// ];
+
+useEffect(() => {
+  fetch('/api/v1/explorer/folders')
+    .then(r => r.json()).then(setFolders).catch(console.error)
+}, [])
+
+useEffect(() => {
+  fetch(`/api/v1/explorer/assets?path=${encodeURIComponent(currentPath)}`)
+    .then(r => r.json()).then(setAssets).catch(console.error)
+}, [currentPath])
 
 const AssetThumbnail = ({ asset, selected, onSelect, onPreview }) => {
   const getIcon = (type) => {

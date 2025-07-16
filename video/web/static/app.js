@@ -205,8 +205,8 @@ function mountDamExplorer () {
   // dynamic `import()` returns a promise; code is fetched on-demand
   import('/static/components/dam-explorer.js').then(mod => {
     // The default export is the React component
-    const React        = mod.default.__react__       // re-exported helper
-    const ReactDOM     = mod.default.__react_dom__   // re-exported helper
+    const React        = mod.__react__       // re-exported helper
+    const ReactDOM     = mod.__react_dom__   // re-exported helper
     const DAMExplorer  = mod.default
 
     const rootEl = document.getElementById('dam-root')

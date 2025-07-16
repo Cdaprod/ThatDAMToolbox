@@ -4,7 +4,7 @@
  *   • ExplorerCard     (JSON tree inside "glass-card" widget)
  * ------------------------------------------------------------------ */
 
-import { renderObject } from './object-renderer.js';
+import './object-renderer.js';  // side-effect only
 
 /* ╭──────────────────────────────────────────────────────────────╮
    │  1) <explorer-pane>  – custom element                        │
