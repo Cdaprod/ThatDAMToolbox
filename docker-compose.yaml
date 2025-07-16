@@ -5,7 +5,7 @@ services:
   video-api:
     build:
       context: .
-      dockerfile: Dockerfile            # Multi-arch build
+      dockerfile: Dockerfile2           # Multi-arch build
     image: cdaprod/video:dev
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
     # --- Networking (host-mode exposes 8080) ---
