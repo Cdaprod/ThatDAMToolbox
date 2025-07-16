@@ -1,7 +1,7 @@
 /* ----------------------------------------------------
  *  Extensible Video App Architecture  (single source of truth)
  * -------------------------------------------------- */
-import './static/components/upload-card.js';
+import '/static/components/upload-card.js';
 import '/static/components/batch-card.js';
 import '/static/components/video-card.js';
 
