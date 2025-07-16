@@ -4,6 +4,15 @@
 ## FROM PYTHONISTA PROTOTYPE... TO BEING DOCKERIZED PYTHON APPLICATION
 ### By David Cannan — Cdaprod
 
+## Explorer
+
+```
+
+Browser  →  FastAPI  →  DB
+                  ↘︎  Worker-queue → Workers (ML, ffmpeg)
+                  ↘︎  /data volume (raw assets)
+```
+
 <!-- markdown-toc start - don't edit this section -->
 - [MEDIA INDEXER](#media-indexer)
 - [AI/Hierarchical Media Leveling](#dam-core-system)
@@ -17,6 +26,7 @@
 <!-- markdown-toc end -->
 
 ## DAM Core System for AI Video Embedding Hierarchical Layering of Metadata Indexer
+
 
 ```mermaid
 sequenceDiagram

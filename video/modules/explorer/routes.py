@@ -70,3 +70,19 @@ async def batch_detail(batch_id: str,
 
     return CardResponse(batch_id=batch_id,
                         items=_manifest_to_cards(manifest))
+                        
+                        
+@router.get("", include_in_schema=False)
+async def redirect_root(limit: int = 50):
+    """302 helper so '/explorer?limit=' → '/explorer/?limit=' still works"""
+    return RedirectResponse(url=f"/api/v1/explorer/?limit={limit}")
+
+# ── Re-ordering / drag-and-drop -------------------------------------------
+@router.patch("/{sha1}", status_code=204)
+async def set_position(sha1: str, position: int = Body(..., ge=0),
+                       store: StorageEngine = Depends(_store)):
+    """
+    Persist new sort-order when the user drags cards around.
+    For now just save it in the DB – extend as you like.
+    """
+    store.set_position(sha1, position)   # ⚠️ implement in AutoStorage

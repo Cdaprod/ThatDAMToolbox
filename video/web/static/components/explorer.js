@@ -3,6 +3,7 @@
  *   • <explorer-pane>  (rich grid of <video-card>)
  *   • ExplorerCard     (JSON tree inside "glass-card" widget)
  * ------------------------------------------------------------------ */
+
 import { renderObject } from './object-renderer.js';
 
 /* ╭──────────────────────────────────────────────────────────────╮

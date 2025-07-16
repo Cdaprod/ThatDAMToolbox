@@ -1,36 +1,26 @@
-<details class="glass-card" open>
-  <summary>📹 Batch Video Upload</summary>
+<!-- partials/_upload_card.html -->
+<details class="glass-card" id="uploadCard" open>
+  <summary>📼 Upload</summary>
+
   <div class="card-body">
-    <form
-      id="uploadForm"
-      class="upload-form"
-      method="post"
-      enctype="multipart/form-data"
-    >
-      <div class="file-input-wrapper">
-        <input
-          type="file"
-          id="fileInput"
-          name="files"
-          multiple
-          accept="video/*"
-          required
-          class="file-input"
-        />
-        <label for="fileInput" class="file-input-label" id="fileLabel">
-          📁 Select Video Files
-        </label>
-      </div>
+    <!-- 1) file picker ---------------------------------------------------- -->
+    <input id="file-input"
+           type="file"
+           multiple
+           accept="video/*"
+           class="file-input"
+           style="margin:.5rem 0;" />
 
-      <input
-        type="text"
-        name="batch"
-        placeholder="Batch name (optional)"
-      />
+    <!-- 2) optional batch name ------------------------------------------- -->
+    <input id="batch-name"
+           type="text"
+           placeholder="Batch name (optional)"
+           class="input-text"
+           style="margin-bottom:.5rem;" />
 
-      <button type="submit" class="btn">🚀 Upload Batch</button>
-    </form>
+    <!-- 3) simple list updated by JS ------------------------------------- -->
+    <ul id="upload-list" class="small"></ul>
 
-    <div id="result" class="result-area" style="display:none;"></div>
+    <p class="hint">(files are uploaded immediately after selection -- no need to press a button)</p>
   </div>
 </details>

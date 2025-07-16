@@ -8,18 +8,19 @@ services:
       dockerfile: Dockerfile            # Multi-arch build
     image: cdaprod/video:dev
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
-
     # --- Networking (host-mode exposes 8080) ---
     network_mode: host
     # ports: ["8080:8080"]              # Unneeded in host mode
-
     # --- Environment ---------------------------
     environment:
       PYTHONWARNINGS: "ignore::DeprecationWarning"
       TZ: America/New_York
       UVICORN_WORKERS: "1"              # dev: 1  •  prod: 4
       # VIDEO_FORCE_STDHTTP: "1"        # Force stdlib HTTP (optional)
-
+      # ------------------------------------------------------------------
+      # Make ALL mutable data live under one bind-mount ( /data )
+      # ------------------------------------------------------------------
+      VIDEO_DATA_DIR: /data          # <- your DATA_DIR in video/config.py
       # --- Storage backend selector -------------
       VIDEO_STORAGE: "auto" 
       # VIDEO_STORAGE=sqlite                      # Default (no env needed)
@@ -35,24 +36,31 @@ services:
     #   - /dev/dri:/dev/dri             # DRM for encoders/GL
     device_cgroup_rules:
       - "c 81:* rmw"                    # hot-plug /dev/video*
-
     group_add:
       - "44"                            # video group (GID 44 on Pi OS)
     privileged: true                    # access /dev/video*
-
     # --- Storage mounts ------------------------
     volumes:
-      # - /mnt/nas:/mnt/nas:ro                           # NAS (optional, read-only)
-      - /mnt/b/Video/_INCOMING:/workspace/_INCOMING      # Working store
-      - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # Read-only archive
-      - ./video:/workspace/video:rw                     # Live code hot-reload
-      - ./data/media:/media:rw                          # Local media
-      - ./data/db:/workspace/db:rw                      # DB, thumbnails, etc.
-
+      # # - /mnt/nas:/mnt/nas:ro                           # NAS (optional, read-only)
+      #
+      # --- Deprecated Mounting Methods ------------
+      # - /mnt/b/Video/_INCOMING:/workspace/_INCOMING      # Working store
+      # - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # Read-only archive
+      # - ./video:/workspace/video:rw                     # Live code hot-reload
+      # - ./data/media:/media:rw                          # Local media
+      # - ./data/db:/workspace/db:rw                      # DB, thumbnails, etc.
+      #
+      # --- Production Mounts ---------------------
+      # 1. Entire persistent dataset (media, db, previews, …)
+      - /mnt/b/Video/thatdamtoolbox:/data:rw
+      # 2. Overlay the staging dir so the container sees it at /data/_INCOMING
+      - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
+      # 3. Live source for hot-reload (dev only, keep if you need it)
+      - ./video:/workspace/video:rw
     restart: unless-stopped
-
     # --- Entrypoint & Health -------------------
     entrypoint: ["python", "-m", "video"]
+    
     # command: [stats]                         # CLI command (optional)
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8080/health || exit 1"]

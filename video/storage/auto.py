@@ -37,6 +37,12 @@ def _ensure_event_loop_running(coro):
     except RuntimeError:
         return asyncio.run(coro)           # no loop → run to completion
 
+def set_position(self, sha1: str, pos: int) -> None:
+    cur = self._db.execute(
+        "UPDATE videos SET sort_order=? WHERE sha1=?",
+        (pos, sha1)
+    )
+    self._db.commit()
 
 # ---------------------------------------------------------------------------
 # main adapter
@@ -109,8 +115,12 @@ class AutoStorage(StorageEngine):
     # Simple passthroughs to MediaDB that higher layers rely on
     # ------------------------------------------------------------------
     def list_recent(self, limit: int = 50) -> list[dict]:
-        """Return the N newest VideoArtifact rows (created DESC)."""
-        return self._db.list_recent(limit)
+        rows = self._db.execute(
+            "SELECT sha1, path, width, height, mime, created_at "
+            "FROM videos ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        )
+        return [dict(r) for r in rows]
 
     # ---- VECTORS / SEARCH --------------------------------------------------
 
