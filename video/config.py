@@ -83,11 +83,14 @@ PREVIEW_ROOT  = _default_dir("VIDEO_PREVIEW_ROOT", "paths", "preview_root", str(
 DB_PATH       = _default_dir("VIDEO_DB_PATH", "paths", "db_path",        str(DATA_DIR / "db" / "media_index.sqlite3"))
 LOG_DIR       = _default_dir("VIDEO_LOG_DIR", "paths", "log_dir",        str(DATA_DIR / "logs"))
 TMP_DIR       = _default_dir("VIDEO_TMP_DIR", "paths", "tmp_dir",        str(DATA_DIR / "tmp"))
+# ── new: dedicated sub-folder used by the web uploader ──────────────────────
+WEB_UPLOADS   = get_path("paths", "web_uploads") or INCOMING_DIR / "web"          # → /_INCOMING/web
+WEB_UPLOADS.mkdir(parents=True, exist_ok=True)
 
 def ensure_dirs():
     for p in [
         DATA_DIR, MEDIA_ROOT, PROCESSED_DIR, PREVIEW_ROOT, LOG_DIR, TMP_DIR, DB_PATH.parent,
-        INCOMING_DIR
+        INCOMING_DIR, WEB_UPLOADS
     ]:
         try:
             p.mkdir(parents=True, exist_ok=True)
