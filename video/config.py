@@ -84,7 +84,7 @@ DB_PATH       = _default_dir("VIDEO_DB_PATH", "paths", "db_path",        str(DAT
 LOG_DIR       = _default_dir("VIDEO_LOG_DIR", "paths", "log_dir",        str(DATA_DIR / "logs"))
 TMP_DIR       = _default_dir("VIDEO_TMP_DIR", "paths", "tmp_dir",        str(DATA_DIR / "tmp"))
 # ── new: dedicated sub-folder used by the web uploader ──────────────────────
-WEB_UPLOADS   = get_path("paths", "web_uploads") or INCOMING_DIR / "web"          # → /_INCOMING/web
+WEB_UPLOADS   = get_path("paths", "web_uploads") or INCOMING_DIR / "sources/WEB_UPLOADS"          # → /_INCOMING/web
 WEB_UPLOADS.mkdir(parents=True, exist_ok=True)
 
 def ensure_dirs():
