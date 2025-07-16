@@ -16,6 +16,7 @@ from fastapi import (
     Form,
     HTTPException,
     UploadFile,
+    Body,
 )
 
 from video.core.ingest import ingest_files       # 🔸 background worker
