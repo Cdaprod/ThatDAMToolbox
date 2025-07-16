@@ -27,14 +27,15 @@ RUN npm install --location=global esbuild
 COPY video/web/static/components/dam-explorer.js ./static/components/
 
 # bundle + strip out JSX so the browser can import it directly
-RUN esbuild \
-     static/components/dam-explorer.js \
-     --bundle \
-     --outfile=static/components/dam-explorer.bundle.js \
-     --format=esm \
-     --target=es2022 \
-     --minify
-
+# --- in the frontend-build stage ---
+RUN esbuild ./src/dam-explorer.js \
+    --bundle \
+    --loader:.js=jsx \
+    --outfile=dam-explorer.bundle.js \
+    --format=esm \
+    --target=es2022 \
+    --minify
+    
 ############################
 # --- Stage 1: base layer --
 ############################

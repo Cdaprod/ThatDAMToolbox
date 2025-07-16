@@ -17,7 +17,7 @@ COPY video/web/static/components/dam-explorer.js ./src/
 # --- in the frontend-build stage ---
 RUN esbuild ./src/dam-explorer.js \
     --bundle \
-    --loader:.js=jsx \         # ← NEW: parse JSX in .js files
+    --loader:.js=jsx \
     --outfile=dam-explorer.bundle.js \
     --format=esm \
     --target=es2022 \
