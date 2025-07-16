@@ -34,7 +34,10 @@ import {
   Undo2,
   AlertCircle,
   Check,
-} from 'https://esm.sh/lucide-react@0.357.0';
+} from 'https://esm.sh/lucide-react@0.357.0?bundle';
+
+const mockAssets  = [];        // prevents ReferenceError
+const mockFolders = [];
 
 // // Mock data structure representing your content-addressable assets
 // const mockAssets = [
@@ -90,16 +93,6 @@ import {
 //   { id: 'f5', name: 'Footage', path: '/projects/documentary/footage', children: [], expanded: false },
 //   { id: 'f6', name: 'Documents', path: '/projects/documentary/docs', children: [], expanded: false }
 // ];
-
-useEffect(() => {
-  fetch('/api/v1/explorer/folders')
-    .then(r => r.json()).then(setFolders).catch(console.error)
-}, [])
-
-useEffect(() => {
-  fetch(`/api/v1/explorer/assets?path=${encodeURIComponent(currentPath)}`)
-    .then(r => r.json()).then(setAssets).catch(console.error)
-}, [currentPath])
 
 const AssetThumbnail = ({ asset, selected, onSelect, onPreview }) => {
   const getIcon = (type) => {
@@ -179,7 +172,7 @@ const FolderTree = ({ folders, currentPath, onPathChange, onFolderToggle }) => {
     if (!folder) return null;
 
     return (
-      <div key={folder.id} className={`ml-${level * 4}`}>
+      <div key={folder.id} style={{ marginLeft: level * 1 + 'rem' }}>
         <div 
           className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
             currentPath === folder.path ? 'bg-blue-50 text-blue-700' : ''
@@ -254,6 +247,20 @@ const DAMExplorer = () => {
   const [statusMessage, setStatusMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [undoStack, setUndoStack] = useState([]);
+  
+  useEffect(() => {
+    fetch('/api/v1/explorer/folders')
+      .then(r => r.json())
+      .then(setFolders)
+      .catch(console.error);
+  }, []);
+  
+  useEffect(() => {
+    fetch(`/api/v1/explorer/assets?path=${encodeURIComponent(currentPath)}`)
+      .then(r => r.json())
+      .then(setAssets)
+      .catch(console.error);
+  }, [currentPath]);
   
   // WebSocket connection for real-time updates
   const wsRef = useRef(null);
