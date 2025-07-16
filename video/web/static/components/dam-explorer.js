@@ -2,6 +2,11 @@
  * Pure browser-ESM: every dependency imported by absolute URL
  * (no bundler, no extra <script> tags).
  * ------------------------------------------------------------------ */
+import React    from 'https://esm.sh/react@18'
+import ReactDOM from 'https://esm.sh/react-dom@18/client'
+
+export const __react__     = React      // re-export helpers
+export const __react_dom__ = ReactDOM
 
 import React, { useState, useEffect, useRef, useCallback } from "https://esm.sh/react@18";
 import ReactDOM                                           from "https://esm.sh/react-dom@18/client";

@@ -195,3 +195,33 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+/**
+ * Load the big DAM-Explorer bundle *after* main content is interactive.
+ *  – requestIdleCallback → will wait until browser is idle
+ *  – if not supported, falls back to a 500 ms timeout
+ */
+function mountDamExplorer () {
+  // dynamic `import()` returns a promise; code is fetched on-demand
+  import('/static/components/dam-explorer.js').then(mod => {
+    // The default export is the React component
+    const React        = mod.default.__react__       // re-exported helper
+    const ReactDOM     = mod.default.__react_dom__   // re-exported helper
+    const DAMExplorer  = mod.default
+
+    const rootEl = document.getElementById('dam-root')
+    if (rootEl) {
+      ReactDOM.createRoot(rootEl).render(React.createElement(DAMExplorer))
+    }
+  }).catch(err => {
+    console.error('[DAM] failed to load:', err)
+    const rootEl = document.getElementById('dam-root')
+    if (rootEl) rootEl.textContent = '⚠️ Failed to load Explorer'
+  })
+}
+
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(mountDamExplorer, { timeout: 2000 })
+} else {
+  setTimeout(mountDamExplorer, 500)          // back-off for older browsers
+}
