@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from video.bootstrap        import STORAGE                 # AutoStorage singleton
 from video.storage.base     import StorageEngine
 from video.core             import get_manifest            # core.batch → manifest
