@@ -14,6 +14,27 @@
 #   docker run cdaprod/video:0.1.0 scan --root /data           # CLI one-shot
 ##############################################################################
 
+##############################################################################
+# Stage 0: build our React/JSX → ESM bundle for dam-explorer
+##############################################################################
+FROM node:18-alpine AS frontend-build
+WORKDIR /src
+
+# install esbuild
+RUN npm install --location=global esbuild
+
+# copy just the bit we need to bundle
+COPY video/web/static/components/dam-explorer.js ./static/components/
+
+# bundle + strip out JSX so the browser can import it directly
+RUN esbuild \
+     static/components/dam-explorer.js \
+     --bundle \
+     --outfile=static/components/dam-explorer.bundle.js \
+     --format=esm \
+     --target=es2022 \
+     --minify
+
 ############################
 # --- Stage 1: base layer --
 ############################
@@ -183,6 +204,11 @@ ENV PATH=$PATH:/home/appuser/.local/bin
 COPY --chown=appuser:appuser video/ /workspace/video
 COPY --chown=appuser:appuser setup.py /workspace/
 COPY --chown=appuser:appuser run_video.py /workspace/
+
+# overwrite the raw dam-explorer with the built bundle
+COPY --from=frontend-build \
+     /build/static/components/dam-explorer.bundle.js \
+     /workspace/video/web/static/components/dam-explorer.bundle.j
 
 # Auto-install all plugin requirements.txt (if any exist)
 RUN set -e; \
