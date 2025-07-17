@@ -1,5 +1,9 @@
-# /video/__init__.py
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
 """
+`video/__init__.py`
 That DAM Toolbox – *Pythonista-friendly*, pure-stdlib façade
 
 Updated directory layout (depth ≤ 1)
@@ -53,8 +57,6 @@ Typical usage
 >>> idx.scan()
 >>> idx.get_recent(10)
 """
-
-from __future__ import annotations
 
 import logging, time, sqlite3
 from pathlib import Path
