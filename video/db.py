@@ -19,44 +19,42 @@ _BOOTSTRAPPED  = False                # guarded WAL initialisation flag
 class MediaDB:
     """Thin wrapper around SQLite + a few convenience helpers."""
 
-    # ── ctor ────────────────────────────────────────────────────────────────
     def __init__(self, db_path: Optional[Path] = None) -> None:
         self.db_path = Path(db_path) if db_path else DB_FILE
 
-        # 1. **once per interpreter** put the file into WAL mode
         global _BOOTSTRAPPED
         if not _BOOTSTRAPPED:
             self._bootstrap_wal()
             _BOOTSTRAPPED = True
 
-        # 2. create / migrate schema
         self._init_db()
-
-        # 3. make sure the FTS mirror is in sync (best-effort)
         try:
             self._repair_fts()
-        except Exception as exc:       # pragma: no cover
+        except Exception as exc:
             import logging
             logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
 
-    # ── one-off WAL initialiser ────────────────────────────────────────────
-    def _bootstrap_wal(self,
-                       attempts: int = 5,
-                       backoff_s: float = 1.0) -> None:
-        """Switch the DB to WAL mode with a small retry loop."""
+    def _bootstrap_wal(
+        self,
+        attempts: int = 5,
+        backoff_s: float = 1.0
+    ) -> None:
+        """
+        Switch the DB to WAL mode, retrying on 'database is locked'.
+        """
         for n in range(1, attempts + 1):
             try:
                 with sqlite3.connect(self.db_path, timeout=30) as cx:
                     cx.execute("PRAGMA journal_mode=WAL;")
                     cx.execute("PRAGMA synchronous=NORMAL;")
                     cx.execute("PRAGMA busy_timeout=5000;")
-                return                              # success
+                return
             except sqlite3.OperationalError as exc:
-                if "locked" not in str(exc).lower() or n == attempts:
-                    raise                          # other error OR last try
-                time.sleep(backoff_s * n) 
+                msg = str(exc).lower()
+                if "locked" not in msg or n == attempts:
+                    raise
+                time.sleep(backoff_s * n)
 
-    # ── schema & migrations ─────────────────────────────────────────────────
     def _init_db(self) -> None:
         with self.conn() as cx:
             cx.execute("""
@@ -79,9 +77,8 @@ class MediaDB:
             """)
             cx.execute("CREATE INDEX IF NOT EXISTS idx_files_mtime ON files(mtime);")
             cx.execute("CREATE INDEX IF NOT EXISTS idx_files_batch ON files(batch);")
-            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_sha1  ON files(sha1);")
+            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_sha1 ON files(sha1);")
 
-            # copies table (album-sync bookkeeping)
             cx.execute("""
               CREATE TABLE IF NOT EXISTS copies (
                   sha1 TEXT PRIMARY KEY,
@@ -90,40 +87,39 @@ class MediaDB:
               );
             """)
 
-            # ---- FTS5 (lazy-created on very first run) --------------------
             if cx.execute("PRAGMA user_version").fetchone()[0] < 1:
                 cx.executescript("""
                   CREATE VIRTUAL TABLE files_fts
-                  USING fts5(path, mime, batch, content='files', content_rowid='rowid');
-
+                  USING fts5(
+                    path, mime, batch,
+                    content='files', content_rowid='rowid'
+                  );
                   CREATE TRIGGER files_ai AFTER INSERT ON files BEGIN
                     INSERT INTO files_fts(rowid,path,mime,batch)
                     VALUES (new.rowid,new.path,new.mime,new.batch);
                   END;
                   CREATE TRIGGER files_ad AFTER DELETE ON files BEGIN
-                    DELETE FROM files_fts WHERE rowid = old.rowid;
+                    DELETE FROM files_fts WHERE rowid=old.rowid;
                   END;
                   CREATE TRIGGER files_au AFTER UPDATE ON files BEGIN
                     UPDATE files_fts
                        SET path=new.path, mime=new.mime, batch=new.batch
-                     WHERE rowid = old.rowid;
+                     WHERE rowid=old.rowid;
                   END;
-
-                  PRAGMA user_version = 1;
+                  PRAGMA user_version=1;
                 """)
 
-    # ── tiny connection helper ──────────────────────────────────────────────
     @contextmanager
     def conn(self):
         cx = sqlite3.connect(
             self.db_path,
             timeout=30,
             check_same_thread=False,
-            isolation_level=None           # autocommit – plays well with WAL
+            isolation_level=None
         )
         cx.row_factory = sqlite3.Row
-        cx.execute("PRAGMA foreign_keys = ON;")
-        cx.execute("PRAGMA busy_timeout = 5000;")
+        cx.execute("PRAGMA foreign_keys=ON;")
+        cx.execute("PRAGMA busy_timeout=5000;")
         try:
             yield cx
             cx.commit()
@@ -300,18 +296,19 @@ class MediaDB:
     # Only _repair_fts() implementation shown – keep the rest of your helpers
     def _repair_fts(self) -> int:
         with self.conn() as cx:
-            if not cx.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='files_fts'"
-            ).fetchone():
+            exists = cx.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='files_fts'"
+            ).fetchone()
+            if not exists:
                 return 0
             missing = cx.execute("""
-              SELECT rowid, path, mime, batch
+              SELECT rowid,path,mime,batch
                 FROM files
                WHERE rowid NOT IN (SELECT rowid FROM files_fts)
             """).fetchall()
             for r in missing:
                 cx.execute(
-                  "INSERT INTO files_fts(rowid,path,mime,batch)VALUES(?,?,?,?)",
+                  "INSERT INTO files_fts(rowid,path,mime,batch) VALUES (?,?,?,?)",
                   (r["rowid"], r["path"], r["mime"], r["batch"])
                 )
             return len(missing)
