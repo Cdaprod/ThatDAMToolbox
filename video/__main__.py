@@ -39,25 +39,37 @@ def _want_cli() -> bool:
 
 
 def main() -> None:  # pragma: no-cover
-    if _want_cli():
-        # ─── CLI mode ────────────────────────────────────────────────────────
-        from .cli import run_cli
+    """
+    •   `video --help`        →  full CLI help
+    •   `video`               →  prints help (no silent exit)
+    •   all other args        →  CLI
+    •   if env VIDEO_MODE=api →  force API
+    """
+    from video.cli import run_cli, build_parser
+    from video.bootstrap import start_server
 
-        run_cli()
+    # -- show help + exit
+    if len(sys.argv) == 1 or sys.argv[1] in ("-h", "--help"):
+        build_parser().print_help()
         return
 
-    # ─── API / server mode ──────────────────────────────────────────────────
+    # explicit API override
+    if os.getenv("VIDEO_MODE", "").lower() == "api":
+        pass  # fall through to API branch below
+    else:
+        run_cli()              # all CLI verbs handled here
+        return
+
+    # ───── API branch (FastAPI if available, else stdlib HTTP) ─────────
     force_std = os.getenv("VIDEO_FORCE_STDHTTP") == "1"
     if not force_std and _have("fastapi") and _have("uvicorn"):
-        from video.api import app  # lazy import – only if deps exist
+        from video.api import app     # lazy import
         import uvicorn
 
         uvicorn.run(app, host="0.0.0.0", port=8080, workers=WORKERS)
     else:
         from video.server import serve
-
         serve()
-
 
 if __name__ == "__main__":
     main()

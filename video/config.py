@@ -3,6 +3,8 @@
 from pathlib import Path
 import configparser
 import os
+import logging
+
 
 # ─── INI Config Path (allow override via $VIDEO_CFG) ─────────────────────────
 _cfg_path = Path(os.getenv("VIDEO_CFG", str(Path.home() / "video" / "video.cfg")))
@@ -87,19 +89,6 @@ TMP_DIR       = _default_dir("VIDEO_TMP_DIR", "paths", "tmp_dir",        str(DAT
 WEB_UPLOADS   = get_path("paths", "web_uploads") or INCOMING_DIR / "sources/WEB_UPLOADS"          # → /_INCOMING/web
 WEB_UPLOADS.mkdir(parents=True, exist_ok=True)
 
-def ensure_dirs():
-    for p in [
-        DATA_DIR, MEDIA_ROOT, PROCESSED_DIR, PREVIEW_ROOT, LOG_DIR, TMP_DIR, DB_PATH.parent,
-        INCOMING_DIR, WEB_UPLOADS
-    ]:
-        try:
-            p.mkdir(parents=True, exist_ok=True)
-            print(f"✔️ Ensured directory: {p}")
-        except Exception as e:
-            print(f"⚠️ Could not create {p}: {e}")
-
-ensure_dirs()  # Auto-create on import
-
 # ─── All Scan Roots ─────────────────────────────────────────────────────────
 def get_all_roots() -> list[Path]:
     """
@@ -136,3 +125,38 @@ def print_config():
     print(f"LOG_DIR:      {LOG_DIR}")
     print(f"TMP_DIR:      {TMP_DIR}")
     print(f"SCAN ROOTS:   {get_all_roots()}")
+    
+
+# ──────────────────────────────────────────────────────────────────────────
+#  create all required directories – no more console spam
+# ──────────────────────────────────────────────────────────────────────────
+log = logging.getLogger("video.config")
+_DIRS_CREATED = False          # idempotence guard
+
+def ensure_dirs(*, verbose: bool = False) -> None:
+    """
+    Create every runtime directory exactly **once** per process.
+
+    • When `verbose=True` (or env VIDEO_VERBOSE_DIRS=1) we log at INFO.  
+    • Otherwise messages are DEBUG – invisible unless you enable them.
+    """
+    global _DIRS_CREATED
+    if _DIRS_CREATED:
+        return                # already done in this interpreter
+
+    targets = [
+        DATA_DIR, MEDIA_ROOT, PROCESSED_DIR, PREVIEW_ROOT, LOG_DIR, TMP_DIR,
+        DB_PATH.parent, INCOMING_DIR, WEB_UPLOADS
+    ]
+    for p in targets:
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            msg = "Ensured directory: %s", p
+            if verbose or os.getenv("VIDEO_VERBOSE_DIRS") == "1":
+                log.info(*msg)
+            else:
+                log.debug(*msg)
+        except Exception as e:
+            log.warning("Could not create %s: %s", p, e)
+
+    _DIRS_CREATED = True
