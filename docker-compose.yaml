@@ -28,6 +28,7 @@ services:
       # VIDEO_STORAGE=weaviate                    # Use Weaviate backend
       # WEAVIATE_URL=http://localhost:8081        # For Weaviate backend:
       # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
+      VIDEO_DEBUG_BOOT: "0"
     # --- Device permissions & hotplug ----------
     # devices:
     #   - /dev/video0:/dev/video0

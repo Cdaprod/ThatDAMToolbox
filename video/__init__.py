@@ -75,7 +75,8 @@ def _make_db_with_retry(
 
 print(f"video/__init__.py: Creating DB singleton (MediaDB)")
 print(f"INITIALIZING DB: {__name__} in {__file__}")
-import traceback; traceback.print_stack()
+if os.getenv("VIDEO_DEBUG_BOOT") == "1":
+    import traceback; traceback.print_stack()
 
 # canonical, shared connection
 DB: _MediaDB = _make_db_with_retry()
