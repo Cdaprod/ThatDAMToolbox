@@ -40,22 +40,21 @@ class MediaDB:
             logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
 
     # ── one-off WAL initialiser ────────────────────────────────────────────
-    def _bootstrap_wal(self, attempts: int = 5, backoff_s: float = 1.0) -> None:
-        """
-        Put the DB into WAL mode. Retries a few times if another process
-        is holding the schema lock at the exact same moment.
-        """
+    def _bootstrap_wal(self,
+                       attempts: int = 5,
+                       backoff_s: float = 1.0) -> None:
+        """Switch the DB to WAL mode with a small retry loop."""
         for n in range(1, attempts + 1):
             try:
                 with sqlite3.connect(self.db_path, timeout=30) as cx:
-                    cx.execute("PRAGMA journal_mode = WAL;")
-                    cx.execute("PRAGMA synchronous  = NORMAL;")
-                    cx.execute("PRAGMA busy_timeout = 5000;")
-                return  # success
+                    cx.execute("PRAGMA journal_mode=WAL;")
+                    cx.execute("PRAGMA synchronous=NORMAL;")
+                    cx.execute("PRAGMA busy_timeout=5000;")
+                return                              # success
             except sqlite3.OperationalError as exc:
                 if "locked" not in str(exc).lower() or n == attempts:
-                    raise
-                time.sleep(backoff_s * n)
+                    raise                          # other error OR last try
+                time.sleep(backoff_s * n) 
 
     # ── schema & migrations ─────────────────────────────────────────────────
     def _init_db(self) -> None:
