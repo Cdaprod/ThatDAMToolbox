@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from __future__ import annotations
-
 """
 `video/__init__.py`
 That DAM Toolbox – *Pythonista-friendly*, pure-stdlib façade
@@ -48,15 +46,10 @@ Typical usage
 >>> idx.get_recent(10)              # quick query
 >>> idx.backup(Path("/mnt/backups"))
 
-High-level façade for That DAM Toolbox (pure-stdlib).
-
-Typical usage
-─────────────
->>> from video import MediaIndexer
->>> idx = MediaIndexer()
->>> idx.scan()
->>> idx.get_recent(10)
+High-level façade for "Cdaprod: That DAM Toolbox" (pure-stdlib).
 """
+
+from __future__ import annotations
 
 import logging, time, sqlite3
 from pathlib import Path
