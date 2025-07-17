@@ -17,7 +17,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from video.db import MediaDB
-from .base   import StorageEngine          # abstract interface
+from video.storage.base   import StorageEngine          # abstract interface
+from video.storage.wal_proxy import WALProxyDB
 
 log = logging.getLogger("video.auto_store")
 
@@ -73,7 +74,8 @@ class AutoStorage(StorageEngine):
 
         # --- metadata layer -------------------------------------------------
         default_db = Path.home() / "thatdamtoolbox" / "db" / "media_index.sqlite3"
-        self._db   = MediaDB(db_path or default_db)
+        #self._db   = MediaDB(db_path or default_db) # Disabled for video.storage.wal_proxy
+        self._db = WALProxyDB(db_path or default_db)
 
         # --- vector layer (optional) ----------------------------------------
         try:
