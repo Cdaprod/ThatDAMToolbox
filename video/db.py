@@ -308,4 +308,10 @@ class MediaDB:
 # module-level singleton: **import once, use everywhere**
 # ---------------------------------------------------------------------------
 
-DB = MediaDB()         # noqa: E305  (lint: two blank lines before top-level var)
+#DB = MediaDB()         # noqa: E305  (lint: two blank lines before top-level var)
+
+#---------------------------------------------------------------------------
+# NOTE                                                                      
+# A single, shared instance is now created in **video/__init__.py** so that
+# all import paths converge on the same object and we avoid start-up races. 
+# ---------------------------------------------------------------------------
