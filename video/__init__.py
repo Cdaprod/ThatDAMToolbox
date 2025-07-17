@@ -44,80 +44,95 @@ Typical usage
 >>> idx.get_recent(10)              # quick query
 >>> idx.backup(Path("/mnt/backups"))
 """
-#!/usr/bin/env python3
+# /video/__init__.py
+"""
+High-level façade for That DAM Toolbox (pure-stdlib).
+
+Typical usage
+─────────────
+>>> from video import MediaIndexer
+>>> idx = MediaIndexer()
+>>> idx.scan()
+>>> idx.get_recent(10)
+"""
 
 from __future__ import annotations
 
-import logging
+import logging, time, sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# ── shared / global objects ────────────────────────────────────────────────
-from .db import MediaDB as _MediaDB          # real class
-DB: _MediaDB = _MediaDB()                    # one canonical connection
+# ─────────────────────────────────────────────────────────────────────────────
+# 1.  Shared database instance – created once with a polite retry
+# ─────────────────────────────────────────────────────────────────────────────
+from .db import MediaDB as _MediaDB   # real class
+
+def _make_db_with_retry(
+    attempts: int = 5,
+    backoff_s: float = 1.0,
+) -> _MediaDB:
+    """
+    Create (and migrate) the SQLite file, retrying on the rare
+    "database is locked" that can happen when several new workers
+    start at the exact same time.
+    """
+    for n in range(1, attempts + 1):
+        try:
+            return _MediaDB()         # first attempt
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).lower() or n == attempts:
+                raise
+            time.sleep(backoff_s * n)  # linear back-off and try again
+
+DB: _MediaDB = _make_db_with_retry()   # canonical connection
 
 # Public alias so callers can still say `from video import MediaDB`
-MediaDB = _MediaDB                           # type: ignore
+MediaDB = _MediaDB                     # type: ignore[attr-defined]
 
+# ─────────────────────────────────────────────────────────────────────────────
 from .scanner import Scanner
-from .sync import PhotoSync
+from .sync     import PhotoSync
 
-log = logging.getLogger("video")
+log = logging.getLogger(__name__)
 
-# ────────────────────────────────────────────────────────────────────────────
 class MediaIndexer:
     """
-    One high-level façade object that glues together scanner ⇆ DB ⇆ sync.
-
-    Parameters
-    ----------
-    root_path : Path | str | None
-        Directory to scan (defaults to config.MEDIA_ROOT).
-    db_path   : Path | str | None
-        Custom SQLite file – **rarely needed**. If given, a private
-        `MediaDB(db_path)` is created instead of re-using the global `DB`.
-    db        : MediaDB | None
-        Pass an explicit MediaDB instance (test doubles, in-memory DB, …).
+    Glue object that unifies scanner ⇆ DB ⇆ (optional) Photos sync.
     """
 
     def __init__(
         self,
         *,
         root_path: Path | str | None = None,
-        db_path: Path | str | None = None,
-        db: _MediaDB | None = None,
+        db_path:   Path | str | None = None,
+        db:        _MediaDB | None   = None,
     ) -> None:
+
+        # choose which DB instance this indexer should use
         if db is not None:
             self.db = db
         elif db_path is not None:
-            self.db = _MediaDB(db_path)
+            self.db = _MediaDB(db_path)   # private instance
         else:
-            self.db = DB                       # shared singleton
+            self.db = DB                  # shared singleton
 
-        self.scanner: Scanner = Scanner(self.db, root_path)
-        self.sync:    PhotoSync = PhotoSync(self.db)
+        self.scanner = Scanner(self.db, root_path)
+        self.sync    = PhotoSync(self.db)
 
-        log.debug(
-            "MediaIndexer ready (db=%s, root=%s)",
-            self.db.db_path,
-            self.scanner.root_path,
-        )
+        log.debug("MediaIndexer ready (db=%s, root=%s)",
+                  self.db.db_path, self.scanner.root_path)
 
     # ─────────── scanning ───────────
-    def scan(
-        self,
-        root_path: Path | None = None,
-        workers: int = 4,
-    ) -> Dict[str, int]:
-        """Walk *root_path* (defaults to ctor arg) and (re)index media files."""
+    def scan(self, root_path: Path | None = None, workers: int = 4
+             ) -> Dict[str, int]:
         return self.scanner.bulk_scan(root_path, workers)
 
     # ─────────── queries ───────────
     def get_recent(self, limit: int = 20) -> List[Dict[str, Any]]:
         return self.db.list_recent(limit)
 
-    def get_by_batch(self, batch_name: str) -> List[Dict[str, Any]]:
-        return self.db.list_by_batch(batch_name)
+    def get_by_batch(self, batch: str) -> List[Dict[str, Any]]:
+        return self.db.list_by_batch(batch)
 
     def get_all(self) -> List[Dict[str, Any]]:
         return self.db.list_all_files()
@@ -126,19 +141,12 @@ class MediaIndexer:
         return self.db.get_stats()
 
     # ─────────── Photos / sync ───────────
-    def sync_photos_album(
-        self,
-        album_name: str,
-        category: str = "edit",
-    ) -> Dict[str, Any]:
-        return self.sync.sync_album(album_name, category)
+    def sync_photos_album(self, album: str, category: str = "edit"
+                          ) -> Dict[str, Any]:
+        return self.sync.sync_album(album, category)
 
     # ─────────── backup helper ───────────
     def backup(self, backup_root: Path) -> Dict[str, Any]:
-        """
-        Copy **indexed** files to *backup_root* with idempotence
-        (skips SHA-1s already copied before).
-        """
         import shutil
 
         copied = skipped = 0
@@ -146,9 +154,8 @@ class MediaIndexer:
             src   = Path(rec["path"])
             sha1  = rec["sha1"]
             batch = rec["batch"] or "_UNSORTED"
-            tgt_dir = backup_root / batch
-            tgt_dir.mkdir(parents=True, exist_ok=True)
-            tgt = tgt_dir / src.name
+            tgt   = backup_root / batch / src.name
+            tgt.parent.mkdir(parents=True, exist_ok=True)
 
             if self.db.already_copied(sha1):
                 skipped += 1
@@ -170,32 +177,27 @@ class MediaIndexer:
         self,
         *,
         scan_workers: int = 4,
-        sync_album: str | None = None,
+        sync_album:   str | None = None,
         sync_category: str = "edit",
     ) -> Dict[str, Any]:
-        """
-        Convenience wrapper suitable for CI / GUI tools:
 
-        1. scan() with the given worker pool
-        2. optional iOS Photos import
-        3. return merged statistics
-        """
         stats = self.scan(workers=scan_workers)
         if sync_album:
-            stats["photos_sync"] = self.sync_photos_album(sync_album, sync_category)
+            stats["photos_sync"] = self.sync_photos_album(sync_album,
+                                                          sync_category)
         stats["db"] = self.get_stats()
         return stats
 
 
-# ── re-export helpers & plugin discovery ────────────────────────────────────
-from . import config as config        # noqa: E402
-from .cli import run_cli as _run_cli  # noqa: E402
-from .modules import routers          # noqa: E402  (auto-loads plug-ins)
+# ── re-export helpers & plug-in discovery ───────────────────────────────────
+from . import config as config          # noqa: E402
+from .cli import run_cli as _run_cli    # noqa: E402
+from .modules import routers            # noqa: E402 (auto-loads plug-ins)
 
 __all__ = [
     "MediaIndexer",
-    "MediaDB",   # alias for the class
-    "DB",        # shared instance
+    "MediaDB",  # class alias
+    "DB",       # shared instance
     "Scanner",
     "PhotoSync",
     "config",
