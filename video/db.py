@@ -48,16 +48,15 @@ class MediaDB:
         for n in range(1, attempts + 1):
             try:
                 with sqlite3.connect(self.db_path, timeout=30) as cx:
-                    cx.execute("PRAGMA journal_mode = WAL;")   # durable concurrency
-                    cx.execute("PRAGMA synchronous  = NORMAL;")# good balance
-                    cx.execute("PRAGMA busy_timeout = 5000;")  # polite wait
-                return                      # success – we're done
+                    cx.execute("PRAGMA journal_mode = WAL;")
+                    cx.execute("PRAGMA synchronous  = NORMAL;")
+                    cx.execute("PRAGMA busy_timeout = 5000;")
+                return  # success
             except sqlite3.OperationalError as exc:
-                # Only retry on the classic "database is locked" race
                 if "locked" not in str(exc).lower() or n == attempts:
                     raise
-                time.sleep(backoff_s * n)   # linear back-off and retry
-                
+                time.sleep(backoff_s * n)
+
     # ── schema & migrations ─────────────────────────────────────────────────
     def _init_db(self) -> None:
         with self.conn() as cx:
