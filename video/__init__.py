@@ -43,9 +43,7 @@ Typical usage
 >>> idx.scan()                      # walk & index
 >>> idx.get_recent(10)              # quick query
 >>> idx.backup(Path("/mnt/backups"))
-"""
-# /video/__init__.py
-"""
+
 High-level façade for That DAM Toolbox (pure-stdlib).
 
 Typical usage
