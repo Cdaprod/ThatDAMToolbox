@@ -285,24 +285,23 @@ class MediaDB:
         return total
 
     def _repair_fts(self) -> int:
-        """
-        Ensure files_fts contains all files rows (backfill for FTS triggers).
-        Returns the number of rows added.
-        """
+        """Backfill FTS index if any rows are missing."""
         with self.conn() as cx:
-            has_fts = cx.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='files_fts'").fetchone()
+            has_fts = cx.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='files_fts'"
+            ).fetchone()
             if not has_fts:
                 return 0
-            missing_rowids = cx.execute("""
+            missing = cx.execute("""
                 SELECT rowid, path, mime, batch FROM files
                 WHERE rowid NOT IN (SELECT rowid FROM files_fts)
             """).fetchall()
-            for row in missing_rowids:
+            for r in missing:
                 cx.execute(
                     "INSERT INTO files_fts(rowid, path, mime, batch) VALUES (?, ?, ?, ?)",
-                    (row["rowid"], row["path"], row["mime"], row["batch"])
+                    (r["rowid"], r["path"], r["mime"], r["batch"])
                 )
-            return len(missing_rowids)
+            return len(missing)
 
 
 # ---------------------------------------------------------------------------
