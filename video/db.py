@@ -1,117 +1,122 @@
-# /video/db.py
-"""Database interface module - pure stdlib"""
-from .config import DB_PATH
+# /video/db.py  – stand-alone replacement
+"""SQLite helper – one canonical connection for the whole Video stack."""
 
-import sqlite3
-import os
-from pathlib import Path
+from __future__ import annotations
+import sqlite3, os
+from pathlib    import Path
 from contextlib import contextmanager
-from datetime import datetime
-from typing import Optional, List, Dict, Any
+from datetime   import datetime
+from typing     import Optional, List, Dict, Any
 
-# ---------------------------------------------------------------------------
-# ONE canonical file for the whole stack
-# ---------------------------------------------------------------------------
+from .config import DB_PATH                     # resolved by video.config
 
-#   ENV override      cfg.ini      fallback
-DB_FILE = Path( os.getenv("VIDEO_DB_PATH", str(DB_PATH)) ).expanduser()
+# ─────────────────────────────────────────────────────────────────────────────
+DB_FILE        = Path(os.getenv("VIDEO_DB_PATH", str(DB_PATH))).expanduser()
+_BOOTSTRAPPED  = False                # guarded WAL initialisation flag
 
+# ─────────────────────────────────────────────────────────────────────────────
 class MediaDB:
-    """SQLite database interface for media files"""
+    """Thin wrapper around SQLite + a few convenience helpers."""
 
-    def __init__(self, db_path: Optional[Path] = None):
-        # self.db_path = db_path or (Path.home() / "media_index.sqlite3")
+    # ── ctor ────────────────────────────────────────────────────────────────
+    def __init__(self, db_path: Optional[Path] = None) -> None:
         self.db_path = Path(db_path) if db_path else DB_FILE
+
+        # 1. **once per interpreter** put the file into WAL mode
+        global _BOOTSTRAPPED
+        if not _BOOTSTRAPPED:
+            self._bootstrap_wal()
+            _BOOTSTRAPPED = True
+
+        # 2. create / migrate schema
         self._init_db()
+
+        # 3. make sure the FTS mirror is in sync (best-effort)
         try:
             self._repair_fts()
-        except Exception as e:
-            # Log but never block startup; users don't need to know
+        except Exception as exc:       # pragma: no cover
             import logging
-            logging.getLogger("video.db").warning(f"FTS repair skipped: {e}")
+            logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
 
+    # ── one-off WAL initialiser ─────────────────────────────────────────────
+    def _bootstrap_wal(self) -> None:
+        """
+        Open the DB **once**, switch to WAL and set a generous busy-timeout.
+        All later connections inherit these settings automatically.
+        """
+        with sqlite3.connect(self.db_path, timeout=30) as cx:
+            cx.execute("PRAGMA journal_mode = WAL;")      # durable concurrency
+            cx.execute("PRAGMA synchronous  = NORMAL;")   # good balance
+            cx.execute("PRAGMA busy_timeout = 5000;")     # polite wait
 
-    def _init_db(self):
-        """Initialize database schema and perform migrations"""
+    # ── schema & migrations ─────────────────────────────────────────────────
+    def _init_db(self) -> None:
         with self.conn() as cx:
-            # ─── Base table with new columns ───────────────────────────
             cx.execute("""
-                CREATE TABLE IF NOT EXISTS files (
-                    id            TEXT PRIMARY KEY,
-                    path          TEXT UNIQUE NOT NULL,
-                    size_bytes    INTEGER NOT NULL,
-                    mtime         TEXT NOT NULL,
-                    mime          TEXT,
-                    width_px      INTEGER,
-                    height_px     INTEGER,
-                    duration_s    REAL,
-                    batch         TEXT,
-                    sha1          TEXT,
-                    created_at    TEXT NOT NULL,
-                    version       INTEGER DEFAULT 1,
-                    parent_id     TEXT,
-                    preview_path  TEXT
-                )
+              CREATE TABLE IF NOT EXISTS files (
+                  id           TEXT PRIMARY KEY,
+                  path         TEXT UNIQUE NOT NULL,
+                  size_bytes   INTEGER NOT NULL,
+                  mtime        TEXT NOT NULL,
+                  mime         TEXT,
+                  width_px     INTEGER,
+                  height_px    INTEGER,
+                  duration_s   REAL,
+                  batch        TEXT,
+                  sha1         TEXT,
+                  created_at   TEXT NOT NULL,
+                  version      INTEGER DEFAULT 1,
+                  parent_id    TEXT,
+                  preview_path TEXT
+              );
             """)
-            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_mtime ON files(mtime)")
-            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_batch ON files(batch)")
-            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_sha1 ON files(sha1)")
+            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_mtime ON files(mtime);")
+            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_batch ON files(batch);")
+            cx.execute("CREATE INDEX IF NOT EXISTS idx_files_sha1  ON files(sha1);")
 
-            # ─── Sync tracking table ────────────────────────────────────
+            # copies table (album-sync bookkeeping)
             cx.execute("""
-                CREATE TABLE IF NOT EXISTS copies (
-                    sha1 TEXT PRIMARY KEY,
-                    dest TEXT,
-                    ts   REAL
-                )
+              CREATE TABLE IF NOT EXISTS copies (
+                  sha1 TEXT PRIMARY KEY,
+                  dest TEXT,
+                  ts   REAL
+              );
             """)
 
-            # ─── Full-text search setup ─────────────────────────────────
-            # Only on first run (user_version = 0 → set to 1)
-            cur_ver = cx.execute("PRAGMA user_version").fetchone()[0]
-            if cur_ver < 1:
+            # ---- FTS5 (lazy-created on very first run) --------------------
+            if cx.execute("PRAGMA user_version").fetchone()[0] < 1:
                 cx.executescript("""
-                    CREATE VIRTUAL TABLE IF NOT EXISTS files_fts
-                    USING fts5(path, mime, batch, content='files', content_rowid='rowid');
+                  CREATE VIRTUAL TABLE files_fts
+                  USING fts5(path, mime, batch, content='files', content_rowid='rowid');
 
-                    CREATE TRIGGER IF NOT EXISTS files_ai AFTER INSERT ON files BEGIN
-                      INSERT INTO files_fts(rowid, path, mime, batch)
-                      VALUES (new.rowid, new.path, new.mime, new.batch);
-                    END;
+                  CREATE TRIGGER files_ai AFTER INSERT ON files BEGIN
+                    INSERT INTO files_fts(rowid,path,mime,batch)
+                    VALUES (new.rowid,new.path,new.mime,new.batch);
+                  END;
+                  CREATE TRIGGER files_ad AFTER DELETE ON files BEGIN
+                    DELETE FROM files_fts WHERE rowid = old.rowid;
+                  END;
+                  CREATE TRIGGER files_au AFTER UPDATE ON files BEGIN
+                    UPDATE files_fts
+                       SET path=new.path, mime=new.mime, batch=new.batch
+                     WHERE rowid = old.rowid;
+                  END;
 
-                    CREATE TRIGGER IF NOT EXISTS files_ad AFTER DELETE ON files BEGIN
-                      DELETE FROM files_fts WHERE rowid = old.rowid;
-                    END;
-
-                    CREATE TRIGGER IF NOT EXISTS files_au AFTER UPDATE ON files BEGIN
-                      UPDATE files_fts 
-                        SET path = new.path, mime = new.mime, batch = new.batch
-                        WHERE rowid = old.rowid;
-                    END;
-
-                    PRAGMA user_version = 1;
+                  PRAGMA user_version = 1;
                 """)
 
-    def _bootstrap_wal(self) -> None:
-        """Run exactly once per process – puts the DB into WAL if not yet."""
-        with sqlite3.connect(self.db_path) as cx:
-            cx.execute("PRAGMA journal_mode=WAL;")
-            cx.execute("PRAGMA busy_timeout=5000;")
-
+    # ── tiny connection helper ──────────────────────────────────────────────
     @contextmanager
     def conn(self):
-        """
-        Light-weight connection helper used everywhere else.
-        The file is already in WAL so we **don’t** try to switch modes again.
-        """
         cx = sqlite3.connect(
             self.db_path,
             timeout=30,
             check_same_thread=False,
-            isolation_level=None
+            isolation_level=None           # autocommit – plays well with WAL
         )
         cx.row_factory = sqlite3.Row
-        cx.execute("PRAGMA foreign_keys = ON")
+        cx.execute("PRAGMA foreign_keys = ON;")
+        cx.execute("PRAGMA busy_timeout = 5000;")
         try:
             yield cx
             cx.commit()
@@ -284,31 +289,31 @@ class MediaDB:
         self._repair_fts()
         return total
 
+
+    # Only _repair_fts() implementation shown – keep the rest of your helpers
     def _repair_fts(self) -> int:
-        """Backfill FTS index if any rows are missing."""
         with self.conn() as cx:
-            has_fts = cx.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='files_fts'"
-            ).fetchone()
-            if not has_fts:
+            if not cx.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='files_fts'"
+            ).fetchone():
                 return 0
             missing = cx.execute("""
-                SELECT rowid, path, mime, batch FROM files
-                WHERE rowid NOT IN (SELECT rowid FROM files_fts)
+              SELECT rowid, path, mime, batch
+                FROM files
+               WHERE rowid NOT IN (SELECT rowid FROM files_fts)
             """).fetchall()
             for r in missing:
                 cx.execute(
-                    "INSERT INTO files_fts(rowid, path, mime, batch) VALUES (?, ?, ?, ?)",
-                    (r["rowid"], r["path"], r["mime"], r["batch"])
+                  "INSERT INTO files_fts(rowid,path,mime,batch)VALUES(?,?,?,?)",
+                  (r["rowid"], r["path"], r["mime"], r["batch"])
                 )
             return len(missing)
-
 
 # ---------------------------------------------------------------------------
 # module-level singleton: **import once, use everywhere**
 # ---------------------------------------------------------------------------
 
-#DB = MediaDB()         # noqa: E305  (lint: two blank lines before top-level var)
+# DB = MediaDB()         # noqa: E305  (lint: two blank lines before top-level var)
 
 #---------------------------------------------------------------------------
 # NOTE                                                                      
