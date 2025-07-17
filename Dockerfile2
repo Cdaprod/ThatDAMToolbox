@@ -176,5 +176,16 @@ RUN set -e; \
     [ -s /tmp/extra.txt ] && pip install --no-cache-dir --user -r /tmp/extra.txt || true
 
 EXPOSE 8080
+
+# ── Runtime behaviour ───────────────────────────────────────────────────────
+# By default we rely on the smart launcher in `video/__main__.py`:
+#   • `docker run …`  → API server on :8080
+#   • `docker run … stats` → CLI pass-through
 ENTRYPOINT ["python", "-m", "video"]
-CMD [] 
+
+# You can still override at run-time:
+#   FASTAPI=0 docker run …        → forces stdlib HTTP server
+#   python -m video serve --port 8888 … inside container for custom port
+#
+# Keep CMD empty so positional args go straight into ENTRYPOINT
+CMD []

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 """
-`video/__init__.py`
 That DAM Toolbox – *Pythonista-friendly*, pure-stdlib façade
 
 Updated directory layout (depth ≤ 1)
@@ -45,83 +45,91 @@ Typical usage
 >>> idx.scan()                      # walk & index
 >>> idx.get_recent(10)              # quick query
 >>> idx.backup(Path("/mnt/backups"))
-
-High-level façade for "Cdaprod: That DAM Toolbox" (pure-stdlib).
 """
 
-from __future__ import annotations
-
-import logging, time, sqlite3
+import logging
+import sqlite3
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1.  Shared database instance – created once with a polite retry
-# ─────────────────────────────────────────────────────────────────────────────
-from .db import MediaDB as _MediaDB   # real class
+# ── shared / global objects ────────────────────────────────────────────────
+from .db import MediaDB as _MediaDB
 
-def _make_db_with_retry(attempts: int = 5, backoff_s: float = 1.0) -> _MediaDB:
+def _make_db_with_retry(
+    attempts: int = 5,
+    backoff_s: float = 1.0,
+) -> _MediaDB:
     """
-    Build the global MediaDB, retrying on rare 'database is locked' errors
-    that can occur when several workers start simultaneously.
+    Create the global MediaDB instance, retrying on 'database is locked'
+    errors that can occur when several workers start simultaneously.
     """
     for n in range(1, attempts + 1):
         try:
             return _MediaDB()
         except sqlite3.OperationalError as exc:
-            if "locked" not in str(exc).lower() or n == attempts:
-                raise                       # different error *or* final try
-            time.sleep(backoff_s * n)       # linear back-off and retry
-            
-DB: _MediaDB = _make_db_with_retry()   # canonical connection
+            if "locked" not in str(exc).lower() or n >= attempts:
+                raise
+            time.sleep(backoff_s * n)
+
+# canonical, shared connection
+DB: _MediaDB = _make_db_with_retry()
 
 # Public alias so callers can still say `from video import MediaDB`
-MediaDB = _MediaDB                     # type: ignore[attr-defined]
+MediaDB = _MediaDB  # type: ignore[attr-defined]
 
-# ─────────────────────────────────────────────────────────────────────────────
 from .scanner import Scanner
-from .sync     import PhotoSync
+from .sync import PhotoSync
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("video")
 
 class MediaIndexer:
     """
-    Glue object that unifies scanner ⇆ DB ⇆ (optional) Photos sync.
+    One high-level façade object that glues together scanner ⇆ DB ⇆ sync.
+
+    Parameters
+    ----------
+    root_path : Path | str | None
+        Directory to scan (defaults to config.MEDIA_ROOT).
+    db_path   : Path | str | None
+        Custom SQLite file – **rarely needed**. If given, a private
+        `MediaDB(db_path)` is created instead of re-using the global `DB`.
+    db        : MediaDB | None
+        Pass an explicit MediaDB instance (test doubles, in-memory DB, …).
     """
 
     def __init__(
         self,
         *,
         root_path: Path | str | None = None,
-        db_path:   Path | str | None = None,
-        db:        _MediaDB | None   = None,
+        db_path: Path | str | None = None,
+        db: _MediaDB | None = None,
     ) -> None:
-
-        # choose which DB instance this indexer should use
         if db is not None:
             self.db = db
         elif db_path is not None:
-            self.db = _MediaDB(db_path)   # private instance
+            self.db = _MediaDB(db_path)
         else:
-            self.db = DB                  # shared singleton
+            self.db = DB
 
-        self.scanner = Scanner(self.db, root_path)
-        self.sync    = PhotoSync(self.db)
+        self.scanner: Scanner = Scanner(self.db, root_path)
+        self.sync: PhotoSync = PhotoSync(self.db)
 
-        log.debug("MediaIndexer ready (db=%s, root=%s)",
-                  self.db.db_path, self.scanner.root_path)
+        log.debug(
+            "MediaIndexer ready (db=%s, root=%s)",
+            self.db.db_path,
+            self.scanner.root_path,
+        )
 
-    # ─────────── scanning ───────────
-    def scan(self, root_path: Path | None = None, workers: int = 4
-             ) -> Dict[str, int]:
+    def scan(self, root_path: Path | None = None, workers: int = 4) -> Dict[str, int]:
+        """Walk `root_path` (defaults to ctor arg) and (re)index media files."""
         return self.scanner.bulk_scan(root_path, workers)
 
-    # ─────────── queries ───────────
     def get_recent(self, limit: int = 20) -> List[Dict[str, Any]]:
         return self.db.list_recent(limit)
 
-    def get_by_batch(self, batch: str) -> List[Dict[str, Any]]:
-        return self.db.list_by_batch(batch)
+    def get_by_batch(self, batch_name: str) -> List[Dict[str, Any]]:
+        return self.db.list_by_batch(batch_name)
 
     def get_all(self) -> List[Dict[str, Any]]:
         return self.db.list_all_files()
@@ -129,22 +137,24 @@ class MediaIndexer:
     def get_stats(self) -> Dict[str, Any]:
         return self.db.get_stats()
 
-    # ─────────── Photos / sync ───────────
-    def sync_photos_album(self, album: str, category: str = "edit"
-                          ) -> Dict[str, Any]:
-        return self.sync.sync_album(album, category)
+    def sync_photos_album(self, album_name: str, category: str = "edit") -> Dict[str, Any]:
+        return self.sync.sync_album(album_name, category)
 
-    # ─────────── backup helper ───────────
     def backup(self, backup_root: Path) -> Dict[str, Any]:
+        """
+        Copy **indexed** files to `backup_root/<batch>/<filename>` with strong
+        idempotence (skips SHA-1s already copied on previous runs).
+        """
         import shutil
 
         copied = skipped = 0
         for rec in self.db.iter_all_files():
-            src   = Path(rec["path"])
-            sha1  = rec["sha1"]
+            src = Path(rec["path"])
+            sha1 = rec["sha1"]
             batch = rec["batch"] or "_UNSORTED"
-            tgt   = backup_root / batch / src.name
-            tgt.parent.mkdir(parents=True, exist_ok=True)
+            tgt_dir = backup_root / batch
+            tgt_dir.mkdir(parents=True, exist_ok=True)
+            tgt = tgt_dir / src.name
 
             if self.db.already_copied(sha1):
                 skipped += 1
@@ -161,27 +171,28 @@ class MediaIndexer:
 
         return {"copied": copied, "skipped": skipped, "dest": str(backup_root)}
 
-    # ─────────── one-shot convenience ───────────
     def index_media(
         self,
         *,
         scan_workers: int = 4,
-        sync_album:   str | None = None,
+        sync_album: str | None = None,
         sync_category: str = "edit",
     ) -> Dict[str, Any]:
-
+        """
+        1. scan()
+        2. optional Photos import
+        3. return merged stats
+        """
         stats = self.scan(workers=scan_workers)
         if sync_album:
-            stats["photos_sync"] = self.sync_photos_album(sync_album,
-                                                          sync_category)
+            stats["photos_sync"] = self.sync_photos_album(sync_album, sync_category)
         stats["db"] = self.get_stats()
         return stats
 
-
-# ── re-export helpers & plug-in discovery ───────────────────────────────────
-from . import config as config          # noqa: E402
-from .cli import run_cli as _run_cli    # noqa: E402
-from .modules import routers            # noqa: E402 (auto-loads plug-ins)
+# ── re-export helpers & plugin auto-loading ─────────────────────────────────
+from . import config as config        # noqa: E402
+from .cli import run_cli as _run_cli  # noqa: E402
+from .modules import routers          # noqa: E402
 
 __all__ = [
     "MediaIndexer",
