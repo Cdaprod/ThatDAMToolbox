@@ -47,7 +47,17 @@ Typical usage
 >>> idx.backup(Path("/mnt/backups"))
 """
 
-import logging
+import os, logging
+
+LOG_LEVEL = os.getenv("VIDEO_LOG_LEVEL", "INFO").upper()
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True,          # clobber any handler Uvicorn might inject later
+)
+
 import sqlite3
 import time
 from pathlib import Path
