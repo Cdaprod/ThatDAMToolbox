@@ -20,6 +20,7 @@ class MediaDB:
     """Thin wrapper around SQLite + a few convenience helpers."""
 
     def __init__(self, db_path: Optional[Path] = None) -> None:
+        print(f"MediaDB.__init__: {self=} db_path={db_path} resolved={db_path or DB_FILE}")
         self.db_path = Path(db_path) if db_path else DB_FILE
 
         global _BOOTSTRAPPED
@@ -42,14 +43,19 @@ class MediaDB:
         """
         Switch the DB to WAL mode, retrying on 'database is locked'.
         """
+        print(f"_bootstrap_wal: Attempting WAL on DB: {self.db_path}")
+
         for n in range(1, attempts + 1):
             try:
+                print(f"Attempt {n}: Connecting to {self.db_path}")
+
                 with sqlite3.connect(self.db_path, timeout=30) as cx:
                     cx.execute("PRAGMA journal_mode=WAL;")
                     cx.execute("PRAGMA synchronous=NORMAL;")
                     cx.execute("PRAGMA busy_timeout=5000;")
                 return
             except sqlite3.OperationalError as exc:
+                print(f"WAL attempt {n} failed: {exc}")
                 msg = str(exc).lower()
                 if "locked" not in msg or n == attempts:
                     raise
