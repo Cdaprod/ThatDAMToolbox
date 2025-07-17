@@ -2,6 +2,7 @@
 """SQLite helper – one canonical connection for the whole Video stack."""
 
 from __future__ import annotations
+import time
 import sqlite3, os
 from pathlib    import Path
 from contextlib import contextmanager
@@ -38,19 +39,25 @@ class MediaDB:
             import logging
             logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
 
-    # ── one-off WAL initialiser ─────────────────────────────────────────────
+    # ── one-off WAL initialiser ────────────────────────────────────────────
     def _bootstrap_wal(self, attempts: int = 5, backoff_s: float = 1.0) -> None:
         """
         Put the DB into WAL mode. Retries a few times if another process
-        is performing a conflicting schema change at the exact same moment.
+        is holding the schema lock at the exact same moment.
         """
         for n in range(1, attempts + 1):
             try:
                 with sqlite3.connect(self.db_path, timeout=30) as cx:
-                    cx.execute("PRAGMA journal_mode = WAL;")      # durable concurrency
-                    cx.execute("PRAGMA synchronous  = NORMAL;")   # good balance
-                    cx.execute("PRAGMA busy_timeout = 5000;")     # polite wait
-
+                    cx.execute("PRAGMA journal_mode = WAL;")   # durable concurrency
+                    cx.execute("PRAGMA synchronous  = NORMAL;")# good balance
+                    cx.execute("PRAGMA busy_timeout = 5000;")  # polite wait
+                return                      # success – we're done
+            except sqlite3.OperationalError as exc:
+                # Only retry on the classic "database is locked" race
+                if "locked" not in str(exc).lower() or n == attempts:
+                    raise
+                time.sleep(backoff_s * n)   # linear back-off and retry
+                
     # ── schema & migrations ─────────────────────────────────────────────────
     def _init_db(self) -> None:
         with self.conn() as cx:
