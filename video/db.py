@@ -3,17 +3,25 @@
 from .config import DB_PATH
 
 import sqlite3
+import os
 from pathlib import Path
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional, List, Dict, Any
+
+# ---------------------------------------------------------------------------
+# ONE canonical file for the whole stack
+# ---------------------------------------------------------------------------
+
+#   ENV override      cfg.ini      fallback
+DB_FILE = Path( os.getenv("VIDEO_DB_PATH", str(DB_PATH)) ).expanduser()
 
 class MediaDB:
     """SQLite database interface for media files"""
 
     def __init__(self, db_path: Optional[Path] = None):
         # self.db_path = db_path or (Path.home() / "media_index.sqlite3")
-        self.db_path = Path(db_path) if db_path else DB_PATH
+        self.db_path = Path(db_path) if db_path else DB_FILE
         self._init_db()
         try:
             self._repair_fts()
@@ -86,15 +94,24 @@ class MediaDB:
 
     @contextmanager
     def conn(self):
-        """Context manager for database connections"""
-        cx = sqlite3.connect(self.db_path)
+        """
+        Context-manager that yields a *shared* connection in WAL mode with
+        a generous busy timeout – greatly reduces 'database is locked'.
+        """
+        cx = sqlite3.connect(
+            self.db_path,
+            timeout=30,                 # wait up to 30 s for a writer
+            check_same_thread=False,    # safe because we create/close here
+            isolation_level=None        # autocommit; WAL friendly
+        )
         cx.row_factory = sqlite3.Row
         cx.execute("PRAGMA foreign_keys = ON")
-        cx.execute("PRAGMA journal_mode = WAL")
+        cx.execute("PRAGMA journal_mode = WAL")     # enables concurrency
+        cx.execute("PRAGMA busy_timeout = 5000")    # 5 s polite grace
         try:
             yield cx
             cx.commit()
-        except:
+        except Exception:
             cx.rollback()
             raise
         finally:

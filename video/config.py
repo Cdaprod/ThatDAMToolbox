@@ -75,7 +75,7 @@ def get_app_subdir(name: str) -> Path:
     subdir.mkdir(parents=True, exist_ok=True)
     return subdir
 
-INCOMING_DIR  = get_path("paths", "incoming") or get_app_subdir("_INCOMING")
+INCOMING_DIR  =  get_path("paths", "incoming") or get_app_subdir("_INCOMING")
 DATA_DIR      = _default_dir("VIDEO_DATA_DIR", "paths", "data_dir",      str(Path.home() / "thatdamtoolbox"))
 MEDIA_ROOT    = _default_dir("VIDEO_MEDIA_ROOT", "paths", "media_root",  str(DATA_DIR / "media"))
 PROCESSED_DIR = _default_dir("VIDEO_PROCESSED_DIR", "paths", "processed", str(DATA_DIR / "_PROCESSED"))
