@@ -107,7 +107,7 @@ class MediaDB:
         cx.row_factory = sqlite3.Row
         cx.execute("PRAGMA foreign_keys = ON")
         cx.execute("PRAGMA journal_mode = WAL")     # enables concurrency
-        cx.execute("PRAGMA busy_timeout = 5000")    # 5 s polite grace
+        cx.execute("PRAGMA busy_timeout = 30000")    # 30000 ms polite grace
         try:
             yield cx
             cx.commit()
@@ -299,3 +299,10 @@ class MediaDB:
                     (row["rowid"], row["path"], row["mime"], row["batch"])
                 )
             return len(missing_rowids)
+
+
+# ---------------------------------------------------------------------------
+# module-level singleton: **import once, use everywhere**
+# ---------------------------------------------------------------------------
+
+DB = MediaDB()         # noqa: E305  (lint: two blank lines before top-level var)
