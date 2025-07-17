@@ -47,9 +47,9 @@ class MediaDB:
         for n in range(1, attempts + 1):
             try:
                 with sqlite3.connect(self.db_path, timeout=30) as cx:
-            cx.execute("PRAGMA journal_mode = WAL;")      # durable concurrency
-            cx.execute("PRAGMA synchronous  = NORMAL;")   # good balance
-            cx.execute("PRAGMA busy_timeout = 5000;")     # polite wait
+                    cx.execute("PRAGMA journal_mode = WAL;")      # durable concurrency
+                    cx.execute("PRAGMA synchronous  = NORMAL;")   # good balance
+                    cx.execute("PRAGMA busy_timeout = 5000;")     # polite wait
 
     # ── schema & migrations ─────────────────────────────────────────────────
     def _init_db(self) -> None:
