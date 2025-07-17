@@ -39,12 +39,14 @@ class MediaDB:
             logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
 
     # ── one-off WAL initialiser ─────────────────────────────────────────────
-    def _bootstrap_wal(self) -> None:
+    def _bootstrap_wal(self, attempts: int = 5, backoff_s: float = 1.0) -> None:
         """
-        Open the DB **once**, switch to WAL and set a generous busy-timeout.
-        All later connections inherit these settings automatically.
+        Put the DB into WAL mode. Retries a few times if another process
+        is performing a conflicting schema change at the exact same moment.
         """
-        with sqlite3.connect(self.db_path, timeout=30) as cx:
+        for n in range(1, attempts + 1):
+            try:
+                with sqlite3.connect(self.db_path, timeout=30) as cx:
             cx.execute("PRAGMA journal_mode = WAL;")      # durable concurrency
             cx.execute("PRAGMA synchronous  = NORMAL;")   # good balance
             cx.execute("PRAGMA busy_timeout = 5000;")     # polite wait

@@ -60,23 +60,19 @@ from typing import Any, Dict, List, Optional
 # ─────────────────────────────────────────────────────────────────────────────
 from .db import MediaDB as _MediaDB   # real class
 
-def _make_db_with_retry(
-    attempts: int = 5,
-    backoff_s: float = 1.0,
-) -> _MediaDB:
+def _make_db_with_retry(attempts: int = 5, backoff_s: float = 1.0) -> _MediaDB:
     """
-    Create (and migrate) the SQLite file, retrying on the rare
-    "database is locked" that can happen when several new workers
-    start at the exact same time.
+    Build the global MediaDB, retrying on rare 'database is locked' errors
+    that can occur when several workers start simultaneously.
     """
     for n in range(1, attempts + 1):
         try:
-            return _MediaDB()         # first attempt
+            return _MediaDB()
         except sqlite3.OperationalError as exc:
             if "locked" not in str(exc).lower() or n == attempts:
-                raise
-            time.sleep(backoff_s * n)  # linear back-off and try again
-
+                raise                       # different error *or* final try
+            time.sleep(backoff_s * n)       # linear back-off and retry
+            
 DB: _MediaDB = _make_db_with_retry()   # canonical connection
 
 # Public alias so callers can still say `from video import MediaDB`
