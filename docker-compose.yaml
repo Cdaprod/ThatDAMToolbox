@@ -59,7 +59,7 @@ services:
       - ./video:/workspace/video:rw
     restart: unless-stopped
     # --- Entrypoint & Health -------------------
-    entrypoint: ["python", "-m", "video"]
+    # entrypoint: ["python", "-m", "video"]
     
     # command: [stats]                         # CLI command (optional)
     healthcheck:
