@@ -1,4 +1,3 @@
-# /video/server.py
 #!/usr/bin/env python3
 import json
 import uuid
@@ -11,6 +10,7 @@ from urllib.parse import urlparse, parse_qs
 from typing import Dict, Any
 import os
 from pathlib import Path
+from enum import Enum
 
 from .cli import run_cli_from_json
 
@@ -18,11 +18,51 @@ from .cli import run_cli_from_json
 _jobs: Dict[str, Dict[str, Any]] = {}
 _job_lock = threading.Lock()
 
-logger = logging.getLogger("video.api")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s"
-)
+class LogLevel(Enum):
+    SILENT = 0
+    ERROR = 1
+    WARN = 2
+    INFO = 3
+    DEBUG = 4
+
+class VideoAPILogger:
+    def __init__(self, level: LogLevel = LogLevel.INFO):
+        self.level = level
+        self.logger = logging.getLogger("video.api")
+        
+        # Only configure if not already configured
+        if not self.logger.handlers:
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s %(levelname)s %(message)s"
+            )
+    
+    def set_level(self, level: LogLevel):
+        """Change logging level"""
+        self.level = level
+    
+    def error(self, msg: str, *args):
+        if self.level.value >= LogLevel.ERROR.value:
+            self.logger.error(msg, *args)
+    
+    def warn(self, msg: str, *args):
+        if self.level.value >= LogLevel.WARN.value:
+            self.logger.warning(msg, *args)
+    
+    def info(self, msg: str, *args):
+        if self.level.value >= LogLevel.INFO.value:
+            self.logger.info(msg, *args)
+    
+    def debug(self, msg: str, *args):
+        if self.level.value >= LogLevel.DEBUG.value:
+            self.logger.debug(msg, *args)
+    
+    def exception(self, msg: str, *args):
+        if self.level.value >= LogLevel.ERROR.value:
+            self.logger.exception(msg, *args)
+
+# Global logger instance
+api_logger = VideoAPILogger()
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle each request in its own thread."""
@@ -127,7 +167,7 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                         "result": json.loads(result) if result else None
                     })
                 except Exception as e:
-                    logger.exception("transcode failed")
+                    api_logger.error(f"Transcode failed for {src}: {e}")
                     return self._send_error(f"Transcode failed: {e}", 500)
 
             # --- DIRECT CLI COMMAND ---
@@ -143,14 +183,14 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                         "result": json.loads(result) if result else None
                     })
                 except Exception as e:
-                    logger.exception("CLI command failed")
+                    api_logger.error(f"CLI command failed: {e}")
                     return self._send_error(f"Command failed: {e}", 500)
 
             else:
                 return self._send_error("Endpoint not found", 404)
 
         except Exception as e:
-            logger.exception("POST request failed")
+            api_logger.exception("POST request failed")
             return self._send_error(f"Internal server error: {e}", 500)
 
     def do_GET(self):
@@ -174,7 +214,7 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                     result = run_cli_from_json('{"action":"batches","cmd":"list"}')
                     return self._send_json(json.loads(result))
                 except Exception as e:
-                    logger.exception("Failed to list batches")
+                    api_logger.error(f"Failed to list batches: {e}")
                     return self._send_error(f"Failed to list batches: {e}", 500)
 
             elif path.startswith("/batches/") and path.count("/") == 2:
@@ -191,7 +231,7 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                     }))
                     return self._send_json(json.loads(result))
                 except Exception as e:
-                    logger.exception(f"Failed to get batch {name}")
+                    api_logger.error(f"Failed to get batch {name}: {e}")
                     return self._send_error(f"Failed to get batch: {e}", 500)
 
             elif path.startswith("/jobs/"):
@@ -230,7 +270,7 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                 return self._send_error("Endpoint not found", 404)
 
         except Exception as e:
-            logger.exception("GET request failed")
+            api_logger.exception("GET request failed")
             return self._send_error(f"Internal server error: {e}", 500)
 
     def do_DELETE(self):
@@ -252,7 +292,7 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                     }))
                     return self._send_json(json.loads(result))
                 except Exception as e:
-                    logger.exception(f"Failed to delete batch {name}")
+                    api_logger.error(f"Failed to delete batch {name}: {e}")
                     return self._send_error(f"Failed to delete batch: {e}", 500)
 
             elif path.startswith("/jobs/"):
@@ -271,7 +311,7 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                 return self._send_error("Endpoint not found", 404)
 
         except Exception as e:
-            logger.exception("DELETE request failed")
+            api_logger.exception("DELETE request failed")
             return self._send_error(f"Internal server error: {e}", 500)
 
     def _process_batch(self, job_id: str, name: str, paths: list[str], skip_transcode: bool = False):
@@ -279,6 +319,8 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
         try:
             with _job_lock:
                 _jobs[job_id]["status"] = "transcoding" if not skip_transcode else "creating_batch"
+            
+            api_logger.info(f"Starting batch '{name}' with {len(paths)} files (skip_transcode={skip_transcode})")
             
             transcoded_paths = []
             
@@ -289,7 +331,9 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                         _jobs[job_id]["current_file"] = src
                         _jobs[job_id]["processed_files"] = i
                     
-                    logger.info(f"Transcoding {src} for batch {name}")
+                    # Only log progress occasionally
+                    if i % 10 == 0 or i == len(paths) - 1:
+                        api_logger.debug(f"Transcoding progress for batch '{name}': {i+1}/{len(paths)}")
                     
                     # Create destination path
                     src_path = Path(src)
@@ -306,8 +350,7 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                         }))
                         transcoded_paths.append(dst)
                     except Exception as e:
-                        logger.error(f"Failed to transcode {src}: {e}")
-                        # Continue with original file if transcode fails
+                        api_logger.error(f"Failed to transcode {src}: {e}")
                         transcoded_paths.append(src)
             else:
                 transcoded_paths = paths
@@ -316,8 +359,6 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
             with _job_lock:
                 _jobs[job_id]["status"] = "creating_batch"
                 _jobs[job_id]["current_file"] = None
-            
-            logger.info(f"Creating batch {name} with {len(transcoded_paths)} files")
             
             result = run_cli_from_json(json.dumps({
                 "action": "batches",
@@ -335,10 +376,10 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                     "completed_at": time.time()
                 }
             
-            logger.info(f"Batch {name} completed successfully")
+            api_logger.info(f"Batch '{name}' completed successfully")
 
         except Exception as e:
-            logger.exception(f"Batch job {job_id} failed")
+            api_logger.exception(f"Batch job {job_id} failed")
             with _job_lock:
                 _jobs[job_id] = {
                     **_jobs[job_id],
@@ -348,8 +389,12 @@ class VideoAPIHandler(BaseHTTPRequestHandler):
                 }
 
     def log_message(self, fmt, *args):
-        """Route http.server logging through our logger"""
-        logger.info(fmt % args)
+        """Route http.server logging through our logger - minimal logging"""
+        message = fmt % args
+        if any(indicator in message.lower() for indicator in ['error', 'failed', 'exception']):
+            api_logger.warn(message)
+        else:
+            api_logger.debug(message)
 
 
 def cleanup_old_jobs():
@@ -363,39 +408,12 @@ def cleanup_old_jobs():
                     job_id for job_id, job_data in _jobs.items()
                     if current_time - job_data.get("created_at", 0) > 3600  # 1 hour
                 ]
-                for job_id in expired_jobs:
-                    logger.info(f"Cleaning up expired job {job_id}")
-                    del _jobs[job_id]
+                if expired_jobs:
+                    api_logger.info(f"Cleaning up {len(expired_jobs)} expired jobs")
+                    for job_id in expired_jobs:
+                        del _jobs[job_id]
         except Exception as e:
-            logger.exception("Job cleanup failed")
+            api_logger.exception("Job cleanup failed")
 
 
-def serve(host="0.0.0.0", port=8080):
-    """Start the video API server"""
-    # Start job cleanup thread
-    cleanup_thread = threading.Thread(target=cleanup_old_jobs, daemon=True)
-    cleanup_thread.start()
-    
-    server = ThreadedHTTPServer((host, port), VideoAPIHandler)
-    logger.info(f"🎬 Video API Server running at http://{host}:{port}")
-    logger.info("📚 Available endpoints:")
-    logger.info("  POST /batches          - Create batch (with pre-flight transcode)")
-    logger.info("  GET  /batches          - List batches")
-    logger.info("  GET  /batches/{name}   - Get batch details")
-    logger.info("  DEL  /batches/{name}   - Delete batch")
-    logger.info("  POST /transcode        - Transcode single file")
-    logger.info("  POST /cli              - Execute CLI command")
-    logger.info("  GET  /jobs             - List all jobs")
-    logger.info("  GET  /jobs/{id}        - Get job status")
-    logger.info("  DEL  /jobs/{id}        - Delete job")
-    logger.info("  GET  /health           - Health check")
-    
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        logger.info("🛑 Server shutting down...")
-        server.shutdown()
-
-
-if __name__ == "__main__":
-    serve()
+def serve(host="0.0.0.0", port=8080, log_level: LogLevel = LogLevel.INFO, show_startup_info: 
