@@ -72,6 +72,9 @@ def _make_db_with_retry(
                 raise
             time.sleep(backoff_s * n)
 
+print(f"INITIALIZING DB: {__name__} in {__file__}")
+import traceback; traceback.print_stack()
+
 # canonical, shared connection
 DB: _MediaDB = _make_db_with_retry()
 
