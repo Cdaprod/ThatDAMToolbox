@@ -92,22 +92,26 @@ class MediaDB:
                     PRAGMA user_version = 1;
                 """)
 
+    def _bootstrap_wal(self) -> None:
+        """Run exactly once per process – puts the DB into WAL if not yet."""
+        with sqlite3.connect(self.db_path) as cx:
+            cx.execute("PRAGMA journal_mode=WAL;")
+            cx.execute("PRAGMA busy_timeout=5000;")
+
     @contextmanager
     def conn(self):
         """
-        Context-manager that yields a *shared* connection in WAL mode with
-        a generous busy timeout – greatly reduces 'database is locked'.
+        Light-weight connection helper used everywhere else.
+        The file is already in WAL so we **don’t** try to switch modes again.
         """
         cx = sqlite3.connect(
             self.db_path,
-            timeout=30,                 # wait up to 30 s for a writer
-            check_same_thread=False,    # safe because we create/close here
-            isolation_level=None        # autocommit; WAL friendly
+            timeout=30,
+            check_same_thread=False,
+            isolation_level=None
         )
         cx.row_factory = sqlite3.Row
         cx.execute("PRAGMA foreign_keys = ON")
-        cx.execute("PRAGMA journal_mode = WAL")     # enables concurrency
-        cx.execute("PRAGMA busy_timeout = 30000")    # 30000 ms polite grace
         try:
             yield cx
             cx.commit()
