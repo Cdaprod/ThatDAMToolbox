@@ -11,7 +11,7 @@ from pathlib import Path
 import shutil, hashlib, logging
 
 from video.config import INCOMING_DIR, MEDIA_ROOT
-from video.db     import MediaDB
+from video.db     import DB
 from video.probe  import probe_media     # ← your existing ffprobe helper
 
 log = logging.getLogger("video.ingest")
@@ -63,7 +63,8 @@ def ingest_files(paths: list[str] | list[Path], *, batch_name: str | None):
 
             # tech-metadata
             meta = probe_media(dest)
-            DB.upsert_file(dest, batch_name=batch_name, meta=meta)
+            #DB.upsert_file(dest, batch_name=batch_name, meta=meta)
+            DB.add_video(path=dest, sha1=sha1, meta=meta | {"batch": batch_name})
 
         except Exception as e:
             log.exception("failed to ingest %s: %s", p, e)
