@@ -35,31 +35,40 @@ class MediaDB:
             import logging
             logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
 
-    def _bootstrap_wal(
-        self,
-        attempts: int = 5,
-        backoff_s: float = 1.0
-    ) -> None:
-        """
-        Switch the DB to WAL mode, retrying on 'database is locked'.
-        """
-        print(f"_bootstrap_wal: Attempting WAL on DB: {self.db_path}")
+    def _bootstrap_wal(self) -> None:
+    """
+    Try to enable WAL once.  If the underlying filesystem
+    (e.g. SMB / NFS) rejects it with "database is locked",
+    fall back to DELETE mode so the DB remains usable.
+    """
+    import logging
+    log = logging.getLogger("video.db")
 
-        for n in range(1, attempts + 1):
-            try:
-                print(f"Attempt {n}: Connecting to {self.db_path}")
+    log.info("Initialising SQLite DB at %s", self.db_path)
 
-                with sqlite3.connect(self.db_path, timeout=30) as cx:
-                    cx.execute("PRAGMA journal_mode=WAL;")
-                    cx.execute("PRAGMA synchronous=NORMAL;")
-                    cx.execute("PRAGMA busy_timeout=5000;")
-                return
-            except sqlite3.OperationalError as exc:
-                print(f"WAL attempt {n} failed: {exc}")
-                msg = str(exc).lower()
-                if "locked" not in msg or n == attempts:
-                    raise
-                time.sleep(backoff_s * n)
+    try:
+        # -- first (and only) attempt at WAL ----------------------------
+        with sqlite3.connect(self.db_path, timeout=5) as cx:
+            cx.execute("PRAGMA journal_mode=WAL;")
+            cx.execute("PRAGMA synchronous=NORMAL;")
+            cx.execute("PRAGMA busy_timeout=5000;")
+        log.info("journal_mode=WAL enabled successfully")
+        return                                    # ✅ all good
+    except sqlite3.OperationalError as exc:
+        if "locked" not in str(exc).lower():
+            raise                                # some unrelated error
+        # ----------------------------------------------------------------
+        # WAL isn’t supported (common on network shares).  Downgrade.
+        # ----------------------------------------------------------------
+        log.warning(
+            "WAL unsupported on this filesystem (%s). "
+            "Falling back to journal_mode=DELETE.", exc
+        )
+        with sqlite3.connect(self.db_path, timeout=5) as cx:
+            cx.execute("PRAGMA journal_mode=DELETE;")
+            cx.execute("PRAGMA synchronous=NORMAL;")
+            cx.execute("PRAGMA busy_timeout=5000;")
+        log.info("journal_mode=DELETE in effect – continuing without WAL")
 
     def _init_db(self) -> None:
         with self.conn() as cx:
