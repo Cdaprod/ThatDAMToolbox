@@ -25,7 +25,7 @@ class MediaDB:
         print(f"MediaDB.__init__: {self=} db_path={db_path} resolved={db_path or DB_FILE}")
         self.db_path = Path(db_path) if db_path else DB_FILE
 
-        # -- 1. SERIALISE MIGRATIONS with file lock ---------------------------
+        # 1. SERIALISE MIGRATIONS with file lock 
         self._lockfile_path = self.db_path.with_suffix('.init.lock')
         with open(self._lockfile_path, "w") as lockfile:
             fcntl.flock(lockfile, fcntl.LOCK_EX)
@@ -43,10 +43,7 @@ class MediaDB:
                     logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
             finally:
                 fcntl.flock(lockfile, fcntl.LOCK_UN)
-                
-                """
-                If you need this to work on Mac/Windows, replace fcntl with portalocker. 
-                """ 
+
                 
     def _bootstrap_wal(self) -> None:
         """
