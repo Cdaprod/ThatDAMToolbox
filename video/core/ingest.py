@@ -11,11 +11,11 @@ from pathlib import Path
 import shutil, hashlib, logging
 
 from video.config import INCOMING_DIR, MEDIA_ROOT
-from video.db     import DB
+from video        import DB
 from video.probe  import probe_media     # ← your existing ffprobe helper
 
 log = logging.getLogger("video.ingest")
-DB  = MediaDB()                         # singleton that owns its own engine
+#DB  = MediaDB()                         # singleton that owns its own engine
 
 
 # --------------------------------------------------------------------------- #
