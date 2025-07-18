@@ -16,7 +16,7 @@ from __future__ import annotations
 import importlib.util as _iu
 import logging
 import os
-import shutil
+import sqlite3, shutil, threading, time
 import subprocess
 from typing import Optional
 
@@ -120,3 +120,52 @@ def start_server(
         from video.server import serve
 
         serve(host=host, port=port)
+        
+
+# --------------------------------------------------------------------------- #
+# background DB-checkpoint / backup                                          #
+# --------------------------------------------------------------------------- #
+def _start_db_backup() -> None:
+    """
+    Periodically checkpoint WAL ➜ main DB file **and**
+    copy it atomically to the network share.
+
+    Tunables (env vars)
+    -------------------
+    DB_SNAPSHOT_SECS   – interval in seconds (default 300)
+    VIDEO_DB_PATH      – path to the *live* db (defaults to STORAGE._db.db_path)
+    VIDEO_DB_BACKUP    – destination file on the network share
+                          (defaults to '/data/db/media_index.sqlite3')
+    """
+    interval  = int(os.getenv("DB_SNAPSHOT_SECS", "300"))
+    db_path   = Path(os.getenv("VIDEO_DB_PATH", str(STORAGE._db.db_path)))
+    backup_to = Path(os.getenv("VIDEO_DB_BACKUP",
+                               "/data/db/media_index.sqlite3")).expanduser()
+
+    log = logging.getLogger("video.db.backup")
+    log.info("⏳  DB snapshot every %ss  (%s ➜ %s)", interval, db_path, backup_to)
+
+    def _loop() -> None:
+        while True:
+            try:
+                # 1️⃣  flush WAL into main db file
+                with sqlite3.connect(db_path) as cx:
+                    cx.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+
+                # 2️⃣  atomic copy to network share
+                tmp = backup_to.with_suffix(".tmp")
+                shutil.copy2(db_path, tmp)
+                tmp.replace(backup_to)
+                log.debug("✔ checkpointed → %s", backup_to)
+            except Exception as exc:        # pragma: no cover
+                log.warning("⚠ snapshot failed: %s", exc)
+
+            time.sleep(interval)
+
+    threading.Thread(target=_loop,
+                     daemon=True,
+                     name="db-backup").start()
+
+# fire it up immediately on module import
+if os.getenv("VIDEO_DB_BACKUP_DISABLE", "0") != "1":
+    _start_db_backup()
