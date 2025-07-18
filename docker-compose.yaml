@@ -30,7 +30,7 @@ services:
       # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
       VIDEO_DEBUG_BOOT: "0"
       DB_SNAPSHOT_SECS: "120"                     # optional
-      VIDEO_DB_PATH: /workspace/db/live.sqlite3
+      VIDEO_DB_PATH: /var/lib/thatdamtoolbox/db/live.sqlite3
     # --- Device permissions & hotplug ----------
     # devices:
     #   - /dev/video0:/dev/video0
@@ -44,9 +44,8 @@ services:
     privileged: true                    # access /dev/video*
     # --- Storage mounts ------------------------
     volumes:
-      # # - /mnt/nas:/mnt/nas:ro                           # NAS (optional, read-only)
-      #
       # --- Deprecated Mounting Methods ------------
+      # # - /mnt/nas:/mnt/nas:ro                           # NAS (optional, read-only)
       # - /mnt/b/Video/_INCOMING:/workspace/_INCOMING      # Working store
       # - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # Read-only archive
       # - ./video:/workspace/video:rw                     # Live code hot-reload
@@ -56,10 +55,12 @@ services:
       # --- Production Mounts ---------------------
       # 1. Entire persistent dataset (media, db, previews, …)
       - /mnt/b/Video/thatdamtoolbox:/data:rw
+      - ./data/db:/var/lib/thatdamtoolbox/db:rw
       # 2. Overlay the staging dir so the container sees it at /data/_INCOMING
       - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
       # 3. Live source for hot-reload (dev only, keep if you need it)
       - ./video:/workspace/video:rw
+
     restart: unless-stopped
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
