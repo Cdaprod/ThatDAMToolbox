@@ -141,11 +141,11 @@ RUN chown -R appuser:appuser /home/appuser
 #############################################
 FROM devshell AS builder
 USER appuser
-WORKDIR /workspace
+WORKDIR /video
 
 # project sources
 COPY --chown=appuser:appuser requirements.txt setup.py README.md ./
-COPY --chown=appuser:appuser video/ ./video
+COPY --chown=appuser:appuser video/ ./
 
 RUN pip install --no-cache-dir --user -r requirements.txt && \
     pip install --no-cache-dir --user -e .
@@ -155,7 +155,7 @@ RUN pip install --no-cache-dir --user -r requirements.txt && \
 #############################################
 FROM devshell AS runtime
 USER appuser
-WORKDIR /workspace
+WORKDIR /video
 
 # Python site-packages from builder
 COPY --from=builder /home/appuser/.local /home/appuser/.local
@@ -168,11 +168,11 @@ COPY --chown=appuser:appuser run_video.py ./run_video.py
 
 # bundled React ESM
 COPY --from=frontend-build /build/dam-explorer.bundle.js \
-     /workspace/video/web/static/components/dam-explorer.bundle.js
+     /video/web/static/components/dam-explorer.bundle.js
 
 # optional extra plugin requirements
 RUN set -e; \
-    cd /workspace/video/modules && \
+    cd /video/modules && \
     find . -name requirements.txt -print0 | xargs -0 cat | sort -u > /tmp/extra.txt || true && \
     [ -s /tmp/extra.txt ] && pip install --no-cache-dir --user -r /tmp/extra.txt || true
 
