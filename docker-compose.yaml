@@ -1,5 +1,5 @@
 # /docker-compose.yaml
-name: That DAM Toolbox
+name: thatdamtoolbox
 
 services:
   video-api:
