@@ -203,6 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
  */
 function mountDamExplorer () {
   // dynamic `import()` returns a promise; code is fetched on-demand
+  //import('/static/components/dam-explorer.js').then(mod => {
   import('/static/components/dam-explorer.js').then(mod => {
     // The default export is the React component
     const React        = mod.__react__       // re-exported helper
