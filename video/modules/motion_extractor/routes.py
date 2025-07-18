@@ -23,8 +23,9 @@ from .motion_extractor import MotionExtractor
 router = APIRouter(prefix="/motion", tags=["motion"])
 _log   = logging.getLogger("video.motion")
 
-# Where we publish the JPGs  (docker & bare-metal friendly)
-PUBLIC_FRAMES_DIR = Path("/workspace/web_frames")
+# Use the same data dir you already mount under /data in your compose:
+DATA_DIR = Path(os.getenv("VIDEO_DATA_DIR", "/data"))
+PUBLIC_FRAMES_DIR = DATA_DIR / "web_frames"
 PUBLIC_FRAMES_DIR.mkdir(parents=True, exist_ok=True)
 
 
