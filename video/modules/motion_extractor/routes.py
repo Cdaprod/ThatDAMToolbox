@@ -7,7 +7,7 @@ GET  /motion/frames/<run>/<file>  – static access to extracted JPGs
 """
 from __future__ import annotations
 
-import logging, shutil, tempfile, uuid
+import logging, shutil, tempfile, uuid, os
 from pathlib import Path
 from typing import List
 
