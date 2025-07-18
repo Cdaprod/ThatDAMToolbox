@@ -23,7 +23,7 @@ from .motion_extractor import MotionExtractor
 router = APIRouter(prefix="/motion", tags=["motion"])
 _log   = logging.getLogger("video.motion")
 
-# Use the same data dir you already mount under /data in your compose:
+# Use the same data dir you already mount under /data in your compose.
 DATA_DIR = Path(os.getenv("VIDEO_DATA_DIR", "/data"))
 PUBLIC_FRAMES_DIR = DATA_DIR / "web_frames"
 PUBLIC_FRAMES_DIR.mkdir(parents=True, exist_ok=True)
