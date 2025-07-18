@@ -80,6 +80,7 @@ def _make_db_with_retry(
         except sqlite3.OperationalError as exc:
             if "locked" not in str(exc).lower() or n >= attempts:
                 raise
+            print(f"[video/init] DB locked, retry {n}/{attempts} ...")
             time.sleep(backoff_s * n)
 
 
