@@ -18,6 +18,7 @@ COPY video/web/static/components/dam-explorer.js ./src/
 RUN esbuild ./src/dam-explorer.js \
     --bundle \
     --loader:.js=jsx \
+    --loader:.json=json \
     --outfile=dam-explorer.bundle.js \
     --format=esm \
     --target=es2022 \
