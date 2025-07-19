@@ -113,7 +113,7 @@ def start_server(
 
         _banner(app)
 
-        workers = int(os.getenv("UVICORN_WORKERS", "1"))
+        workers = int(os.getenv("UVICORN_WORKERS", uvicorn_opts.pop("workers", "1")))
         # if multiple workers or reload: use import string
         app_ref = "video.api:app" if (workers > 1 or uvicorn_opts.get("reload")) else app
         uvicorn.run(app_ref, host=host, port=port, workers=workers, **uvicorn_opts)
