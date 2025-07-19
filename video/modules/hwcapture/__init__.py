@@ -13,19 +13,39 @@ Adds:
 
 from pathlib import Path
 
-# ── Declare your subfolder defaults before any imports ────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# 1) Declare your subfolder defaults
+#    These are relative to DATA_DIR/hwcapture/…
+# ──────────────────────────────────────────────────────────────────────────────
 MODULE_PATH_DEFAULTS = {
-    # core will register:
-    #   DATA_DIR/hwcapture/hls
-    #   DATA_DIR/hwcapture/records
     "hls":        "hls",
     "recordings": "records",
 }
 
-from . import routes, commands          # ← now safe: registry is populated
+# ──────────────────────────────────────────────────────────────────────────────
+# 2) Immediately register them so get_module_path() works in routes.py
+# ──────────────────────────────────────────────────────────────────────────────
+from video.config import register_module_paths, DATA_DIR
+
+register_module_paths(
+    "hwcapture",
+    {
+        key: DATA_DIR / "hwcapture" / rel
+        for key, rel in MODULE_PATH_DEFAULTS.items()
+    }
+)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 3) Safe to import routes & commands now (they can call get_module_path)
+# ──────────────────────────────────────────────────────────────────────────────
+from . import routes, commands          # side-effects register CLI & REST
+
 from .hwcapture import (
     has_hardware_accel as has_hw,
-    record, capture, list_video_devices, get_device_info
+    record,
+    capture,
+    list_video_devices,
+    get_device_info,
 )
 from .camerarecorder import CameraRecorder
 
@@ -38,5 +58,7 @@ __all__ = [
     "CameraRecorder",
 ]
 
-# Expose the registered HLS directory (and any others you need)
+# ──────────────────────────────────────────────────────────────────────────────
+# 4) Re-export the now-registered PUBLIC_STREAM_DIR
+# ──────────────────────────────────────────────────────────────────────────────
 PUBLIC_STREAM_DIR = routes.PUBLIC_STREAM_DIR
