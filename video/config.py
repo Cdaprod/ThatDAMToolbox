@@ -5,6 +5,7 @@ import configparser
 import os
 import logging
 
+log = logging.getLogger("video.config")
 
 # ─── INI Config Path (allow override via $VIDEO_CFG) ─────────────────────────
 _cfg_path = Path(os.getenv("VIDEO_CFG", str(Path.home() / "video" / "video.cfg")))
