@@ -23,8 +23,18 @@ from video.config import get_module_path
 router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
 _log   = logging.getLogger("video.hwcapture")
 
-# ← dynamically resolved from DATA_DIR / "hwcapture" / "hls"
-PUBLIC_STREAM_DIR = get_module_path("hwcapture", "hls")
+from video.config import DATA_DIR
+
+# fallback HLS dir under DATA_DIR/hwcapture/hls
+PUBLIC_STREAM_DIR = DATA_DIR / "hwcapture" / "hls"
+try:
+    PUBLIC_STREAM_DIR.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    # if /data is not writable, just swallow it and let STATIC serve an empty tree
+    logging.getLogger(__name__).warning(
+        "Could not create HLS directory %r, continuing without it",
+        PUBLIC_STREAM_DIR,
+    )
 
 
 # ────────────────────────────────────────────────────────────
