@@ -54,7 +54,8 @@ services:
       #
       # --- Production Mounts ---------------------
       # 1. Entire persistent dataset (media, db, previews, …)
-      - /mnt/b/Video/thatdamtoolbox:/data:rw
+      #- /mnt/b/Video/thatdamtoolbox:/data:rw
+      - dam_data/thatdamtoolbox:/data:rw
       - ./data/db:/var/lib/thatdamtoolbox/db:rw
       # 2. Overlay the staging dir so the container sees it at /data/_INCOMING
       - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
@@ -82,3 +83,10 @@ services:
       - ./data/db:/workspace/db
     depends_on: [video-api]
     profiles: ["cli"]
+    
+volumes:
+  dam_data:
+    driver: local
+    driver_opts:
+      o: bind,uid=1003,gid=1003
+      device: /mnt/b/Video/thatdamtoolbox
