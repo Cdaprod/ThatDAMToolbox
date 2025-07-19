@@ -63,12 +63,39 @@ def get_network_globs(section="paths", key="network_globs") -> list[Path]:
     return out
 
 # ─── Structured Data/Media/App Dirs (NEW) ────────────────────────────────────
-def _default_dir(env_name, cfg_section, cfg_key, fallback):
-    # INI -> ENV -> fallback
-    return (
-        get_path(cfg_section, cfg_key)
-        or Path(os.getenv(env_name, fallback))
-    )
+def _default_dir(env_name: str, cfg_section: str, cfg_key: str, fallback: str) -> Path:
+    """
+    Resolve a directory via:
+      1. INI config [cfg_section][cfg_key]
+      2. ENV var env_name
+      3. literal fallback
+    Then ensure it exists and is writable. If creation or access fails,
+    fall back to the literal fallback path (and try again).
+    """
+    # 1️⃣ Try config
+    cfg_val = get_path(cfg_section, cfg_key)
+    if cfg_val:
+        directory = cfg_val
+    else:
+        # 2️⃣ Try env var else literal fallback
+        env_val = os.getenv(env_name)
+        directory = Path(env_val) if env_val else Path(fallback)
+
+    # 3️⃣ Ensure existence & writability
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        log.warning(
+            "Configured directory %s at %s not writable; falling back to %s",
+            cfg_key, directory, fallback
+        )
+        directory = Path(fallback)
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            log.error("Failed to create fallback directory %s: %s", directory, e)
+
+    return directory
     
 def get_app_subdir(name: str) -> Path:
     """Get (and ensure) a named subdirectory under [paths].root."""
