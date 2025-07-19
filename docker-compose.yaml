@@ -12,6 +12,7 @@ services:
     network_mode: host
     # ports: ["8080:8080"]              # Unneeded in host mode
     # --- Environment ---------------------------
+    user: "1000:1000"
     environment:
       PYTHONWARNINGS: "ignore::DeprecationWarning"
       TZ: America/New_York

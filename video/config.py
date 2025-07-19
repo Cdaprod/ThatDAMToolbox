@@ -128,6 +128,9 @@ TMP_DIR       = _default_dir("VIDEO_TMP_DIR", "paths", "tmp_dir",        str(DAT
 # ── new: dedicated sub-folder used by the web uploader ──────────────────────
 WEB_UPLOADS   = get_path("paths", "web_uploads") or INCOMING_DIR / "sources/WEB_UPLOADS"          # → /_INCOMING/web
 WEB_UPLOADS.mkdir(parents=True, exist_ok=True)
+# ── new: dedicated sub-folder used by the modules ──────────────────────
+MODULES_BASE = DATA_DIR / "thatdamtoolbox" / "modules"
+MODULES_BASE.mkdir(parents=True, exist_ok=True)
 
 # ─── All Scan Roots ─────────────────────────────────────────────────────────
 def get_all_roots() -> list[Path]:
