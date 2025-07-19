@@ -11,21 +11,32 @@ Adds:
            POST /hwcapture/record/stop
 """
 
-from . import routes, commands          # side-effects register CLI & REST
+from pathlib import Path
+
+# ── Declare your subfolder defaults before any imports ────────────────────
+MODULE_PATH_DEFAULTS = {
+    # core will register:
+    #   DATA_DIR/hwcapture/hls
+    #   DATA_DIR/hwcapture/records
+    "hls":        "hls",
+    "recordings": "records",
+}
+
+from . import routes, commands          # ← now safe: registry is populated
 from .hwcapture import (
     has_hardware_accel as has_hw,
     record, capture, list_video_devices, get_device_info
 )
 from .camerarecorder import CameraRecorder
 
-# Just declare your subfolders (loader will do the rest)
-MODULE_PATH_DEFAULTS = {
-    "hls":        "hls",
-    "recordings": "records"
-}
-
 __all__ = [
-    "has_hw", "record", "capture",
-    "list_video_devices", "get_device_info",
+    "has_hw",
+    "record",
+    "capture",
+    "list_video_devices",
+    "get_device_info",
     "CameraRecorder",
 ]
+
+# Expose the registered HLS directory (and any others you need)
+PUBLIC_STREAM_DIR = routes.PUBLIC_STREAM_DIR
