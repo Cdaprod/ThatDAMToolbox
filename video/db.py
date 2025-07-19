@@ -145,9 +145,11 @@ class MediaDB:
         cx.row_factory = sqlite3.Row
         cx.execute("PRAGMA foreign_keys=ON;")
         cx.execute("PRAGMA busy_timeout=5000;")
+        cx.execute("PRAGMA cache_size = -2000;")  # limit to 2MB RAM
         try:
             yield cx
             cx.commit()
+            cx.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         except Exception:
             cx.rollback()
             raise
