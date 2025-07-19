@@ -160,3 +160,81 @@ def ensure_dirs(*, verbose: bool = False) -> None:
             log.warning("Could not create %s: %s", p, e)
 
     _DIRS_CREATED = True
+
+
+# ─── Module‐specific path registry ─────────────────────────────────────────────
+_MODULE_PATH_REGISTRY: dict[str, dict[str, Path]] = {}
+
+def register_module_paths(module_name: str, defaults: dict[str, Path]) -> None:
+    """
+    Let a module declare its own folders.  Writes a `module.cfg` beside
+    the module’s package, under [module:<module_name>].
+
+    Example:
+      video/modules/motion_extractor/module.cfg
+      [module:motion_extractor]
+      frames = /data/web_frames
+      outputs = /data/motion_outputs
+    """
+    import importlib.util
+    # 1) Find the module’s directory
+    spec = importlib.util.find_spec(f"video.modules.{module_name}")
+    if not spec or not spec.origin:
+        raise ImportError(f"Cannot locate video.modules.{module_name!r}")
+    module_dir = Path(spec.origin).parent
+
+    # 2) Load (or create) module-specific config
+    module_cfg_path = module_dir / "module.cfg"
+    module_cfg = configparser.ConfigParser()
+    if module_cfg_path.exists():
+        module_cfg.read(module_cfg_path)
+
+    section = f"module:{module_name}"
+    if not module_cfg.has_section(section):
+        module_cfg.add_section(section)
+
+    # 3) Resolve each key, create directories, and ensure it’s set in module.cfg
+    resolved: dict[str, Path] = {}
+    for key, fallback in defaults.items():
+        if module_cfg.has_option(section, key):
+            p = Path(module_cfg.get(section, key)).expanduser()
+        else:
+            p = fallback
+            module_cfg.set(section, key, str(p))
+
+        # make sure it exists on disk
+        p.mkdir(parents=True, exist_ok=True)
+        resolved[key] = p
+
+    # 4) Write back only this module’s config file
+    try:
+        with open(module_cfg_path, "w") as f:
+            module_cfg.write(f)
+        log.info(
+            "Wrote module config for %r to %s",
+            module_name,
+            module_cfg_path
+        )
+    except Exception as e:
+        log.warning(
+            "Failed to write module config for %r at %s: %s",
+            module_name,
+            module_cfg_path,
+            e
+        )
+
+    # 5) Populate the in-memory registry for get_module_path()
+    _MODULE_PATH_REGISTRY[module_name] = resolved
+
+def get_module_path(module_name: str, key: str) -> Path:
+    """
+    Retrieve the Path for a module’s registered key.
+    Raises KeyError if module or key was never registered.
+    """
+    try:
+        return _MODULE_PATH_REGISTRY[module_name][key]
+    except KeyError:
+        raise KeyError(f"No path registered for module={module_name!r}, key={key!r}")
+
+# ─── End of module path registry ─────────────────────────────────────────────
+  

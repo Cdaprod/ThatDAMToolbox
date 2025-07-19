@@ -61,7 +61,6 @@ services:
       - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
       # 3. Live source for hot-reload (dev only, keep if you need it)
       - ./video:/workspace/video:rw
-
     restart: unless-stopped
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
