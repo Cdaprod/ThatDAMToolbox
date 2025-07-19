@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from .hwcapture import list_video_devices, HWAccelRecorder
+from video.config import get_module_path
 
 router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
 _log   = logging.getLogger("video.hwcapture")
