@@ -11,6 +11,19 @@ Adds:
            POST /hwcapture/record/stop
 """
 
+from video.config import register_module_paths, DATA_DIR
+
+# Declare all subdirs your module uses here:
+MODULE_PATH_DEFAULTS = {
+    "streams": "streams",   # MJPEG/HLS stream outputs
+    "records": "records",   # MP4/TS file outputs
+}
+
+register_module_paths(
+    "hwcapture",
+    {k: DATA_DIR / "modules" / "hwcapture" / v for k, v in MODULE_PATH_DEFAULTS.items()}
+)
+
 from . import routes, commands   # side-effects register CLI & REST
 
 from .hwcapture import (
@@ -25,6 +38,3 @@ __all__ = [
     "list_video_devices", "get_device_info",
     "CameraRecorder",
 ]
-
-# re-export the HLS dir you defined in routes.py
-PUBLIC_STREAM_DIR = routes.PUBLIC_STREAM_DIR
