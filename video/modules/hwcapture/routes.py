@@ -9,44 +9,27 @@ DEL  /hwcapture/record/{job_id}     – stop recording
 """
 
 from __future__ import annotations
-import io, json, logging, subprocess, uuid, os, shlex
-
+import io, json, logging, subprocess, uuid, shlex, threading
 from typing import Optional
 
-from fastapi import APIRouter, Query, Response, HTTPException
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from .hwcapture import list_video_devices, HWAccelRecorder
-router = APIRouter(prefix="/motion", tags=["motion"])
-_log   = logging.getLogger("video.motion")
+from video.config import get_module_path
 
+router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
+_log   = logging.getLogger("video.hwcapture")
 
-# Pick a frames dir under DATA_DIR, but don’t die if /data is read-only
-from video.config import DATA_DIR
-from pathlib   import Path
+# Use module-registered directories!
+STREAMS_DIR = get_module_path("hwcapture", "streams")
+RECORDS_DIR = get_module_path("hwcapture", "records")
 
-DATA_DIR = Path(os.getenv("VIDEO_DATA_DIR", "/data"))
-PUBLIC_FRAMES_DIR = DATA_DIR / "web_frames"
-try:
-    PUBLIC_FRAMES_DIR.mkdir(parents=True, exist_ok=True)
-except Exception as e:
-    _log.warning(
-        "Could not create PUBLIC_FRAMES_DIR %s: %s; static mounting of /motion/frames may not work",
-        PUBLIC_FRAMES_DIR, e
-    )
-
-
-# ────────────────────────────────────────────────────────────
-# Utils
-# ────────────────────────────────────────────────────────────
+# ──────────── MJPEG generator ─────────────
 def _mjpeg_generator(cmd: list[str]):
-    """
-    Run ffmpeg → produce multipart/x-mixed-replace MJPEG chunks.
-    """
     boundary = b"--frame"
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-
     try:
         while True:
             size_bytes = proc.stdout.read(2)
@@ -59,14 +42,9 @@ def _mjpeg_generator(cmd: list[str]):
         proc.terminate()
         proc.wait()
 
-# ────────────────────────────────────────────────────────────
-# Endpoints
-# ────────────────────────────────────────────────────────────
+# ──────────── Endpoints ─────────────
 @router.get("/devices")
 async def devices():
-    """
-    Quick capability dump that the front-end uses to populate <select>.
-    """
     return list_video_devices()
 
 @router.get("/stream", include_in_schema=False)
@@ -76,10 +54,6 @@ async def stream(
     height : int = Query(360),
     fps    : int = Query(20)
 ):
-    """
-    MJPEG preview – suitable for a plain <img src="…"> tag.
-    Uses *software* JPEG encode (ffmpeg mjpeg), but tiny frames → low CPU.
-    """
     cmd = shlex.split(
         f"ffmpeg -loglevel error -f v4l2 -video_size {width}x{height} "
         f"-framerate {fps} -i {device} "
@@ -89,7 +63,6 @@ async def stream(
     gen = _mjpeg_generator(cmd)
     return StreamingResponse(gen, media_type="multipart/x-mixed-replace; boundary=frame")
 
-# --- very light-weight "jobs" dict ------------------------------------------
 _jobs: dict[str, HWAccelRecorder] = {}
 
 @router.post("/record")
@@ -98,16 +71,14 @@ async def start_record(
     fname  : str  = Query("capture.mp4"),
     codec  : str  = Query("h264")
 ):
-    """
-    Kick off a background hw-encoded recording job.
-    Returns a simple job_id you can DELETE later.
-    """
+    # Store recordings in RECORDS_DIR
+    out_path = RECORDS_DIR / fname
     job_id = str(uuid.uuid4())
-    rec = HWAccelRecorder(device=device, output_file=fname)
+    rec = HWAccelRecorder(device=device, output_file=str(out_path))
     await run_in_threadpool(rec.start_recording_hw, codec)
     _jobs[job_id] = rec
-    _log.info("▶ recording %s → %s (%s)", device, fname, job_id)
-    return {"job": job_id, "file": fname}
+    _log.info("▶ recording %s → %s (%s)", device, out_path, job_id)
+    return {"job": job_id, "file": str(out_path)}
 
 @router.delete("/record/{job_id}")
 async def stop_record(job_id: str):
