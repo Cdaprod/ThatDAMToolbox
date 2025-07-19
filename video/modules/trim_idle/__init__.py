@@ -1,4 +1,6 @@
 """
+/video/modules/trim_idle/__init__.py
+
 Trim-Idle-Frames plug-in for the Video toolbox.
 
 Adds :

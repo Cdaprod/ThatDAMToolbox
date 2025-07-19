@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/modules/motion_extractor/__init__.py
+
 Motion-Extractor plug-in for the Video toolbox.
 
 Adds:

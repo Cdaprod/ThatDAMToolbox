@@ -1,3 +1,5 @@
+# /video/modules/hwcapture/README.md
+
 Now `hwcapture.py` supports multiple cameras including your Insta360 X3 webcam. Here’s how to use it:
 
 **Multi-camera recording:**

@@ -1,3 +1,5 @@
+// video/web/static/components/ffmpeg-console.js
+
 class FFMpegConsole {
   constructor(cfg){ this.cfg = cfg; }
 

@@ -1,3 +1,5 @@
+# /video/modules/hwcapture/commands.py
+
 """
 Command-line verbs that piggy-back on your main `video` CLI.
 

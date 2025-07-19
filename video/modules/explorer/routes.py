@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/modules/explorer/routes.py
+
 /explorer REST endpoints – auto-mounted by the core plug-in loader
 """
 from __future__ import annotations

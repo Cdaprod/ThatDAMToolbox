@@ -1,23 +1,31 @@
+#!/usr/bin/env python3
 """
 Hardware-capture plug-in for the Video toolbox.
 
 Adds:
-• CLI   – `video hw_record …`, `video hw_list`
-• REST  – /hwcapture/devices, /hwcapture/stream, /hwcapture/record
+• CLI   – `video hw_list`, `video hw_record`, `video rec_start`, `video rec_stop`
+• REST  – GET  /hwcapture/devices
+           GET  /hwcapture/stream
+           POST /hwcapture/record          (legacy)
+           POST /hwcapture/record/start
+           POST /hwcapture/record/stop
 """
 
-from . import routes, commands          #  ← side-effects register our stuff
-
-# re-export helpers so callers can `from video.modules.hwcapture import record`
+from . import routes, commands          # side-effects register CLI & REST
 from .hwcapture import (
     has_hardware_accel as has_hw,
     record, capture, list_video_devices, get_device_info
 )
+from .camerarecorder import CameraRecorder
+
+# Just declare your subfolders (loader will do the rest)
+MODULE_PATH_DEFAULTS = {
+    "hls":        "hls",
+    "recordings": "records"
+}
 
 __all__ = [
     "has_hw", "record", "capture",
-    "list_video_devices", "get_device_info"
+    "list_video_devices", "get_device_info",
+    "CameraRecorder",
 ]
-
-# Public directory that *might* be mounted by the core for HLS etc.
-PUBLIC_STREAM_DIR = routes.PUBLIC_STREAM_DIR

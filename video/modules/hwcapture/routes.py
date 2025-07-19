@@ -1,3 +1,4 @@
+# /video/modules/hwcapture/routes.py
 """
 FastAPI endpoints:
 
@@ -21,8 +22,9 @@ from .hwcapture import list_video_devices, HWAccelRecorder
 router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
 _log   = logging.getLogger("video.hwcapture")
 
-# If you ever want to save HLS fragments, use this dir; not used right now
-PUBLIC_STREAM_DIR = Path("/workspace/hls")
+# ← dynamically resolved from DATA_DIR / "hwcapture" / "hls"
+PUBLIC_STREAM_DIR = get_module_path("hwcapture", "hls")
+
 
 # ────────────────────────────────────────────────────────────
 # Utils

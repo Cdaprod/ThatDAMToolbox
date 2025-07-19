@@ -1,4 +1,8 @@
 /* ------------------------------------------------------------------
+ * video/web/static/components/dam-explorer.js
+ * 
+ * ---NOTE: This dam-explorer.js ends up being bundled in Dockerfile---
+ *
  * Pure browser-ESM: every dependency imported by absolute URL
  * (no bundler, no extra <script> tags).
  * ------------------------------------------------------------------ */

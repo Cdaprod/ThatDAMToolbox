@@ -1,3 +1,5 @@
+# /video/modules/motion_extractor/commands.py
+
 from pathlib import Path
 from argparse import ArgumentParser, Namespace
 from .motion_extractor import MotionExtractor

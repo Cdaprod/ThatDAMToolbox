@@ -1,2 +1,4 @@
+# /video/modules/ffmpeg_console/requirements.txt
+
 # convenience wrapper (uses system ffmpeg)
 ffmpeg-python>=0.2.0 

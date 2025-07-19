@@ -1,3 +1,5 @@
+// video/web/static/components/object-renderer.js
+
 class ObjectRenderer extends HTMLElement {
   set data(obj){ this._render(obj); }
   _render(obj){

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/modules/explorer/commands.py
+
 CLI verb:  video explore [--limit 20] | [--batch <id>]
 Prints the same JSON the REST routes return.
 """

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/modules/__init__.py
+
 Dynamic plugin loader for the video.modules namespace.
 
 - Imports every subpackage in video/modules/

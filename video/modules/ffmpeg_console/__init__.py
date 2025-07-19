@@ -1,4 +1,6 @@
 """
+/video/modules/ffmpeg_console/__init__.py
+
 FFmpeg Console plug-in for the Video toolbox.
 
 Adds:

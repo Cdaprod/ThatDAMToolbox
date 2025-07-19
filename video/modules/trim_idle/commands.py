@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/modules/trim_idle/commands.py
+
 CLI bindings for the trim-idle plug-in (pure-stdlib argparse).
 
 Adds the verb:

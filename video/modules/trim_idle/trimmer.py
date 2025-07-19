@@ -1,4 +1,6 @@
 """
+/video/modules/trim_idle/trimmer.py
+
 Core engine used by both the CLI command and REST endpoint.
 Implements two strategies:
 

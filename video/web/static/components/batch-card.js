@@ -1,3 +1,5 @@
+//  * video/web/static/components/batch-card.js
+
 import '/static/components/object-renderer.js';
 import Ajv from 'https://cdn.skypack.dev/ajv';
 import schema from '/static/schema/v1/media-batch.json' assert { type: 'json' };

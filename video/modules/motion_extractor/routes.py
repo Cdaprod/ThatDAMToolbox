@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/modules/motion_extractor/routes.py
+
 Motion-extractor REST endpoints.
 
 POST /motion/extract              – extract frames from one or many videos

@@ -1,4 +1,6 @@
 """
+/video/modules/explorer/__init__.py
+
 Explorer plug-in  – primary discovery front-end
 
 Adds:
