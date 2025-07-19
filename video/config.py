@@ -221,7 +221,7 @@ def register_module_paths(module_name: str, defaults: dict[str, Path]) -> None:
     if not module_cfg.has_section(section):
         module_cfg.add_section(section)
 
-    # 3) Resolve each key, create directories, and ensure it’s set in module.cfg
+    # 3) Resolve each key, attempt to create directories (but don’t fail if unwritable)
     resolved: dict[str, Path] = {}
     for key, fallback in defaults.items():
         if module_cfg.has_option(section, key):
@@ -230,8 +230,15 @@ def register_module_paths(module_name: str, defaults: dict[str, Path]) -> None:
             p = fallback
             module_cfg.set(section, key, str(p))
 
-        # make sure it exists on disk
-        p.mkdir(parents=True, exist_ok=True)
+        # try to create it, but swallow permission errors
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            log.warning(
+                "Could not create module path %s:%s at %s – %s",
+                module_name, key, p, e
+            )
+        # register it anyway (even if we couldn’t make it on disk)
         resolved[key] = p
 
     # 4) Write back only this module’s config file
