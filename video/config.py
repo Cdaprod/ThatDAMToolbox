@@ -102,7 +102,19 @@ def get_app_subdir(name: str) -> Path:
     """Get (and ensure) a named subdirectory under [paths].root."""
     root = get_path("paths", "root") or Path.home() / "video"
     subdir = root / name
-    subdir.mkdir(parents=True, exist_ok=True)
+    try:
+        subdir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        log.warning(
+            "Could not create app subdir %r at %s (%s); falling back to temp",
+            name, subdir, e
+        )
+        import tempfile
+        subdir = Path(tempfile.gettempdir()) / name
+        try:
+            subdir.mkdir(parents=True, exist_ok=True)
+        except Exception as e2:
+            log.error("Failed to create fallback temp subdir %s: %s", subdir, e2)
     return subdir
 
 INCOMING_DIR  =  get_path("paths", "incoming") or get_app_subdir("_INCOMING")

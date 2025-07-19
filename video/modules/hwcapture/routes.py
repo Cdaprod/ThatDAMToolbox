@@ -10,7 +10,7 @@ DEL  /hwcapture/record/{job_id}     – stop recording
 
 from __future__ import annotations
 import io, json, logging, subprocess, uuid, os, shlex
-from pathlib import Path
+
 from typing import Optional
 
 from fastapi import APIRouter, Query, Response, HTTPException
@@ -18,22 +18,20 @@ from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from .hwcapture import list_video_devices, HWAccelRecorder
-from video.config import get_module_path
+router = APIRouter(prefix="/motion", tags=["motion"])
+_log   = logging.getLogger("video.motion")
 
-router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
-_log   = logging.getLogger("video.hwcapture")
-
+# Pick a frames dir under DATA_DIR, but don’t die if /data is read-only
 from video.config import DATA_DIR
+from pathlib   import Path
 
-# fallback HLS dir under DATA_DIR/hwcapture/hls
-PUBLIC_STREAM_DIR = DATA_DIR / "hwcapture" / "hls"
+PUBLIC_FRAMES_DIR = DATA_DIR / "motion_extractor" / "web_frames"
 try:
-    PUBLIC_STREAM_DIR.mkdir(parents=True, exist_ok=True)
+    PUBLIC_FRAMES_DIR.mkdir(parents=True, exist_ok=True)
 except PermissionError:
-    # if /data is not writable, just swallow it and let STATIC serve an empty tree
-    logging.getLogger(__name__).warning(
-        "Could not create HLS directory %r, continuing without it",
-        PUBLIC_STREAM_DIR,
+    _log.warning(
+        "Could not create motion_extractor frame dir %r; proceeding without it",
+        PUBLIC_FRAMES_DIR
     )
 
 
