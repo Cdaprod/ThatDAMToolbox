@@ -54,8 +54,7 @@ services:
       #
       # --- Production Mounts ---------------------
       # 1. Entire persistent dataset (media, db, previews, …)
-      #- /mnt/b/Video/thatdamtoolbox:/data:rw
-      - thatdamtoolbox_data:/data:rw
+      - /mnt/b/Video/thatdamtoolbox:/data:rw
       - ./data/db:/var/lib/thatdamtoolbox/db:rw
       # 2. Overlay the staging dir so the container sees it at /data/_INCOMING
       - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
@@ -83,12 +82,3 @@ services:
     depends_on: [video-api]
     profiles: ["cli"]
     
-volumes:
-  thatdamtoolbox_data:
-    # Force Docker to use exactly this name (no prefix)
-    name: thatdamtoolbox_data
-    driver: local
-    driver_opts:
-      type: none
-      o: bind,uid=1003,gid=1003
-      device: /mnt/b/Video/thatdamtoolbox
