@@ -21,17 +21,19 @@ from .hwcapture import list_video_devices, HWAccelRecorder
 router = APIRouter(prefix="/motion", tags=["motion"])
 _log   = logging.getLogger("video.motion")
 
+
 # Pick a frames dir under DATA_DIR, but don’t die if /data is read-only
 from video.config import DATA_DIR
 from pathlib   import Path
 
-PUBLIC_FRAMES_DIR = DATA_DIR / "motion_extractor" / "web_frames"
+DATA_DIR = Path(os.getenv("VIDEO_DATA_DIR", "/data"))
+PUBLIC_FRAMES_DIR = DATA_DIR / "web_frames"
 try:
     PUBLIC_FRAMES_DIR.mkdir(parents=True, exist_ok=True)
-except PermissionError:
+except Exception as e:
     _log.warning(
-        "Could not create motion_extractor frame dir %r; proceeding without it",
-        PUBLIC_FRAMES_DIR
+        "Could not create PUBLIC_FRAMES_DIR %s: %s; static mounting of /motion/frames may not work",
+        PUBLIC_FRAMES_DIR, e
     )
 
 
