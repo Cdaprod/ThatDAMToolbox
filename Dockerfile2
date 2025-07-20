@@ -160,6 +160,7 @@ WORKDIR /video
 # Python site-packages from builder
 COPY --from=builder /home/appuser/.local /home/appuser/.local
 ENV PATH="/home/appuser/.local/bin:${PATH}"
+ENV PYTHONPATH="/video:${PYTHONPATH}"
 
 # app code
 COPY --chown=appuser:appuser video/ ./
