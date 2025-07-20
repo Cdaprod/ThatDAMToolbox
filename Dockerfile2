@@ -137,21 +137,27 @@ RUN mkdir -p /home/appuser/.config/nvim && \
 RUN chown -R appuser:appuser /home/appuser
 
 #############################################
-# Stage 3 – Builder: create a venv in /video
+# Stage 3 – Builder: create a venv in /video #
 #############################################
 FROM devshell AS builder
 USER appuser
 WORKDIR /video
 
-# 1) Copy only what we need to install
-COPY --chown=appuser:appuser requirements.txt setup.py README.md ./ 
-COPY --chown=appuser:appuser video/            ./video/
+# copy only what setup.py needs
+COPY --chown=appuser:appuser setup.py requirements.txt README.md ./
+COPY --chown=appuser:appuser video/ video/
 
-# 2) Create the venv, install into it
+# 1) Create venv, install your package
 RUN python3 -m venv /video/venv \
  && /video/venv/bin/pip install --upgrade pip \
  && /video/venv/bin/pip install --no-cache-dir -r requirements.txt \
  && /video/venv/bin/pip install --no-cache-dir -e .
+
+# 2) (Optional) install module‐specific requirements
+RUN set -e; \
+  cd video/modules; \
+  find . -name requirements.txt -print0 | xargs -0 cat | sort -u > /tmp/extra.txt; \
+  [ -s /tmp/extra.txt ] && /video/venv/bin/pip install --no-cache-dir -r /tmp/extra.txt
 
 #############################################
 # Stage 4 – Runtime: reuse that venv
@@ -170,15 +176,6 @@ ENV PATH="/video/venv/bin:${PATH}"
 COPY --from=frontend-build \
      /build/dam-explorer.bundle.js \
      /video/web/static/components/
-
-# 4) (Optional) install module‐specific requirements
-RUN set -e; \
-    cd /video/modules; \
-    find . -name requirements.txt -print0 \
-      | xargs -0 cat | sort -u > /tmp/extra.txt; \
-    if [ -s /tmp/extra.txt ]; then \
-      pip install --no-cache-dir -r /tmp/extra.txt; \
-    fi
 
 # 5) Runtime‐only ENV overrides
 ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
