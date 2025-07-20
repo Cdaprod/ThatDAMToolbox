@@ -155,14 +155,13 @@ RUN python3 -m venv /video/venv \
 
 # 2) (Optional) install module‐specific requirements
 RUN set -e; \
-    cd video/modules; \
-    find . -name requirements.txt -print0 \
-      | xargs -0 cat \
-      | sed 's/[[:space:]]*#.*//' \
-      | grep -v '^[[:space:]]*$' \
-      | sort -u > /tmp/extra.txt; \
-    [ -s /tmp/extra.txt ] && /video/venv/bin/pip install --no-cache-dir -r /tmp/extra.txt
-    
+    for req in /video/video/modules/*/requirements.txt; do \
+      if [ -f "$req" ]; then \
+        echo "Installing extra deps for $(dirname $req)"; \
+        /video/venv/bin/pip install --no-cache-dir -r "$req"; \
+      fi; \
+    done
+        
 #############################################
 # Stage 4 – Runtime: reuse that venv
 #############################################
