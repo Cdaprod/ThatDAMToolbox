@@ -144,7 +144,7 @@ USER appuser
 WORKDIR /video
 
 # 1) Copy only what we need to install
-COPY --chown=appuser:appuser requirements.txt setup.py ./ 
+COPY --chown=appuser:appuser requirements.txt setup.py README.md ./ 
 COPY --chown=appuser:appuser video/            ./video/
 
 # 2) Create the venv, install into it
