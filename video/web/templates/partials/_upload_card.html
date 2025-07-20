@@ -1,40 +1,44 @@
 <!-- partials/_upload_card.html -->
 <details class="glass-card" id="uploadCard" open>
   <summary>📼 Upload</summary>
-
   <div class="card-body">
-    <!-- 1) file picker ---------------------------------------------------- -->
-    <input id="file-input"
-           type="file"
-           multiple
-           accept="video/*"
-           class="file-input"
-           style="display: none;" />
-    
-    <label for="file-input" class="file-input-label" style="
-      display: block;
-      padding: 12px 20px;
-      background: #4a90e2;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: center;
-      margin: 0.5rem 0;
-      font-size: 16px;
-    ">
-      📁 Select Video Files
-    </label>
 
-    <!-- 2) optional batch name ------------------------------------------- -->
-    <input id="batch-name"
-           type="text"
-           placeholder="Batch name (optional)"
-           class="input-text"
-           style="margin-bottom:.5rem;" />
+    <!-- 1. File Selection -->
+    <div class="form-group">
+      <label for="file-input">Select Video Files</label>
+      <div class="flex items-center gap-2">
+        <input type="file"
+               id="file-input"
+               accept="video/*"
+               multiple
+               class="form-control" />
+        <button type="button"
+                id="clear-files"
+                class="btn btn-secondary btn-small">
+          ✖️ Clear
+        </button>
+      </div>
+    </div>
 
-    <!-- 3) simple list updated by JS ------------------------------------- -->
-    <ul id="upload-list" class="small"></ul>
+    <!-- 2. Batch Name -->
+    <div class="form-group">
+      <label for="batch-name">Batch Name (Optional)</label>
+      <input type="text"
+             id="batch-name"
+             class="form-control"
+             placeholder="Enter batch name..." />
+    </div>
 
-    <p class="hint">(files are uploaded immediately after selection -- no need to press a button)</p>
+    <!-- 3. Upload List -->
+    <div class="form-group">
+      <label>Selected Files:</label>
+      <ul id="upload-list" class="kvp" style="min-height: 60px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 8px; margin-top: 4px;"></ul>
+    </div>
+
+    <!-- 4. Auto-upload notice -->
+    <p class="hint" style="margin-top: 1rem; font-style: italic; opacity: 0.8;">
+      (files are uploaded immediately after selection -- no need to press a button)
+    </p>
+
   </div>
 </details>
