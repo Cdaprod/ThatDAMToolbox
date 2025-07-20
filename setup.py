@@ -9,11 +9,11 @@ REQUIREMENTS = (ROOT / "requirements.txt").read_text().splitlines()
 setup(
     name="video",
     version="0.1.0",
-    description="That DAM Toolbox – media indexer CLI + FastAPI service",
+    description="That DAM Toolbox – Media Indexer + API Driven Service",
     long_description=README,
     long_description_content_type="text/markdown",
     author="David Cannan",
-    url="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype",
+    url="https://github.com/Cdaprod/ThatDAMToolbox",
     packages=find_packages(exclude=("tests", "scripts", "docker")),
     python_requires=">=3.10",
     install_requires=[r for r in REQUIREMENTS if r and not r.startswith("#")],
