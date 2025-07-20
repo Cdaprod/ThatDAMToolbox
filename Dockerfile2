@@ -163,7 +163,7 @@ ENV PATH="/home/appuser/.local/bin:${PATH}"
 ENV PYTHONPATH="/video:${PYTHONPATH}"
 
 # app code
-COPY --chown=appuser:appuser video/ ./
+COPY --chown=appuser:appuser video/ /video/
 COPY --chown=appuser:appuser setup.py ./setup.py
 COPY --chown=appuser:appuser run_video.py ./run_video.py
 
