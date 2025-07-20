@@ -293,6 +293,19 @@ const DAMExplorer = () => {
     };
   }, []);
 
+  // Trigger re-fetch of currentPath assets
+  useEffect(() => {
+    const refresh = () => {
+      fetch(`/api/v1/explorer/assets?path=${encodeURIComponent(currentPath)}`)
+        .then(r => r.json())
+        .then(setAssets)
+        .catch(console.error);
+    };
+
+    window.addEventListener('explorer:refresh', refresh);
+    return () => window.removeEventListener('explorer:refresh', refresh);
+  }, [currentPath]);
+
   // Auto-save mechanism
   const triggerAutoSave = useCallback((operation, data) => {
     if (autoSaveTimeoutRef.current) {

@@ -168,7 +168,11 @@ class ThemePlugin{
 
 const app=(()=>{           // isolated scope
   const bus=new EventBus(), cfg=new Config(), pm=new PluginManager(bus);
-  const mgr={batch:new BatchManager(bus,cfg), upload:new UploadManager(bus,cfg)};
+  const mgr={
+    batch:new BatchManager(bus,cfg), 
+    upload:new UploadManager(bus,cfg)
+    // add additional improved managers here
+  };
   pm.register('analytics',new AnalyticsPlugin());
   pm.register('theme',     new ThemePlugin());
   return {bus,cfg,pm,mgr};

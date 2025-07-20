@@ -1,4 +1,4 @@
-// video/web/static/components/live-preview.js
+// /video/web/static/components/live-preview.js
 
 document.addEventListener("DOMContentLoaded", () => {
   const selects  = Array.from(document.querySelectorAll(".capDev"));
@@ -6,34 +6,61 @@ document.addEventListener("DOMContentLoaded", () => {
   const btn      = document.getElementById("startAll");
   let recording  = false;
 
+  if (!selects.length || !previews.length || !btn) {
+    console.error("live-preview.js: Required elements not found.");
+    return;
+  }
+  if (selects.length !== previews.length) {
+    console.error("live-preview.js: .capDev and .prevImg count mismatch.");
+    return;
+  }
+
   // 1) Fetch available devices and populate selects
   fetch("/hwcapture/devices")
-    .then((res) => res.json())
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to fetch devices");
+      return res.json();
+    })
     .then((devices) => {
+      if (!Array.isArray(devices) || devices.length === 0) {
+        throw new Error("No capture devices found");
+      }
       selects.forEach((sel, idx) => {
+        sel.innerHTML = ""; // clear existing options
         devices.forEach((dev) => {
           const opt = document.createElement("option");
           opt.value = dev.path;
           opt.textContent = `${dev.path} (${dev.width}×${dev.height}@${dev.fps}fps)`;
           sel.appendChild(opt);
         });
-        // default to first device
+        // default to first device and trigger preview update
         sel.selectedIndex = 0;
         sel.dispatchEvent(new Event("change"));
       });
     })
-    .catch(console.error);
+    .catch((err) => {
+      selects.forEach(sel => sel.innerHTML = '<option disabled>No devices found</option>');
+      previews.forEach(img => img.src = "");
+      console.error("live-preview.js:", err);
+    });
 
   // 2) On select change, point preview <img> to the MJPEG stream
   selects.forEach((sel, idx) => {
     sel.addEventListener("change", () => {
       const dev = encodeURIComponent(sel.value);
-      previews[idx].src = `/hwcapture/stream?device=${dev}&width=320&height=240&fps=10`;
+      previews[idx].src = dev
+        ? `/hwcapture/stream?device=${dev}&width=320&height=240&fps=10`
+        : "";
     });
   });
 
   // 3) Start/Stop both recordings
   btn.addEventListener("click", () => {
+    if (!selects.every(sel => sel.value)) {
+      alert("Select a device for each camera before starting recording.");
+      return;
+    }
+    btn.disabled = true; // prevent double clicks
     if (!recording) {
       // START
       Promise.all(
@@ -48,12 +75,19 @@ document.addEventListener("DOMContentLoaded", () => {
           })
         )
       )
-        .then(() => {
-          recording = true;
-          btn.textContent = "⏹ Stop both";
-          btn.classList.add("recording");
-        })
-        .catch(console.error);
+      .then((results) => {
+        if (results.some(r => !r.ok)) throw new Error("Failed to start one or more recordings");
+        recording = true;
+        btn.textContent = "⏹ Stop both";
+        btn.classList.add("recording");
+      })
+      .catch((err) => {
+        alert("Could not start recording: " + err.message);
+        console.error("live-preview.js:", err);
+      })
+      .finally(() => {
+        btn.disabled = false;
+      });
     } else {
       // STOP
       Promise.all(
@@ -65,12 +99,19 @@ document.addEventListener("DOMContentLoaded", () => {
           })
         )
       )
-        .then(() => {
-          recording = false;
-          btn.textContent = "▶ Start both";
-          btn.classList.remove("recording");
-        })
-        .catch(console.error);
+      .then((results) => {
+        if (results.some(r => !r.ok)) throw new Error("Failed to stop one or more recordings");
+        recording = false;
+        btn.textContent = "▶ Start both";
+        btn.classList.remove("recording");
+      })
+      .catch((err) => {
+        alert("Could not stop recording: " + err.message);
+        console.error("live-preview.js:", err);
+      })
+      .finally(() => {
+        btn.disabled = false;
+      });
     }
   });
 });
