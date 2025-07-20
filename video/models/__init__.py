@@ -15,7 +15,7 @@ class VideoArtifact(BaseModel):
     metadata:  Dict[str, Any] = {}
 
 class Slice(BaseModel):
-    level:      str   # L0/L1/L2/L3
+    level:      str   # L0/L1/L2/L3 Embeddings
     start_time: float
     end_time:   float
     embedding:  Optional[List[float]] = None   # only if you want to expose it
