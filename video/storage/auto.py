@@ -72,6 +72,12 @@ class AutoStorage(StorageEngine):
                  db_path : str | Path | None = None,
                  backend : str               = "memory",
                  cfg     : Dict[str, Any] | None = None):
+        # if someone passed the storage-backend name as first arg (e.g. "auto", "sqlite", "faiss", …)
+        # instead of a real filesystem path, swap it into the backend parameter
+        if isinstance(db_path, str) and not Path(db_path).is_absolute():
+            # treat any non‐absolute string as a backend name
+            backend, db_path = db_path, None
+
 
         # --- metadata layer -------------------------------------------------
         default_db = Path.home() / "thatdamtoolbox" / "db" / "media_index.sqlite3"
