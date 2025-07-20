@@ -137,31 +137,50 @@ RUN mkdir -p /home/appuser/.config/nvim && \
 RUN chown -R appuser:appuser /home/appuser
 
 #############################################
-# Stage 3 – Python builder (wheels compile) #
+# Stage 3 – Builder: create a venv in /video
 #############################################
 FROM devshell AS builder
 USER appuser
 WORKDIR /video
 
-# project sources
-COPY --chown=appuser:appuser requirements.txt setup.py README.md ./
-COPY --chown=appuser:appuser video/ ./
+# 1) Copy only what we need to install
+COPY --chown=appuser:appuser requirements.txt setup.py ./ 
+COPY --chown=appuser:appuser video/            ./video/
 
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -e .
-    
+# 2) Create the venv, install into it
+RUN python3 -m venv /video/venv \
+ && /video/venv/bin/pip install --upgrade pip \
+ && /video/venv/bin/pip install --no-cache-dir -r requirements.txt \
+ && /video/venv/bin/pip install --no-cache-dir -e .
+
 #############################################
-# Stage 4 – Slim runtime image             #
+# Stage 4 – Runtime: reuse that venv
 #############################################
 FROM devshell AS runtime
 USER appuser
 WORKDIR /video
 
-# Python site-packages from builder
-COPY --from=builder /home/appuser/.local /home/appuser/.local
-ENV PATH="/home/appuser/.local/bin:${PATH}"
-ENV PYTHONPATH="/video:${PYTHONPATH}"
+# 1) Copy over the entire /video tree (venv + your code)
+COPY --from=builder --chown=appuser:appuser /video /video
 
+# 2) Make the venv’s bin the first thing on PATH
+ENV PATH="/video/venv/bin:${PATH}"
+
+# 3) Bring in your React bundle
+COPY --from=frontend-build \
+     /build/dam-explorer.bundle.js \
+     /video/web/static/components/
+
+# 4) (Optional) install module‐specific requirements
+RUN set -e; \
+    cd /video/modules; \
+    find . -name requirements.txt -print0 \
+      | xargs -0 cat | sort -u > /tmp/extra.txt; \
+    if [ -s /tmp/extra.txt ]; then \
+      pip install --no-cache-dir -r /tmp/extra.txt; \
+    fi
+
+# 5) Runtime‐only ENV overrides
 ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
     VIDEO_DB_PATH=/var/lib/thatdamtoolbox/db/live.sqlite3 \
     VIDEO_MEDIA_ROOT=/var/lib/thatdamtoolbox/media \
@@ -170,21 +189,6 @@ ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
     VIDEO_LOG_DIR=/var/lib/thatdamtoolbox/logs \
     VIDEO_TMP_DIR=/var/lib/thatdamtoolbox/tmp \
     VIDEO_INCOMING_DIR=/var/lib/thatdamtoolbox/_INCOMING
-    
-# app code
-COPY --chown=appuser:appuser video/ /video/
-COPY --chown=appuser:appuser setup.py ./setup.py
-COPY --chown=appuser:appuser run_video.py ./run_video.py
-
-# bundled React ESM
-COPY --from=frontend-build /build/dam-explorer.bundle.js \
-     /video/web/static/components/dam-explorer.bundle.js
-
-# optional extra plugin requirements
-RUN set -e; \
-    cd /video/modules && \
-    find . -name requirements.txt -print0 | xargs -0 cat | sort -u > /tmp/extra.txt || true && \
-    [ -s /tmp/extra.txt ] && pip install --no-cache-dir --user -r /tmp/extra.txt || true
 
 EXPOSE 8080
 
