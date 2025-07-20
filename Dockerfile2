@@ -147,9 +147,9 @@ WORKDIR /video
 COPY --chown=appuser:appuser requirements.txt setup.py README.md ./
 COPY --chown=appuser:appuser video/ ./
 
-RUN pip install --no-cache-dir --user -r requirements.txt && \
-    pip install --no-cache-dir --user -e .
-
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -e .
+    
 #############################################
 # Stage 4 – Slim runtime image             #
 #############################################
