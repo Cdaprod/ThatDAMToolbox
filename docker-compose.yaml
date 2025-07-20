@@ -45,22 +45,14 @@ services:
     privileged: true                    # access /dev/video*
     # --- Storage mounts ------------------------
     volumes:
-      # --- Deprecated Mounting Methods ------------
-      # # - /mnt/nas:/mnt/nas:ro                           # NAS (optional, read-only)
-      # - /mnt/b/Video/_INCOMING:/workspace/_INCOMING      # Working store
-      # - /mnt/b/Video/thatdamtoolbox:/workspace/thatdamtoolbox # Read-only archive
-      # - ./video:/workspace/video:rw                     # Live code hot-reload
-      # - ./data/media:/media:rw                          # Local media
-      # - ./data/db:/workspace/db:rw                      # DB, thumbnails, etc.
-      #
       # --- Production Mounts ---------------------
       # 1. Entire persistent dataset (media, db, previews, …)
-      - /mnt/b/Video/thatdamtoolbox:/data:rw
       - ./data/db:/var/lib/thatdamtoolbox/db:rw
+      - /mnt/b/Video/thatdamtoolbox:/data:rw
       # 2. Overlay the staging dir so the container sees it at /data/_INCOMING
       - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
-      # 3. Live source for hot-reload (dev only, keep if you need it)
-      - ./video:/workspace/video:rw
+      # 3. Live source for hot-reload (dev only)
+      - ./video:/video:rw
     restart: unless-stopped
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
@@ -81,7 +73,7 @@ services:
     command: ["stats"]                        # Any CLI verb
     volumes:
       - ./data/media:/media
-      - ./data/db:/workspace/db
+      - ./data/db:/var/lib/thatdamtoolbox/db:rw
     depends_on: [video-api]
     profiles: ["cli"]
     
