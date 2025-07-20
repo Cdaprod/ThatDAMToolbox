@@ -17,7 +17,6 @@ from video.config import register_module_paths, DATA_DIR
 __version__ = "1.0.0"
 __author__ = "DAM System"
 
-from .main import app
 from .commands import register_commands
 
 # Declare all subdirs your module uses here:
