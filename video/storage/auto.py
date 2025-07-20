@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from video.db import MediaDB
 from video.storage.base   import StorageEngine          # abstract interface
 from video.storage.wal_proxy import WALProxyDB
+from video.config import DB_PATH
 
 log = logging.getLogger("video.auto_store")
 
@@ -81,9 +82,10 @@ class AutoStorage(StorageEngine):
 
         # --- metadata layer -------------------------------------------------
         default_db = Path.home() / "thatdamtoolbox" / "db" / "media_index.sqlite3"
-        #self._db   = MediaDB(db_path or default_db) # Disabled for video.storage.wal_proxy
-        self._db = WALProxyDB(db_path or default_db)
+        # Use the same DB_PATH that config.py already created under /data/db
+        self._db = WALProxyDB(db_path or DB_PATH)
 
+  
         # --- vector layer (optional) ----------------------------------------
         try:
             # Local import keeps stdlib-only installs happy
