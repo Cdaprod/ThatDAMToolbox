@@ -4,13 +4,14 @@
 
 ## Directory Structure
 ```
-video/dam/
+video/modules/dam/
 ├── __init__.py
-├── main.py
-├── router.py
+├── services.py
+├── routes.py
 ├── commands.py
 └── models/
     ├── __init__.py
+    ├── faiss_store.py
     ├── hierarchy.py
     ├── embeddings.py
     └── storage.py

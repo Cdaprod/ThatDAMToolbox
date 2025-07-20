@@ -162,7 +162,7 @@ COPY --from=builder /home/appuser/.local /home/appuser/.local
 ENV PATH="/home/appuser/.local/bin:${PATH}"
 
 # app code
-COPY --chown=appuser:appuser video/ ./video
+COPY --chown=appuser:appuser video/ ./
 COPY --chown=appuser:appuser setup.py ./setup.py
 COPY --chown=appuser:appuser run_video.py ./run_video.py
 

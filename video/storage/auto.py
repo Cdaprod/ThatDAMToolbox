@@ -11,6 +11,7 @@ the class still satisfies StorageEngine with just MediaDB.
 
 from __future__ import annotations
 
+import os
 import asyncio
 import logging
 from pathlib import Path
@@ -124,37 +125,56 @@ class AutoStorage(StorageEngine):
         )
         return [dict(r) for r in rows]
 
-    def list_all_folders(self) -> list[dict]:
-        """
-        SELECT DISTINCT dirname(path) …  → [{'id': …, 'name': …, 'path': …, 'parent_id': …}]
-        """
-
-    def list_assets(self, folder: Path) -> list[dict]:
-        """
-        SELECT * FROM artifacts WHERE dirname(path)=folder
-        """
-
-    # ---- VECTORS / SEARCH --------------------------------------------------
-
-    def add_vector(self,
-                   sha1: str,
-                   level: str,
-                   vector: List[float],
-                   start_time: float = 0.0,
-                   end_time  : float = 0.0,
-                   metadata  : Dict[str, Any] | None = None) -> None:
-        if not self._vec:
-            log.debug("Vector layer missing; vector ignored")
-            return
-        _ensure_event_loop_running(
-            self._vec.store_level_vectors(
-                sha1, level,
-                [{"vector": vector,
-                  "start_time": start_time,
-                  "end_time": end_time,
-                  "metadata": metadata or {}}]
+        def list_all_folders(self) -> list[dict]:
+            # Get all distinct directories from the videos table
+            rows = self._db.execute(
+                "SELECT DISTINCT path FROM videos"
             )
-        )
+            # Extract folder paths and build folder info objects
+            folders = set()
+            for r in rows:
+                folder = os.path.dirname(r['path'])
+                folders.add(folder)
+            # Map to explorer-expected shape (add id, parent if you like)
+            return [
+                {
+                    "id": f"folder_{abs(hash(folder))}",  # or use folder path
+                    "name": os.path.basename(folder) or folder,
+                    "path": folder,
+                    "parent_id": f"folder_{abs(hash(os.path.dirname(folder)))}"
+                }
+                for folder in folders
+            ]
+
+        def list_assets(self, folder: Path) -> list[dict]:
+            # Return all videos whose path is under the given folder
+            rows = self._db.execute(
+                "SELECT * FROM videos WHERE path LIKE ?",
+                (str(folder) + "/%",)
+            )
+            return [dict(r) for r in rows]
+
+            # ---- VECTORS / SEARCH --------------------------------------------------
+
+            def add_vector(self,
+                           sha1: str,
+                           level: str,
+                           vector: List[float],
+                           start_time: float = 0.0,
+                           end_time  : float = 0.0,
+                           metadata  : Dict[str, Any] | None = None) -> None:
+                if not self._vec:
+                    log.debug("Vector layer missing; vector ignored")
+                    return
+                _ensure_event_loop_running(
+                    self._vec.store_level_vectors(
+                        sha1, level,
+                        [{"vector": vector,
+                          "start_time": start_time,
+                          "end_time": end_time,
+                          "metadata": metadata or {}}]
+                    )
+                )
 
     def search_vector(self,
                       vector: List[float],

@@ -1,43 +1,33 @@
-<!-- base.html -->
+<!-- /video/web/templates/base.html -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <title>{% block title %}Video DAM{% endblock %}</title>
 
+  <!-- Styles -->
   <link rel="stylesheet"
         href="{{ url_for('static', path='styles.css') }}" />
 
-  <!-- classic favicon – multi-size ICO -->
+  <!-- Favicons (all device sizes) -->
   <link rel="shortcut icon"
         href="{{ url_for('static', path='favicon/favicon.ico') }}"
         type="image/x-icon" />
-
-  <!-- small and medium PNG fallbacks -->
   <link rel="icon"
         href="{{ url_for('static', path='favicon/favicon-16x16.png') }}"
-        sizes="16x16"
-        type="image/png" />
+        sizes="16x16" type="image/png" />
   <link rel="icon"
         href="{{ url_for('static', path='favicon/favicon-32x32.png') }}"
-        sizes="32x32"
-        type="image/png" />
-
-  <!-- iOS home-screen icon -->
+        sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon"
         href="{{ url_for('static', path='favicon/apple-touch-icon.png') }}"
         sizes="180x180" />
-
-  <!-- Android/Chrome PWA manifest -->
   <link rel="manifest"
         href="{{ url_for('static', path='favicon/site.webmanifest') }}" />
-
-  <!-- Safari pinned-tab (dark mode mask) -->
   <link rel="mask-icon"
         href="{{ url_for('static', path='favicon/safari-pinned-tab.svg') }}"
         color="#FF8C00" />
 
-  <!-- theme color for mobile browsers -->
   <meta name="theme-color" content="#0A0F1C" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -49,34 +39,28 @@
     <nav id="sidebar" class="sidebar">
       {% include "partials/_sidebar.html" %}
     </nav>
-
     <main class="dashboard-main">
       {% block body %}{% endblock %}
     </main>
   </div>
-
   <button id="burger" class="burger"
           onclick="document.querySelector('.sidebar').classList.toggle('open')">
     ☰
   </button>
 
-  <!-- your existing JS bundles -->
-  <script type="module" 
-        src="/static/components/dam-explorer.bundle.js"></script>
-  <!--<script type="module" 
-        src="/static/components/explorer.js"></script>-->
-  <script type="module" 
-        src="/static/components/live-preview.js"></script>
+  <!-- Modular JS Components: adjust as your build/bundle process outputs -->
   <script type="module"
-        src="{{ url_for('static', path='components/ffmpeg-console.js') }}"></script>
+          src="{{ url_for('static', path='components/live-preview.js') }}"></script>
   <script type="module"
-        src="{{ url_for('static', path='components/object-renderer.js') }}"></script>
+          src="{{ url_for('static', path='components/ffmpeg-console.js') }}"></script>
   <script type="module"
-        src="{{ url_for('static', path='components/batch-card.js') }}"></script>
+          src="{{ url_for('static', path='components/object-renderer.js') }}"></script>
   <script type="module"
-        src="{{ url_for('static', path='components/video-card.js') }}"></script>
+          src="{{ url_for('static', path='components/batch-card.js') }}"></script>
   <script type="module"
-        src="{{ url_for('static', path='app.js') }}"></script>
+          src="{{ url_for('static', path='components/video-card.js') }}"></script>
+  <script type="module"
+          src="{{ url_for('static', path='app.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
