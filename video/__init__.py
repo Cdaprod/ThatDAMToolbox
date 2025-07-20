@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 """
+/video/__init__.py
+
 That DAM Toolbox – *Pythonista-friendly*, pure-stdlib façade
 
 Updated directory layout (depth ≤ 1)

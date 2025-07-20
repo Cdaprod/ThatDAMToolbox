@@ -1,5 +1,8 @@
-# /video/db.py  – stand-alone replacement
-"""SQLite helper – one canonical connection for the whole Video stack."""
+"""
+/video/db.py  – stand-alone replacement
+
+SQLite helper – one canonical connection for the whole Video stack.
+"""
 
 from __future__ import annotations
 import time

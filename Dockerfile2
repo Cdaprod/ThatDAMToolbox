@@ -162,6 +162,15 @@ COPY --from=builder /home/appuser/.local /home/appuser/.local
 ENV PATH="/home/appuser/.local/bin:${PATH}"
 ENV PYTHONPATH="/video:${PYTHONPATH}"
 
+ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
+    VIDEO_DB_PATH=/var/lib/thatdamtoolbox/db/live.sqlite3 \
+    VIDEO_MEDIA_ROOT=/var/lib/thatdamtoolbox/media \
+    VIDEO_PROCESSED_DIR=/var/lib/thatdamtoolbox/_PROCESSED \
+    VIDEO_PREVIEW_ROOT=/var/lib/thatdamtoolbox/previews \
+    VIDEO_LOG_DIR=/var/lib/thatdamtoolbox/logs \
+    VIDEO_TMP_DIR=/var/lib/thatdamtoolbox/tmp \
+    VIDEO_INCOMING_DIR=/var/lib/thatdamtoolbox/_INCOMING
+    
 # app code
 COPY --chown=appuser:appuser video/ /video/
 COPY --chown=appuser:appuser setup.py ./setup.py

@@ -1,6 +1,7 @@
-# /video/bootstrap.py
 #!/usr/bin/env python3
 """
+/video/bootstrap.py
+
 Smart bootstrap for the *video* API.
 
 • If Docker is available → run the pre-built container

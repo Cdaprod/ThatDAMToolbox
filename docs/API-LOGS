@@ -1,0 +1,150 @@
+video-api-1  | 2025-07-20 13:50:47 WARNING video.config | Configured directory db_path at /var/lib/thatdamtoolbox/db/live.sqlite3 not writable; falling back to /data/db/media_index.sqlite3
+video-api-1  | 2025-07-20 13:50:47 ERROR video.config | Failed to create fallback directory /data/db/media_index.sqlite3: [Errno 17] File exists: '/data/db/media_index.sqlite3'
+video-api-1  | video/__init__.py: Creating DB singleton (MediaDB)
+video-api-1  | INITIALIZING DB: video in /video/video/__init__.py
+video-api-1  | MediaDB.__init__: self=<video.db.MediaDB object at 0xffffbc514d90> db_path=None resolved=/var/lib/thatdamtoolbox/db/live.sqlite3
+video-api-1  | 2025-07-20 13:50:47 INFO video.db | Initialising SQLite DB at /var/lib/thatdamtoolbox/db/live.sqlite3
+video-api-1  | 2025-07-20 13:50:47 INFO video.db | journal_mode=WAL enabled successfully
+video-api-1  | 2025-07-20 13:50:47 INFO video.config | Wrote module config for 'hwcapture' to /video/video/modules/hwcapture/module.cfg
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Loaded module: video.modules.hwcapture
+video-api-1  | 2025-07-20 13:50:48 INFO video.config | Wrote module config for 'hwcapture' to /video/video/modules/hwcapture/module.cfg
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Registered paths for hwcapture: {'streams': PosixPath('/data/modules/hwcapture/streams'), 'records': PosixPath('/data/modules/hwcapture/records')}
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Loaded commands for video.modules.hwcapture
+video-api-1  | 2025-07-20 13:50:48 INFO video.uploader | Uploader ready – staging dir: /home/appuser/video/_INCOMING/sources/WEB_UPLOADS
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Loaded module: video.modules.uploader
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Collected router from video.modules.uploader
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Loaded module: video.modules.trim_idle
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Loaded commands for video.modules.trim_idle
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Collected router from video.modules.trim_idle
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Loaded module: video.modules.ffmpeg_console
+video-api-1  | 2025-07-20 13:50:48 INFO video.modules | Loaded commands for video.modules.ffmpeg_console
+video-api-1  | MediaDB.__init__: self=<video.storage.wal_proxy.WALProxyDB object at 0xffffa9534990> db_path=auto resolved=auto
+video-api-1  | 2025-07-20 13:50:57 INFO faiss.loader | Loading faiss.
+video-api-1  | 2025-07-20 13:50:57 INFO faiss.loader | Successfully loaded faiss.
+video-api-1  | 2025-07-20 13:50:57 INFO faiss | Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+video-api-1  | 2025-07-20 13:50:57 WARNING video.dam.models.storage | Backend memory not available, using in-memory storage
+video-api-1  | 2025-07-20 13:50:57 INFO video.dam.models.storage | Using in-memory vector storage
+video-api-1  | 2025-07-20 13:50:57 INFO video.dam.models.storage | Vector storage initialized with backend: memory
+video-api-1  | 2025-07-20 13:50:57 INFO video.auto_store | Vector backend 'memory' ready
+video-api-1  | 2025-07-20 13:50:57 INFO video.db.backup | ⏳  DB snapshot every 120s  (/var/lib/thatdamtoolbox/db/live.sqlite3 ➜ /data/db/media_index.sqlite3)
+video-api-1  | 2025-07-20 13:50:57 INFO video.modules | Loaded module: video.modules.explorer
+video-api-1  | 2025-07-20 13:50:57 INFO video.modules | Loaded commands for video.modules.explorer
+video-api-1  | 2025-07-20 13:50:57 INFO video.modules | Collected router from video.modules.explorer
+video-api-1  | 2025-07-20 13:50:57 INFO video.modules | Loaded module: video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:50:57 INFO video.config | Wrote module config for 'motion_extractor' to /video/video/modules/motion_extractor/module.cfg
+video-api-1  | 2025-07-20 13:50:57 INFO video.modules | Registered paths for motion_extractor: {'frames': PosixPath('/data/modules/motion_extractor/frames'), 'outputs': PosixPath('/data/modules/motion_extractor/outputs')}
+video-api-1  | 2025-07-20 13:50:57 INFO video.modules | Loaded commands for video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:50:57 INFO video.modules | Collected router from video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:50:58 INFO video.api | ✔ added video.modules.explorer
+video-api-1  | 2025-07-20 13:50:58 INFO video.api | ✔ added video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:50:58 INFO video.api | ✔ added video.modules.trim_idle
+video-api-1  | 2025-07-20 13:50:58 INFO video.api | ✔ added video.modules.uploader
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap | 📚  Available endpoints:
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /api/v1/upload/
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /backup
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /batches
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /batches
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /batches/{batch_id}/cards
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /batches/{batch_name}
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   DELETE  /batches/{batch_name}
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /cli
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /explorer/
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /explorer/assets
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /explorer/batch/{batch_id}
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /explorer/folders
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   PATCH   /explorer/{sha1}
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /health
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /jobs/{job_id}
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /media/{sha1}
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /motion/extract
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /paths
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /paths
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   DELETE  /paths/{name}
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /recent
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /scan
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /search
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   GET     /stats
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /sync_album
+video-api-1  | 2025-07-20 13:50:58 INFO video.bootstrap |   POST    /trim_idle/
+video-api-1  | INFO:     Started server process [1]
+video-api-1  | INFO:     Waiting for application startup.
+video-api-1  | INFO:     Application startup complete.
+video-api-1  | INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+video-api-1  | INFO:     127.0.0.1:37188 - "GET /health HTTP/1.1" 200 OK
+video-api-1  | INFO:     127.0.0.1:52396 - "GET /health HTTP/1.1" 200 OK
+video-api-1  | INFO:     127.0.0.1:35188 - "GET /health HTTP/1.1" 200 OK
+video-api-1  | 2025-07-20 13:55:20 WARNING video.config | Configured directory db_path at /var/lib/thatdamtoolbox/db/live.sqlite3 not writable; falling back to /data/db/media_index.sqlite3
+video-api-1  | 2025-07-20 13:55:20 ERROR video.config | Failed to create fallback directory /data/db/media_index.sqlite3: [Errno 17] File exists: '/data/db/media_index.sqlite3'
+video-api-1  | video/__init__.py: Creating DB singleton (MediaDB)
+video-api-1  | INITIALIZING DB: video in /video/video/__init__.py
+video-api-1  | MediaDB.__init__: self=<video.db.MediaDB object at 0xffff9e444d90> db_path=None resolved=/var/lib/thatdamtoolbox/db/live.sqlite3
+video-api-1  | 2025-07-20 13:55:20 INFO video.db | Initialising SQLite DB at /var/lib/thatdamtoolbox/db/live.sqlite3
+video-api-1  | 2025-07-20 13:55:20 INFO video.db | journal_mode=WAL enabled successfully
+video-api-1  | 2025-07-20 13:55:20 INFO video.config | Wrote module config for 'hwcapture' to /video/video/modules/hwcapture/module.cfg
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Loaded module: video.modules.hwcapture
+video-api-1  | 2025-07-20 13:55:21 INFO video.config | Wrote module config for 'hwcapture' to /video/video/modules/hwcapture/module.cfg
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Registered paths for hwcapture: {'streams': PosixPath('/data/modules/hwcapture/streams'), 'records': PosixPath('/data/modules/hwcapture/records')}
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Loaded commands for video.modules.hwcapture
+video-api-1  | 2025-07-20 13:55:21 INFO video.uploader | Uploader ready – staging dir: /home/appuser/video/_INCOMING/sources/WEB_UPLOADS
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Loaded module: video.modules.uploader
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Collected router from video.modules.uploader
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Loaded module: video.modules.trim_idle
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Loaded commands for video.modules.trim_idle
+video-api-1  | 2025-07-20 13:55:21 INFO video.modules | Collected router from video.modules.trim_idle
+video-api-1  | 2025-07-20 13:55:22 INFO video.modules | Loaded module: video.modules.ffmpeg_console
+video-api-1  | 2025-07-20 13:55:22 INFO video.modules | Loaded commands for video.modules.ffmpeg_console
+video-api-1  | MediaDB.__init__: self=<video.storage.wal_proxy.WALProxyDB object at 0xffff8b45c950> db_path=auto resolved=auto
+video-api-1  | 2025-07-20 13:55:31 INFO faiss.loader | Loading faiss.
+video-api-1  | 2025-07-20 13:55:31 INFO faiss.loader | Successfully loaded faiss.
+video-api-1  | 2025-07-20 13:55:31 INFO faiss | Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+video-api-1  | 2025-07-20 13:55:31 WARNING video.dam.models.storage | Backend memory not available, using in-memory storage
+video-api-1  | 2025-07-20 13:55:31 INFO video.dam.models.storage | Using in-memory vector storage
+video-api-1  | 2025-07-20 13:55:31 INFO video.dam.models.storage | Vector storage initialized with backend: memory
+video-api-1  | 2025-07-20 13:55:31 INFO video.auto_store | Vector backend 'memory' ready
+video-api-1  | 2025-07-20 13:55:31 INFO video.db.backup | ⏳  DB snapshot every 120s  (/var/lib/thatdamtoolbox/db/live.sqlite3 ➜ /data/db/media_index.sqlite3)
+video-api-1  | 2025-07-20 13:55:31 INFO video.modules | Loaded module: video.modules.explorer
+video-api-1  | 2025-07-20 13:55:31 INFO video.modules | Loaded commands for video.modules.explorer
+video-api-1  | 2025-07-20 13:55:31 INFO video.modules | Collected router from video.modules.explorer
+video-api-1  | 2025-07-20 13:55:31 INFO video.modules | Loaded module: video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:55:31 INFO video.config | Wrote module config for 'motion_extractor' to /video/video/modules/motion_extractor/module.cfg
+video-api-1  | 2025-07-20 13:55:31 INFO video.modules | Registered paths for motion_extractor: {'frames': PosixPath('/data/modules/motion_extractor/frames'), 'outputs': PosixPath('/data/modules/motion_extractor/outputs')}
+video-api-1  | 2025-07-20 13:55:31 INFO video.modules | Loaded commands for video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:55:31 INFO video.modules | Collected router from video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:55:31 INFO video.api | ✔ added video.modules.explorer
+video-api-1  | 2025-07-20 13:55:31 INFO video.api | ✔ added video.modules.motion_extractor
+video-api-1  | 2025-07-20 13:55:31 INFO video.api | ✔ added video.modules.trim_idle
+video-api-1  | 2025-07-20 13:55:31 INFO video.api | ✔ added video.modules.uploader
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap | 📚  Available endpoints:
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /api/v1/upload/
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /backup
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /batches
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /batches
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /batches/{batch_id}/cards
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /batches/{batch_name}
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   DELETE  /batches/{batch_name}
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /cli
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /explorer/
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /explorer/assets
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /explorer/batch/{batch_id}
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /explorer/folders
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   PATCH   /explorer/{sha1}
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /health
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /jobs/{job_id}
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /media/{sha1}
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /motion/extract
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /paths
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /paths
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   DELETE  /paths/{name}
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /recent
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /scan
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /search
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   GET     /stats
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /sync_album
+video-api-1  | 2025-07-20 13:55:31 INFO video.bootstrap |   POST    /trim_idle/
+video-api-1  | INFO:     Started server process [1]
+video-api-1  | INFO:     Waiting for application startup.
+video-api-1  | INFO:     Application startup complete.
+video-api-1  | INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+video-api-1  | INFO:     127.0.0.1:41098 - "GET /health HTTP/1.1" 200 OK
+video-api-1  | INFO:     127.0.0.1:54976 - "GET /health HTTP/1.1" 200 OK
+video-api-1  | INFO:     127.0.0.1:38450 - "GET /health HTTP/1.1" 200 OK
