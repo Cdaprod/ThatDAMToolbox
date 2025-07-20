@@ -168,7 +168,8 @@ RUN set -e; \
 #############################################
 FROM devshell AS runtime
 USER appuser
-WORKDIR /video
+
+WORKDIR /
 
 # 1) Copy over the entire /video tree (venv + your code)
 COPY --from=builder --chown=appuser:appuser /video /video
