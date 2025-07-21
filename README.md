@@ -1,8 +1,10 @@
-![](/video/web/static/favicon/android-chrome-512x512.png)
+# MEDIA INDEXER & WEB APP
 
-# MEDIA INDEXER 
-## FROM PYTHONISTA PROTOTYPE... TO BEING DOCKERIZED PYTHON APPLICATION
-### By David Cannan — Cdaprod
+[![CI-Build-and-Publish](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-build-and-publish.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-build-and-publish.yml)
+
+### By David Cannan aka Cdaprod
+
+![](/video/web/static/favicon/android-chrome-512x512.png)
 
 ## Explorer
 

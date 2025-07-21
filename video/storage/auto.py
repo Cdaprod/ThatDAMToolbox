@@ -3,7 +3,7 @@
 Unified storage wrapper that makes both worlds work together:
 
 * Core media-metadata tables  →  video.db.MediaDB  (pure stdlib, SQLite)
-* Optional vector search      →  video.dam.models.storage.VectorStorage
+* Optional vector search      →  video.modules.dam.models.storage.VectorStorage
 
 If the DAM extras (transformers, whisper, faiss, …) aren’t installed,
 the class still satisfies StorageEngine with just MediaDB.
@@ -89,7 +89,7 @@ class AutoStorage(StorageEngine):
         # --- vector layer (optional) ----------------------------------------
         try:
             # Local import keeps stdlib-only installs happy
-            from video.dam.models.storage import VectorStorage
+            from video.modules.dam.models.storage import VectorStorage
             self._vec = VectorStorage(backend=backend, config=cfg or {})
             _ensure_event_loop_running(self._vec.initialize())
             log.info("Vector backend '%s' ready", backend)
