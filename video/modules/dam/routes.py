@@ -20,7 +20,11 @@ from .services import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/dam",
+    tags=["dam"],
+    responses={404: {"description": "Not found"}}
+)
 
 # ------------------ Models ------------------
 

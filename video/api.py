@@ -32,19 +32,6 @@ log = logging.getLogger("video.api")
 # Expose /static/style.css, /static/app.js, …
 app.mount("/static", static, name="static")
 
-# ── DAM integration ────────────────────────────────────────────
-# Mount the entire DAM sub-application at /dam  (retains its own
-# lifespan & dependencies), OR comment this block and use include_router
-# if you prefer the same process & lifespan.
-
-from video.dam.main import app as dam_app
-app.mount("/dam", dam_app, name="dam")
-
-# ── FFMPEG integration ────────────────────────────────────────────
-
-#from video.modules.ffmpeg_console import router as ffmpeg_router
-#app.include_router(ffmpeg_router, prefix="/api/v1/ffmpeg")
-
 # ---------------------------------------------------------------------------
 # BaseModels
 # ---------------------------------------------------------------------------

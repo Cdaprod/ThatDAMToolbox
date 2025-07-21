@@ -2,276 +2,355 @@
 """
 video/modules/dam/commands.py
 
-CLI commands for the DAM system using @register decorator pattern.
-Provides command-line management for ingestion, search, and admin ops.
+DAM commands integrated with the top-level `video.cli` (stdlib argparse).
 """
 
-import click
+import argparse
 import asyncio
-import logging
-from typing import List, Optional
-from pathlib import Path
 import json
+import logging
+from pathlib import Path
+from typing import Any, Dict, List
 
 logger = logging.getLogger("video.dam.commands")
 
-# Command registry for plugin loader
-_commands: List[click.Command] = []
 
-def register(func):
-    """Decorator to register CLI commands (for loader discovery)."""
-    _commands.append(func)
-    return func
+def add_parser(subparsers: argparse._SubParsersAction) -> None:
+    """
+    Hook into the main CLI to add a `dam` command group with its sub-verbs.
+    Called automatically by the module loader in video/cli.py.
+    """
+    # top-level "video dam" group
+    dam_p = subparsers.add_parser(
+        "dam", help="Digital Asset Management (DAM) commands"
+    )
+    dam_sub = dam_p.add_subparsers(dest="dam_cmd", required=True)
 
-def register_commands(app=None):
-    """Log registered commands for plugin introspection."""
-    for command in _commands:
-        logger.info(f"Registered DAM command: {command.name}")
+    # ingest
+    ingest_p = dam_sub.add_parser(
+        "ingest", help="Ingest a video file into the DAM system"
+    )
+    ingest_p.add_argument("path", type=Path, help="Path to the video file")
+    ingest_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-index even if already present",
+    )
+    ingest_p.add_argument(
+        "--metadata",
+        type=str,
+        help="JSON string of additional metadata",
+    )
+    ingest_p.set_defaults(func=cmd_ingest)
 
-#───────────────────────────────────────────────
-# DAM CLI COMMANDS
-#───────────────────────────────────────────────
+    # batch_ingest
+    batch_p = dam_sub.add_parser(
+        "batch_ingest", help="Batch-ingest all videos in a directory"
+    )
+    batch_p.add_argument("directory", type=Path, help="Directory containing videos")
+    batch_p.add_argument(
+        "--pattern", default="*.mp4", help="File glob pattern (default: *.mp4)"
+    )
+    batch_p.add_argument(
+        "--recursive", action="store_true", help="Recurse into subdirectories"
+    )
+    batch_p.set_defaults(func=cmd_batch_ingest)
 
-@register
-@click.command("ingest")
-@click.argument("path", type=click.Path(exists=True))
-@click.option("--force", is_flag=True, help="Force reindex even if video exists")
-@click.option("--metadata", type=str, help="JSON metadata string")
-def ingest(path: str, force: bool, metadata: Optional[str]):
-    """Ingest a video file into the DAM system."""
+    # search
+    search_p = dam_sub.add_parser(
+        "search", help="Search videos with natural-language queries"
+    )
+    search_p.add_argument("query", type=str, help="Query string")
+    search_p.add_argument(
+        "--level",
+        default="all",
+        help="Search level (L0, L1, L2, L3, all)",
+    )
+    search_p.add_argument(
+        "--limit", type=int, default=10, help="Max number of results"
+    )
+    search_p.add_argument(
+        "--threshold", type=float, default=0.7, help="Similarity threshold"
+    )
+    search_p.set_defaults(func=cmd_search)
+
+    # list_videos
+    list_p = dam_sub.add_parser(
+        "list_videos", help="List videos in the DAM store"
+    )
+    list_p.add_argument(
+        "--skip", type=int, default=0, help="Records to skip"
+    )
+    list_p.add_argument(
+        "--limit", type=int, default=50, help="Max records to return"
+    )
+    list_p.set_defaults(func=cmd_list_videos)
+
+    # reindex
+    reindex_p = dam_sub.add_parser(
+        "reindex", help="Re-index all videos with a new embedding version"
+    )
+    reindex_p.add_argument(
+        "--version", default="v2", help="Embedding version to use"
+    )
+    reindex_p.set_defaults(func=cmd_reindex)
+
+    # stats
+    stats_p = dam_sub.add_parser(
+        "stats", help="Show DAM system statistics"
+    )
+    stats_p.set_defaults(func=cmd_stats)
+
+    # delete
+    delete_p = dam_sub.add_parser(
+        "delete", help="Delete a video and its embeddings"
+    )
+    delete_p.add_argument(
+        "video_uuid", type=str, help="UUID of the video to delete"
+    )
+    delete_p.set_defaults(func=cmd_delete)
+
+    # validate
+    validate_p = dam_sub.add_parser(
+        "validate", help="Validate a video file for ingestion"
+    )
+    validate_p.add_argument("path", type=Path, help="Path to the video file")
+    validate_p.set_defaults(func=cmd_validate)
+
+
+# ─── COMMAND IMPLEMENTATIONS ──────────────────────────────────────────────────
+
+def cmd_ingest(args: argparse.Namespace) -> Dict[str, Any]:
+    """Ingest a single video file."""
+    path = args.path
+    metadata = json.loads(args.metadata) if args.metadata else {}
+
     async def _ingest():
-        try:
-            from .services import get_hierarchy_manager, get_embedding_generator, get_vector_store
-            hm = get_hierarchy_manager()
-            eg = get_embedding_generator()
-            vs = get_vector_store()
-            meta = json.loads(metadata) if metadata else {}
-            click.echo(f"Ingesting video: {path}")
-            l0_vector = await eg.generate_video_vector(path)
-            video_uuid = await vs.store_video(path=path, l0_vector=l0_vector, metadata=meta)
-            click.echo(f"Video ingested with UUID: {video_uuid}")
-            scenes = await hm.detect_scenes(path)
-            click.echo(f"Detected {len(scenes)} scenes")
-            for level in ["L1", "L2", "L3"]:
-                vectors = await eg.generate_level_vectors(path, scenes, level)
-                await vs.store_level_vectors(video_uuid, level, vectors)
-                click.echo(f"Generated {len(vectors)} {level} vectors")
-            click.echo("✓ Video ingestion completed successfully")
-        except Exception as e:
-            click.echo(f"✗ Error ingesting video: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_ingest())
+        from .services import (
+            get_hierarchy_manager,
+            get_embedding_generator,
+            get_vector_store,
+        )
 
-@register
-@click.command("batch-ingest")
-@click.argument("directory", type=click.Path(exists=True, file_okay=False))
-@click.option("--pattern", default="*.mp4", help="File pattern to match")
-@click.option("--recursive", is_flag=True, help="Search recursively")
-def batch_ingest(directory: str, pattern: str, recursive: bool):
-    """Batch ingest all videos in a directory."""
-    async def _batch_ingest():
-        try:
-            from .services import get_embedding_generator, get_vector_store
-            dir_path = Path(directory)
-            video_files = list(dir_path.rglob(pattern)) if recursive else list(dir_path.glob(pattern))
-            click.echo(f"Found {len(video_files)} video files")
-            for video_file in video_files:
-                try:
-                    click.echo(f"Processing: {video_file}")
-                    eg = get_embedding_generator()
-                    vs = get_vector_store()
-                    l0_vector = await eg.generate_video_vector(str(video_file))
-                    video_uuid = await vs.store_video(path=str(video_file), l0_vector=l0_vector, metadata={})
-                    click.echo(f"  ✓ Ingested: {video_uuid}")
-                except Exception as e:
-                    click.echo(f"  ✗ Error processing {video_file}: {e}", err=True)
-            click.echo("✓ Batch ingestion completed")
-        except Exception as e:
-            click.echo(f"✗ Error in batch ingestion: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_batch_ingest())
+        print(f"Ingesting video: {path}")
+        hm = get_hierarchy_manager()
+        eg = get_embedding_generator()
+        vs = get_vector_store()
 
-@register
-@click.command("search")
-@click.argument("query", type=str)
-@click.option("--level", default="all", help="Search level (L0, L1, L2, L3, all)")
-@click.option("--limit", default=10, help="Number of results")
-@click.option("--threshold", default=0.7, help="Similarity threshold")
-def search(query: str, level: str, limit: int, threshold: float):
-    """Search videos using natural language queries."""
+        l0 = await eg.generate_video_vector(str(path))
+        video_uuid = await vs.store_video(path=str(path), l0_vector=l0, metadata=metadata)
+        print(f"Video ingested with UUID: {video_uuid}")
+
+        scenes = await hm.detect_scenes(str(path))
+        print(f"Detected {len(scenes)} scenes")
+
+        vectors: Dict[str, int] = {}
+        for level in ("L1", "L2", "L3"):
+            lvl_vecs = await eg.generate_level_vectors(str(path), scenes, level)
+            await vs.store_level_vectors(video_uuid, level, lvl_vecs)
+            vectors[level] = len(lvl_vecs)
+            print(f"Generated {len(lvl_vecs)} {level} vectors")
+
+        print("✓ Video ingestion completed successfully")
+        return {
+            "video_uuid": video_uuid,
+            "scenes_detected": len(scenes),
+            "vectors_generated": vectors,
+        }
+
+    return asyncio.run(_ingest())
+
+
+def cmd_batch_ingest(args: argparse.Namespace) -> Dict[str, Any]:
+    """Batch-ingest videos from a directory."""
+    directory, pattern, recursive = args.directory, args.pattern, args.recursive
+
+    async def _batch():
+        from .services import (
+            get_hierarchy_manager,
+            get_embedding_generator,
+            get_vector_store,
+        )
+
+        hm = get_hierarchy_manager()
+        eg = get_embedding_generator()
+        vs = get_vector_store()
+
+        files = (
+            list(directory.rglob(pattern))
+            if recursive
+            else list(directory.glob(pattern))
+        )
+        print(f"Found {len(files)} video files")
+
+        results: List[Dict[str, Any]] = []
+        for f in files:
+            try:
+                print(f"Processing: {f}")
+                l0 = await eg.generate_video_vector(str(f))
+                vid = await vs.store_video(path=str(f), l0_vector=l0, metadata={})
+
+                scenes = await hm.detect_scenes(str(f))
+                for level in ("L1", "L2", "L3"):
+                    lvl_vecs = await eg.generate_level_vectors(str(f), scenes, level)
+                    await vs.store_level_vectors(vid, level, lvl_vecs)
+
+                results.append(
+                    {"path": str(f), "uuid": vid, "status": "ok", "scenes": len(scenes)}
+                )
+                print(f"  ✓ Ingested: {vid}")
+            except Exception as e:
+                results.append({"path": str(f), "error": str(e)})
+                print(f"  ✗ Error processing {f}: {e}")
+
+        print("✓ Batch ingestion completed")
+        return {"processed": len(results), "details": results}
+
+    return asyncio.run(_batch())
+
+
+def cmd_search(args: argparse.Namespace) -> List[Dict[str, Any]]:
+    """Search the DAM by natural-language query."""
+    query, level, limit, threshold = (
+        args.query,
+        args.level,
+        args.limit,
+        args.threshold,
+    )
+
     async def _search():
-        try:
-            from .services import get_embedding_generator, get_vector_store
-            eg = get_embedding_generator()
-            vs = get_vector_store()
-            click.echo(f"Searching for: '{query}'")
-            query_vector = await eg.generate_text_vector(query)
-            results = await vs.search_vectors(query_vector=query_vector, level=level, limit=limit, threshold=threshold)
-            click.echo(f"\nFound {len(results)} results:")
-            click.echo("-" * 80)
-            for i, result in enumerate(results, 1):
-                click.echo(f"{i}. {result['path']}")
-                click.echo(f"   Level: {result['level']}")
-                click.echo(f"   Time: {result['start_time']:.2f}s - {result['end_time']:.2f}s")
-                click.echo(f"   Score: {result['score']:.3f}\n")
-        except Exception as e:
-            click.echo(f"✗ Error searching: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_search())
+        from .services import get_embedding_generator, get_vector_store
 
-@register
-@click.command("list-videos")
-@click.option("--skip", default=0, help="Number of records to skip")
-@click.option("--limit", default=50, help="Number of records to return")
-def list_videos(skip: int, limit: int):
-    """List all videos in the system."""
+        eg = get_embedding_generator()
+        vs = get_vector_store()
+
+        print(f"Searching for: '{query}'")
+        qv = await eg.generate_text_vector(query)
+        hits = await vs.search_vectors(
+            query_vector=qv, level=level, limit=limit, threshold=threshold
+        )
+
+        print(f"\nFound {len(hits)} results:")
+        print("-" * 80)
+        out = []
+        for i, r in enumerate(hits, 1):
+            print(f"{i}. {r['path']}")
+            print(f"   Level: {r['level']}")
+            print(
+                f"   Time: {r['start_time']:.2f}s - {r['end_time']:.2f}s"
+            )
+            print(f"   Score: {r['score']:.3f}\n")
+            out.append(
+                {
+                    "path": r["path"],
+                    "level": r["level"],
+                    "start_time": r["start_time"],
+                    "end_time": r["end_time"],
+                    "score": r["score"],
+                }
+            )
+        return out
+
+    return asyncio.run(_search())
+
+
+def cmd_list_videos(args: argparse.Namespace) -> List[Dict[str, Any]]:
+    """List videos stored in the DAM."""
     async def _list():
-        try:
-            from .services import get_vector_store
-            vs = get_vector_store()
-            videos = await vs.list_videos(skip=skip, limit=limit)
-            click.echo(f"Videos ({len(videos)} shown):")
-            click.echo("-" * 80)
-            for video in videos:
-                click.echo(f"UUID: {video['uuid']}")
-                click.echo(f"Path: {video['path']}")
-                click.echo(f"Duration: {video.get('duration', 'N/A')}s")
-                click.echo(f"Levels: {video.get('levels', {})}\n")
-        except Exception as e:
-            click.echo(f"✗ Error listing videos: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_list())
+        from .services import get_vector_store
 
-@register
-@click.command("reindex")
-@click.option("--version", default="v2", help="New embedding version")
-def reindex(version: str):
+        vs = get_vector_store()
+        vids = await vs.list_videos(skip=args.skip, limit=args.limit)
+        print(f"Videos ({len(vids)} shown):")
+        print("-" * 80)
+        out = []
+        for v in vids:
+            print(f"UUID:  {v['uuid']}")
+            print(f"Path:  {v['path']}")
+            print(f"Dur:   {v.get('duration','N/A')}s")
+            print(f"Levels:{v.get('levels',{})}\n")
+            out.append(v)
+        return out
+
+    return asyncio.run(_list())
+
+
+def cmd_reindex(args: argparse.Namespace) -> Dict[str, Any]:
     """Reindex all videos with a new embedding version."""
+    version = args.version
+
     async def _reindex():
-        try:
-            from .services import get_embedding_generator, get_vector_store
-            click.echo(f"Starting reindex with version: {version}")
-            vs = get_vector_store()
-            eg = get_embedding_generator()
-            videos = await vs.list_videos()
-            with click.progressbar(videos, label="Reindexing videos") as bar:
-                for video in bar:
-                    try:
-                        # Placeholder: implement actual reindex logic
-                        await asyncio.sleep(0.1)
-                    except Exception as e:
-                        click.echo(f"Error reindexing {video['path']}: {e}", err=True)
-            click.echo("✓ Reindexing completed")
-        except Exception as e:
-            click.echo(f"✗ Error reindexing: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_reindex())
+        from .services import get_embedding_generator, get_vector_store
 
-@register
-@click.command("stats")
-def stats():
-    """Show system statistics."""
+        print(f"Starting reindex with version: {version}")
+        eg = get_embedding_generator()
+        vs = get_vector_store()
+
+        vids = await vs.list_videos()
+        for i, v in enumerate(vids, 1):
+            print(f"[{i}/{len(vids)}] Reindexing: {v['path']}")
+            # placeholder
+            await asyncio.sleep(0.1)
+
+        print("✓ Reindexing completed")
+        return {"reindexed": len(vids), "version": version}
+
+    return asyncio.run(_reindex())
+
+
+def cmd_stats(args: argparse.Namespace) -> Dict[str, Any]:
+    """Retrieve DAM system statistics."""
     async def _stats():
-        try:
-            from .services import get_vector_store
-            stats = await get_vector_store().get_system_stats()
-            click.echo("System Statistics:")
-            click.echo("-" * 40)
-            click.echo(f"Total videos: {stats.get('total_videos', 0)}")
-            click.echo(f"Total vectors: {stats.get('total_vectors', 0)}")
-            click.echo(f"Storage used: {stats.get('storage_used', 'N/A')}\n")
-            click.echo("Vectors by level:")
-            for lvl, cnt in stats.get('vectors_by_level', {}).items():
-                click.echo(f"  {lvl}: {cnt}")
-        except Exception as e:
-            click.echo(f"✗ Error getting stats: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_stats())
+        from .services import get_vector_store
 
-@register
-@click.command("delete")
-@click.argument("video_uuid", type=str)
-def delete(video_uuid: str):
-    """Delete a video and all its embeddings."""
+        stats = await get_vector_store().get_system_stats()
+        print("System Statistics:")
+        print("-" * 40)
+        print(f"Total videos:  {stats.get('total_videos',0)}")
+        print(f"Total vectors: {stats.get('total_vectors',0)}")
+        print(f"Storage used:  {stats.get('storage_used','N/A')}")
+        print("Vectors by level:")
+        for lvl, cnt in stats.get("vectors_by_level", {}).items():
+            print(f"  {lvl}: {cnt}")
+        return stats
+
+    return asyncio.run(_stats())
+
+
+def cmd_delete(args: argparse.Namespace) -> Dict[str, Any]:
+    """Delete a video and its embeddings."""
     async def _delete():
-        try:
-            from .services import get_vector_store
-            if not click.confirm(f"Delete video {video_uuid}?"):
-                click.echo("Cancelled")
-                return
-            await get_vector_store().delete_video(video_uuid)
-            click.echo(f"✓ Video {video_uuid} deleted successfully")
-        except Exception as e:
-            click.echo(f"✗ Error deleting video: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_delete())
+        from .services import get_vector_store
 
-@register
-@click.command("validate")
-@click.argument("path", type=click.Path(exists=True))
-def validate(path: str):
-    """Validate a video file for ingestion."""
+        resp = input(f"Delete video {args.video_uuid}? (y/N): ")
+        if resp.lower() not in ("y", "yes"):
+            print("Cancelled")
+            return {"cancelled": True}
+        await get_vector_store().delete_video(args.video_uuid)
+        print(f"✓ Deleted {args.video_uuid}")
+        return {"deleted": args.video_uuid}
+
+    return asyncio.run(_delete())
+
+
+def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
+    """Validate a video file before ingestion."""
     async def _validate():
-        try:
-            from .services import get_hierarchy_manager
-            hm = get_hierarchy_manager()
-            click.echo(f"Validating: {path}")
-            duration = await hm.get_video_duration(path)
-            click.echo(f"✓ Duration: {duration}s")
-            scenes = await hm.detect_scenes(path)
-            click.echo(f"✓ Scenes detectable: {len(scenes)}")
-            file_hash = await hm.get_file_hash(path)
-            click.echo(f"✓ File hash: {file_hash[:16]}...")
-            click.echo("✓ Video file is valid for ingestion")
-        except Exception as e:
-            click.echo(f"✗ Validation failed: {e}", err=True)
-            raise click.ClickException(str(e))
-    asyncio.run(_validate())
+        from .services import get_hierarchy_manager
 
-@register
-@click.command("help")
-def help_():
-    """Show detailed help information."""
-    click.echo("""
-Video DAM System Commands
+        print(f"Validating: {args.path}")
+        hm = get_hierarchy_manager()
+        dur = await hm.get_video_duration(str(args.path))
+        scenes = await hm.detect_scenes(str(args.path))
+        hsh = await hm.get_file_hash(str(args.path))
+        print(f"✓ Duration: {dur}s")
+        print(f"✓ Scenes:   {len(scenes)}")
+        print(f"✓ Hash:     {hsh[:16]}…")
+        return {
+            "duration": dur,
+            "scenes": len(scenes),
+            "hash": hsh,
+            "valid": True,
+        }
 
-INGESTION:
-  ingest <path>           - Ingest a single video file
-  batch-ingest <dir>      - Ingest all videos in a directory
-  validate <path>         - Validate a video file
-
-SEARCH:
-  search <query>          - Search videos with natural language
-  list-videos             - List all videos in the system
-
-MANAGEMENT:
-  delete <uuid>           - Delete a video
-  reindex --version v2    - Reindex with new embeddings
-  stats                   - Show system statistics
-
-EXAMPLES:
-  dam ingest /path/to/video.mp4
-  dam search "slow motion sparks"
-  dam batch-ingest /videos --recursive
-  dam reindex --version v3
-""")
-
-#───────────────────────────────────────────────
-# Main: direct invocation for dev/test
-#───────────────────────────────────────────────
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        click.echo("Usage: python commands.py <command> [options]")
-        help_()
-        sys.exit(1)
-    cmd_name = sys.argv[1]
-    for cmd in _commands:
-        if cmd.name == cmd_name or cmd.__name__ == cmd_name:
-            cmd()
-            break
-    else:
-        click.echo(f"Unknown command: {cmd_name}")
-        help_()
-        sys.exit(1)
+    return asyncio.run(_validate())
