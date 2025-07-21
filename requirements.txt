@@ -40,3 +40,4 @@ faiss-cpu>=1.7.4.post0           # local ANN index (CPU build)
 # ────────────────────────────────────────────────────────────────
 #  Anything else specific to your modules goes below
 # ────────────────────────────────────────────────────────────────
+marshmallow>=3.13
