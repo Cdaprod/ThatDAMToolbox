@@ -137,7 +137,7 @@ RUN mkdir -p /home/appuser/.config/nvim && \
 RUN chown -R appuser:appuser /home/appuser
 
 #############################################
-# Stage 3 – Builder: create a venv in /video #
+# Stage 3 – Builder: create a venv in /opt/venv
 #############################################
 FROM devshell AS builder
 USER appuser
@@ -148,35 +148,37 @@ COPY --chown=appuser:appuser setup.py requirements.txt README.md ./
 COPY --chown=appuser:appuser video/ video/
 
 # 1) Create venv, install your package
-RUN python3 -m venv /video/venv \
- && /video/venv/bin/pip install --upgrade pip \
- && /video/venv/bin/pip install --no-cache-dir -r requirements.txt \
- && /video/venv/bin/pip install --no-cache-dir -e .
+RUN python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt \
+ && /opt/venv/bin/pip install --no-cache-dir -e .
 
 # 2) (Optional) install module‐specific requirements
 RUN set -e; \
     for req in /video/video/modules/*/requirements.txt; do \
       if [ -f "$req" ]; then \
         echo "Installing extra deps for $(dirname $req)"; \
-        /video/venv/bin/pip install --no-cache-dir -r "$req"; \
+        /opt/venv/bin/pip install --no-cache-dir -r "$req"; \
       fi; \
     done
-        
+
 #############################################
-# Stage 4 – Runtime: reuse that venv
+# Stage 4 – Runtime: reuse that venv from /opt/venv
 #############################################
 FROM devshell AS runtime
 USER appuser
-
 WORKDIR /
 
-# 1) Copy over the entire /video tree (venv + your code)
+# 1) Copy over your code
 COPY --from=builder --chown=appuser:appuser /video /video
 
-# 2) Make the venv’s bin the first thing on PATH
-ENV PATH="/video/venv/bin:${PATH}"
+# 2) Copy over the venv into /opt/venv
+COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
 
-# 3) Bring in your React bundle
+# 3) Make the venv’s bin the first thing on PATH
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# 4) Bring in your React bundle
 COPY --from=frontend-build \
      /build/dam-explorer.bundle.js \
      /video/web/static/components/

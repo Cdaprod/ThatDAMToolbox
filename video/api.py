@@ -11,6 +11,7 @@ from fastapi import (
     Request,
 )
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic   import BaseModel, Field
 from typing     import Optional, List, Dict, Any, Annotated
 
@@ -25,6 +26,20 @@ from video.storage.base import StorageEngine
 from video.bootstrap    import STORAGE          # Singleton
 
 app = FastAPI(title="Video DAM API")
+
+origins = [
+    "http://localhost:3000",      # your Next dev server
+    "https://your.production.url" # your prod domain
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 router = APIRouter()
 
 log = logging.getLogger("video.api")
