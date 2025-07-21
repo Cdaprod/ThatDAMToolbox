@@ -37,14 +37,13 @@ services:
       # ------------------------------------------------------------------
       # Make ALL mutable data live under one bind-mount ( /data )
       # ------------------------------------------------------------------
-      VIDEO_DATA_DIR:       /data
       
       # override any others if you want–but everything else will fall back into $VIDEO_DATA_DIR:
-      VIDEO_MEDIA_ROOT:     ${VIDEO_DATA_DIR}/media
-      VIDEO_PROCESSED_ROOT: ${VIDEO_DATA_DIR}/_PROCESSED
-      VIDEO_PREVIEW_ROOT:   ${VIDEO_DATA_DIR}/previews
-      VIDEO_LOG_DIR:        ${VIDEO_DATA_DIR}/logs
-      VIDEO_TMP_DIR:        ${VIDEO_DATA_DIR}/tmp
+      VIDEO_DATA_DIR:       /data
+      VIDEO_MEDIA_ROOT:     /data/media
+      VIDEO_PROCESSED_ROOT: /data/_PROCESSED
+      VIDEO_PREVIEW_ROOT:   /data/previews
+      VIDEO_LOG_DIR:        /data/logs
       
       # ── WAL-only DB lives here (on local volume) ──
       VIDEO_DB_PATH:        /var/lib/thatdamtoolbox/db/live.sqlite3
