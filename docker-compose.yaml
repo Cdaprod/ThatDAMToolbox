@@ -108,13 +108,8 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./docker/web-app:/app:rw
-      # anonymous volumes for node_modules & .next:
-      - type: volume
-        source: node_modules
-        target: /app/node_modules
-      - type: volume
-        source: next_cache
-        target: /app/.next
+      - node_modules:/app/node_modules
+      - next-build:/app/.next
     depends_on:
       - video-api
     restart: unless-stopped
@@ -146,3 +141,5 @@ services:
 volumes:
   db_wal:
     driver: local
+  node_modules:
+  next-build:
