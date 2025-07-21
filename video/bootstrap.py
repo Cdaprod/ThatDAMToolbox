@@ -27,8 +27,31 @@ from video.storage.auto import AutoStorage  # ← new backend dispatcher
 # --------------------------------------------------------------------------- #
 # helpers                                                                     #
 # --------------------------------------------------------------------------- #
-_log = logging.getLogger("video.bootstrap")
+def _fix_permissions(target_dir="/var/lib/thatdamtoolbox/db"):
+    """
+    Ensure all files/dirs in `target_dir` are owned by the app user.
+    UID and GID can be set with APP_UID and APP_GID env vars (defaults to 1000).
+    """
+    from pathlib import Path
+    import os
 
+    uid = int(os.environ.get("APP_UID", "1000"))
+    gid = int(os.environ.get("APP_GID", "1000"))
+    target = Path(target_dir)
+    if target.exists():
+        for p in target.rglob("*"):
+            try:
+                os.chown(p, uid, gid)
+            except Exception:
+                pass
+        try:
+            os.chown(target, uid, gid)
+        except Exception:
+            pass
+
+_log = logging.getLogger("video.bootstrap")
+_fix_permissions("/var/lib/thatdamtoolbox/db")   # db for WALs localized (not mounted location)
+_fix_permissions("/data")                        # all other containerized data
 
 def _banner(app) -> None:
     """Pretty-print every JSON API route the moment the service boots."""
