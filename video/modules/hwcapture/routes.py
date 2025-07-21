@@ -102,3 +102,26 @@ async def witness_record(duration: int = 60):
                          "stabilised":"main_stab.mp4"}
     threading.Thread(target=_worker, daemon=True).start()
     return {"job": job_id, "status":"started"}
+
+@router.get("/ndi_stream", include_in_schema=False)
+async def ndi_stream(
+    source: str = Query("camera1", description="NDI source name"),
+    width:  int = Query(1280),
+    height: int = Query(720),
+    fps:    int = Query(30),
+):
+    """
+    (GET /hwcapture/ndi_stream?source=MyNDICam&width=1280&height=720&fps=30)
+    
+    MJPEG-wrapped NDI feed:
+      ffmpeg -f libndi_newtek -i <source> → MJPEG multipart.
+    """
+    cmd = shlex.split(
+        f"{_FFMPEG} -loglevel error "
+        f"-f libndi_newtek -i {source} "
+        f"-vf scale={width}:{height},format=yuv420p "
+        "-f mjpeg -q:v 7 -"
+    )
+    gen = _mjpeg_generator(cmd)
+    return StreamingResponse(gen,
+                             media_type="multipart/x-mixed-replace; boundary=frame")

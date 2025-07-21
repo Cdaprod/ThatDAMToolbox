@@ -1,5 +1,54 @@
 # /video/modules/hwcapture/README.md
 
+**NDI & Webcam To HTML**
+
+```html
+<!-- ... -->
+<div class="video-display" id="videoDisplay">
+  <!-- CSI preview (default) -->
+  <img id="livePreview"
+       src="/api/v1/hwcapture/stream?device=/dev/video0&width=1280&height=720&fps=30"
+       style="width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;z-index:0;">
+  <!-- NDI preview (hidden initially) -->
+  <img id="ndiPreview"
+       src="/api/v1/hwcapture/ndi_stream?source=MyNDICam&width=1280&height=720&fps=30"
+       style="display:none;width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;z-index:0;">
+  <!-- overlays unchanged… -->
+</div>
+<!-- … -->
+<div class="control-panel">
+  <!-- … existing sections … -->
+  <div class="control-section">
+    <div class="section-title">Source</div>
+    <button class="control-btn" id="sourceToggleBtn">Switch to NDI</button>
+  </div>
+  <!-- … -->
+</div>
+<!-- … -->
+
+<script>
+  const liveCSI = document.getElementById('livePreview');
+  const liveNDI = document.getElementById('ndiPreview');
+  const toggleBtn = document.getElementById('sourceToggleBtn');
+  let usingCSI = true;
+
+  toggleBtn.addEventListener('click', () => {
+    if (usingCSI) {
+      // switch _to_ NDI
+      liveCSI.style.display = 'none';
+      liveNDI.style.display = 'block';
+      toggleBtn.textContent = 'Switch to CSI';
+    } else {
+      // switch _back_ to CSI
+      liveNDI.style.display = 'none';
+      liveCSI.style.display = 'block';
+      toggleBtn.textContent = 'Switch to NDI';
+    }
+    usingCSI = !usingCSI;
+  });
+</script>
+``` 
+
 Now `hwcapture.py` supports multiple cameras including your Insta360 X3 webcam. Here’s how to use it:
 
 **Multi-camera recording:**
