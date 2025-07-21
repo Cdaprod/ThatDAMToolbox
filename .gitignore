@@ -136,3 +136,5 @@ secrets.json
 
 !/docker/web-app/package.json
 
+!/docker/web-app/tsconfig.json
+
