@@ -1,11 +1,21 @@
+/* /web-app/styles/globals.css */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* You can add your own custom styles below if needed */
+/* --- Custom global styles below --- */
 html, body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
                Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  /* The font stack above ensures system UI font fallback */
+}
+
+body {
+  background: #f9fafb;      /* Light gray background for a modern look */
+  color: #1f2937;           /* Slate-900 from Tailwind (very dark gray) */
+  /* font-family already set above, but you could use: */
+  /* font-family: system-ui, sans-serif; */
 }

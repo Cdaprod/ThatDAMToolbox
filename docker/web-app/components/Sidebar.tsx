@@ -1,10 +1,11 @@
-//components/Sidebar.tsx
+// components/Sidebar.tsx
 'use client';
-
 import Link from 'next/link';
 
 const cards = [
   { label: 'Explorer', route: '/dashboard/explorer' },
+  { label: 'DAM Explorer', route: '/dashboard/dam-explorer' },       // NEW
+  { label: 'Camera Monitor', route: '/dashboard/camera-monitor' },   // NEW
   { label: 'Upload', route: '/dashboard/upload' },
   { label: 'Batches', route: '/dashboard/batches' },
   { label: 'Videos', route: '/dashboard/videos' },
