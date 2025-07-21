@@ -210,6 +210,7 @@ ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
     VIDEO_INCOMING_DIR=/var/lib/thatdamtoolbox/_INCOMING
 
 COPY --chown=appuser:appuser entrypoint.sh /thatdamtoolbox/entrypoint.sh
+RUN chmod +x /thatdamtoolbox/entrypoint.sh
 
 EXPOSE 8080
 
