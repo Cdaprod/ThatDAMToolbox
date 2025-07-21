@@ -1,48 +1,34 @@
 ##############################################################################
-# /Dockerfile
-# 
-#  🎥 Multi-arch container for the "video" Media-Bridge / DAM toolbox 🐳
-#
-# • Works on 64-bit x86 and ARM (incl. Raspberry Pi 5)
-# • Uvicorn-with-Gunicorn FastAPI stack by default
-# • Falls back to the stdlib HTTP server when FASTAPI=0 or FastAPI deps
-#   are stripped at build-time
-#
-# Build examples
-#   docker buildx build --platform linux/amd64,linux/arm64 -t cdaprod/video:0.1.0 .
-#   docker run -p 8080:8080 cdaprod/video:0.1.0                # starts API
-#   docker run cdaprod/video:0.1.0 scan --root /data           # CLI one-shot
+# Dockerfile – multi-arch image for the "video" Media-Bridge / DAM toolbox 🐳
 ##############################################################################
 
-##############################################################################
-# Stage 0: build our React/JSX → ESM bundle for dam-explorer
-##############################################################################
+########################################
+# Stage 0 – Build the React ESM bundle #
+########################################
 FROM node:18-alpine AS frontend-build
-WORKDIR /src
+WORKDIR /build
 
-# install esbuild
 RUN npm install --location=global esbuild
 
-# copy just the bit we need to bundle
-COPY video/web/static/components/dam-explorer.js ./static/components/
+# copy raw component
+COPY video/web/static/components/dam-explorer.js ./src/
 
-# bundle + strip out JSX so the browser can import it directly
+# bundle → dam-explorer.bundle.js (ES2022, minified)
 # --- in the frontend-build stage ---
 RUN esbuild ./src/dam-explorer.js \
     --bundle \
     --loader:.js=jsx \
+    --loader:.json=json \
     --outfile=dam-explorer.bundle.js \
     --format=esm \
     --target=es2022 \
     --minify
-    
+
 ############################
-# --- Stage 1: base layer --
+# Stage 1 – Base OS image  #
 ############################
 FROM python:3.11-slim-bookworm AS base
 LABEL maintainer="cdaprod.dev" \
-      org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
-      org.opencontainers.image.description="That DAM Toolbox - FastAPI / stdlib API + CLI + Modular Plugin System for the Media-Indexer toolbox" \
       org.opencontainers.image.version="0.1.0"
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -51,52 +37,38 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TERM=xterm-256color \
     SHELL=/bin/bash
 
-# Minimal C tool-chain for any optional pure-C wheels; FFmpeg & libGL for preview
-# Plus enhanced shell and development tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        build-essential \
-        git curl wget ca-certificates \
+        build-essential git curl wget ca-certificates \
         ffmpeg libgl1 libglib2.0-0 \
-        bash bash-completion \
-        neovim \
-        htop \
-        less \
-        tree \
-        ripgrep \
-        fd-find \
-        fzf \
-        tmux \
-        zsh \
-        locales \
-        bat \
-        exa \
-        jq \
-        unzip \
-        gnupg \
-        software-properties-common \
-        apt-transport-https \
+        bash bash-completion zsh locales tmux \
+        neovim htop less tree ripgrep fd-find fzf \
+        bat exa jq unzip gnupg sqlite3 \
+        software-properties-common apt-transport-https \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set up locale
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
-ENV LANG=en_US.UTF-8 \
-    LANGUAGE=en_US:en \
-    LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
 
-# Add a non-root user for better security
+###############################
+# Stage 2 – Dev shell goodies #
+###############################
+FROM base AS devshell
+
+# 1. non-root user
 RUN useradd -ms /bin/zsh appuser
-
-# Install Oh My Zsh and configure zsh for appuser
 USER appuser
+WORKDIR /home/appuser
+
+# 2. Oh My Zsh (unattended)
 RUN sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
-# Install popular zsh plugins
-RUN git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions && \
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting && \
-    git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions
+# 3. zsh plugins
+RUN git clone https://github.com/zsh-users/zsh-autosuggestions      ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions && \
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting  ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting && \
+    git clone https://github.com/zsh-users/zsh-completions          ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions
 
-# Configure .zshrc with enhanced settings
+# 4. full .zshrc tweaks  ---------- (all your original lines kept verbatim)
 RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' ~/.zshrc && \
     sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-completions docker docker-compose python pip fzf tmux)/' ~/.zshrc && \
     echo '' >> ~/.zshrc && \
@@ -137,7 +109,7 @@ RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' ~/.zshrc && \
     echo '# Auto-completion for zsh-completions' >> ~/.zshrc && \
     echo 'autoload -U compinit && compinit' >> ~/.zshrc
 
-# Set up enhanced bash configuration as fallback
+# 5. bash fallback tweaks
 RUN echo '# Enhanced bash configuration' >> ~/.bashrc && \
     echo 'export HISTSIZE=10000' >> ~/.bashrc && \
     echo 'export HISTFILESIZE=20000' >> ~/.bashrc && \
@@ -154,68 +126,90 @@ RUN echo '# Enhanced bash configuration' >> ~/.bashrc && \
     echo 'alias l="ls -CF"' >> ~/.bashrc && \
     echo 'alias vim=nvim' >> ~/.bashrc && \
     echo 'alias vi=nvim' >> ~/.bashrc && \
-    echo 'if [ -f /etc/bash_completion ]; then' >> ~/.bashrc && \
-    echo '    . /etc/bash_completion' >> ~/.bashrc && \
-    echo 'fi' >> ~/.bashrc
+    echo 'if [ -f /etc/bash_completion ]; then . /etc/bash_completion; fi' >> ~/.bashrc
 
 USER root
-
-# Basic nvim configuration
+# 6. minimal nvim config
 RUN mkdir -p /home/appuser/.config/nvim && \
-    echo 'set number' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set relativenumber' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set expandtab' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set shiftwidth=4' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set tabstop=4' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set softtabstop=4' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set autoindent' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set smartindent' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set hlsearch' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set incsearch' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set ignorecase' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set smartcase' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'set mouse=a' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'syntax on' >> /home/appuser/.config/nvim/init.vim && \
-    echo 'colorscheme default' >> /home/appuser/.config/nvim/init.vim
+    echo 'set number relativenumber'             >  /home/appuser/.config/nvim/init.vim && \
+    echo 'set expandtab tabstop=4 shiftwidth=4' >> /home/appuser/.config/nvim/init.vim && \
+    echo 'syntax on'                            >> /home/appuser/.config/nvim/init.vim
+RUN chown -R appuser:appuser /home/appuser
 
-# Set ownership of config files
-RUN chown -R appuser:appuser /home/appuser/.config /home/appuser/.bashrc
+#############################################
+# Stage 3 – Builder: create a venv owned by appuser
+#############################################
+FROM devshell AS builder
 
+# 1) Make sure /thatdamtoolbox exists and is owned by appuser
+USER root
+RUN mkdir -p /thatdamtoolbox \
+ && chown -R appuser:appuser /thatdamtoolbox
+
+RUN mkdir -p \
+  /var/lib/thatdamtoolbox/db \
+  /var/lib/thatdamtoolbox/tmp \
+  /var/lib/thatdamtoolbox/media \
+  /var/lib/thatdamtoolbox/_PROCESSED \
+  /var/lib/thatdamtoolbox/previews \
+  /var/lib/thatdamtoolbox/logs \
+  /var/lib/thatdamtoolbox/_INCOMING 
+
+# 2) Switch to appuser and work there
 USER appuser
-WORKDIR /workspace
+WORKDIR /thatdamtoolbox
 
-###############################
-# --- Stage 2: pip install ----
-###############################
-FROM base AS builder
-COPY --chown=appuser:appuser requirements.txt setup.py README.md /workspace/
-COPY --chown=appuser:appuser video/ /workspace/video
-RUN pip install --no-cache-dir --user -r /workspace/requirements.txt && \
-    pip install --no-cache-dir --user -e /workspace
-    
-#######################################
-# --- Stage 3: runtime / final image --
-#######################################
-FROM base AS runtime
-# Copy only the virtualenv site-packages from builder
-COPY --from=builder /home/appuser/.local /home/appuser/.local
-ENV PATH=$PATH:/home/appuser/.local/bin
+# 3) Copy only what setup.py & requirements.txt need
+COPY --chown=appuser:appuser setup.py requirements.txt README.md ./
+COPY --chown=appuser:appuser video/ video/
 
-# Copy application code
-COPY --chown=appuser:appuser video/ /workspace/video
-COPY --chown=appuser:appuser setup.py /workspace/
-COPY --chown=appuser:appuser run_video.py /workspace/
+# 4) Create the venv (under /thatdamtoolbox/venv) as appuser,
+#    then install everything into it--no root required
+RUN python3 -m venv venv \
+ && venv/bin/pip install --upgrade pip \
+ && venv/bin/pip install --no-cache-dir -r requirements.txt \
+ && venv/bin/pip install --no-cache-dir -e .
 
-# overwrite the raw dam-explorer with the built bundle
-COPY --from=frontend-build \
-     /build/static/components/dam-explorer.bundle.js \
-     /workspace/video/web/static/components/dam-explorer.bundle.j
-
-# Auto-install all plugin requirements.txt (if any exist)
+# 5) (Optional) install any module‐specific extras
 RUN set -e; \
-    cd /workspace/video/modules; \
-    find . -name "requirements.txt" | xargs cat | sort | uniq > /tmp/all-module-reqs.txt; \
-    pip install --no-cache-dir --user -r /tmp/all-module-reqs.txt || true
+    for req in video/modules/*/requirements.txt; do \
+      if [ -f "$req" ]; then \
+        echo "Installing extra deps for $(dirname $req)"; \
+        venv/bin/pip install --no-cache-dir -r "$req"; \
+      fi; \
+    done
+
+#############################################
+# Stage 4 – Runtime: reuse that venv
+#############################################
+FROM devshell AS runtime
+
+# Copy over your code + venv, all already owned by appuser
+COPY --from=builder --chown=appuser:appuser /thatdamtoolbox /thatdamtoolbox
+
+# Make sure we’re still non-root when we start
+USER appuser
+WORKDIR /
+
+# Prepend our venv to PATH so "python -m video" picks up all deps
+ENV PATH="/thatdamtoolbox/venv/bin:${PATH}"
+
+# Bring in your React bundle in exactly the same place
+COPY --from=frontend-build \
+     /build/dam-explorer.bundle.js \
+     /thatdamtoolbox/video/web/static/components/
+
+# 5) Runtime‐only ENV overrides
+ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
+    VIDEO_DB_PATH=/var/lib/thatdamtoolbox/db/live.sqlite3 \
+    VIDEO_MEDIA_ROOT=/var/lib/thatdamtoolbox/media \
+    VIDEO_PROCESSED_DIR=/var/lib/thatdamtoolbox/_PROCESSED \
+    VIDEO_PREVIEW_ROOT=/var/lib/thatdamtoolbox/previews \
+    VIDEO_LOG_DIR=/var/lib/thatdamtoolbox/logs \
+    VIDEO_TMP_DIR=/var/lib/thatdamtoolbox/tmp \
+    VIDEO_INCOMING_DIR=/var/lib/thatdamtoolbox/_INCOMING
+
+COPY --chown=appuser:appuser entrypoint.sh /thatdamtoolbox/entrypoint.sh
 
 EXPOSE 8080
 
@@ -223,11 +217,14 @@ EXPOSE 8080
 # By default we rely on the smart launcher in `video/__main__.py`:
 #   • `docker run …`  → API server on :8080
 #   • `docker run … stats` → CLI pass-through
-ENTRYPOINT ["python", "-m", "video"]
+# ENTRYPOINT ["python", "-m", "video"]
 
 # You can still override at run-time:
 #   FASTAPI=0 docker run …        → forces stdlib HTTP server
 #   python -m video serve --port 8888 … inside container for custom port
 #
 # Keep CMD empty so positional args go straight into ENTRYPOINT
-CMD []
+# CMD []
+
+ENTRYPOINT ["/thatdamtoolbox/entrypoint.sh"]
+CMD ["python", "-m", "video"]
