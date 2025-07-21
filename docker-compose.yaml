@@ -17,26 +17,6 @@ services:
     # ports: ["8080:8080"]              # Unneeded in host mode
     # --- Environment ---------------------------
     user: "1000:1000"
-    environment:
-      PYTHONWARNINGS: "ignore::DeprecationWarning"
-      TZ: America/New_York
-      UVICORN_WORKERS: "1"              # dev: 1  •  prod: 4
-      # VIDEO_FORCE_STDHTTP: "1"        # Force stdlib HTTP (optional)
-      # ------------------------------------------------------------------
-      # Make ALL mutable data live under one bind-mount ( /data )
-      # ------------------------------------------------------------------
-      VIDEO_DATA_DIR: /data          # <- your DATA_DIR in video/config.py
-      # --- Storage backend selector -------------
-      VIDEO_STORAGE: "auto" 
-      # VIDEO_STORAGE=sqlite                      # Default (no env needed)
-      # VIDEO_STORAGE=faiss                       # Use Faiss vector index
-      # VIDEO_STORAGE=weaviate                    # Use Weaviate backend
-      # WEAVIATE_URL=http://localhost:8081        # For Weaviate backend:
-      # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
-      VIDEO_DEBUG_BOOT: "0"
-      DB_SNAPSHOT_SECS: "120"                     # optional
-      VIDEO_DB_PATH: /var/lib/thatdamtoolbox/db/live.sqlite3
-      #VIDEO_DB_PATH: /data/db/live.sqlite3
     # --- Device permissions & hotplug ----------
     # devices:
     #   - /dev/video0:/dev/video0
@@ -48,15 +28,47 @@ services:
     group_add:
       - "44"                            # video group (GID 44 on Pi OS)
     privileged: true                    # access /dev/video*
+    environment:
+      PYTHONWARNINGS: "ignore::DeprecationWarning"
+      TZ: America/New_York
+      UVICORN_WORKERS: "1"              # dev: 1  •  prod: 4
+      VIDEO_FORCE_STDHTTP: "0"          # 1: Force stdlib HTTP (optional)
+      
+      # ------------------------------------------------------------------
+      # Make ALL mutable data live under one bind-mount ( /data )
+      # ------------------------------------------------------------------
+      VIDEO_DATA_DIR:       /data
+      
+      # override any others if you want–but everything else will fall back into $VIDEO_DATA_DIR:
+      VIDEO_MEDIA_ROOT:     ${VIDEO_DATA_DIR}/media
+      VIDEO_PROCESSED_ROOT: ${VIDEO_DATA_DIR}/_PROCESSED
+      VIDEO_PREVIEW_ROOT:   ${VIDEO_DATA_DIR}/previews
+      VIDEO_LOG_DIR:        ${VIDEO_DATA_DIR}/logs
+      VIDEO_TMP_DIR:        ${VIDEO_DATA_DIR}/tmp
+      
+      # ── WAL-only DB lives here (on local volume) ──
+      VIDEO_DB_PATH:        /var/lib/thatdamtoolbox/db/live.sqlite3
+      DB_SNAPSHOT_SECS:     "120"
+      UVICORN_WORKERS:      "1"
+      VIDEO_STORAGE:        "auto"
+      VIDEO_DEBUG_BOOT:     "0"
+      
+      # --- Storage backend selector -------------
+      # VIDEO_STORAGE=sqlite                      # Default (no env needed)
+      # VIDEO_STORAGE=faiss                       # Use Faiss vector index
+      # VIDEO_STORAGE=weaviate                    # Use Weaviate backend
+      # WEAVIATE_URL=http://localhost:8081        # For Weaviate backend:
+      # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
+    
     # --- Storage mounts ------------------------
     volumes:
-      # --- Production Mounts ---------------------
-      # 1. Entire persistent dataset (media, db, previews, …)
-      - ./data/db:/var/lib/thatdamtoolbox/db:rw
+      # 1) your SMB-mounted data (media, previews, etc.)
       - /mnt/b/Video/thatdamtoolbox:/data:rw
-      # 2. Overlay the staging dir so the container sees it at /data/_INCOMING
+      # 2) incoming staging dir
       - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
-      # 3. Live source for hot-reload (dev only)
+      # 3) local-only WAL DB
+      - db_wal:/var/lib/thatdamtoolbox/db:rw
+      # 4. Live source for hot-reload (dev only)
       - ./video:/video:rw
     restart: unless-stopped
     # --- Entrypoint & Health -------------------
@@ -98,8 +110,13 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./docker/web-app:/app:rw
-      - /app/node_modules
-      - /app/.next
+      # anonymous volumes for node_modules & .next:
+      - type: volume
+        source: node_modules
+        target: /app/node_modules
+      - type: volume
+        source: next_cache
+        target: /app/.next
     depends_on:
       - video-api
     restart: unless-stopped
@@ -112,14 +129,22 @@ services:
       retries: 3
 
 
-  # --- Optional CLI one-shot container ---------
+  # --- Optional CLI one-shot "scan" container ---------
   video-cli:
     image: cdaprod/video:dev
     entrypoint: ["python", "-m", "video"]
-    command: ["stats"]                        # Any CLI verb
+    # one-off scan job
+    command: ["scan", "--root", "/data/_INCOMING", "--workers", "1"]
+    # same mounts as video-api
     volumes:
-      - ./data/media:/media
-      - ./data/db:/var/lib/thatdamtoolbox/db:rw
-    depends_on: [video-api]
-    profiles: ["cli"]
-    
+      - /mnt/b/Video/thatdamtoolbox:/data:rw
+      - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
+      - db_wal:/var/lib/thatdamtoolbox/db:rw
+    # do not restart this service automatically
+    restart: "no"
+    profiles:
+      - cli
+
+volumes:
+  db_wal:
+    driver: local
