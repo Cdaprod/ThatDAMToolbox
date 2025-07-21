@@ -14,6 +14,11 @@ const nextConfig = {
         source: '/api/video/:path*',
         destination: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/:path*`,
       },
+      {
+        // if you have a WebSocket endpoint
+        source: '/ws/:path*',
+        destination: `${process.env.NEXT_PUBLIC_WS_URL}/:path*`
+      }
     ];
   },
   

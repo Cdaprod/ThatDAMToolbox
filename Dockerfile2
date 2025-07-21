@@ -137,51 +137,58 @@ RUN mkdir -p /home/appuser/.config/nvim && \
 RUN chown -R appuser:appuser /home/appuser
 
 #############################################
-# Stage 3 – Builder: create a venv in /opt/venv
+# Stage 3 – Builder: create a venv owned by appuser
 #############################################
 FROM devshell AS builder
-USER appuser
-WORKDIR /video
 
-# copy only what setup.py needs
+# 1) Make sure /thatdamtoolbox exists and is owned by appuser
+USER root
+RUN mkdir -p /thatdamtoolbox \
+ && chown -R appuser:appuser /thatdamtoolbox
+
+# 2) Switch to appuser and work there
+USER appuser
+WORKDIR /thatdamtoolbox
+
+# 3) Copy only what setup.py & requirements.txt need
 COPY --chown=appuser:appuser setup.py requirements.txt README.md ./
 COPY --chown=appuser:appuser video/ video/
 
-# 1) Create venv, install your package
-RUN python3 -m venv /opt/venv \
- && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt \
- && /opt/venv/bin/pip install --no-cache-dir -e .
+# 4) Create the venv (under /thatdamtoolbox/venv) as appuser,
+#    then install everything into it--no root required
+RUN python3 -m venv venv \
+ && venv/bin/pip install --upgrade pip \
+ && venv/bin/pip install --no-cache-dir -r requirements.txt \
+ && venv/bin/pip install --no-cache-dir -e .
 
-# 2) (Optional) install module‐specific requirements
+# 5) (Optional) install any module‐specific extras
 RUN set -e; \
-    for req in /video/video/modules/*/requirements.txt; do \
+    for req in video/modules/*/requirements.txt; do \
       if [ -f "$req" ]; then \
         echo "Installing extra deps for $(dirname $req)"; \
-        /opt/venv/bin/pip install --no-cache-dir -r "$req"; \
+        venv/bin/pip install --no-cache-dir -r "$req"; \
       fi; \
     done
 
 #############################################
-# Stage 4 – Runtime: reuse that venv from /opt/venv
+# Stage 4 – Runtime: reuse that venv
 #############################################
 FROM devshell AS runtime
+
+# Copy over your code + venv, all already owned by appuser
+COPY --from=builder --chown=appuser:appuser /thatdamtoolbox /thatdamtoolbox
+
+# Make sure we’re still non-root when we start
 USER appuser
 WORKDIR /
 
-# 1) Copy over your code
-COPY --from=builder --chown=appuser:appuser /video /video
+# Prepend our venv to PATH so "python -m video" picks up all deps
+ENV PATH="/thatdamtoolbox/venv/bin:${PATH}"
 
-# 2) Copy over the venv into /opt/venv
-COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
-
-# 3) Make the venv’s bin the first thing on PATH
-ENV PATH="/opt/venv/bin:${PATH}"
-
-# 4) Bring in your React bundle
+# Bring in your React bundle in exactly the same place
 COPY --from=frontend-build \
      /build/dam-explorer.bundle.js \
-     /video/web/static/components/
+     /thatdamtoolbox/video/web/static/components/
 
 # 5) Runtime‐only ENV overrides
 ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
