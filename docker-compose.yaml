@@ -1,6 +1,10 @@
 # /docker-compose.yaml
 name: thatdamtoolbox
 
+networks:
+  damnet:
+    driver: bridge
+
 services:
   video-api:
     build:
@@ -31,7 +35,8 @@ services:
       # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
       VIDEO_DEBUG_BOOT: "0"
       DB_SNAPSHOT_SECS: "120"                     # optional
-      VIDEO_DB_PATH: /var/lib/thatdamtoolbox/db/live.sqlite3
+      #VIDEO_DB_PATH: /var/lib/thatdamtoolbox/db/live.sqlite3
+      VIDEO_DB_PATH: /data/db/live.sqlite3
     # --- Device permissions & hotplug ----------
     # devices:
     #   - /dev/video0:/dev/video0
@@ -65,6 +70,47 @@ services:
       interval: 60s
       timeout: 5s
       retries: 3
+
+
+  video-web:
+    build:
+      context: ./docker/web-app
+      dockerfile: Dockerfile
+      target: development
+    image: cdaprod/video-web:dev
+    platform: linux/arm64
+    ports:
+      - "3000:3000"
+    # ------------------ MAGIC HACK ------------------
+    # let "host.docker.internal" point at your host (where video-api is in host mode)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - damnet
+    environment:
+      NODE_ENV: development
+
+      # ← change these to talk to host.docker.internal
+      NEXT_PUBLIC_API_BASE_URL: "http://host.docker.internal:8080"
+      NEXT_PUBLIC_WS_URL:      "ws://host.docker.internal:8080/ws"
+
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./docker/web-app:/app:rw
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - video-api
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 
   # --- Optional CLI one-shot container ---------
   video-cli:

@@ -69,6 +69,15 @@ web-app/
 
 ## Quick Start Commands
 
+### Used Command
+
+```
+docker build \
+  --platform linux/arm64 \
+  --target development \  -t cdaprod/video-web:dev \
+  .
+```  
+
 1. **Initialize the web-app directory:**
    
    ```bash

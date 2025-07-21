@@ -63,3 +63,57 @@
     </div>
   </div>
 </div>
+<script type="module" src="{{ url_for('static', path='components/dam-client.js') }}"></script>
+<script type="module">
+  import * as DAM from '/static/components/dam-client.js';
+
+  const resultsEl = document.getElementById('search-results');
+  const filterPanel = document.getElementById('filter-panel');
+  const vectorPanel = document.getElementById('vector-search-panel');
+
+  function renderResults(items) {
+    if (!items.length) {
+      resultsEl.innerHTML = `<p>No results</p>`;
+      return;
+    }
+    resultsEl.innerHTML = items.map(r=>`
+      <div class="result-card">
+        <strong>${r.path}</strong>
+        <p>level: ${r.level}, score: ${r.score.toFixed(2)}</p>
+      </div>
+    `).join('');
+    resultsEl.classList.remove('hidden');
+  }
+
+  window.DAMSearch = {
+    toggleFilters() {
+      filterPanel.classList.toggle('hidden');
+    },
+    toggleVectorSearch() {
+      vectorPanel.classList.toggle('hidden');
+    },
+    async handleSearch(evt) {
+      const q = evt.target.value.trim();
+      if (!q) {
+        resultsEl.classList.add('hidden');
+        return;
+      }
+      try {
+        const hits = await DAM.textSearch(q);
+        renderResults(hits);
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async performVectorSearch() {
+      const q = document.getElementById('vector-query').value.trim();
+      if (!q) return;
+      try {
+        const hits = await DAM.textSearch(q);
+        renderResults(hits);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+</script>
