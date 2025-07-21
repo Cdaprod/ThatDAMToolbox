@@ -49,7 +49,6 @@ services:
       # ── WAL-only DB lives here (on local volume) ──
       VIDEO_DB_PATH:        /var/lib/thatdamtoolbox/db/live.sqlite3
       DB_SNAPSHOT_SECS:     "120"
-      UVICORN_WORKERS:      "1"
       VIDEO_STORAGE:        "auto"
       VIDEO_DEBUG_BOOT:     "0"
       
