@@ -4,41 +4,76 @@
   <div class="card-body">
 
     <!-- 1. File Selection -->
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:1rem">
       <label for="file-input">Select Video Files</label>
-      <div class="flex items-center gap-2">
-        <input type="file"
-               id="file-input"
-               accept="video/*"
-               multiple
-               class="form-control" />
-        <button type="button"
-                id="clear-files"
-                class="btn btn-secondary btn-small">
-          ✖️ Clear
-        </button>
-      </div>
-    </div>
-
-    <!-- 2. Batch Name -->
-    <div class="form-group">
-      <label for="batch-name">Batch Name (Optional)</label>
-      <input type="text"
-             id="batch-name"
-             class="form-control"
-             placeholder="Enter batch name..." />
+      <input
+        type="file"
+        id="file-input"
+        accept="video/*"
+        multiple
+        style="
+          display: inline-block;
+          padding: 0.5em;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          cursor: pointer;
+        "
+      />
+      <button
+        type="button"
+        id="clear-files"
+        style="
+          margin-left: 0.5em;
+          padding: 0.5em 0.75em;
+          border: 1px solid #aaa;
+          border-radius: 4px;
+          background: #f0f0f0;
+          cursor: pointer;
+        "
+      >
+        ✖️ Clear
+      </button>
     </div>
 
     <!-- 3. Upload List -->
     <div class="form-group">
       <label>Selected Files:</label>
-      <ul id="upload-list" class="kvp" style="min-height: 60px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 8px; margin-top: 4px;"></ul>
+      <ul
+        id="upload-list"
+        style="
+          min-height: 60px;
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 4px;
+          padding: 8px;
+          margin-top: 4px;
+          list-style: none;
+        "
+      ></ul>
     </div>
 
-    <!-- 4. Auto-upload notice -->
-    <p class="hint" style="margin-top: 1rem; font-style: italic; opacity: 0.8;">
+    <p style="margin-top:1rem;font-style:italic;opacity:0.8">
       (files are uploaded immediately after selection -- no need to press a button)
     </p>
-
   </div>
+
+  <script>
+    const input = document.getElementById('file-input');
+    const list  = document.getElementById('upload-list');
+    const clear = document.getElementById('clear-files');
+
+    input.addEventListener('change', () => {
+      list.innerHTML = '';
+      for (const file of input.files) {
+        const li = document.createElement('li');
+        li.textContent = file.name;
+        list.appendChild(li);
+        // kick off your fetch()/XHR upload here…
+      }
+    });
+
+    clear.addEventListener('click', () => {
+      input.value = '';
+      list.innerHTML = '';
+    });
+  </script>
 </details>

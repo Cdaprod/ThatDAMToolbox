@@ -1,6 +1,18 @@
 <details id="explorerCard" class="glass-card" open>
   <summary>🧭 DAM Explorer</summary>
 
-  <!-- React / Preact will be mounted here -->
-  <div id="dam-root" style="min-height:20rem"><!-- fallback loader --></div>
+  <!-- mount point for your React app -->
+  <div id="dam-root" style="min-height:20rem"></div>
+
+  <!-- inline ESM loader & mount -->
+  <script type="module">
+    import DAMExplorer, {
+      __react__     as React,
+      __react_dom__ as ReactDOM
+    } from "{{ url_for('static', path='components/dam-explorer.bundle.js') }}";
+
+    const container = document.getElementById('dam-root');
+    const root      = ReactDOM.createRoot(container);
+    root.render( React.createElement(DAMExplorer) );
+  </script>
 </details>
