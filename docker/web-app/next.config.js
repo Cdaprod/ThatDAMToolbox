@@ -42,7 +42,7 @@ const nextConfig = {
   
   // Environment variables available to the browser
   env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+    // CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
   
   // Experimental features
