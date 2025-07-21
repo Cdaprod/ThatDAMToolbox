@@ -1,55 +1,52 @@
 // /webapp/next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable React strict mode for development
   reactStrictMode: true,
-  
-  // Standalone output for Docker production builds
   output: 'standalone',
-  
-  // API proxy for development (routes /api/video/* to your Python API)
+
+  // --------------------------------------------------------
+  // HTTP-only rewrites for /api/video/*
+  // --------------------------------------------------------
   async rewrites() {
     return [
       {
         source: '/api/video/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/:path*`,
+        // MUST start with http(s):// or a root‐relative path
+        destination:
+          `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/video/:path*`,
       },
-      {
-        // if you have a WebSocket endpoint
-        source: '/ws/:path*',
-        destination: `${process.env.NEXT_PUBLIC_WS_URL}/:path*`
-      }
-    ];
+    ]
   },
-  
-  // Image optimization settings
+
   images: {
     domains: ['localhost'],
+    // disable Next’s optimizer in dev so you don’t need an external loader
     unoptimized: process.env.NODE_ENV === 'development',
   },
-  
-  // Webpack configuration for development
+
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
-      // Enable polling for file watching in containers
       config.watchOptions = {
         poll: 1000,
         aggregateTimeout: 300,
-      };
+      }
     }
-    return config;
+    return config
   },
-  
-  // Environment variables available to the browser
-  env: {
-    // CUSTOM_KEY: process.env.CUSTOM_KEY,
-  },
-  
-  // Experimental features
-  experimental: {
-    // Enable App Router (Next.js 13+)
-    appDir: true,
-  },
-};
 
-module.exports = nextConfig;
+  // --------------------------------------------------------
+  // Browser‐visible env vars: only NEXT_PUBLIC_*
+  // --------------------------------------------------------
+  env: {
+    // If you actually need CUSTOM_KEY in the browser, give it a default here:
+    // CUSTOM_KEY: process.env.CUSTOM_KEY || '',
+  },
+
+  // --------------------------------------------------------
+  // Next.js 14+ "appDir" is no longer experimental
+  // --------------------------------------------------------
+  // If you’re using the new "/app" directory, just set it at top level:
+  appDir: true,
+}
+
+module.exports = nextConfig
