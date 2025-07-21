@@ -6,13 +6,24 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+# Copy package files
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+
+# Force clean install based on package manager
 RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
+  if [ -f yarn.lock ]; then \
+    yarn install --frozen-lockfile --production=false; \
+  elif [ -f package-lock.json ]; then \
+    # Clean install with npm - removes node_modules and reinstalls
+    rm -rf node_modules package-lock.json && \
+    npm install --package-lock-only && \
+    npm ci --include=dev; \
+  elif [ -f pnpm-lock.yaml ]; then \
+    corepack enable pnpm && \
+    pnpm i --frozen-lockfile; \
+  else \
+    echo "No lockfile found. Creating new package-lock.json" && \
+    npm install; \
   fi
 
 # Development stage
