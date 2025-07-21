@@ -22,7 +22,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Disable Next.js telemetry
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
 ENV PORT=3000
