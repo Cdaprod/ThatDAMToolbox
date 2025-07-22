@@ -71,10 +71,8 @@ def _default_dir(env_name: str, cfg_section: str, cfg_key: str, fallback: str) -
       1. INI config [cfg_section][cfg_key]
       2. ENV var env_name
       3. literal fallback
-    Then ensure it exists and is writable. If creation or access fails,
-    fall back to /tmp/thatdamtoolbox/<leaf>. If THAT fails, fallback to /tmp.
+    Ensure it exists and is writable. If not, fallback to /tmp/thatdamtoolbox/<leaf>.
     """
-    # 1: Try config, env, or fallback
     cfg_val = get_path(cfg_section, cfg_key)
     if cfg_val:
         directory = cfg_val
@@ -82,7 +80,10 @@ def _default_dir(env_name: str, cfg_section: str, cfg_key: str, fallback: str) -
         env_val = os.getenv(env_name)
         directory = Path(env_val) if env_val else Path(fallback)
 
-    # 2: Try to create directory and test writability
+    # Ensure we get only the directory part for files passed as fallback
+    if directory.suffix:  # It's a file, not a dir!
+        directory = directory.parent
+
     try:
         directory.mkdir(parents=True, exist_ok=True)
         test_file = directory / ".write_test"
@@ -96,9 +97,8 @@ def _default_dir(env_name: str, cfg_section: str, cfg_key: str, fallback: str) -
             cfg_key, directory, e
         )
 
-    # 3; Fallback: /tmp/thatdamtoolbox/<leaf>
-    leaf = directory.name or "fallback"
-    temp_base = Path(tempfile.gettempdir()) / "thatdamtoolbox" / leaf
+    # fallback: /tmp/thatdamtoolbox/<cfg_key>
+    temp_base = Path(tempfile.gettempdir()) / "thatdamtoolbox" / cfg_key
     try:
         temp_base.mkdir(parents=True, exist_ok=True)
         test_file = temp_base / ".write_test"
@@ -108,14 +108,45 @@ def _default_dir(env_name: str, cfg_section: str, cfg_key: str, fallback: str) -
         return temp_base
     except Exception as e:
         log.error("Could not create or write to temp fallback dir %s: %s", temp_base, e)
-        # 4: Last resort: use bare system temp dir
         fallback_dir = Path(tempfile.gettempdir())
         try:
             fallback_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
-            pass  # This really shouldn't ever fail
+            pass
         log.error("Could not use any custom fallback, defaulting to bare tmp: %s", fallback_dir)
         return fallback_dir
+
+def _default_file(env_name: str, cfg_section: str, cfg_key: str, fallback: str) -> Path:
+    """
+    Like _default_dir but for a file path (e.g., SQLite DB).
+    Returns a file path, falling back to /tmp/thatdamtoolbox/<cfg_key>.sqlite3 if necessary.
+    """
+    cfg_val = get_path(cfg_section, cfg_key)
+    if cfg_val:
+        fpath = cfg_val
+    else:
+        env_val = os.getenv(env_name)
+        fpath = Path(env_val) if env_val else Path(fallback)
+    directory = fpath.parent
+
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        test_file = directory / ".write_test"
+        test_file.touch(exist_ok=True)
+        test_file.unlink(missing_ok=True)
+        log.debug("Using configured file for %s: %s", cfg_key, fpath)
+        return fpath
+    except Exception as e:
+        log.warning(
+            "Configured file %s at %s not writable; error=%s. Falling back to temp.",
+            cfg_key, fpath, e
+        )
+    # fallback: /tmp/thatdamtoolbox/<cfg_key>.sqlite3
+    fallback_base = Path(tempfile.gettempdir()) / "thatdamtoolbox"
+    fallback_base.mkdir(parents=True, exist_ok=True)
+    fallback_file = fallback_base / (cfg_key + ".sqlite3")
+    log.warning("Using temp fallback file for %s: %s", cfg_key, fallback_file)
+    return fallback_file
     
 def get_app_subdir(name: str) -> Path:
     """Get (and ensure) a named subdirectory under [paths].root."""
@@ -141,7 +172,9 @@ DATA_DIR      = _default_dir("VIDEO_DATA_DIR", "paths", "data_dir",      str(Pat
 MEDIA_ROOT    = _default_dir("VIDEO_MEDIA_ROOT", "paths", "media_root",  str(DATA_DIR / "media"))
 PROCESSED_DIR = _default_dir("VIDEO_PROCESSED_DIR", "paths", "processed", str(DATA_DIR / "_PROCESSED"))
 PREVIEW_ROOT  = _default_dir("VIDEO_PREVIEW_ROOT", "paths", "preview_root", str(DATA_DIR / "previews"))
-DB_PATH       = _default_dir("VIDEO_DB_PATH", "paths", "db_path",        str(DATA_DIR / "db" / "media_index.sqlite3"))
+#DB_PATH       = _default_dir("VIDEO_DB_PATH", "paths", "db_path",        str(DATA_DIR / "db" / "media_index.sqlite3"))
+# For DB_PATH: must use file fallback not dir fallback!
+DB_PATH = _default_file("VIDEO_DB_PATH", "paths", "db_path", str(DATA_DIR / "db" / "media_index.sqlite3"))
 LOG_DIR       = _default_dir("VIDEO_LOG_DIR", "paths", "log_dir",        str(DATA_DIR / "logs"))
 TMP_DIR       = _default_dir("VIDEO_TMP_DIR", "paths", "tmp_dir",        str(DATA_DIR / "tmp"))
 # ── new: dedicated sub-folder used by the web uploader ──────────────────────
