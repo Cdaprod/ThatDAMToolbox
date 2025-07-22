@@ -167,19 +167,27 @@ def get_app_subdir(name: str) -> Path:
             log.error("Failed to create fallback temp subdir %s: %s", subdir, e2)
     return subdir
 
-INCOMING_DIR  = get_path("paths", "incoming") or get_app_subdir("_INCOMING")
-DATA_DIR      = _default_dir("VIDEO_DATA_DIR", "paths", "data_dir",      "/data")
-MEDIA_ROOT    = _default_dir("VIDEO_MEDIA_ROOT", "paths", "media_root",  str(DATA_DIR / "media"))
-PROCESSED_DIR = _default_dir("VIDEO_PROCESSED_DIR", "paths", "processed", str(DATA_DIR / "_PROCESSED"))
-PREVIEW_ROOT  = _default_dir("VIDEO_PREVIEW_ROOT", "paths", "preview_root", str(DATA_DIR / "previews"))
-# For DB_PATH: must use file fallback not dir fallback!
-DB_PATH       = _default_file("VIDEO_DB_PATH", "paths", "db_path", str(DATA_DIR / "db" / "media_index.sqlite3"))
-LOG_DIR       = _default_dir("VIDEO_LOG_DIR", "paths", "log_dir",        str(DATA_DIR / "logs"))
-TMP_DIR       = _default_dir("VIDEO_TMP_DIR", "paths", "tmp_dir",        str(DATA_DIR / "tmp"))
-# ── new: dedicated sub-folder used by the web uploader ──────────────────────
-WEB_UPLOADS   = get_path("paths", "web_uploads") or INCOMING_DIR / "sources/WEB_UPLOADS"
+def _data_env_or_default(env, sub):
+    """Always prefer $VIDEO_DATA_DIR if set, else /data, else fallback."""
+    base = os.getenv("VIDEO_DATA_DIR", "/data")
+    val = os.getenv(env, str(Path(base) / sub))
+    return Path(val)
+
+INCOMING_DIR  = _data_env_or_default("VIDEO_INCOMING_DIR", "_INCOMING")
+DATA_DIR      = Path(os.getenv("VIDEO_DATA_DIR", "/data"))
+MEDIA_ROOT    = _data_env_or_default("VIDEO_MEDIA_ROOT", "media")
+PROCESSED_DIR = _data_env_or_default("VIDEO_PROCESSED_DIR", "_PROCESSED")
+PREVIEW_ROOT  = _data_env_or_default("VIDEO_PREVIEW_ROOT", "previews")
+DB_PATH       = Path(os.getenv(
+    "VIDEO_DB_PATH",
+    str(DATA_DIR / "db" / "media_index.sqlite3")
+))
+LOG_DIR       = _data_env_or_default("VIDEO_LOG_DIR", "logs")
+TMP_DIR       = _data_env_or_default("VIDEO_TMP_DIR", "tmp")
+
+WEB_UPLOADS   = get_path("paths", "web_uploads") or (INCOMING_DIR / "sources/WEB_UPLOADS")
 WEB_UPLOADS.mkdir(parents=True, exist_ok=True)
-# ── new: dedicated sub-folder used by the modules ───────────────────────────
+
 MODULES_BASE = DATA_DIR / "thatdamtoolbox" / "modules"
 MODULES_BASE.mkdir(parents=True, exist_ok=True)
 
