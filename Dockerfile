@@ -184,7 +184,7 @@ RUN set -e; \
 #############################################
 # Stage 4 – Runtime: reuse that venv
 #############################################
-FROM devshell AS runtime
+FROM builder AS runtime
 
 # Copy over your code + venv, all already owned by appuser
 COPY --from=builder --chown=appuser:appuser /thatdamtoolbox /thatdamtoolbox
