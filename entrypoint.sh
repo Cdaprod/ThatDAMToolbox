@@ -1,7 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
-# Directories to fix
 dirs=(
   /var/lib/thatdamtoolbox/db
   /var/lib/thatdamtoolbox/tmp
@@ -14,60 +13,59 @@ dirs=(
 
 fix_perms() {
   for d in "${dirs[@]}"; do
-    [ -d "$d" ] && chown -R appuser:appuser "$d" || true
+    [ -d "$d" ] && chown -R appuser:appuser "$d"
   done
 }
 
-# Helper: run as appuser using su-exec, gosu, or su
 run_as_appuser() {
-  if command -v su-exec >/dev/null 2>&1; then
-    exec su-exec appuser "$@"
-  elif command -v gosu >/dev/null 2>&1; then
-    exec gosu appuser "$@"
+  if command -v su-exec &>/dev/null; then
+    su-exec appuser "$@"
+  elif command -v gosu &>/dev/null; then
+    gosu appuser "$@"
   else
     exec su -s /bin/bash appuser -c "$(printf '%q ' "$@")"
   fi
 }
 
+# 1) Fix perms so scan can write
 if [ "$(id -u)" = "0" ]; then
   fix_perms
-  # Re-invoke as appuser
-  if [[ $# -eq 0 ]]; then
-    run_as_appuser python -m video
-  else
-    case "$1" in
-      serve|stats|scan)
-        # shift
-        run_as_appuser python -m video "$@"
-        ;;
-      ""|0.0.0.0|127.0.0.1)
-        # Just run the API server
-        run_as_appuser python -m video
-        ;;
-      *)
-        run_as_appuser "$@"
-        ;;
-    esac
-  fi
-else
-  # Not root; just exec as-is
-  if [[ $# -eq 0 ]]; then
-    exec python -m video serve --host 0.0.0.0 --port 8080
-  else
-    case "$1" in
-      serve|stats|scan)
-        # shift
-        exec python -m video "$@"
-        ;;
-      *)
-        exec "$@"
-        ;;
-    esac
-  fi
 fi
 
-for d in "${dirs[@]}"; do
-  if [ ! -w "$d" ]; then
-    echo "WARNING: $d is not writable by $(whoami)"
+# 2) One-time initial hydration if MEDIA_ROOT empty
+if [ -d "${VIDEO_MEDIA_ROOT:-/var/lib/thatdamtoolbox/media}" ] && \
+   [ -z "$(ls -A "${VIDEO_MEDIA_ROOT}")" ]; then
+  echo "[entrypoint] 🌱 initial scan of ${VIDEO_MEDIA_ROOT}"
+  run_as_appuser python -m video scan --root "${VIDEO_MEDIA_ROOT}" --workers 1
+fi
+
+# 3) Main dispatch
+if [ "$(id -u)" = "0" ]; then
+  # drop back to appuser for everything
+  if [ $# -eq 0 ]; then
+    exec su-exec appuser python -m video serve --host 0.0.0.0 --port 8080
   fi
-done
+  case "$1" in
+    serve|scan|stats)
+      cmd="$1"; shift
+      exec su-exec appuser python -m video "$cmd" "$@"
+      ;;
+    *)
+      exec su-exec appuser "$@"
+      ;;
+  esac
+else
+  # already appuser
+  if [ $# -eq 0 ]; then
+    exec python -m video serve --host 0.0.0.0 --port 8080
+  fi
+  case "$1" in
+    serve|scan|stats)
+      cmd="$1"; shift
+      exec python -m video "$cmd" "$@"
+      ;;
+    *)
+      exec "$@"
+      ;;
+  esac
+fi
