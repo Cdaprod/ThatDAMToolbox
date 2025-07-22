@@ -61,3 +61,9 @@ else
     esac
   fi
 fi
+
+for d in "${dirs[@]}"; do
+  if [ ! -w "$d" ]; then
+    echo "WARNING: $d is not writable by $(whoami)"
+  fi
+done

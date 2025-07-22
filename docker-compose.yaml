@@ -65,7 +65,7 @@ services:
       # 2) incoming staging dir
       - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
       # 3) local-only WAL DB
-      - db_wal:/var/lib/thatdamtoolbox/db:rw
+      #- db_wal:/var/lib/thatdamtoolbox/db:rw
       # 4. Live source for hot-reload (dev only)
       - ./video:/video:rw
     restart: unless-stopped
