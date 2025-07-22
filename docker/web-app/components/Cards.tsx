@@ -63,3 +63,19 @@ export function UploadCard({ onUpload, loading }) {
     </div>
   );
 }
+
+export function GlassCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="
+        bg-glass-bg
+        backdrop-blur
+        border border-glass-border
+        rounded-lg
+        shadow-md
+        p-4
+        transition hover:shadow-lg
+      ">
+      {children}
+    </div>
+  )
+}

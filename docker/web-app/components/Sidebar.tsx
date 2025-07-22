@@ -1,6 +1,7 @@
 // components/Sidebar.tsx
-'use client';
-import Link from 'next/link';
+'use client'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 const cards = [
   { label: 'Explorer', route: '/dashboard/explorer' },
@@ -20,19 +21,29 @@ const cards = [
 ];
 
 export default function Sidebar() {
+  const path = usePathname()
+
   return (
-    <aside className="w-56 bg-gray-900 text-white flex flex-col">
-      <div className="font-bold text-lg px-6 py-4 border-b border-gray-700">
+    <aside className="w-56 bg-gray-900 text-gray-200 flex flex-col">
+      <div className="px-6 py-4 text-2xl font-bold border-b border-gray-700">
         DAM Toolbox
       </div>
-      <nav className="flex-1 py-2 px-4 space-y-1">
-        {cards.map(card => (
-          <Link key={card.route} href={card.route}
-            className="block px-3 py-2 rounded hover:bg-gray-800">
-            {card.label}
+      <nav className="flex-1 p-4 space-y-1">
+        {items.map(i => (
+          <Link
+            key={i.href}
+            href={i.href}
+            className={`
+              block px-3 py-2 rounded
+              ${path === i.href 
+                 ? 'bg-gray-800 text-white' 
+                 : 'hover:bg-gray-700'}
+              transition`}
+          >
+            {i.label}
           </Link>
         ))}
       </nav>
     </aside>
-  );
+  )
 }
