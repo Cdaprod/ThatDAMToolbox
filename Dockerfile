@@ -39,13 +39,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        gosu \
         build-essential git curl wget ca-certificates \
         ffmpeg libgl1 libglib2.0-0 \
         bash bash-completion zsh locales tmux \
         neovim htop less tree ripgrep fd-find fzf \
         bat exa jq unzip gnupg sqlite3 \
         software-properties-common apt-transport-https \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
 ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
