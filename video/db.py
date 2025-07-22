@@ -6,6 +6,8 @@ SQLite helper – one canonical connection for the whole Video stack.
 
 from __future__ import annotations
 import time
+import tempfile
+import atexit
 import sqlite3, os
 from pathlib    import Path
 from contextlib import contextmanager
@@ -28,9 +30,32 @@ class MediaDB:
         print(f"MediaDB.__init__: {self=} db_path={db_path} resolved={db_path or DB_FILE}")
         self.db_path = Path(db_path) if db_path else DB_FILE
 
-        # 1. SERIALISE MIGRATIONS with file lock 
         self._lockfile_path = self.db_path.with_suffix('.init.lock')
+        self._lockfile_path.parent.mkdir(parents=True, exist_ok=True)
+        if not os.access(self._lockfile_path.parent, os.W_OK):
+            tmpdir = Path(os.getenv("VIDEO_TMP_DIR", tempfile.gettempdir()))
+            tmpdir.mkdir(parents=True, exist_ok=True)
+            self._lockfile_path = tmpdir / (self.db_path.name + ".init.lock")
+
+        # Clean up stale lockfile if present
+        if self._lockfile_path.exists():
+            print(f"WARNING: Stale DB lockfile detected at {self._lockfile_path}, cleaning up.")
+            try:
+                self._lockfile_path.unlink()
+            except Exception as e:
+                print(f"Could not remove stale lockfile {self._lockfile_path}: {e}")
+
+        def _cleanup_lockfile(path=self._lockfile_path):
+            try:
+                if path.exists():
+                    path.unlink()
+            except Exception:
+                pass
+
+        atexit.register(_cleanup_lockfile)
+
         with open(self._lockfile_path, "w") as lockfile:
+            import fcntl
             fcntl.flock(lockfile, fcntl.LOCK_EX)
             try:
                 global _BOOTSTRAPPED
@@ -46,7 +71,10 @@ class MediaDB:
                     logging.getLogger("video.db").warning("FTS repair skipped: %s", exc)
             finally:
                 fcntl.flock(lockfile, fcntl.LOCK_UN)
-
+                try:
+                    self._lockfile_path.unlink()
+                except Exception:
+                    pass
                 
     def _bootstrap_wal(self) -> None:
         """
