@@ -25,6 +25,14 @@ const nextConfig = {
   },
 
   webpack: (config, { dev, isServer }) => {
+    // 1) teach webpack that '@' roots at your project dir
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': path.resolve(__dirname),
+      '@components': path.resolve(__dirname, 'components'),
+    }
+
+    // 2) for polling in dev
     if (dev && !isServer) {
       config.watchOptions = {
         poll: 1000,
