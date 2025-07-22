@@ -40,6 +40,10 @@ if [ "$(id -u)" = "0" ]; then
         shift
         run_as_appuser python -m video "$@"
         ;;
+      ""|0.0.0.0|127.0.0.1)
+        # Just run the API server
+        run_as_appuser python -m video
+        ;;
       *)
         run_as_appuser "$@"
         ;;
@@ -52,7 +56,7 @@ else
   else
     case "$1" in
       serve|stats|scan)
-        shift
+        # shift
         exec python -m video "$@"
         ;;
       *)

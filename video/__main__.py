@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+/video/__main__.py
+
 Smart launcher – FastAPI if available, stdlib HTTP fallback otherwise.
 
 • Positional args present  → CLI (`video.cli.run_cli`)

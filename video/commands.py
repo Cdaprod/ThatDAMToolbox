@@ -1,6 +1,9 @@
-# /video/commands.py
 #!/usr/bin/env python3
-"""All of your command dataclasses and functions for `video`."""
+"""
+/video/commands.py
+
+All of your command dataclasses and functions for `video`.
+"""
 
 from __future__ import annotations
 from pathlib import Path
