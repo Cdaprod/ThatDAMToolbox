@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && next export -o ../video/web/static/dam-explorer",
+    "build": "next build && next export -o ../video/web/static/next-dam-explorer",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
@@ -13,6 +13,7 @@
     "next": "14.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-icons": "^4.10.1",
     "@tanstack/react-query": "^5.0.0",
     "axios": "^1.6.0",
     "lucide-react": "^0.357.0",
