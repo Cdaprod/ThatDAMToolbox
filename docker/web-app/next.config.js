@@ -41,12 +41,6 @@ const nextConfig = {
     // If you actually need CUSTOM_KEY in the browser, give it a default here:
     // CUSTOM_KEY: process.env.CUSTOM_KEY || '',
   },
-
-  // --------------------------------------------------------
-  // Next.js 14+ "appDir" is no longer experimental
-  // --------------------------------------------------------
-  // If you’re using the new "/app" directory, just set it at top level:
-  appDir: true,
 }
 
 module.exports = nextConfig
