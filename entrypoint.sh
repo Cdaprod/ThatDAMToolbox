@@ -16,7 +16,14 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 if [[ $# -eq 0 ]]; then
-    exec python -m video
+  exec python -m video
 else
-    exec "$@"
+  case "$1" in
+    serve|stats|scan)
+      exec python -m video "$@"
+      ;;
+    *)
+      exec "$@"
+      ;;
+  esac
 fi
