@@ -30,14 +30,27 @@ class MediaDB:
         print(f"MediaDB.__init__: {self=} db_path={db_path} resolved={db_path or DB_FILE}")
         self.db_path = Path(db_path) if db_path else DB_FILE
 
-        self._lockfile_path = self.db_path.with_suffix('.init.lock')
-        self._lockfile_path.parent.mkdir(parents=True, exist_ok=True)
-        if not os.access(self._lockfile_path.parent, os.W_OK):
-            tmpdir = Path(os.getenv("VIDEO_TMP_DIR", tempfile.gettempdir()))
-            tmpdir.mkdir(parents=True, exist_ok=True)
-            self._lockfile_path = tmpdir / (self.db_path.name + ".init.lock")
+        # --- Always ensure lockfile is created in a writable location
+        default_lockfile = self.db_path.with_suffix('.init.lock')
+        lockfile_path = default_lockfile
+        lock_dir = lockfile_path.parent
 
-        # Clean up stale lockfile if present
+        try:
+            lock_dir.mkdir(parents=True, exist_ok=True)
+            # Try writing a test file to verify permissions
+            test_file = lock_dir / ".write_test"
+            test_file.touch(exist_ok=True)
+            test_file.unlink(missing_ok=True)
+        except Exception as e:
+            # Fallback: /tmp/thatdamtoolbox/<db_dir_name>
+            tmpdir = Path(os.getenv("VIDEO_TMP_DIR", tempfile.gettempdir())) / "thatdamtoolbox" / self.db_path.parent.name
+            tmpdir.mkdir(parents=True, exist_ok=True)
+            lockfile_path = tmpdir / (self.db_path.name + ".init.lock")
+            print(f"WARNING: Falling back to temp lockfile: {lockfile_path} due to {e}")
+
+        self._lockfile_path = lockfile_path
+
+        # --- Clean up stale lockfile at startup
         if self._lockfile_path.exists():
             print(f"WARNING: Stale DB lockfile detected at {self._lockfile_path}, cleaning up.")
             try:
@@ -54,6 +67,7 @@ class MediaDB:
 
         atexit.register(_cleanup_lockfile)
 
+        # --- Use the lockfile for boot/migration
         with open(self._lockfile_path, "w") as lockfile:
             import fcntl
             fcntl.flock(lockfile, fcntl.LOCK_EX)
@@ -75,7 +89,7 @@ class MediaDB:
                     self._lockfile_path.unlink()
                 except Exception:
                     pass
-                
+                                    
     def _bootstrap_wal(self) -> None:
         """
         Try to enable WAL once.  If the underlying filesystem

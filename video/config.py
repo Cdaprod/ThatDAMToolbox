@@ -4,6 +4,7 @@ from pathlib import Path
 import configparser
 import os
 import logging
+import tempfile
 
 log = logging.getLogger("video.config")
 
@@ -66,37 +67,50 @@ def get_network_globs(section="paths", key="network_globs") -> list[Path]:
 # ─── Structured Data/Media/App Dirs (NEW) ────────────────────────────────────
 def _default_dir(env_name: str, cfg_section: str, cfg_key: str, fallback: str) -> Path:
     """
-    Resolve a directory via:
-      1. INI config [cfg_section][cfg_key]
-      2. ENV var env_name
-      3. literal fallback
-    Then ensure it exists and is writable. If creation or access fails,
-    fall back to the literal fallback path (and try again).
+    Robust directory resolver:
+    1. INI config [cfg_section][cfg_key]
+    2. ENV var env_name
+    3. literal fallback
+    4. If all above unwritable, fallback to /tmp/thatdamtoolbox/<leaf>
+    Always returns a path you can write to, and logs what it does.
     """
-    # 1️⃣ Try config
+    # 1. Try config file
     cfg_val = get_path(cfg_section, cfg_key)
     if cfg_val:
         directory = cfg_val
     else:
-        # 2️⃣ Try env var else literal fallback
+        # 2. Try ENV or literal fallback
         env_val = os.getenv(env_name)
         directory = Path(env_val) if env_val else Path(fallback)
 
-    # 3️⃣ Ensure existence & writability
+    # 3. Try to create directory and test writability
     try:
         directory.mkdir(parents=True, exist_ok=True)
-    except Exception:
+        test_file = directory / ".write_test"
+        test_file.touch(exist_ok=True)
+        test_file.unlink(missing_ok=True)
+        return directory
+    except Exception as e:
         log.warning(
-            "Configured directory %s at %s not writable; falling back to %s",
-            cfg_key, directory, fallback
+            "Configured directory %s at %s not writable; error=%s. Falling back to temp.",
+            cfg_key, directory, e
         )
-        directory = Path(fallback)
-        try:
-            directory.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            log.error("Failed to create fallback directory %s: %s", directory, e)
 
-    return directory
+    # 4. Fallback: /tmp/thatdamtoolbox/<leaf>
+    temp_base = Path(tempfile.gettempdir()) / "thatdamtoolbox" / directory.name
+    try:
+        temp_base.mkdir(parents=True, exist_ok=True)
+        test_file = temp_base / ".write_test"
+        test_file.touch(exist_ok=True)
+        test_file.unlink(missing_ok=True)
+        log.warning("Using temp fallback directory for %s: %s", cfg_key, temp_base)
+        return temp_base
+    except Exception as e:
+        log.error("Could not create or write to temp fallback dir %s: %s", temp_base, e)
+        # Last resort: use bare system temp dir
+        fallback_dir = Path(tempfile.gettempdir())
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        return fallback_dir
     
 def get_app_subdir(name: str) -> Path:
     """Get (and ensure) a named subdirectory under [paths].root."""
