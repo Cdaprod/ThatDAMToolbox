@@ -36,8 +36,7 @@ from .bootstrap import start_server
 log = logging.getLogger("video.cli")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-# ─── parser builder -----------------------------------------------------------
-# ─── parser builder -----------------------------------------------------------
+# ───────── parser builder ─────────────────────────────────────
 def build_parser() -> argparse.ArgumentParser:
     """
     Builds and returns the root argparse parser tree.
@@ -56,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     dam.add_argument("rest",  nargs=argparse.REMAINDER,
                      help="arguments forwarded verbatim to DAM")
 
-    # ───────── server ───────────────────────────────────────────────────
+    # ───────── serve ───────────────────────────────────────────────────
     serve = sub.add_parser("serve", help="start the Video API server")
     serve.add_argument("--host", default="0.0.0.0")
     serve.add_argument("--port", type=int, default=8080)
@@ -65,33 +64,34 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--docker", action="store_true",
                        help="launch via host Docker engine")
 
-    # ───────── simple one-off verbs ─────────────────────────────────────
+    # ───────── scan ─────────────────────────────────────
     scan   = sub.add_parser("scan",   help="index a directory")
-    scan.add_argument("--root", type=Path)
+    scan.add_argument("root", nargs="?", type=Path,
+                      help="directory to index (defaults to MEDIA_ROOT)")
     scan.add_argument("--workers", type=int, default=4)
-
+    # ───────── sync ─────────────────────────────────────
     sync   = sub.add_parser("sync_album", help="sync an iOS Photos album")
     sync.add_argument("--root", type=Path, required=True)
     sync.add_argument("--album")
     sync.add_argument("--category", default="edit", choices=["edit", "digital"])
     sync.add_argument("--copy", action="store_true", default=True)
-
+    # ───────── stats ─────────────────────────────────────
     sub.add_parser("stats",  help="database statistics")
-
+    # ───────── recent ─────────────────────────────────────
     recent = sub.add_parser("recent", help="recently indexed files")
     recent.add_argument("-n", "--limit", type=int, default=10)
-
+    # ───────── dump ─────────────────────────────────────
     dump = sub.add_parser("dump", help="dump DB rows")
     dump.add_argument("--format", choices=["json", "csv"], default="json")
-
+    # ───────── back ─────────────────────────────────────
     back = sub.add_parser("backup", help="copy to backup root")
     back.add_argument("--backup_root", type=Path, required=True)
-
+    # ───────── search ─────────────────────────────────────
     search = sub.add_parser("search", help="FTS search")
     search.add_argument("query")
     search.add_argument("--mime")
     search.add_argument("--limit", type=int, default=50)
-
+    # ───────── clean ─────────────────────────────────────
     clean = sub.add_parser("clean", help="wipe DB (danger!)")
     clean.add_argument("--confirm", action="store_true")
 
@@ -138,7 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     return p
 
-# ─── helpers ------------------------------------------------------------------
+# ───────── helpers ─────────────────────────────────────
 def _json_from_stdin() -> Dict[str, Any] | None:
     if sys.stdin.isatty():
         return None
@@ -156,10 +156,11 @@ class ScanResult:
     errors: int = 0
     total_files: int = 0
 
-# ─── dispatcher ---------------------------------------------------------------
+# ─── dispatcher ─────────────────────────────────────
 def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
     action = step.get("action", "scan")
 
+    # ─── dam ─────────────────────────────────────
     if action == "dam":
         # Build a shell-style argv list and delegate to Click
         from video.dam.commands import _commands as dam_cmds
@@ -179,19 +180,15 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
                 return {"error": f"Command exited {e.code}"}
         return {"status": "ok"}
 
+    # ─── scan ─────────────────────────────────────
     if action == "scan":
-        p = ScanParams(
-            root=_resolve_path(
-                step.get("root"),
-                "VIDEO_ROOT",
-                config.get_path("paths", "root")
-            ),
-            workers=step.get("workers", 4)
-        )
-        # The dict returned by idx.scan() may or may not contain "total".
-        # With defaults in ScanResult that’s fine.
-        return ScanResult(**idx.scan(p.root, p.workers))
+        # if no root specified, let idx.scan default to MEDIA_ROOT
+        root_arg = step.get("root")
+        root = Path(root_arg) if root_arg else None
+        workers = step.get("workers", 4)
+        return ScanResult(**idx.scan(root, workers))
 
+    # ─── sync ─────────────────────────────────────
     if action == "sync_album":
         p = SyncAlbumParams(
             root=_resolve_path(step.get("root"), "VIDEO_ROOT", config.get_path("paths", "root")),
@@ -200,14 +197,17 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
             copy=step.get("copy", True))
         return SyncResult(**idx.sync.sync_album_from_args(p.to_dict()))
 
+    # ─── stats ─────────────────────────────────────
     if action == "stats":
         return idx.get_stats()
 
+    # ─── recent ─────────────────────────────────────
     if action == "recent":
         p = RecentParams(limit=step.get("limit", 10))
         rows = idx.get_recent(p.limit)
         return [dict(row) for row in rows]  # Convert each row to a dict
 
+    # ─── dump ─────────────────────────────────────
     if action == "dump":
         p = DumpParams(fmt=step.get("format", "json"))
         rows = idx.get_all()
@@ -219,10 +219,12 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
             return buf.getvalue()
         return rows
 
+    # ─── backup ─────────────────────────────────────
     if action == "backup":
         p = BackupParams(backup_root=_resolve_path(step["backup_root"], "VIDEO_BACKUP", None))
         return BackupResult(**idx.backup(p.backup_root))
 
+    # ─── search ─────────────────────────────────────
     if action == "search":
         p = SearchParams(query=step["query"], mime=step.get("mime"), limit=step.get("limit", 50))
         return idx.db.search_files(p.query, p.mime, p.limit)
@@ -234,6 +236,7 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
         removed = idx.db.clean_all()
         return {"removed": removed}
 
+    # ─── paths ─────────────────────────────────────
     elif action == "paths":
         cmd = step.get("cmd")
         if cmd == "list":
@@ -247,6 +250,7 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
             removed = config.remove_network_path(idx)
             return {"removed": str(removed)}
     
+    # ─── batches ─────────────────────────────────────
     if action == "batches":
         cmd = step.get("cmd")
         if cmd == "list":
@@ -302,7 +306,7 @@ def dispatch(idx: MediaIndexer, step: Dict[str, Any]) -> Any:
         
     return {"error": f"unknown action {action}"}
 
-# ─── top-level ---------------------------------------------------------------
+# ─── top-level ─────────────────────────────────────
 def run_cli(argv: List[str] | None = None) -> None:
     ns = build_parser().parse_args(argv)
 
@@ -332,7 +336,7 @@ def run_cli(argv: List[str] | None = None) -> None:
         print(json.dumps([serialize_result(r) for r in out],
                          indent=2, ensure_ascii=False, default=str))
                          
-# ─── programmatic helper ------------------------------------------------------
+# ─── programmatic helper ─────────────────────────────────────
 def run_cli_from_json(json_str: str) -> str:
     """
     Run one CLI 'step' specified as a JSON string and

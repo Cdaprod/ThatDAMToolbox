@@ -37,7 +37,7 @@ if [ "$(id -u)" = "0" ]; then
   else
     case "$1" in
       serve|stats|scan)
-        shift
+        # shift
         run_as_appuser python -m video "$@"
         ;;
       ""|0.0.0.0|127.0.0.1)
@@ -52,7 +52,7 @@ if [ "$(id -u)" = "0" ]; then
 else
   # Not root; just exec as-is
   if [[ $# -eq 0 ]]; then
-    exec python -m video
+    exec python -m video serve --host 0.0.0.0 --port 8080
   else
     case "$1" in
       serve|stats|scan)
