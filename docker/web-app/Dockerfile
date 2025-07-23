@@ -4,7 +4,7 @@
 # Stage 0 • Base image
 ########################################
 FROM node:18-alpine AS base
-WORKDIR /app
+WORKDIR /src/app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=development
 
@@ -40,10 +40,10 @@ RUN \
 # Stage 2 • Development image
 ########################################
 FROM base AS development
-WORKDIR /app
+WORKDIR /src/app
 
 # Pull in installed deps
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /src/app/node_modules ./node_modules
 
 # Copy source
 COPY . .
@@ -56,10 +56,10 @@ CMD ["npm", "run", "dev"]
 # Stage 3 • Production build
 ########################################
 FROM base AS builder
-WORKDIR /app
+WORKDIR /src/app
 
 # Pull in deps & source
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /src/app/node_modules ./node_modules
 COPY . .
 
 # Run Next.js build
@@ -69,7 +69,7 @@ RUN npm run build
 # Stage 4 • Production runner
 ########################################
 FROM node:18-alpine AS production
-WORKDIR /app
+WORKDIR /src/app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -79,9 +79,9 @@ RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 --ingroup nodejs nextjs
 
 # Copy built output & deps
-COPY --from=builder /app/public      ./public
-COPY --from=builder /app/.next       ./.next
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /src/app/public      ./public
+COPY --from=builder /src/app/.next       ./.next
+COPY --from=builder /src/app/node_modules ./node_modules
 
 # Switch to unprivileged user
 USER nextjs:nodejs
