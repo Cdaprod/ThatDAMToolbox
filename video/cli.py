@@ -65,12 +65,15 @@ def build_parser() -> argparse.ArgumentParser:
                        help="launch via host Docker engine")
 
     # ───────── scan ─────────────────────────────────────
-    scan   = sub.add_parser("scan",   help="index a directory")
-    scanscan.add_argument("root", nargs="?", type=Path,
-                     help="directory to index (defaults to MEDIA_ROOT)")
-    scan.add_argument("--root", dest="root", type=Path,
-                     help="same as positional <root> (kept for compatibility)")
-    scan.add_argument("--workers", type=int, default=4)
+    scan = sub.add_parser("scan", help="index a directory")
+    scan.add_argument(
+        "root",
+        nargs="?",
+        type=Path,
+        help="directory to index (defaults to MEDIA_ROOT)",
+    )
+    scan.add_argument("--workers", type=int, default=4)    
+    
     # ───────── sync ─────────────────────────────────────
     sync   = sub.add_parser("sync_album", help="sync an iOS Photos album")
     sync.add_argument("--root", type=Path, required=True)
