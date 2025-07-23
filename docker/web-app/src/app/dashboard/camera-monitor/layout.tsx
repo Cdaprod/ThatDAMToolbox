@@ -1,15 +1,11 @@
-// /app/dashboard/camera-monitor/layout.tsx
-'use client'
-import Link from 'next/link'
+'use client';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
 
-export default function CameraMonitorLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function CameraMonitorLayout({ children }: { children: ReactNode }) {
   return (
     <div className="w-screen h-screen bg-black flex flex-col">
-      {/* optional back button */}
+      {/* Back button overlays top-left */}
       <div className="absolute top-4 left-4 z-10">
         <Link
           href="/dashboard"
@@ -18,7 +14,9 @@ export default function CameraMonitorLayout({
           ← Back
         </Link>
       </div>
+
+      {/* Camera UI fills the rest */}
       <div className="flex-1 overflow-hidden">{children}</div>
     </div>
-  )
+  );
 }

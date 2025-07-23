@@ -1,6 +1,6 @@
 // /app/layout.tsx
 import '@/styles/globals.css';
-import Providers from './providers';
+import AppProviders from '@/providers/AppProviders';
 import TopBar from '@/components/TopBar';
 import MainLayout from '@/components/MainLayout'; // new client component
 
@@ -13,10 +13,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-gray-100 text-gray-900">
-        <Providers>
+        <AppProviders>
           <TopBar />
           <MainLayout>{children}</MainLayout>
-        </Providers>
+        </AppProviders>
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-// /app/components/MainLayout.tsx
+// /docker/web-app/src/app/MainLayout.tsx
 'use client';
 
 import Sidebar from '@/components/Sidebar';

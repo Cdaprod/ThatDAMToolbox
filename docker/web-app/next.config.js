@@ -32,6 +32,7 @@ const nextConfig = {
       '@app': path.resolve(__dirname, 'src/app'),
       '@lib': path.resolve(__dirname, 'src/lib'),
       '@styles': path.resolve(__dirname, 'src/styles'),
+      '@providers': path.resolve(__dirname, 'src/providers'),
       // add more if needed
     };
 
