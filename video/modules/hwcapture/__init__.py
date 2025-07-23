@@ -10,7 +10,7 @@ Adds:
            POST /hwcapture/record/start
            POST /hwcapture/record/stop
 """
-
+    
 from video.config import register_module_paths, DATA_DIR
 
 # Declare all subdirs your module uses here:

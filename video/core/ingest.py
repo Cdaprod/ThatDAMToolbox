@@ -1,75 +1,114 @@
-# video/core/ingest.py
 """
-Background ingest helpers
--------------------------
-Called by the uploader route (or CLI) to hash, index and move freshly
-uploaded files into the canonical media store.
+# video/core/ingest.py
+
+Ingest freshly-arrived media files into the canonical store.
+
+Steps per file
+--------------
+1.  Compute SHA-1
+2.  Move / rename into a two-level sharded tree under ``MEDIA_ROOT``
+3.  ffprobe → tech-metadata
+4.  Upsert DB row and optionally tag with *batch_name*
 """
 
 from __future__ import annotations
+
+import hashlib
+import logging
+import shutil
 from pathlib import Path
-import shutil, hashlib, logging
+from typing import Iterable, Final
 
-from video.config import INCOMING_DIR, MEDIA_ROOT
-from video        import DB
-from video.probe  import probe_media     # ← your existing ffprobe helper
+from video.config import MEDIA_ROOT
+from video.probe import probe_media           # ffprobe helper
 
-log = logging.getLogger("video.ingest")
-#DB  = MediaDB()                         # singleton that owns its own engine
+_LOG: Final = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------#
+# ────────── helpers ────────────────────────────────────────────────────────#
 
-# --------------------------------------------------------------------------- #
-# helpers                                                                     #
-# --------------------------------------------------------------------------- #
-def _sha1_of_file(path: Path, buf_size: int = 1 << 20) -> str:
+def _sha1(path: Path, *, buf_size: int = 1 << 20) -> str:
+    """Return the hexadecimal SHA-1 of *path* (streamed, constant-memory)."""
     h = hashlib.sha1()
-    with path.open("rb") as f:
-        while chunk := f.read(buf_size):
+    with path.open("rb") as fh:
+        while chunk := fh.read(buf_size):
             h.update(chunk)
     return h.hexdigest()
 
 
-def _dest_for_hash(sha1: str, ext: str) -> Path:
-    """Store as /media/ab/cdef…/sha1.ext to avoid giant flat dirs."""
-    sub  = sha1[:2]          # ‘ab’
-    rest = sha1[2:]          # ‘cdef…’
-    return MEDIA_ROOT / sub / rest / f"{sha1}{ext.lower()}"
+def _target_for_digest(digest: str, suffix: str) -> Path:
+    """
+    Map a SHA-1 digest + extension to a deterministic location:
+
+        ab/cdef…/abcdef….ext
+    """
+    shard, rest = digest[:2], digest[2:]
+    return MEDIA_ROOT / shard / rest / f"{digest}{suffix.lower()}"
 
 
-# --------------------------------------------------------------------------- #
-# public API                                                                  #
-# --------------------------------------------------------------------------- #
-def ingest_files(paths: list[str] | list[Path], *, batch_name: str | None):
+def _db():
     """
-    • Compute SHA-1  
-    • Move to MEDIA_ROOT in a 2-level sharded tree  
-    • Probe tech-metadata (width/height/etc.)  
-    • Upsert DB row and link to *batch_name* (creates batch if missing)
+    Return the *fully-initialised* singleton ``video.DB`` without importing it
+    at module import-time.  Avoids circular-import headaches.
     """
-    for p in map(Path, paths):
+    from video import DB  # noqa: WPS433 – intentional late import
+    return DB
+
+
+# ---------------------------------------------------------------------------#
+# ────────── public API ─────────────────────────────────────────────────────#
+
+def ingest_files(
+    paths: Iterable[str | Path],
+    *,
+    batch_name: str | None = None,
+) -> None:
+    """
+    Move each *path* to the canonical store and register it in the DB.
+
+    Notes
+    -----
+    * If the destination file already exists it will **not** be overwritten
+      and the staging copy is discarded silently.
+    * Any exception on an individual file is logged and the ingest continues.
+    """
+    processed = 0
+
+    for raw in paths:
+        p = Path(raw)
+
+        # Quick sanity check – skip directories & missing files early
+        if not p.is_file():
+            _LOG.warning("Skip non-file %s", p)
+            continue
+
         try:
-            sha1  = _sha1_of_file(p)
-            dest  = _dest_for_hash(sha1, p.suffix)
+            digest = _sha1(p)
+            dest   = _target_for_digest(digest, p.suffix)
             dest.parent.mkdir(parents=True, exist_ok=True)
 
-            # If file already exists, no need to copy again
-            if not dest.exists():
-                shutil.move(str(p), dest)
-                log.info("→ %s  %s", sha1[:8], dest)
-            else:
-                # clean staging copy
+            # ── Move or deduplicate ────────────────────────────────────
+            if dest.exists():
                 p.unlink(missing_ok=True)
-                log.info("△ duplicate %s already indexed", sha1[:8])
+                _LOG.info("△ duplicate %s (already at %s)", p.name, dest)
+            else:
+                shutil.move(str(p), dest)
+                _LOG.info("→ %s  %s", digest[:8], dest)
 
-            # tech-metadata
+            # ── Probe & DB upsert ──────────────────────────────────────
             meta = probe_media(dest)
-            #DB.upsert_file(dest, batch_name=batch_name, meta=meta)
-            DB.add_video(path=dest, sha1=sha1, meta=meta | {"batch": batch_name})
+            _db().add_video(
+                path=dest,
+                sha1=digest,
+                meta={**meta, "batch": batch_name},
+            )
 
-        except Exception as e:
-            log.exception("failed to ingest %s: %s", p, e)
+            processed += 1
 
-    log.info("Ingest complete – %d item(s) processed", len(paths))
+        except Exception as exc:      # noqa: BLE001 – we really want *any* error
+            _LOG.exception("Ingest failed for %s: %s", p, exc)
+
+    _LOG.info("Ingest complete – %d item(s) processed", processed)
 
 
 __all__ = ["ingest_files"]

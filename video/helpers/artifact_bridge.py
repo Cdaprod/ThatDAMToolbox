@@ -2,7 +2,6 @@
 from pathlib import Path
 from typing import Optional
 
-from video import MediaIndexer
 from video.core.factory    import ArtifactFactory
 from video.core.processor  import BatchProcessor
 from video.core.artifacts.batch import BatchArtifact
@@ -21,6 +20,7 @@ def index_folder_as_batch(
     Returns the `batch.id` for later lookup via `video.core.get_manifest`.
     """
     # Step 1: filesystem scan + DB indexing
+    from video import MediaIndexer
     idx = MediaIndexer()
     idx.scan(root_path=folder)
 

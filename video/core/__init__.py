@@ -1,86 +1,95 @@
+# video/core/__init__.py
+# SPDX-License-Identifier: MIT
 """
-video.core  ── High-level façade for the Artifact pipeline
-========================================================
+──────────────────────────────────────────────────────────────────────────────
+🎬  video.core -- public façade around the *Artifact* processing pipeline
+──────────────────────────────────────────────────────────────────────────────
+This module is the **only** place external code should import from when it
+needs to push media through the back-end or query live batch status.
 
-Typical usage
--------------
-from video.core import (
-    ingest_uploads, ingest_folder,
-    get_manifest, pipeline         # the singleton if you need more control
-)
+Why a façade?
+    * **Single surface** – callers never touch internal classes directly.
+    * **Encapsulation** – implementation details stay swappable.
+    * **Singleton pipeline** (`pipeline`) is created once and reused everywhere
+      (important for FastAPI multi-worker deployments).
 
-batch = ingest_uploads(uploads=payload, config=user_cfg)
-status = get_manifest(batch.id)
-
-Design notes
-------------
-*  This file plays the **Controller / Facade** role: a single import
-   surface for creating, processing, and querying batches.
-*  Internally we own a _single_ BatchProcessor instance (`pipeline`)
-   so stateful batch look-ups & streaming progress work everywhere.
-*  Pure functions defer to ArtifactFactory + BatchProcessor;
-   no business logic lives here, keeping SRP intact.
+Typical flow
+    >>> from video.core import ingest_uploads, get_manifest
+    >>> batch   = ingest_uploads(uploads=request.files, config=user_cfg)
+    >>> current = get_manifest(batch.id)
+Public helpers
+    • ingest_uploads   – handle raw "multipart/form-data" style payloads
+    • ingest_folder    – ingest an existing on-disk folder
+    • ingest_cli       – convenience wrapper for argparse scripts
+    • get_manifest     – inspect a batch (queued, running, finished)
+    • pipeline         – escape hatch: the singleton BatchProcessor
 """
 from __future__ import annotations
 
-from typing import List, Dict, Any, Optional
+import os
+from typing import Any, Dict, List, Optional, Sequence, overload
 
+from .artifacts.batch import BatchArtifact
 from .factory import ArtifactFactory
 from .processor import BatchProcessor
-from .artifacts.batch import BatchArtifact
 
-# --------------------------------------------------------------------------- #
-# Singleton pipeline (thread-safe in typical async / uvicorn worker scenarios)
-# --------------------------------------------------------------------------- #
+__all__ = [
+    "ingest_uploads",
+    "ingest_folder",
+    "ingest_cli",
+    "get_manifest",
+    "pipeline",
+]
+
+# ── singleton pipeline (cheap but we really only want one) ───────────────────
 pipeline: BatchProcessor = BatchProcessor()
 
-# --------------------------------------------------------------------------- #
-# Convenience 1-liners ––––– the "controller methods"                        #
-# --------------------------------------------------------------------------- #
+# ── façade helpers ───────────────────────────────────────────────────────────
+
+@overload
 def ingest_uploads(
+    *, uploads: List[Dict[str, Any]], config: Dict[str, Any]
+) -> BatchArtifact: ...
+@overload
+def ingest_uploads(
+    *,
+    uploads: List[Dict[str, Any]],
+    config: Dict[str, Any],
+    request_metadata: Dict[str, Any] | None,
+) -> BatchArtifact: ...
+
+def ingest_uploads(
+    *,
     uploads: List[Dict[str, Any]],
     config: Dict[str, Any],
     request_metadata: Optional[Dict[str, Any]] = None,
 ) -> BatchArtifact:
-    """
-    Create a BatchArtifact from raw upload payloads (+ optional request metadata),
-    push the batch through the processing pipeline, return the enriched BatchArtifact.
-    """
-    batch = ArtifactFactory.create_batch_from_api(uploads, config, request_metadata)
+    """Push a raw uploads payload through the processing pipeline."""
+    batch = ArtifactFactory.create_batch_from_api(
+        uploads, config, request_metadata=request_metadata
+    )
     return pipeline.process_batch(batch)
-
 
 def ingest_folder(
-    folder: str,
+    folder: str | os.PathLike[str],
     *,
-    batch_name: Optional[str] = None,
+    batch_name: str | None = None,
     config: Optional[Dict[str, Any]] = None,
 ) -> BatchArtifact:
-    """
-    Quickly sweep a local directory for video files, produce a batch,
-    then execute the full processing lifecycle.
-    """
+    """Sweep *folder* for media files and process them as a single batch."""
     batch = ArtifactFactory.create_batch_from_folder(folder, batch_name)
     if config:
-        # allow the caller to inject/override config options detected downstream
-        batch.metadata["config"] = config
+        batch.metadata.setdefault("config", {}).update(config)
     return pipeline.process_batch(batch)
 
-
-def ingest_cli(args: Any, paths: List[str]) -> BatchArtifact:
-    """
-    Convenience wrapper for CLI entry-points – keeps the command script tiny.
-    """
-    batch = ArtifactFactory.create_batch_from_cli(args, paths)
+def ingest_cli(
+    args: Any,
+    paths: Sequence[str | os.PathLike[str]],
+) -> BatchArtifact:
+    """Tiny shim for CLI entry-points – keeps argparse glue out of core logic."""
+    batch = ArtifactFactory.create_batch_from_cli(args, list(map(str, paths)))
     return pipeline.process_batch(batch)
 
-
-# --------------------------------------------------------------------------- #
-# Read-only helpers                                                           #
-# --------------------------------------------------------------------------- #
 def get_manifest(batch_id: str) -> Optional[Dict[str, Any]]:
-    """
-    Return the canonical `to_dict()` manifest for *any* batch the singleton
-    has seen – in-flight or completed.  Returns None if unknown.
-    """
+    """Return the immutable manifest for any batch ID (or *None* if unknown)."""
     return pipeline.get_batch_status(batch_id)

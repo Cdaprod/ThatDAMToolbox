@@ -13,7 +13,6 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 def safe_preview(test_dir=None):
     """Preview what would be indexed without creating database"""
-    from video import MediaIndexer
     
     # Use a temporary database path for testing
     test_db = Path.home() / "test_media_index.sqlite3"
@@ -77,6 +76,7 @@ def safe_preview(test_dir=None):
         print("\nNo media files found to index")
 
 if __name__ == "__main__":
+    from video import MediaIndexer
     import sys
     test_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else None
     safe_preview(test_dir)
