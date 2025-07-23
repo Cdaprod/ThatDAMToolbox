@@ -23,7 +23,9 @@ from video.helpers      import index_folder_as_batch, model_validator
 from video.core         import get_manifest as core_get_manifest
 from video.models       import Manifest, VideoArtifact, Slice, CardResponse, VideoCard, SceneThumb
 from video.storage.base import StorageEngine
-from video.bootstrap    import STORAGE          # Singleton
+from video.bootstrap    import STORAGEm
+from video              import modules
+
 from video.ws           import ws
 
 origins = [
@@ -45,11 +47,11 @@ router = APIRouter()
 
 log = logging.getLogger("video.api")
 
-# Expose /static/style.css, /static/app.js, …
+# ------------------------------------------------------------------------
+# mount static, websocket, first-party routers exactly like before
 app.mount("/static", static, name="static")
-
-# Expose /video/ws router...
 app.include_router(ws.router)
+app.include_router(router)
 
 # ---------------------------------------------------------------------------
 # BaseModels
@@ -307,12 +309,10 @@ async def backup(source: str, destination: Optional[str] = None):
 async def health():
     return {"status": "ok", "service": "video-api"}
 
-# ── auto-include plug-in routers --------------------------------------------
-from . import modules   # namespace package
 
-for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
-    if not mod.name.split('.')[-1].startswith("__"):
-        m = importlib.import_module(mod.name)
-        if hasattr(m, "router"):
-            app.include_router(m.router)
-            log.info("✔ added %s", mod.name)
+# ------------------------------------------------------------------------
+# Include routers collected by bootstrap
+# ------------------------------------------------------------------------
+for r in modules.routers:            # modules.routers is populated in bootstrap
+    app.include_router(r)
+    log.info("✔ plug-in router mounted: %s", r.prefix)
