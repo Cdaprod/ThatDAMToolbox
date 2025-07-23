@@ -1,88 +1,87 @@
 # /docker/web-app/Dockerfile
+
+########################################
+# Stage 0 • Base image
+########################################
 FROM node:18-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=development
 
-# Copy package files
+########################################
+# Stage 1 • Install dependencies
+########################################
+FROM base AS deps
+
+# libc6-compat is needed by some native modules
+RUN apk add --no-cache libc6-compat
+
+# Copy only package manifest + lockfiles
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
-# Ensure react-icons is present (safe for Yarn / npm / Pnpm)
-RUN \
-  if ! grep -q '"react-icons":' package.json; then \
-      echo '📦   Adding missing "react-icons" dependency' && \
-      npm pkg set "dependencies.react-icons"="^4.12.0"; \
-  fi
+# Install strictly from lockfile
+RUN if [ -f yarn.lock ]; then \
+      yarn install --frozen-lockfile; \
+    elif [ -f package-lock.json ]; then \
+      npm ci; \
+    elif [ -f pnpm-lock.yaml ]; then \
+      corepack enable pnpm && pnpm install --frozen-lockfile; \
+    else \
+      echo "⚠️  No lockfile found, running npm install" && npm install; \
+    fi
 
-# Force clean install based on package manager
-RUN \
-  if [ -f yarn.lock ]; then \
-    yarn install --frozen-lockfile --production=false; \
-  elif [ -f package-lock.json ]; then \
-    # Clean install with npm - removes node_modules and reinstalls
-    rm -rf node_modules package-lock.json && \
-    npm install --package-lock-only && \
-    npm ci --include=dev; \
-  elif [ -f pnpm-lock.yaml ]; then \
-    corepack enable pnpm && \
-    pnpm i --frozen-lockfile; \
-  else \
-    echo "No lockfile found. Creating new package-lock.json" && \
-    npm install; \
-  fi
-
-# Development stage
+########################################
+# Stage 2 • Development image
+########################################
 FROM base AS development
 WORKDIR /app
+
+# Pull in installed deps
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source
 COPY . .
 
-# Disable Next.js telemetry
-ENV NEXT_TELEMETRY_DISABLED=1
-
+# Expose dev port
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Development command with hot reload
 CMD ["npm", "run", "dev"]
 
-# Production builder
+########################################
+# Stage 3 • Production build
+########################################
 FROM base AS builder
 WORKDIR /app
+
+# Pull in deps & source
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the application
+# Run Next.js build
 RUN npm run build
 
-# Production runner
-FROM base AS production
+########################################
+# Stage 4 • Production runner
+########################################
+FROM node:18-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser --system --uid 1001 --ingroup nodejs nextjs
 
-COPY --from=builder /app/public ./public
+# Copy built output & deps
+COPY --from=builder /app/public      ./public
+COPY --from=builder /app/.next       ./.next
+COPY --from=builder /app/node_modules ./node_modules
 
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Switch to unprivileged user
+USER nextjs:nodejs
 
-# Automatically leverage output traces to reduce image size
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
-
+# Expose prod port
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
+# Start Next.js standalone server
 CMD ["node", "server.js"]
