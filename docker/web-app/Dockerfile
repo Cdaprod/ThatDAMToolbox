@@ -9,6 +9,13 @@ WORKDIR /app
 # Copy package files
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
+# Ensure react-icons is present (safe for Yarn / npm / Pnpm)
+RUN \
+  if ! grep -q '"react-icons":' package.json; then \
+      echo '📦   Adding missing "react-icons" dependency' && \
+      npm pkg set "dependencies.react-icons"="^4.12.0"; \
+  fi
+
 # Force clean install based on package manager
 RUN \
   if [ -f yarn.lock ]; then \
