@@ -218,12 +218,17 @@ class MediaIndexer:
 # ── re-export helpers & plugin auto-loading ─────────────────────────────────
 from . import config as config        # noqa: E402
 from .cli import run_cli as _run_cli  # noqa: E402
-from .modules import routers          # noqa: E402
+
+# 1️⃣  Import all plug-ins *after* core singletons are ready
+from . import modules                   # ← loads every video.modules.*
+
+# 2️⃣  Expose the collected FastAPI routers
+routers = modules.routers               # list assembled in video.modules.__init__
 
 __all__ = [
     "MediaIndexer",
-    "MediaDB",  # class alias
-    "DB",       # shared instance
+    "MediaDB",   # class alias
+    "DB",        # shared instance
     "Scanner",
     "PhotoSync",
     "config",

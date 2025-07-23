@@ -48,7 +48,7 @@ run_as_appuser() {
 # ---------------------------------------------------------------------------
 if [[ -d $VIDEO_MEDIA_ROOT && -z $(ls -A "$VIDEO_MEDIA_ROOT") ]]; then
   echo "[entrypoint] 🌱 initial scan of $VIDEO_MEDIA_ROOT"
-  run_as_appuser python -m video scan --root "$VIDEO_MEDIA_ROOT" --workers 1
+  run_as_appuser python -m video scan "$VIDEO_MEDIA_ROOT" --workers 1
 fi
 
 # ---------------------------------------------------------------------------
