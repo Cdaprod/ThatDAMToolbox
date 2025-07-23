@@ -31,12 +31,32 @@ video/
 ├── test_script.py       # quick self-test / smoke-run
 # sub-packages (expand separately)
 ├── core/                # domain logic split into bounded contexts
-├── dam/                 # digital-asset-management utilities
+        ├── __init__.py
+        ├── pydantic_compat.py
+        └── artifact_bridge.py
 ├── helpers/             # misc pure-stdlib helpers
+        ├── __init__.py
+        ├── pydantic_compat.py
+        └── artifact_bridge.py
 ├── models/              # pydantic / dataclass models
+        └── __init__.py
 ├── modules/             # plugin auto-discovery root
+        ├── __init__.py
+        ├── ffmpeg_console/
+        ├── trim_idle/
+        ├── motion_extractor/
+        ├── uploader/
+        ├── hwcapture/
+        ├── explorer/
+        └── dam/                 # digital-asset-management utilities
 ├── storage/             # storage back-ends (S3, MinIO, local…)
+        ├── __init__.py
+        ├── base.py
+        ├── auto.py 
+        └── wal_proxy.py
+├── ws/                  # Websocket 
 └── web/                 # static files & SPA frontend bundle
+
 
 Media Indexer – tiny façade unifying scanner ▸ DB ▸ optional Photos sync.
 
@@ -66,7 +86,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # ── shared / global objects ────────────────────────────────────────────────
-from .db import MediaDB as _MediaDB
+import .core.auto                   # Zero-Touch Legacy Code
+from .db import MediaDB as _MediaDB # SQLite Helper
 
 def _make_db_with_retry(
     attempts: int = 5,

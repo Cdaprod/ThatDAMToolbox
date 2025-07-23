@@ -1,19 +1,30 @@
-.\" -----------------------------------------------------------------
-.\" video(1) – Media-Indexer Std-Lib Prototype
-.\" -----------------------------------------------------------------
+." ------------------------------------------–
+." video(1) – Media-Indexer Std-Lib Prototype
+." ------------------------------------------–
 .TH video 1 "2025-07-02" "Media-Indexer 0.9" "User Commands"
 .SH NAME
-video \- scan, sync, back-up and inspect media libraries using only the Python standard library
+video - scan, sync, explore, vector-search, back-up and inspect media libraries using only the Python standard library
 .SH SYNOPSIS
-.B python3 \-m video
+.B python3 -m video
 .RI [ global-opts ]
 .IR command
 .RI [ command-opts ]
 
-.B python3 video/__main__.py
+.B python3 video/**main**.py
 .RI [ global-opts ]
 .IR command
 .RI [ command-opts ]
+
+.B video serve
+.RI [ –host
+.IR 0.0.0.0 ]
+.RI [ –port
+.IR 8080 ]
+.RI [ –docker ]
+
+.B video dam
+.IR <sub-command>
+.RI …
 
 .SH DESCRIPTION
 \fBvideo\fP is a self-contained media indexer designed to run on
@@ -21,48 +32,83 @@ Pythonista (iOS) and ordinary CPython (Linux/macOS/RPi) with **no
 external dependencies**.  
 It keeps a tiny SQLite catalogue inside Pythonista while reading or
 copying media to an SMB share, and exposes the same functionality
-through:
+through CLI, JSON/Shortcuts, and a FastAPI server (video serve) that auto-loads plug-ins under video.modules.*:
 
-.IP \(bu
+.IP (bu
 CLI flags (standard sub-commands)  
-.IP \(bu
+.IP (bu
 JSON workflows on \fBstdin\fP (ideal for Shortcuts)  
-.IP \(bu
+.IP (bu
 Environment variables and an optional INI file (\fIvideo.cfg\fP) for
 persistent defaults
 
 .SH GLOBAL OPTIONS
 .TP
-\fB--use-runner\fR
+\fB–use-runner\fR
 Execute commands through the new dataclass-based \fIrunner\fP layer
 (rather than legacy inline handlers).
 .TP
-\fB-h\fR, \fB--help\fR
+\fB–docker\fR
+When used with the \fBserve\fR command, run the API inside a host Docker container.
+.TP
+\fB-h\fR, \fB–help\fR
 Show top-level usage.
 
 .SH COMMANDS
 .TP
+.BR serve
+Start the HTTP API (FastAPI if installed, stdlib fallback otherwise).
+.RS
+\fB–host\fR IP    bind address (default 0.0.0.0)  
+\fB–port\fR N     TCP port (default 8080)  
+\fB–docker\fR     run inside a docker container  
+.RE
+.TP
+.BR dam
+Vector-embedding Digital-Asset-Management sub-commands.
+.RS
+ingest, batch_ingest, search, list_videos, stats, reindex, delete, validate …  
+(see \fBvideo dam –help\fR for full usage)  
+.RE
+.TP
+.BR paths
+Manage network mount points to include in automatic scans.
+.RS
+paths list                     – show current paths  
+paths add <dir|glob>           – add one  
+paths remove <index>           – remove by numeric index  
+.RE
+.TP
+.BR batches
+Quick helpers around the new Artifact pipeline.
+.RS
+batches list                   – all batches  
+batches show <id>              – items inside one batch  
+batches create <folder> [–name NAME]  
+batches sync   –album NAME [–root DIR]  
+.RE
+.TP
 .BR scan
 Index a directory tree.
 .RS
-\fB--root\fR DIR   directory to scan (default VIDEO_ROOT)  
-\fB--workers\fR N  thread pool size (default 4)
+\fB–root\fR DIR   directory to scan (default VIDEO_ROOT)  
+\fB–workers\fR N  thread pool size (default 4)
 .RE
 .TP
 .BR sync_\fIalbum\fR
 Copy one Photos album to SMB and index the files.
 .RS
-\fB--root\fR DIR      SMB path (_INCOMING/… is added automatically)  
-\fB--album\fR NAME    leaf album name (omit to pop a picker on iOS)  
-\fB--category\fR edit|digital (default edit)  
-\fB--no-copy\fR       dry-run, only update metadata
+\fB–root\fR DIR      SMB path (_INCOMING/… is added automatically)  
+\fB–album\fR NAME    leaf album name (omit to pop a picker on iOS)  
+\fB–category\fR edit|digital (default edit)  
+\fB–no-copy\fR       dry-run, only update metadata
 .RE
 .TP
 .BR backup
 Copy every indexed file into a long-term archive tree.
 .RS
-\fB--backup_root\fR DIR  destination root  
-\fB--dry-run\fR          print how many files \fBwould\fP copy
+\fB–backup_root\fR DIR  destination root  
+\fB–dry-run\fR          print how many files \fBwould\fP copy
 .RE
 .TP
 .BR stats
@@ -77,7 +123,7 @@ Show N most-recently indexed files.
 .BR dump
 Dump all metadata.
 .RS
-\fB--format\fR json|csv (default json)
+\fB–format\fR json|csv (default json)
 .RE
 
 .SH JSON WORKFLOW
@@ -88,9 +134,13 @@ shapes are accepted:
 { "action": "stats" }
 
 { "workflow": [
-    { "action": "sync_album", "root": "...", "album":"Summer", "no-copy":true },
-    { "action": "backup",     "backup_root": "...", "dry_run":true },
-    { "action": "stats" }
+{ "action": "sync_album", "root": "…", "album":"Summer", "no-copy":true },
+{ "action": "backup",     "backup_root": "…", "dry_run":true },
+{ "action": "dam",
+"cmd": "search",
+"query": "red car in snow",
+"level": "L1", "limit": 5 },
+{ "action": "stats" }
 ] }
 .fi
 
@@ -101,10 +151,10 @@ API.
 .ta 3c 6c
 \fBPrecedence\fP (highest first):
 
-1.  CLI flags / stdin-JSON  
-2.  Environment vars  
-3.  \fI~/video/video.cfg\fP (or path in $VIDEO_CFG)  
-4.  Hard-coded defaults
+1. CLI flags / stdin-JSON
+1. Environment vars
+1. \fI~/.video/video.cfg\fP (or path in $VIDEO_CFG)
+1. Hard-coded defaults
 
 .TP
 \fBVIDEO_ROOT\fR
@@ -118,6 +168,18 @@ Default worker count for scans.
 .TP
 \fBVIDEO_LOG\fR
 Logging level (DEBUG, INFO, …).
+.TP
+\fBVIDEO_DATA_DIR\fR
+Base directory for all runtime data (defaults to /data).
+.TP
+\fBVIDEO_STORAGE\fR
+Vector backend name: memory|faiss|weaviate|…
+.TP
+\fBVIDEO_DB_PATH\fR
+Explicit SQLite file (overrides DATA_DIR/db/…).
+.TP
+\fBVIDEO_DB_BACKUP\fR
+Path to the WAL-checkpoint snapshot.
 
 \fIvideo.cfg\fP example:
 
@@ -130,28 +192,40 @@ backup = /Volumes/Media/B/Video/_MASTER
 workers = 6
 .fi
 
+Each plug-in can ship a module.cfg under its package (e.g. video/modules/dam/module.cfg). These are auto-created on first run and can be edited for per-module storage paths.
+
 .SH EXAMPLES
+.TP
+Run the API server with hot-reload during development:
+.nf
+$ video serve –host 127.0.0.1 –port 8000 –force-stdlib
+.fi
+.TP
+Semantic search across embeddings:
+.nf
+$ video dam search "surfing at sunset" –level L1 –limit 8
+.fi
 .TP
 Dry-run an album sync on a Raspberry Pi:
 .nf
-$ python3 -m video sync_album \\
-        --root /mnt/SMB/B/Video \\
-        --album "My Album" --no-copy
+$ python3 -m video sync_album \
+–root /mnt/SMB/B/Video \
+–album "My Album" –no-copy
 .fi
 .TP
 Dry-run a backup:
 .nf
-$ python3 -m video backup \\
-        --backup_root /mnt/SMB/B/Video/_MASTER --dry-run
+$ python3 -m video backup \
+–backup_root /mnt/SMB/B/Video/_MASTER –dry-run
 .fi
 .TP
 Full workflow piped in:
 .nf
-$ printf '%s' '{
-  "workflow":[
-    {"action":"scan","root":"/mnt/SMB/B/Video/_INCOMING"},
-    {"action":"stats"}
-  ]}' | python3 -m video
+$ printf ‘%s’ ‘{
+"workflow":[
+{"action":"scan","root":"/mnt/SMB/B/Video/_INCOMING"},
+{"action":"stats"}
+]}’ | python3 -m video
 .fi
 .TP
 On iOS Shortcuts:  
@@ -160,11 +234,11 @@ On iOS Shortcuts:
 
 .SH FILES
 .ta 4c
-\fI~/media_index.sqlite3\fP     default SQLite catalogue  
-\fI~/video/video.cfg\fP         optional config file
+\fI/data/db/media_index.sqlite3\fP     default catalogue when VIDEO_DATA_DIR=/data  
+\fI~/.video/video.cfg\fP               user config (override with $VIDEO_CFG)
 
 .SH SEE ALSO
-python(1), sqlite3(1), Shortcuts.app
+python(1), sqlite3(1), faiss(1), uvicorn(1), fastapi docs, Shortcuts.app
 
 .SH AUTHOR
-Generated in collaboration with an OpenAI assistant • July 2025
+Generated by David Cannan | Cdaprod in collaboration with an OpenAI assistant • July 2025

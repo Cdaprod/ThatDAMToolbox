@@ -275,25 +275,54 @@ def cmd_list_videos(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return asyncio.run(_list())
 
 
+# ──────────────────────────────────────────────────────────────────
+# RE-INDEX  – upgrade vectors to a new embedding version
+# ------------------------------------------------------------------
 def cmd_reindex(args: argparse.Namespace) -> Dict[str, Any]:
-    """Reindex all videos with a new embedding version."""
-    version = args.version
+    """
+    Re-generate every level (L0‥L3) for all videos using a newer
+    embedding model version.  The old vectors are *replaced* in‐place.
 
-    async def _reindex():
-        from .services import get_embedding_generator, get_vector_store
+    Example:
+        video dam reindex --version v3
+    """
+    version = args.version or "v2"
 
-        print(f"Starting reindex with version: {version}")
+    async def _reindex() -> Dict[str, Any]:
+        from .services import (
+            get_hierarchy_manager,
+            get_embedding_generator,
+            get_vector_store,
+        )
+
+        hm = get_hierarchy_manager()
         eg = get_embedding_generator()
         vs = get_vector_store()
 
-        vids = await vs.list_videos()
-        for i, v in enumerate(vids, 1):
-            print(f"[{i}/{len(vids)}] Reindexing: {v['path']}")
-            # placeholder
-            await asyncio.sleep(0.1)
+        videos = await vs.list_videos()
+        total  = len(videos)
+        logger.info("▶ starting re-index: %d videos  (model=%s)", total, version)
 
-        print("✓ Reindexing completed")
-        return {"reindexed": len(vids), "version": version}
+        for i, vid in enumerate(videos, 1):
+            uuid = vid["uuid"]
+            path = vid["path"]
+
+            # --- regenerate L0 ------------------------------------------------
+            l0 = await eg.generate_video_vector(path, model_version=version)
+            await vs.replace_level_vectors(uuid, "L0", [{"vector": l0}])
+
+            # --- regenerate L1-L3 --------------------------------------------
+            scenes = await hm.detect_scenes(path)
+            for lvl in ("L1", "L2", "L3"):
+                vecs = await eg.generate_level_vectors(
+                    path, scenes, lvl, model_version=version
+                )
+                await vs.replace_level_vectors(uuid, lvl, vecs)
+
+            logger.info("  [%d/%d] %s  ✓", i, total, path)
+
+        logger.info("✓ re-index completed")
+        return {"reindexed": total, "model_version": version}
 
     return asyncio.run(_reindex())
 

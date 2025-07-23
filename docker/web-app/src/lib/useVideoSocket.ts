@@ -32,11 +32,11 @@ export function useVideoSocket(
 
     wsRef.current.onmessage = (ev) => {
       // 1) user-provided callback
-      onMessage?.(ev);
-      // 2) broadcast globally for any listener
-      window.dispatchEvent(
-        new MessageEvent('video-socket-message', { data: ev.data })
-      );
+        onMessage?.(ev);
+        // 2️⃣ broadcast for any listener (e.g. CameraMonitor)
+        window.dispatchEvent(
+          new MessageEvent('video-socket-message', { data: ev.data })
+        );
     };
 
     wsRef.current.onerror = (ev) => {

@@ -142,7 +142,8 @@ class MediaDB:
                   created_at   TEXT NOT NULL,
                   version      INTEGER DEFAULT 1,
                   parent_id    TEXT,
-                  preview_path TEXT
+                  preview_path TEXT,
+                  sort_order   INTEGER DEFAULT 0
               );
             """)
             cx.execute("CREATE INDEX IF NOT EXISTS idx_files_mtime ON files(mtime);")

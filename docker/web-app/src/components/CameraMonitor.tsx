@@ -1,5 +1,5 @@
-+import React, { useState, useEffect } from 'react';
-+import { useVideoSocketCtx } from '@/components/VideoSocketProvider';
+import React, { useState, useEffect } from 'react';
+import { useVideoSocketCtx } from '@providers/VideoSocketProvider';
 
 const CameraMonitor: React.FC = () => {
   // State management
@@ -10,7 +10,7 @@ const CameraMonitor: React.FC = () => {
   const [zebrasActive, setZebrasActive] = useState(false);
   const [falseColorActive, setFalseColorActive] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(85);
-  const [imageError, setImageError] = useState(true);
+  const [streamOK, setStreamOK] = useState(true);
   
   // Slider states
   const [brightness, setBrightness] = useState(80);
@@ -21,27 +21,27 @@ const CameraMonitor: React.FC = () => {
   // Histogram data
   const [histogramData, setHistogramData] = useState([20, 45, 65, 80, 70, 55, 40, 25]);
 
-+  /* ------------------------------------------------------------------ */
-+  /*  Web-Socket bindings                                               */
-+  /* ------------------------------------------------------------------ */
-+  const { sendJSON } = useVideoSocketCtx();           // broadcast helper
-+
-+  /** inbound → update local UI (you can shape this any way you like) */
-+  useEffect(() => {
-+    const handle = (ev: MessageEvent) => {
-+      try {
-+        const msg = JSON.parse(ev.data);
-+        if (msg.type === 'recording-status') {
-+          setIsRecording(msg.isRecording);
-+          setRecordingTime(msg.elapsed || 0);
-+        }
-+        if (msg.type === 'battery') setBatteryLevel(msg.level);
-+      } catch {/* ignore non-JSON */}
-+    };
-+    // quick attach / detach – the socket lives in the provider
-+    window.addEventListener('video-socket-message', handle as any);
-+    return () => window.removeEventListener('video-socket-message', handle as any);
-+  }, []);
+  /* ------------------------------------------------------------------ */
+  /*  Web-Socket bindings                                               */
+  /* ------------------------------------------------------------------ */
+  const { sendJSON } = useVideoSocketCtx();           // broadcast helper
+
+  /** inbound → update local UI (you can shape this any way you like) */
+  useEffect(() => {
+    const handle = (ev: MessageEvent) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'recording-status') {
+          setIsRecording(msg.isRecording);
+          setRecordingTime(msg.elapsed || 0);
+        }
+        if (msg.type === 'battery') setBatteryLevel(msg.level);
+      } catch {/* ignore non-JSON */}
+    };
+    // quick attach / detach – the socket lives in the provider
+    window.addEventListener('video-socket-message', handle as any);
+    return () => window.removeEventListener('video-socket-message', handle as any);
+  }, []);
 
 
   // Update timecode
@@ -177,7 +177,7 @@ const CameraMonitor: React.FC = () => {
       <div className="flex flex-1">
         <div className="flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden">
           {/* Video Placeholder */}
-          {imageError && (
+          {!streamOK && (
             <div className="text-gray-600 text-3xl text-center opacity-60">📹 NO SIGNAL</div>
           )}
           
@@ -186,9 +186,9 @@ const CameraMonitor: React.FC = () => {
             src="/api/v1/hwcapture/stream?device=/dev/video0&width=1280&height=720&fps=30"
             alt="Live Preview"
             className="w-full h-full object-contain absolute top-0 left-0 z-0"
-            style={{ display: imageError ? 'none' : 'block' }}
-            onError={() => setImageError(true)}
-            onLoad={() => setImageError(false)}
+            onError={() => setStreamOK(false)}
+            onLoad={() => setStreamOK(true)}
+
           />
 
           {/* Video Overlays */}
@@ -218,19 +218,19 @@ const CameraMonitor: React.FC = () => {
           {/* Recording Controls */}
           <div className="mb-4 bg-black/30 border border-gray-600 rounded-md p-2.5">
             <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">Record</div>
-+            <button
-+              className={`w-full p-2 mb-1 bg-gradient-to-br from-red-600 to-red-800 border border-red-600 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-red-500 hover:to-red-700 hover:-translate-y-0.5 font-bold ${isRecording ? 'record-pulse' : ''}`}
-+              onClick={() => {
-+                const next = !isRecording;
-+                setIsRecording(next);                        // optimistic UI
-+                sendJSON({
-+                  action: next ? 'start_record' : 'stop_record',
-+                  device: '/dev/video0',
-+                });
-+              }}
-+            >
-+              {isRecording ? '⏸ PAUSE' : '● RECORD'}
-+            </button>            <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
+            <button
+              className={`w-full p-2 mb-1 bg-gradient-to-br from-red-600 to-red-800 border border-red-600 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-red-500 hover:to-red-700 hover:-translate-y-0.5 font-bold ${isRecording ? 'record-pulse' : ''}`}
+              onClick={() => {
+                const next = !isRecording;
+                setIsRecording(next);                        // optimistic UI
+                sendJSON({
+                  action: next ? 'start_record' : 'stop_record',
+                  device: '/dev/video0',
+                });
+              }}
+            >
+              {isRecording ? '⏸ PAUSE' : '● RECORD'}
+            </button>            <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
               ▶ PLAY
             </button>
             <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">

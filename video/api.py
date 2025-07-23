@@ -24,13 +24,14 @@ from video.core         import get_manifest as core_get_manifest
 from video.models       import Manifest, VideoArtifact, Slice, CardResponse, VideoCard, SceneThumb
 from video.storage.base import StorageEngine
 from video.bootstrap    import STORAGE          # Singleton
-
-app = FastAPI(title="Video DAM API")
+from video.ws           import ws
 
 origins = [
     "http://localhost:3000",      # your Next dev server
     "https://your.production.url" # your prod domain
 ]
+
+app = FastAPI(title="Video DAM API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,6 +47,9 @@ log = logging.getLogger("video.api")
 
 # Expose /static/style.css, /static/app.js, …
 app.mount("/static", static, name="static")
+
+# Expose /video/ws router...
+app.include_router(ws.router)
 
 # ---------------------------------------------------------------------------
 # BaseModels

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useVideoSocket } from '@/lib/useVideoSocket';
+import { useVideoSocket } from '@lib/useVideoSocket';
 
 interface Ctx {
   sendJSON: (payload: any) => void;
@@ -17,10 +17,11 @@ export function VideoSocketProvider({ children }: { children: ReactNode }) {
       onMessage: (ev) => {
         // log for debugging
         console.log('[ws] message', ev.data);
-        // broadcast to any listener (e.g. CameraMonitor)
+        // 〰 broadcast globally
         window.dispatchEvent(
           new MessageEvent('video-socket-message', { data: ev.data })
         );
+
       },
     }
   );

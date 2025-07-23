@@ -122,77 +122,119 @@ class AutoStorage(StorageEngine):
     def list_videos(self, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         return self._db.list_recent(limit=limit)[offset:]
 
-    # ------------------------------------------------------------------
-    # Simple passthroughs to MediaDB that higher layers rely on
-    # ------------------------------------------------------------------
-    def list_recent(self, limit: int = 50) -> list[dict]:
+    # ------------------------------------------------------------------ #
+    # Explorer & DAM convenience helpers                                 #
+    # ------------------------------------------------------------------ #
+
+    # ───── sidebar list ────────────────────────────────────────────────
+    def list_batches(self) -> list[dict]:
+        """
+        Return one row per batch (or '_UNSORTED') with a file-count and the
+        timestamp of the most recent item.  Used by the Explorer left-hand
+        navigation.
+        """
+        q = """
+            SELECT COALESCE(batch,'_UNSORTED') AS batch,
+                   COUNT(*)                    AS count,
+                   MAX(created_at)             AS last_added
+            FROM   files
+            GROUP  BY COALESCE(batch,'_UNSORTED')
+            ORDER  BY last_added DESC
+        """
+        return [dict(r) for r in self._db.execute(q)]
+
+    # ───── cards for one batch ─────────────────────────────────────────
+    def list_by_batch(self, batch: str) -> list[dict]:
+        q = """
+            SELECT *
+            FROM   files
+            WHERE  COALESCE(batch,'_UNSORTED') = ?
+            ORDER  BY sort_order, created_at DESC
+        """
+        return [dict(r) for r in self._db.execute(q, (batch,))]
+
+    # ───── flat folder list (tree is built client-side) ────────────────
+    def list_all_folders(self) -> list[dict]:
+        rows     = self._db.execute("SELECT path FROM files")
+        folders  = {os.path.dirname(r["path"]) for r in rows}
+        return [
+            {
+                "id":        f"folder_{abs(hash(f))}",
+                "name":      os.path.basename(f) or f,
+                "path":      f,
+                "parent_id": f"folder_{abs(hash(os.path.dirname(f)))}",
+            }
+            for f in folders
+        ]
+
+    # ───── direct children of one folder ───────────────────────────────
+    def list_assets(self, folder: Path) -> list[dict]:
+        like = f"{folder.as_posix().rstrip('/')}/%"
         rows = self._db.execute(
-            "SELECT sha1, path, width, height, mime, created_at "
-            "FROM videos ORDER BY created_at DESC LIMIT ?",
-            (limit,)
+            "SELECT * FROM files WHERE path LIKE ?", (like,)
         )
         return [dict(r) for r in rows]
 
-        def list_all_folders(self) -> list[dict]:
-            # Get all distinct directories from the videos table
-            rows = self._db.execute(
-                "SELECT DISTINCT path FROM videos"
+    # ───── drag-and-drop sort-order persistence ────────────────────────
+    def set_position(self, sha1: str, pos: int) -> None:
+        self._db.execute("UPDATE files SET sort_order=? WHERE sha1=?", (pos, sha1))
+        self._db.commit()
+
+    # ------------------------------------------------------------------ #
+    # Simple passthroughs to MediaDB that higher layers rely on          #
+    # ------------------------------------------------------------------ #
+    def list_recent(self, limit: int = 50) -> list[dict]:
+        rows = self._db.execute(
+            "SELECT sha1, path, width_px AS width, height_px AS height,"
+            "       mime, created_at "
+            "FROM   files "
+            "ORDER  BY created_at DESC "
+            "LIMIT  ?",
+            (limit,),
+        )
+        return [dict(r) for r in rows]
+
+    # ---- VECTORS / SEARCH --------------------------------------------------
+
+    def add_vector(               # ← out-dented: class-level method
+        self,
+        sha1: str,
+        level: str,
+        vector: List[float],
+        start_time: float = 0.0,
+        end_time: float = 0.0,
+        metadata: Dict[str, Any] | None = None,
+    ) -> None:
+        if not self._vec:
+            log.debug("Vector layer missing; vector ignored")
+            return
+        _ensure_event_loop_running(
+            self._vec.store_level_vectors(
+                sha1,
+                level,
+                [
+                    {
+                        "vector": vector,
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "metadata": metadata or {},
+                    }
+                ],
             )
-            # Extract folder paths and build folder info objects
-            folders = set()
-            for r in rows:
-                folder = os.path.dirname(r['path'])
-                folders.add(folder)
-            # Map to explorer-expected shape (add id, parent if you like)
-            return [
-                {
-                    "id": f"folder_{abs(hash(folder))}",  # or use folder path
-                    "name": os.path.basename(folder) or folder,
-                    "path": folder,
-                    "parent_id": f"folder_{abs(hash(os.path.dirname(folder)))}"
-                }
-                for folder in folders
-            ]
+        )
 
-        def list_assets(self, folder: Path) -> list[dict]:
-            # Return all videos whose path is under the given folder
-            rows = self._db.execute(
-                "SELECT * FROM videos WHERE path LIKE ?",
-                (str(folder) + "/%",)
-            )
-            return [dict(r) for r in rows]
-
-            # ---- VECTORS / SEARCH --------------------------------------------------
-
-            def add_vector(self,
-                           sha1: str,
-                           level: str,
-                           vector: List[float],
-                           start_time: float = 0.0,
-                           end_time  : float = 0.0,
-                           metadata  : Dict[str, Any] | None = None) -> None:
-                if not self._vec:
-                    log.debug("Vector layer missing; vector ignored")
-                    return
-                _ensure_event_loop_running(
-                    self._vec.store_level_vectors(
-                        sha1, level,
-                        [{"vector": vector,
-                          "start_time": start_time,
-                          "end_time": end_time,
-                          "metadata": metadata or {}}]
-                    )
-                )
-
-    def search_vector(self,
-                      vector: List[float],
-                      level: str        = "all",
-                      limit: int        = 20,
-                      threshold: float  = 0.7) -> List[Dict[str, Any]]:
+    def search_vector(
+        self,
+        vector: List[float],
+        level: str = "all",
+        limit: int = 20,
+        threshold: float = 0.7,
+    ) -> List[Dict[str, Any]]:
         if not self._vec:
             raise RuntimeError("Vector backend not configured")
-        fut = self._vec.search_vectors(vector, level=level,
-                                       limit=limit, threshold=threshold)
+        fut = self._vec.search_vectors(
+            vector, level=level, limit=limit, threshold=threshold
+        )
         return asyncio.run(fut)
 
     # ---- clean-up ----------------------------------------------------------

@@ -1,5 +1,4 @@
 # /video/modules/dam/services.py
-
 import logging
 from typing import Optional
 from fastapi import HTTPException
@@ -53,3 +52,38 @@ __all__ = [
     "init_services",
     "initialize_vector_storage"
 ]
+
+# ---------------------------------------------------------------------------
+# Convenience wrapper – used by REST       /system/reindex
+# and by CLI verb `video dam reindex`
+# ---------------------------------------------------------------------------
+async def reindex_all_videos(model_version: str = "v2") -> dict:
+    """
+    One-shot helper for programmatic re-indexing.  CLI and REST both call it.
+
+    Returns a small summary dict so upstream callers can JSON-serialize it.
+    """
+    from .services import (
+        get_hierarchy_manager,
+        get_embedding_generator,
+        get_vector_store,
+    )
+
+    hm = get_hierarchy_manager()
+    eg = get_embedding_generator()
+    vs = get_vector_store()
+
+    videos = await vs.list_videos()
+    for vid in videos:
+        uuid, path = vid["uuid"], vid["path"]
+        l0 = await eg.generate_video_vector(path, model_version=model_version)
+        await vs.replace_level_vectors(uuid, "L0", [{"vector": l0}])
+
+        scenes = await hm.detect_scenes(path)
+        for lvl in ("L1", "L2", "L3"):
+            vecs = await eg.generate_level_vectors(
+                path, scenes, lvl, model_version=model_version
+            )
+            await vs.replace_level_vectors(uuid, lvl, vecs)
+
+    return {"reindexed": len(videos), "model_version": model_version}

@@ -53,3 +53,15 @@ def init_module():
     """
     from .services import init_services
     init_services()
+
+# ---------------------------------------------------------------------------
+# Eager bootstrap (optional)
+# ---------------------------------------------------------------------------
+try:
+    init_module()           # spin up Vector-store etc. right away
+except Exception as exc:    # noqa: BLE001
+    import logging
+    logging.getLogger("video.dam").warning(
+        "DAM services failed to initialise eagerly – will retry on demand.  %s",
+        exc,
+    )

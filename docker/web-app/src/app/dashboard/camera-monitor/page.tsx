@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import CameraMonitor from '@/components/CameraMonitor';
+import CameraMonitor from '@components/CameraMonitor';
 
 /* 👉  Lazy-load CaptureProvider so recording code isn’t in the main bundle */
 const CaptureProvider = dynamic(
