@@ -3,37 +3,179 @@
 ## That DAM Toolbox
 
 ```
-Updated directory layout (depth ≤ 1)
-────────────────────────────────────
-video/
-├── __init__.py          # this file – high-level API
-├── __main__.py          # universal entry-point (CLI ⇄ API)
-├── api.py               # FastAPI app object (lazy import)
-├── bootstrap.py         # first-run helpers & env checks
-├── cli.py               # argparse + sub-commands
-├── commands.py          # dataclass DTOs for CLI & TUI
-├── config.py            # global settings, paths, env-vars
-├── db.py                # SQLite interface + migrations
-├── hwaccel.py           # optional FFmpeg HW acceleration helpers
-├── paths.py             # canonical path helpers (XDG, iOS, etc.)
-├── preview.py           # preview / proxy generation
-├── probe.py             # tech-metadata extraction (codec, resolution…)
-├── scanner.py           # multithreaded file walker + SHA-1 pipeline
-├── server.py            # tiny stdlib HTTP fallback
-├── sync.py              # Photos / iCloud / remote importers
-├── tui.py               # rich-based TUI frontend
-├── schema.sql           # DB schema & migrations
-├── video.cfg            # sample INI config
-├── video.1              # man-page (generated)
-├── test_script.py       # quick self-test / smoke-run
-# sub-packages (expand separately)
-├── core/                # domain logic split into bounded contexts
-├── dam/                 # digital-asset-management utilities
-├── helpers/             # misc pure-stdlib helpers
-├── models/              # pydantic / dataclass models
-├── modules/             # plugin auto-discovery root
-├── storage/             # storage back-ends (S3, MinIO, local…)
-└── web/                 # static files & SPA frontend bundle
+.
+├── api.py
+├── bootstrap.py
+├── cli.py
+├── commands.py
+├── config.py
+├── core
+│   ├── artifacts
+│   │   ├── audio.py
+│   │   ├── base.py
+│   │   ├── batch.py
+│   │   ├── document.py
+│   │   ├── __init__.py
+│   │   └── video.py
+│   ├── auto.py
+│   ├── facades
+│   │   ├── __init__.py
+│   │   └── video_facade.py
+│   ├── factory.py
+│   ├── ingest.py
+│   ├── __init__.py
+│   ├── processor.py
+│   ├── proxy
+│   │   └── media_proxy.py
+│   └── README.md
+├── dam
+│   └── __pycache__
+│       ├── __init__.cpython-312.pyc
+│       └── main.cpython-312.pyc
+├── db.py
+├── helpers
+│   ├── artifact_bridge.py
+│   ├── __init__.py
+│   └── pydantic_compat.py
+├── hwaccel.py
+├── __init__.py
+├── __main__.py
+├── models
+│   └── __init__.py
+├── modules
+│   ├── dam
+│   │   ├── commands.py
+│   │   ├── __init__.py
+│   │   ├── models
+│   │   │   ├── embeddings.py
+│   │   │   ├── faiss_store.py
+│   │   │   ├── hierarchy.py
+│   │   │   ├── __init__.py
+│   │   │   └── storage.py
+│   │   ├── module.cfg
+│   │   ├── README.md
+│   │   ├── routes.py
+│   │   └── services.py
+│   ├── explorer
+│   │   ├── commands.py
+│   │   ├── __init__.py
+│   │   └── routes.py
+│   ├── ffmpeg_console
+│   │   ├── commands.py
+│   │   ├── ffmpeg_console.py
+│   │   ├── __init__.py
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   └── routes.py
+│   ├── hwcapture
+│   │   ├── audiosync.py
+│   │   ├── camerarecorder.py
+│   │   ├── commands.py
+│   │   ├── hwcapture.py
+│   │   ├── __init__.py
+│   │   ├── module.cfg
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   └── routes.cpython-312.pyc
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   ├── routes.py
+│   │   └── tracker.py
+│   ├── __init__.py
+│   ├── motion_extractor
+│   │   ├── commands.py
+│   │   ├── __init__.py
+│   │   ├── module.cfg
+│   │   ├── motion_extractor.py
+│   │   ├── __pycache__
+│   │   │   ├── commands.cpython-312.pyc
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   ├── motion_extractor.cpython-312.pyc
+│   │   │   └── routes.cpython-312.pyc
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   └── routes.py
+│   ├── __pycache__
+│   │   └── __init__.cpython-312.pyc
+│   ├── trim_idle
+│   │   ├── commands.py
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   └── routes.cpython-312.pyc
+│   │   ├── routes.py
+│   │   └── trimmer.py
+│   └── uploader
+│       ├── cli.py
+│       ├── __init__.py
+│       └── routes.py
+├── paths.py
+├── preview.py
+├── probe.py
+├── README.md
+├── scanner.py
+├── schema.sql
+├── server.py
+├── storage
+│   ├── auto.py
+│   ├── base.py
+│   ├── __pycache__
+│   │   ├── auto.cpython-312.pyc
+│   │   └── base.cpython-312.pyc
+│   ├── README.md
+│   └── wal_proxy.py
+├── sync.py
+├── test_script.py
+├── tui.py
+├── video.1
+├── video-2.cfg
+├── video.cfg
+├── web
+│   ├── __init__.py
+│   ├── static
+│   │   ├── app.js
+│   │   ├── components
+│   │   │   ├── batch-card.js
+│   │   │   ├── dam-client.js
+│   │   │   ├── dam-explorer.js
+│   │   │   ├── explorer.js
+│   │   │   ├── ffmpeg-console.js
+│   │   │   ├── live-preview.js
+│   │   │   ├── object-renderer.js
+│   │   │   ├── upload-card.js
+│   │   │   └── video-card.js
+│   │   ├── favicon
+│   │   │   ├── android-chrome-192x192.png
+│   │   │   ├── android-chrome-512x512.png
+│   │   │   ├── apple-touch-icon.png
+│   │   │   ├── favicon-16x16.png
+│   │   │   ├── favicon-32x32.png
+│   │   │   ├── favicon.ico
+│   │   │   └── site.webmanifest
+│   │   └── styles.css
+│   └── templates
+│       ├── base.html
+│       ├── camera-monitor.html
+│       ├── dam-modules.html
+│       ├── dashboard.html
+│       └── partials
+│           ├── _analytics_card.html
+│           ├── _batch_card.html
+│           ├── _batch_ops_card.html
+│           ├── _explorer_card.html
+│           ├── _ffmpeg_card.html
+│           ├── _library_card.html
+│           ├── _motion_card.html
+│           ├── _preview_card.html
+│           ├── _search_card.html
+│           ├── _sidebar.html
+│           ├── _upload_card.html
+│           ├── _videos_card.html
+│           └── _witness_card.html
+└── ws.py
+
+31 directories, 152 files
+
 ```
 
 Layered–let’s discuss the concrete structure into clear architectural abstraction layers, mapping your existing modules to an evolving, modular DAM architecture.

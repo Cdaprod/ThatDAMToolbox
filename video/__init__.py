@@ -9,54 +9,40 @@ That DAM Toolbox – *Pythonista-friendly*, pure-stdlib façade
 Updated directory layout (depth ≤ 1)
 ────────────────────────────────────
 video/
-├── __init__.py          # this file – high-level API
-├── __main__.py          # universal entry-point (CLI ⇄ API)
-├── api.py               # FastAPI app object (lazy import)
-├── bootstrap.py         # first-run helpers & env checks
-├── cli.py               # argparse + sub-commands
-├── commands.py          # dataclass DTOs for CLI & TUI
-├── config.py            # global settings, paths, env-vars
-├── db.py                # SQLite interface + migrations
-├── hwaccel.py           # optional FFmpeg HW acceleration helpers
-├── paths.py             # canonical path helpers (XDG, iOS, etc.)
-├── preview.py           # preview / proxy generation
-├── probe.py             # tech-metadata extraction (codec, resolution…)
-├── scanner.py           # multithreaded file walker + SHA-1 pipeline
-├── server.py            # tiny stdlib HTTP fallback
-├── sync.py              # Photos / iCloud / remote importers
-├── tui.py               # rich-based TUI frontend
-├── schema.sql           # DB schema & migrations
-├── video.cfg            # sample INI config
-├── video.1              # man-page (generated)
-├── test_script.py       # quick self-test / smoke-run
-# sub-packages (expand separately)
-├── core/                # domain logic split into bounded contexts
-        ├── __init__.py
-        ├── pydantic_compat.py
-        └── artifact_bridge.py
-├── helpers/             # misc pure-stdlib helpers
-        ├── __init__.py
-        ├── pydantic_compat.py
-        └── artifact_bridge.py
-├── models/              # pydantic / dataclass models
-        └── __init__.py
-├── modules/             # plugin auto-discovery root
-        ├── __init__.py
-        ├── ffmpeg_console/
-        ├── trim_idle/
-        ├── motion_extractor/
-        ├── uploader/
-        ├── hwcapture/
-        ├── explorer/
-        └── dam/                 # digital-asset-management utilities
-├── storage/             # storage back-ends (S3, MinIO, local…)
-        ├── __init__.py
-        ├── base.py
-        ├── auto.py 
-        └── wal_proxy.py
-├── ws/                  # Websocket 
-└── web/                 # static files & SPA frontend bundle
+.
+├── core/
+├── dam/
+├── helpers/
+├── models/
+├── modules/
+├── storage/
+├── web/ # Depricated for Next.js app "cdaprod/video-web-app
+├── __init__.py
+├── __main__.py
+├── api.py
+├── bootstrap.py
+├── cli.py
+├── commands.py
+├── config.py
+├── db.py
+├── hwaccel.py
+├── lifecycle.py
+├── paths.py
+├── preview.py
+├── probe.py
+├── README.md
+├── scanner.py
+├── schema.sql
+├── server.py
+├── sync.py
+├── test_script.py
+├── tui.py
+├── video.1
+├── video-2.cfg
+├── video.cfg
+└── ws.py
 
+9 directories, 23 files
 
 Media Indexer – tiny façade unifying scanner ▸ DB ▸ optional Photos sync.
 

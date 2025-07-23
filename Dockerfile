@@ -39,7 +39,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        gosu \
+        gosu tini \
         build-essential git curl wget ca-certificates \
         ffmpeg libgl1 libglib2.0-0 \
         bash bash-completion zsh locales tmux \
@@ -230,5 +230,7 @@ EXPOSE 8080
 # Keep CMD empty so positional args go straight into ENTRYPOINT
 # CMD []
 
-ENTRYPOINT ["/thatdamtoolbox/entrypoint.sh"]
+# USER appuser if no need to chown in entrypoint–which steps down to appuser from root anyways
+USER root
+ENTRYPOINT ["tini","--","/thatdamtoolbox/entrypoint.sh"]
 CMD ["python", "-m", "video"]
