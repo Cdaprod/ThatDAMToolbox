@@ -10,6 +10,9 @@ from typing import List, Dict, Any, Optional
 
 from video.core.artifacts.video import VideoArtifact
 from video.core.artifacts.batch import BatchArtifact
+from video.core.artifacts._registry import by_extension
+from video.core.artifacts.document  import DocumentArtifact  # cheap fallback
+
 
 class ArtifactFactory:
     """Factory for creating VideoArtifact and BatchArtifact from various sources"""
@@ -111,3 +114,19 @@ class ArtifactFactory:
     def _is_video_file(path: str) -> bool:
         """Simple extension check"""
         return Path(path).suffix.lower() in {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
+
+ 
+# PUBLIC helper – keep it in __all__ if you export that list
+def build_from_paths(paths: List[str | Path]) -> List["Artifact"]:
+    """
+    Turn a list of file paths into fully-typed `Artifact` instances, using the
+    registry. Unknown extensions become `DocumentArtifact`.
+    """
+    artefacts = []
+    for p in map(Path, paths):
+        cls = by_extension(p) or DocumentArtifact     # choose a class
+        art = cls(filename=p.name, source_type="file")
+        art.set_source_data(file_path=str(p))
+        artefacts.append(art)
+
+    return artefacts
