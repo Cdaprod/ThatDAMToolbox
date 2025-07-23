@@ -18,6 +18,7 @@ notebooks/*.ipynb_checkpoints/
 .env.*
 *.env
 example.env
+!.env.example
 
 # ---- OS Junk ----
 .DS_Store

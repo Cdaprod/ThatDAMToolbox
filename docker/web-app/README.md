@@ -19,52 +19,35 @@ web-app/
 
 ```
 web-app/
-├── src/
-│   ├── app/                     # App Router (Next.js 13+)
-│   │   ├── layout.tsx          # Root layout
-│   │   ├── page.tsx            # Home page
-│   │   ├── globals.css         # Global styles
-│   │   ├── dam/                # DAM-specific pages
-│   │   │   ├── page.tsx        # DAM dashboard
-│   │   │   ├── search/         # Search functionality
-│   │   │   │   └── page.tsx
-│   │   │   ├── ingest/         # Video ingestion
-│   │   │   │   └── page.tsx
-│   │   │   └── videos/         # Video management
-│   │   │       ├── page.tsx
-│   │   │       └── [id]/
-│   │   │           └── page.tsx
-│   │   └── api/                # API routes (Next.js API)
-│   │       ├── health/
-│   │       │   └── route.ts
-│   │       └── dam/
-│   │           └── proxy/
-│   │               └── route.ts
-│   ├── components/             # Reusable components
-│   │   ├── ui/                 # Basic UI components
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   └── input.tsx
-│   │   ├── dam/                # DAM-specific components
-│   │   │   ├── VideoCard.tsx
-│   │   │   ├── SearchBox.tsx
-│   │   │   └── IngestForm.tsx
-│   │   └── layout/             # Layout components
-│   │       ├── Header.tsx
-│   │       ├── Sidebar.tsx
-│   │       └── Footer.tsx
-│   ├── lib/                    # Utilities and API clients
-│   │   ├── api.ts              # API client for your Python backend
-│   │   ├── utils.ts            # Utility functions
-│   │   └── types.ts            # TypeScript type definitions
-│   └── hooks/                  # Custom React hooks
-│       ├── useApi.ts           # API interaction hooks
-│       └── useDam.ts           # DAM-specific hooks
-├── public/                     # Static assets
+├── Dockerfile
+├── next.config.js
+├── package.json
+├── postcss.config.js
+├── tailwind.config.js
+├── tsconfig.json
+├── .env.local
+├── public/
 │   ├── favicon.ico
 │   ├── logo.svg
 │   └── images/
-└── .dockerignore              # Docker ignore patterns
+├── App/
+│   ├── page.tsx                 # Root/home page
+│   ├── layout.tsx               # Root layout
+│   └── Dashboard/
+│       ├── page.tsx             # Dashboard overview
+│       ├── CameraMonitor/
+│       │   └── page.tsx         # Fullscreen Camera Monitor
+│       ├── AssetExplorer/
+│       │   └── page.tsx         # Fullscreen Asset Explorer
+│       └── ...                  # (Any other dashboard tools/features)
+├── Components/
+│   ├── Sidebar.tsx
+│   ├── TopBar.tsx
+│   ├── ModalCard.tsx
+│   └── ...
+├── Styles/
+│   └── globals.css
+└── ...
 ```
 
 ## Quick Start Commands
@@ -84,7 +67,7 @@ docker build \
    mkdir web-app
    cd web-app
    npm init -y
-   npm install next@14.0.4 react@^18.2.0 react-dom@^18.2.0 typescript @types/node @types/react @types/react-dom
+   npm install next@14.0.4 react@^18.2.0 react-dom@^18.2.0 typescript @types/node @types react @types/react-dom
    ```
 1. **Start development:**
    
