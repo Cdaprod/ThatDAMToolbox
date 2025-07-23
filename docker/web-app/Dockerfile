@@ -20,15 +20,21 @@ RUN apk add --no-cache libc6-compat
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
 # Install strictly from lockfile
-RUN if [ -f yarn.lock ]; then \
-      yarn install --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then \
-      npm ci; \
-    elif [ -f pnpm-lock.yaml ]; then \
-      corepack enable pnpm && pnpm install --frozen-lockfile; \
-    else \
-      echo "⚠️  No lockfile found, running npm install" && npm install; \
-    fi
+# Force install based on lockfile with graceful fallback
+RUN \
+  if [ -f yarn.lock ]; then \
+    echo "🧶  Found yarn.lock. Installing..." && \
+    yarn install --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then \
+    echo "📦  Found package-lock.json. Trying npm ci..." && \
+    npm ci || (echo "⚠️  npm ci failed, falling back to npm install..." && npm install); \
+  elif [ -f pnpm-lock.yaml ]; then \
+    echo "📦  Found pnpm-lock.yaml. Installing with pnpm..." && \
+    corepack enable pnpm && pnpm install --frozen-lockfile; \
+  else \
+    echo "⚠️  No lockfile found. Running npm install..." && \
+    npm install; \
+  fi
 
 ########################################
 # Stage 2 • Development image
