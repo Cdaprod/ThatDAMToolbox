@@ -72,7 +72,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # ── shared / global objects ────────────────────────────────────────────────
-import .core.auto                   # Zero-Touch Legacy Code
+from video.core import auto as _auto                   # Zero-Touch Legacy Code
 from .db import MediaDB as _MediaDB # SQLite Helper
 
 def _make_db_with_retry(
