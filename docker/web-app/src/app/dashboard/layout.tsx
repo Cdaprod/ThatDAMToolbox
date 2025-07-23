@@ -1,4 +1,4 @@
-// /app/dashboard/layout.tsx
+// /src/app/dashboard/layout.tsx
 import TopBar from '@/components/TopBar';
 import Sidebar from '@/components/Sidebar';
 

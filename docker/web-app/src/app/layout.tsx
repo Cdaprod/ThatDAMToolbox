@@ -1,4 +1,4 @@
-// /app/layout.tsx
+// /src/app/layout.tsx
 import '@/styles/globals.css';
 import AppProviders from '@/providers/AppProviders';
 import TopBar from '@/components/TopBar';

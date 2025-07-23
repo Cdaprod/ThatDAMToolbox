@@ -1,4 +1,4 @@
-// app/api/video/[...path]/route.ts
+// src/app/api/video/[...path]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime  = 'nodejs';        // we need full Node APIs (stream → stream)
