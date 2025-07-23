@@ -695,7 +695,7 @@ const AssetExplorer: React.FC = () => {
         type={statusMessage?.type}
         onDismiss={() => setStatusMessage(null)}
       />
-    </div> {/* End of top-level container */}
+    </div>
   );
 };
 
