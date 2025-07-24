@@ -29,7 +29,6 @@ services:
       - "44"                            # video group (GID 44 on Pi OS)
     privileged: true                    # access /dev/video*
     environment:
-environment:
       PYTHONWARNINGS:   "ignore::DeprecationWarning,ignore::UserWarning:google.protobuf.runtime_version"
       TZ:               "America/New_York"
       VIDEO_MODE:             "api"
