@@ -3,61 +3,56 @@
 """
 video/__init__.py
 ───────────────────────────────────────────────────────────────────────────────
-❖  Lightweight public façade – all heavy boot-strap work happens in
-   ``video.bootstrap`` (storage back-end, plug-in discovery, legacy shims,
-   background snapshot thread, …).
+Light-weight public façade – the heavy lifting (storage backend, plug-in
+auto-load, legacy patches, WAL snapshot thread, …) happens once in
+`video.bootstrap`.
 
-What you get by importing **video**:
+Importing **video** gives you:
 
     >>> from video import MediaIndexer, DB, STORAGE, routers, config
-    >>> idx = MediaIndexer(); idx.scan()
 
 Public symbols
 ~~~~~~~~~~~~~~
-• **MediaIndexer** – high-level helper that glues scanner ⇆ DB ⇆ iOS-sync  
-• **DB / STORAGE** – aliases to the singletons created by *bootstrap*  
-• **routers**      – list of FastAPI routers aggregated from every plug-in  
-• **config**       – runtime configuration helper (paths, env, etc.)
+• MediaIndexer – high-level helper gluing scanner ⇆ DB ⇆ iOS-sync  
+• DB / STORAGE – singletons created by *bootstrap*  
+• routers      – list of FastAPI routers aggregated from every plug-in  
+• config       – runtime-config helper
 """
 
 from __future__ import annotations
 
+import importlib                      # <-- needed for dynamic import below
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # --------------------------------------------------------------------------- #
-# 0.  Initialise the application                                              #
+# 0.  One-time application bootstrap                                          #
 # --------------------------------------------------------------------------- #
-# Import *once* – executes: storage creation, plug-in auto-load, legacy patches
-from video import bootstrap as _bootstrap  # noqa: E402  (side-effects matter)
+# Side-effects: creates STORAGE/DB, auto-loads plug-ins, applies legacy shims
+from video import bootstrap as _bootstrap       # noqa: E402  (side-effects!)
 
-DB       = _bootstrap.DB        # backward-compat global
-STORAGE  = _bootstrap.STORAGE   # advanced callers can poke inside
-routers  = _bootstrap.importlib.import_module(  # populated by bootstrap
-    "video.modules"
-).routers
+DB      = _bootstrap.DB          # backward-compat global
+STORAGE = _bootstrap.STORAGE     # advanced callers can poke inside
 
-# Re-export config helper (exact same object used throughout the code-base)
+# FastAPI router list collected by `video.modules.__init__`
+routers = importlib.import_module("video.modules").routers
+
+# Re-export config helper (exact same object used everywhere else)
 from video import config  # noqa: E402, F401
 
 log = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- #
-# 1.  MediaIndexer façade                                                     #
+# 1.  MediaIndexer façade (unchanged)                                         #
 # --------------------------------------------------------------------------- #
-from .scanner import Scanner          # noqa: E402
-from .sync    import PhotoSync        # noqa: E402
+from .scanner import Scanner        # noqa: E402
+from .sync    import PhotoSync      # noqa: E402
 
 
 class MediaIndexer:
     """
-    One object that unifies *scanner ⇆ database ⇆ iOS Photos* workflows.
-
-    Parameters
-    ----------
-    root_path : Path | str | None   – directory to index (defaults to MEDIA_ROOT)
-    db        : video.db.MediaDB    – you can inject a test double
+    High-level façade that unifies *scanner ⇆ database ⇆ iOS Photos* workflows.
     """
 
     def __init__(
@@ -66,7 +61,7 @@ class MediaIndexer:
         root_path: Path | str | None = None,
         db: "video.db.MediaDB" | None = None,
     ) -> None:
-        from video.db import MediaDB  # local to avoid import cycle
+        from video.db import MediaDB  # local import avoids import cycle
 
         self.db: MediaDB = db or DB
         self.scanner     = Scanner(self.db, root_path)
@@ -78,11 +73,8 @@ class MediaIndexer:
             self.scanner.root_path,
         )
 
-    # --------------------------------------------------------------------- #
-    # Scanner helpers                                                       #
-    # --------------------------------------------------------------------- #
+    # ── Scanner helpers ────────────────────────────────────────────────────
     def scan(self, root_path: Path | None = None, workers: int = 4) -> Dict[str, int]:
-        """Walk *root_path* (defaults to ctor arg) and index media files."""
         return self.scanner.bulk_scan(root_path, workers)
 
     def get_recent(self, limit: int = 20) -> List[Dict[str, Any]]:
@@ -97,20 +89,12 @@ class MediaIndexer:
     def get_stats(self) -> Dict[str, Any]:
         return self.db.get_stats()
 
-    # --------------------------------------------------------------------- #
-    # iOS Photos helpers                                                    #
-    # --------------------------------------------------------------------- #
+    # ── iOS Photos helpers ────────────────────────────────────────────────
     def sync_photos_album(self, album_name: str, category: str = "edit") -> Dict[str, Any]:
         return self.sync.sync_album(album_name, category)
 
-    # --------------------------------------------------------------------- #
-    # Backup helper                                                         #
-    # --------------------------------------------------------------------- #
+    # ── Backup helper ─────────────────────────────────────────────────────
     def backup(self, backup_root: Path) -> Dict[str, Any]:
-        """
-        Copy *indexed* files into ``backup_root/<batch>/<filename>`` while
-        skipping anything whose SHA-1 was already copied earlier.
-        """
         import shutil
 
         copied = skipped = 0
@@ -130,15 +114,13 @@ class MediaIndexer:
                 self.db.remember_copy(sha1, tgt)
                 copied += 1
                 log.info("Copied %s → %s", src.name, tgt)
-            except Exception as exc:  # pragma: no-cover
+            except Exception as exc:               # pragma: no-cover
                 log.warning("Skip %s (%s)", src.name, exc)
                 skipped += 1
 
         return {"copied": copied, "skipped": skipped, "dest": str(backup_root)}
 
-    # --------------------------------------------------------------------- #
-    # Convenience combo                                                     #
-    # --------------------------------------------------------------------- #
+    # ── Convenience combo ────────────────────────────────────────────────
     def index_media(
         self,
         *,
@@ -146,10 +128,7 @@ class MediaIndexer:
         sync_album: str | None = None,
         sync_category: str = "edit",
     ) -> Dict[str, Any]:
-        """
-        1. scan()  2. optional iOS Photos import  3. merged DB stats
-        """
-        stats       = self.scan(workers=scan_workers)
+        stats = self.scan(workers=scan_workers)
         if sync_album:
             stats["photos_sync"] = self.sync_photos_album(sync_album, sync_category)
         stats["db"] = self.get_stats()
