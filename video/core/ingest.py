@@ -1,14 +1,17 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """
-# video/core/ingest.py
-
+video/core/ingest.py
+──────────────────────────────────────────────────────────────────────────────
 Ingest freshly-arrived media files into the canonical store.
 
-Steps per file
---------------
-1.  Compute SHA-1
-2.  Move / rename into a two-level sharded tree under ``MEDIA_ROOT``
-3.  ffprobe → tech-metadata
-4.  Upsert DB row and optionally tag with *batch_name*
+Public helpers
+~~~~~~~~~~~~~~
+* ingest_files(iterable_of_paths, batch_name=…)
+* ingest_folder(directory, batch_name=…, recursive=True, patterns=…)
+
+Both helpers upsert into the global DB singleton (`video.DB`) and move the
+files into the sharded MEDIA_ROOT tree (ab/cdef…/abcdef….ext).
 """
 
 from __future__ import annotations
@@ -17,15 +20,15 @@ import hashlib
 import logging
 import shutil
 from pathlib import Path
-from typing import Iterable, Final
+from typing import Iterable, Final, Sequence
 
 from video.config import MEDIA_ROOT
-from video.probe import probe_media           # ffprobe helper
+from video.probe  import probe_media          # ffprobe helper
 
 _LOG: Final = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------#
-# ────────── helpers ────────────────────────────────────────────────────────#
+# ────────── internal helpers ───────────────────────────────────────────────#
 
 def _sha1(path: Path, *, buf_size: int = 1 << 20) -> str:
     """Return the hexadecimal SHA-1 of *path* (streamed, constant-memory)."""
@@ -47,37 +50,29 @@ def _target_for_digest(digest: str, suffix: str) -> Path:
 
 
 def _db():
-    """
-    Return the *fully-initialised* singleton ``video.DB`` without importing it
-    at module import-time.  Avoids circular-import headaches.
-    """
-    from video import DB  # noqa: WPS433 – intentional late import
+    """Return the lazily-initialised global MediaDB instance."""
+    from video import DB                         # late import avoids cycles
     return DB
 
 
 # ---------------------------------------------------------------------------#
-# ────────── public API ─────────────────────────────────────────────────────#
+# ────────── public API – file list ─────────────────────────────────────────#
 
 def ingest_files(
     paths: Iterable[str | Path],
     *,
     batch_name: str | None = None,
-) -> None:
+) -> int:
     """
     Move each *path* to the canonical store and register it in the DB.
 
-    Notes
-    -----
-    * If the destination file already exists it will **not** be overwritten
-      and the staging copy is discarded silently.
-    * Any exception on an individual file is logged and the ingest continues.
+    Returns the number of successfully processed files.
     """
     processed = 0
 
     for raw in paths:
         p = Path(raw)
 
-        # Quick sanity check – skip directories & missing files early
         if not p.is_file():
             _LOG.warning("Skip non-file %s", p)
             continue
@@ -105,10 +100,61 @@ def ingest_files(
 
             processed += 1
 
-        except Exception as exc:      # noqa: BLE001 – we really want *any* error
+        except Exception as exc:                  # noqa: BLE001
             _LOG.exception("Ingest failed for %s: %s", p, exc)
 
     _LOG.info("Ingest complete – %d item(s) processed", processed)
+    return processed
 
 
-__all__ = ["ingest_files"]
+# ---------------------------------------------------------------------------#
+# ────────── public API – whole folder convenience ──────────────────────────#
+
+def ingest_folder(
+    folder: str | Path,
+    *,
+    batch_name: str | None = None,
+    recursive: bool = True,
+    patterns: Sequence[str] = (".mp4", ".mov", ".mkv", ".avi", ".jpg", ".png"),
+) -> int:
+    """
+    Scan *folder* for media files and pass them to ``ingest_files``.
+
+    Parameters
+    ----------
+    folder
+        Directory to scan.
+    batch_name
+        Optional tag stored alongside each DB record.
+    recursive
+        Whether to descend into sub-directories.
+    patterns
+        Tuple of filename suffixes to match (case-insensitive).
+
+    Returns
+    -------
+    int
+        Count of processed files (same as ``ingest_files``).
+    """
+    folder = Path(folder).expanduser().resolve()
+    if not folder.is_dir():
+        raise FileNotFoundError(folder)
+
+    suf = tuple(p.lower() for p in patterns)
+    files = (
+        [p for p in folder.rglob("*") if p.suffix.lower() in suf]
+        if recursive else
+        [p for p in folder.iterdir()  if p.suffix.lower() in suf]
+    )
+    _LOG.info("Found %d candidate media files in %s", len(files), folder)
+
+    return ingest_files(files, batch_name=batch_name)
+
+
+# ---------------------------------------------------------------------------#
+# export names
+# ---------------------------------------------------------------------------#
+__all__ = [
+    "ingest_files",
+    "ingest_folder",
+]
