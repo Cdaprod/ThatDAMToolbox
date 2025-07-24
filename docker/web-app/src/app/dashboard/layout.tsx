@@ -1,5 +1,4 @@
 // /src/app/dashboard/layout.tsx
-import TopBar from '@/components/TopBar';
 import Sidebar from '@/components/Sidebar';
 
 export const metadata = { title: 'Dashboard • Video DAM' }; // optional
@@ -11,7 +10,6 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <TopBar />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
