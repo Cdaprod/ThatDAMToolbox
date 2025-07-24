@@ -40,4 +40,4 @@ class VideoMetaContainer(BaseModel):
     tech       : TechMeta | None       = None
     processing : ProcessingMeta | None = None
 
-__all__ = ["MetaBase", "TechMeta", "ImageMeta", "ProcessingMeta", "VideoMetaContainer]
+__all__ = ["MetaBase", "TechMeta", "ImageMeta", "ProcessingMeta", "VideoMetaContainer"]
