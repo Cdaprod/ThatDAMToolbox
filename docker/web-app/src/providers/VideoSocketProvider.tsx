@@ -10,7 +10,7 @@ interface Ctx {
 
 const VideoSocketCtx = createContext<Ctx | null>(null);
 
-export function VideoSocketProvider({ children }: { children: ReactNode }) {
+export default function VideoSocketProvider({ children }: { children: ReactNode }) {
   const { sendJSON } = useVideoSocket(
     process.env.NEXT_PUBLIC_WS_BASE_URL ?? 'ws://localhost:8080/ws/camera',
     {
