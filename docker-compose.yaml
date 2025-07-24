@@ -29,28 +29,28 @@ services:
       - "44"                            # video group (GID 44 on Pi OS)
     privileged: true                    # access /dev/video*
     environment:
-      PYTHONWARNINGS: "ignore::DeprecationWarning"
-      TZ: America/New_York
-      UVICORN_WORKERS: "1"              # dev: 1  •  prod: 4
-      VIDEO_FORCE_STDHTTP: "0"          # 1: Force stdlib HTTP (optional)
+      PYTHONWARNINGS:         "ignore::DeprecationWarning"
+      TZ:                     America/New_York
       
+      VIDEO_MODE:             "api"
+      UVICORN_WORKERS:        "1"              # dev: 1  •  prod: 4
+      VIDEO_FORCE_STDHTTP:    "0"          # 1: Force stdlib HTTP (optional)
       # ------------------------------------------------------------------
       # Make ALL mutable data live under one bind-mount ( /data )
       # ------------------------------------------------------------------
       
       # override any others if you want–but everything else will fall back into $VIDEO_DATA_DIR:
-      VIDEO_MODE=api
-      VIDEO_DATA_DIR:       /data
-      VIDEO_MEDIA_ROOT:     /data/media
-      VIDEO_PROCESSED_ROOT: /data/_PROCESSED
-      VIDEO_PREVIEW_ROOT:   /data/previews
-      VIDEO_LOG_DIR:        /data/logs
+      VIDEO_DATA_DIR:         /data
+      VIDEO_MEDIA_ROOT:       /data/media
+      VIDEO_PROCESSED_ROOT:   /data/_PROCESSED
+      VIDEO_PREVIEW_ROOT:     /data/previews
+      VIDEO_LOG_DIR:          /data/logs
       
       # ── WAL-only DB lives here (on local volume) ──
-      VIDEO_DB_PATH:        /var/lib/thatdamtoolbox/db/live.sqlite3
-      DB_SNAPSHOT_SECS:     "120"
-      VIDEO_STORAGE:        "auto"
-      VIDEO_DEBUG_BOOT:     "0"
+      VIDEO_DB_PATH:          /var/lib/thatdamtoolbox/db/live.sqlite3
+      DB_SNAPSHOT_SECS:       "120"
+      VIDEO_STORAGE:          "auto"
+      VIDEO_DEBUG_BOOT:       "0"
       
       # --- Storage backend selector -------------
       # VIDEO_STORAGE=sqlite                      # Default (no env needed)
