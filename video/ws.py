@@ -1,57 +1,60 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """
-video/ws.py  – tiny pub-sub hub for WebSocket clients
+video/ws.py
+──────────────────────────────────────────────────────────────────────────────
+Tiny pub-sub hub for Web-Socket clients.
 
-Mount once (already done in video.api) and call:
+•  Mount once (already done in video.api):
+       app.include_router(ws.router)
 
-    await broadcast("job_update", {"id": job_id, "progress": 0.42})
+•  Emit events from anywhere in the backend:
+       await ws.broadcast("job_update", {"id": job_id, "progress": 0.42})
 
-from anywhere in the backend.  All connected front-end clients receive:
+Clients receive JSON messages shaped like:
+       { "event": "<event>", "data": { … } }
 
-    { "event": "job_update", "data": { … } }
-
-If you need to push binary frames:
-
-    await broadcast_bytes(b"\xff\xd8…")   # raw JPEG
-
-Nothing else in the stack needs to change.
+Binary frames are supported via:
+       await ws.broadcast_bytes(b"\xff\xd8…")        # raw JPEG, etc.
 """
-
 from __future__ import annotations
+
 import asyncio
 import json
 from typing import Any, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-router = APIRouter()
+# --------------------------------------------------------------------------- #
+# Internal state                                                              #
+# --------------------------------------------------------------------------- #
+_router  = APIRouter()
 _clients: Set[WebSocket] = set()
-_lock = asyncio.Lock()                   # protects _clients
+_lock    = asyncio.Lock()                 # protects _clients set
 
-PING_INTERVAL = 20       # seconds   – tune to fit your infra
-PING_TIMEOUT  = 10       # seconds   – drop if no pong in time
+PING_INTERVAL = 20        # seconds
+PING_TIMEOUT  = 10        # seconds
 
 
-# ---------------------------------------------------------------------------#
-# WebSocket endpoint                                                         #
-# ---------------------------------------------------------------------------#
-@router.websocket("/ws")                # →  ws://host:port/ws
+# --------------------------------------------------------------------------- #
+# Web-Socket endpoint                                                         #
+# --------------------------------------------------------------------------- #
+@_router.websocket("/ws")                 # →  ws://<host>:<port>/ws
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
     async with _lock:
         _clients.add(ws)
 
-    # fire-and-forget heartbeat task
+    # fire-and-forget heartbeat
     ping_task = asyncio.create_task(_ping_loop(ws))
 
-    # confirm connection (nice for client-side logs)
+    # greet client (nice for console debugging)
     await ws.send_json({"event": "connected", "data": {"msg": "hi 👋"}})
 
     try:
-        # basic echo so devs can poke around from the browser console
+        # simple echo so devs can test from browser console
         while True:
             msg = await ws.receive_text()
-            # ignore pings: FastAPI replies automatically when we call .send_json
             try:
                 parsed = json.loads(msg)
             except Exception:
@@ -65,32 +68,28 @@ async def websocket_endpoint(ws: WebSocket):
             _clients.discard(ws)
 
 
-# ---------------------------------------------------------------------------#
-# Public helpers                                                             #
-# ---------------------------------------------------------------------------#
-async def broadcast(event: str, payload: Any) -> None:
-    """
-    Send one **JSON** message to *all* connected clients.
-
-    Usage:
-        await broadcast("job_update", {"id": "...", "progress": 0.5})
-    """
+# --------------------------------------------------------------------------- #
+# Public helpers                                                              #
+# --------------------------------------------------------------------------- #
+async def _broadcast_json(payload: dict[str, Any]) -> None:
     dead: list[WebSocket] = []
     async with _lock:
         for ws in _clients:
             try:
-                await ws.send_json({"event": event, "data": payload})
+                await ws.send_json(payload)
             except Exception:
                 dead.append(ws)
         for ws in dead:
             _clients.discard(ws)
 
 
+async def broadcast(event: str, data: Any) -> None:
+    """Push a JSON event to **all** connected clients."""
+    await _broadcast_json({"event": event, "data": data})
+
+
 async def broadcast_bytes(blob: bytes) -> None:
-    """
-    Push a binary payload (e.g. JPEG frame) to every client that is
-    currently subscribed.  Front-end must handle the binary type.
-    """
+    """Push a binary payload (e.g. JPEG) to every connected client."""
     dead: list[WebSocket] = []
     async with _lock:
         for ws in _clients:
@@ -102,23 +101,39 @@ async def broadcast_bytes(blob: bytes) -> None:
             _clients.discard(ws)
 
 
-# ---------------------------------------------------------------------------#
-# Internal heartbeat                                                         #
-# ---------------------------------------------------------------------------#
+# --------------------------------------------------------------------------- #
+# Internal heartbeat                                                          #
+# --------------------------------------------------------------------------- #
 async def _ping_loop(ws: WebSocket) -> None:
-    """
-    Send periodic pings; drop the connection if the client stops replying.
-    """
+    """Periodic ping; drop connection if client stops replying."""
     try:
         while True:
             await asyncio.sleep(PING_INTERVAL)
             try:
                 await ws.send_json({"event": "ping"})
-                # wait for client pong (or any message) within timeout
+                # wait for any response within timeout
                 await asyncio.wait_for(ws.receive_text(), timeout=PING_TIMEOUT)
             except asyncio.TimeoutError:
                 await ws.close(code=1001)  # going away / idle
                 break
     except Exception:
-        # any failure → connection will be cleaned up by caller
+        # any error → connection cleanup in caller
         pass
+
+
+# --------------------------------------------------------------------------- #
+# Facade object expected by `video.api`                                       #
+# --------------------------------------------------------------------------- #
+class _WSFacade:
+    """Tiny wrapper so `video.api` can `from video.ws import ws`."""
+
+    router = _router
+    broadcast = staticmethod(broadcast)
+    broadcast_bytes = staticmethod(broadcast_bytes)
+
+
+# This is what `video.api` imports:
+ws = _WSFacade()
+
+# Limit what `from video.ws import *` exposes
+__all__ = ["ws", "broadcast", "broadcast_bytes"]
