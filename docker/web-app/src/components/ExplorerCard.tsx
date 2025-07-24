@@ -6,7 +6,7 @@ import clsx    from 'clsx';
 import { FolderOpen, ArrowUpRight } from 'lucide-react';
 
 /* ---- lazy-load the full explorer --------------------------------------- */
-const AssetExplorer = dynamic(() => import('@/components/AssetExplorer'), {
+const AssetExplorer = dynamic(() => import('@/components/DAMExplorer'), {
   ssr: false,
   loading: () => (
     <div className="flex h-72 items-center justify-center">
