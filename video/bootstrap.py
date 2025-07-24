@@ -3,11 +3,11 @@
 """
 /video/bootstrap.py
 
-Single source of truth for process start-up:
-
-1.  Creates the singleton storage / DB backend  (`STORAGE`)
+Single source of truth for process start-up
+───────────────────────────────────────────
+1.  Creates the singleton storage / DB backend (`STORAGE`)
 2.  Fixes volume permissions inside a container
-3.  Loads every plug-in under **video.modules.\***               ↳ collects routers / CLI verbs
+3.  Loads every plug-in under **video.modules.\***   → collects routers / CLI verbs
 4.  Imports `video.core.auto` so legacy helpers are monkey-patched
 5.  Starts background WAL-checkpoint → snapshot thread
 6.  Exposes `start_server()` – chooses Docker, Uvicorn or stdlib HTTP
@@ -29,24 +29,17 @@ import time
 from pathlib import Path
 from typing import Optional
 
-# ────────────────────────────────────────────────────────────────────────────
-# Globals
-# ────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────  logging  ──────────────────────────────
 log = logging.getLogger("video.bootstrap")
 log.setLevel(logging.INFO)
 
-# --------------------------------------------------------------------------- #
-# 0.  Shared storage / DB instance                                            #
-# --------------------------------------------------------------------------- #
-from video.storage.auto import AutoStorage        # lightweight import
+# ────────────────────────── 0. storage singleton ───────────────────────
+from video.storage.auto import AutoStorage  # light import
+
 STORAGE = AutoStorage(os.getenv("VIDEO_STORAGE", "sqlite"))
+DB = STORAGE._db   # backward-compat alias
 
-# Handy alias still expected by a few older helpers
-DB = STORAGE._db                  # noqa: N806  (kept for backward compat)
-
-# --------------------------------------------------------------------------- #
-# 1.  File-system permissions inside containers                               #
-# --------------------------------------------------------------------------- #
+# ───────────── 1. fix permissions when running inside a container ──────
 def _fix_permissions(target: Path) -> None:
     uid = int(os.getenv("APP_UID", "1000"))
     gid = int(os.getenv("APP_GID", "1000"))
@@ -66,62 +59,50 @@ def _fix_permissions(target: Path) -> None:
 _fix_permissions(Path("/var/lib/thatdamtoolbox/db"))
 _fix_permissions(Path("/data"))
 
-# --------------------------------------------------------------------------- #
-# 2.  Plug-in discovery (video.modules.*)                                     #
-# --------------------------------------------------------------------------- #
+# ──────────────── 2. plug-in discovery (video.modules.*) ───────────────
 def _load_plugins() -> None:
     """
-    Import every package under ``video.modules`` **once**:
-
-    * Side-effects in each plug-in’s ``__init__.py`` will
-      – register module paths
-      – import its routes / commands
-    * Collected FastAPI routers end up in ``video.modules.routers``.
+    Import every package under ``video.modules`` exactly once.
+    Side-effects in each plug-in register routers and CLI verbs.
     """
     import pkgutil
     from video import modules  # namespace package
 
     for mod in pkgutil.iter_modules(modules.__path__, prefix="video.modules."):
-        # skip private folders like __pycache__
         if mod.name.split(".")[-1].startswith("__"):
             continue
         importlib.import_module(mod.name)
 
 
-_load_plugins()                    # do it right now
+_load_plugins()  # run immediately
 
-# --------------------------------------------------------------------------- #
-# 3.  Legacy shims (MediaDB.add_video, ingest_files, …)                       #
-# --------------------------------------------------------------------------- #
-import video.core.auto             # noqa: F401  (runs its own patching)
+# ──────────────── 3. legacy shims (MediaDB.add_video, …) ───────────────
+import video.core.auto  # noqa: F401  (patches on import)
 
-# --------------------------------------------------------------------------- #
-# 4.  WAL checkpoint → network snapshot                                       #
-# --------------------------------------------------------------------------- #
+# ─────────── 4. WAL checkpoint → network snapshot thread ───────────────
 def _start_db_backup() -> None:
     """
     Flush WAL and copy the DB to a share every *DB_SNAPSHOT_SECS* seconds.
-    Disable with VIDEO_DB_BACKUP_DISABLE=1
+    Disable with VIDEO_DB_BACKUP_DISABLE=1.
     """
     if os.getenv("VIDEO_DB_BACKUP_DISABLE", "0") == "1":
         return
 
     interval  = int(os.getenv("DB_SNAPSHOT_SECS", "300"))
     db_path   = Path(os.getenv("VIDEO_DB_PATH", str(DB.db_path)))
-    backup_to = Path(os.getenv("VIDEO_DB_BACKUP", "/data/db/media_index.sqlite3"))
+    backup_to = Path(os.getenv("VIDEO_DB_BACKUP",
+                               "/data/db/media_index.sqlite3"))
 
     def _loop() -> None:
         while True:
             try:
-                # 1️⃣ checkpoint WAL → db
                 with sqlite3.connect(db_path) as cx:
                     cx.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                # 2️⃣ atomic copy
                 tmp = backup_to.with_suffix(".tmp")
                 shutil.copy2(db_path, tmp)
                 tmp.replace(backup_to)
                 log.debug("DB snapshot → %s", backup_to)
-            except Exception as exc:
+            except Exception as exc:  # pragma: no-cover
                 log.warning("DB snapshot failed: %s", exc)
             time.sleep(interval)
 
@@ -130,9 +111,7 @@ def _start_db_backup() -> None:
 
 _start_db_backup()
 
-# --------------------------------------------------------------------------- #
-# 5.  Pretty banner for FastAPI                                               #
-# --------------------------------------------------------------------------- #
+# ─────────────────────── 5. fancy FastAPI banner ────────────────────────
 def _banner(app) -> None:
     from fastapi.routing import APIRoute
     from starlette.routing import Mount
@@ -146,9 +125,7 @@ def _banner(app) -> None:
             continue
 
 
-# --------------------------------------------------------------------------- #
-# 6.  Server launcher                                                         #
-# --------------------------------------------------------------------------- #
+# ───────────────────── 6. server launcher helpers ───────────────────────
 def _have_docker() -> bool:
     exe = shutil.which("docker")
     if not exe:
@@ -168,13 +145,13 @@ def start_server(
     **uvicorn_opts,
 ) -> None:
     """
-    Entrypoint used by `video.cli serve` **and** `python -m video ...`.
+    Entry-point used by `video.cli serve` **and** `python -m video`.
 
     1.  Prefer a host-level Docker container if available / requested.
     2.  Else run FastAPI + Uvicorn when installed.
-    3.  Else fall back to the stdlib HTTP server in `video.server`.
+    3.  Else fall back to the stdlib HTTP server in ``video.server``.
     """
-    # ­­­ 1) container on the host ------------------------------------------
+    # 1️⃣  container on the host
     if use_docker is None:
         use_docker = os.getenv("VIDEO_USE_DOCKER") == "1" or _have_docker()
 
@@ -184,11 +161,11 @@ def start_server(
                "-p", f"{port}:{port}",
                "-e", "VIDEO_FORCE_STDHTTP=0",
                image]
-        log.info("🛳️ Launching host container: %s", " ".join(cmd))
+        log.info("🛳️  Launching host container: %s", " ".join(cmd))
         subprocess.run(cmd, check=True)
         return
 
-    # ­­­ 2) in-process FastAPI / Uvicorn -----------------------------------
+    # 2️⃣  in-process FastAPI / Uvicorn
     force_std = os.getenv("VIDEO_FORCE_STDHTTP") == "1"
     have_fast = _iu.find_spec("fastapi") is not None
     have_uci  = _iu.find_spec("uvicorn") is not None
@@ -198,19 +175,23 @@ def start_server(
         import uvicorn
 
         _banner(app)
-
         workers = int(os.getenv("UVICORN_WORKERS",
                                 uvicorn_opts.pop("workers", "1")))
         app_ref = "video.api:app" if (workers > 1 or uvicorn_opts.get("reload")) else app
         uvicorn.run(app_ref, host=host, port=port, workers=workers, **uvicorn_opts)
         return
 
-    # ­­­ 3) stdlib fallback -------------------------------------------------
+    # 3️⃣  std-lib fallback
     from video.server import serve
     serve(host=host, port=port)
 
 
-# --------------------------------------------------------------------------- #
-# 7.  Initialise graceful shutdown / ^C hooks                                 #
-# --------------------------------------------------------------------------- #
-import video.lifecycle                 # noqa: F401  (handles SIGTERM + atexit)
+# ─────────── 7. graceful shutdown / ^C hooks  (SIGTERM, atexit) ─────────
+import video.lifecycle  # noqa: F401
+
+# ───────────────────── 8. public re-exports ─────────────────────────────
+__all__ = [
+    "STORAGE",
+    "DB",
+    "start_server",
+]
