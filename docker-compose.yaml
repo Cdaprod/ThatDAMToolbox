@@ -39,6 +39,7 @@ services:
       # ------------------------------------------------------------------
       
       # override any others if you want–but everything else will fall back into $VIDEO_DATA_DIR:
+      VIDEO_MODE=api
       VIDEO_DATA_DIR:       /data
       VIDEO_MEDIA_ROOT:     /data/media
       VIDEO_PROCESSED_ROOT: /data/_PROCESSED
