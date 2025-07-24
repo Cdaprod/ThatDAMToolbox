@@ -13,7 +13,7 @@ FROM node:18-alpine AS base
 # Everything below /app
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=development      # may be overridden later
+ENV NODE_ENV=development
 
 ##############################################################################
 # Stage 1 ▸ Install dependencies only once
