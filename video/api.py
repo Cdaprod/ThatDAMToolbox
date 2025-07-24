@@ -23,7 +23,7 @@ from video.helpers      import index_folder_as_batch, model_validator
 from video.core         import get_manifest as core_get_manifest
 from video.models       import Manifest, VideoArtifact, Slice, CardResponse, VideoCard, SceneThumb
 from video.storage.base import StorageEngine
-from video.bootstrap    import STORAGEm
+from video.bootstrap    import STORAGE
 from video              import modules
 
 from video.ws           import ws
