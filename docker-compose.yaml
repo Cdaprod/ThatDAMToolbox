@@ -109,7 +109,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./docker/web-app:/app:rw
-      - node_modules:/app/node_modules
+      #- node_modules:/app/node_modules
       - next-build:/app/.next
     depends_on:
       - video-api
@@ -143,4 +143,4 @@ volumes:
   db_wal:
     driver: local
   #node_modules:
-  #next-build:
+  next-build:
