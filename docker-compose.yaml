@@ -29,9 +29,9 @@ services:
       - "44"                            # video group (GID 44 on Pi OS)
     privileged: true                    # access /dev/video*
     environment:
-      PYTHONWARNINGS:         "ignore::DeprecationWarning"
-      TZ:                     America/New_York
-      
+environment:
+      PYTHONWARNINGS:   "ignore::DeprecationWarning,ignore::UserWarning:google.protobuf.runtime_version"
+      TZ:               "America/New_York"
       VIDEO_MODE:             "api"
       UVICORN_WORKERS:        "1"              # dev: 1  •  prod: 4
       VIDEO_FORCE_STDHTTP:    "0"          # 1: Force stdlib HTTP (optional)
