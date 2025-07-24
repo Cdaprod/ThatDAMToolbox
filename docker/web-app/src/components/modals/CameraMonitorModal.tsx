@@ -1,4 +1,4 @@
-// /docker/web-app/components/modals/CameraMonitorModal.tsx
+// /docker/web-app/src/components/modals/CameraMonitorModal.tsx
 'use client';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';

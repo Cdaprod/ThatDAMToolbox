@@ -36,4 +36,8 @@ class ProcessingMeta(MetaBase):
     worker_id    : str      | None = None
     notes        : Dict[str, Any] = Field(default_factory=dict)
 
-__all__ = ["MetaBase", "TechMeta", "ImageMeta", "ProcessingMeta"]
+class VideoMetaContainer(BaseModel):
+    tech       : TechMeta | None       = None
+    processing : ProcessingMeta | None = None
+
+__all__ = ["MetaBase", "TechMeta", "ImageMeta", "ProcessingMeta", "VideoMetaContainer]

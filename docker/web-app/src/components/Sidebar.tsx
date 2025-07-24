@@ -1,4 +1,4 @@
-// /docker/web-app/components/Sidebar.tsx
+// /docker/web-app/src/components/Sidebar.tsx
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';

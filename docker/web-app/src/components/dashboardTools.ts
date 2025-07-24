@@ -1,4 +1,4 @@
-// /docker/web-app/components/dashboardTools.ts
+// /docker/web-app/src/components/dashboardTools.ts
 import {
   FaFolderOpen,
   FaVideo,

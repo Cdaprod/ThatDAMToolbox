@@ -1,0 +1,785 @@
+A strategy that ages well
+
+What you want is forward-compatibility for every asset that ever passes through the system, even if the "definition of done" (extra metadata fragments, new embedding models, deeper hierarchy levels …) keeps evolving.
+The recipe is:
+
+Goal	Design choice
+Know what still needs work	Per-layer provenance – store, next to every vector/fragment, what produced it (model id, version, code-hash) and when.
+Generate missing layers now	Lazy & on-demand – a "gap-detector" that looks at what an asset already has and only schedules the missing bits.
+Generate new layers later	Bulk re-index jobs – a CLI/REST verb that rewrites provenance rules and enqueues every asset that is now "out-of-date".
+Avoid blocking uploads	Two-phase ingest – L0 tech-metadata + hash in the ingest path; heavy L1-L3 embedding extraction in a background worker pool.
+Allow granular queries	Hierarchical IDs – {video_uuid}-{level}-{slice_id} so you can request "all L2 vectors for ", or "give me L3 slices where meta.action==chopping".
+
+
+⸻
+
+1  Provenance schema (minimal)
+
+{
+  "uuid": "…",        // video
+  "levels": {
+    "L0": [{
+      "vector": …,
+      "producer": {           // provenance
+        "type": "OpenCLIP",
+        "version": "v1.2.0",   // semantic or git SHA
+        "created_at": "2025-07-23T14:33:09Z"
+      }
+    }],
+    "L1": [ /* scene vectors */ ],
+    "L2": [ /* beat vectors  */ ],
+    "L3": [ /* key-frame     */ ]
+  },
+  "tech_meta": {...},         // ffprobe
+  "extra_meta": {             // any MetaBase fragment(s)
+    "gps": {...},
+    "ml": {...}
+  }
+}
+
+The important bit is the producer sub-object inside every vector or fragment.
+
+⸻
+
+2  Gap detector (runs synchronously in the ingest path)
+
+from datetime import datetime
+from video.modules.dam.services import get_vector_store
+from packaging import version   # pip install packaging
+
+EMBEDDING_RULES = {
+    "L0": {"type": "OpenCLIP", "min_version": "v1.2.0"},
+    "L1": {"type": "OpenCLIP", "min_version": "v1.2.0"},
+    "L2": {"type": "OpenCLIP", "min_version": "v1.2.0"},
+    "L3": {"type": "OpenCLIP", "min_version": "v1.2.0"},
+}
+
+async def missing_layers(video_uuid: str) -> list[str]:
+    vs = get_vector_store()
+    info = await vs.get_video_info(video_uuid)
+    need: list[str] = []
+
+    for lvl, rule in EMBEDDING_RULES.items():
+        have = info["levels"].get(lvl, 0)
+        if have == 0:
+            need.append(lvl)
+            continue
+        # look at just the first vector’s provenance
+        prod = (await vs.get_video_vector(video_uuid, lvl))["producer"]
+        if (prod["type"] != rule["type"]
+            or version.parse(prod["version"]) < version.parse(rule["min_version"])):
+            need.append(lvl)
+    return need
+
+This returns ["L1","L2"] etc. The caller simply enqueues those layers for async processing.
+
+⸻
+
+3  Bulk "upgrade" (retroactive job)
+
+You already have video dam reindex --version vX and
+POST /dam/system/reindex in the plug-in.
+Wire both to the same helper (services.reindex_all_videos) and you have one command that:
+	1.	iterates over every video in the vector-store,
+	2.	removes / overwrites the outdated vectors,
+	3.	stores fresh ones with the new producer signature.
+
+Because reindex_all_videos() is idempotent (it tags vectors with the version string) you can re-run it safely any time you ship a new model or add a brand-new level (say L4 = Face-track snippets).
+
+⸻
+
+4  Referencing "just the slice I care about"
+
+You already slice a video into VideoSlice objects that carry:
+
+level: str        # "L1" | "L2" | "L3"
+start_time: float
+end_time:   float
+metadata:   dict  # e.g. {"action":"chopping lettuce"}
+cache_key:  str   # SHA256 of the above fields
+
+Use slice_id = video_uuid + "-" + cache_key as the external reference:
+	•	/dam/search   → returns slice_id + level + score
+	•	/dam/videos/{uuid} → returns list of slices with their slice_id
+	•	/dam/search/similar/{slice_id} (optional) → nearest neighbours for that part only
+
+This protects you from ambiguous offsets once you allow re-encoding or trimming of the parent video, because the hash includes the time range.
+
+⸻
+
+5  Keeping the backlog small
+	•	Every upload → gap detector → schedule background tasks only for the missing work.
+	•	Nightly cron (or on-push) → run dam reindex --version latest – it is incremental because of provenance checks.
+	•	On-demand → user asks: "search all clips where chopping lettuce happens" – if a particular video lacks L2 vectors the API can detect it, queue one-off extraction, and return a "pending" status until finished.
+
+⸻
+
+Put it together
+	1.	Provenance in the schema makes "is this good enough?" answerable.
+	2.	Gap detector plus background queue keeps new ingests light-weight.
+	3.	Re-index command lets you retro-fill anything you forgot months ago.
+	4.	Hierarchical IDs let you talk about "that L3 key-frame" unambiguously.
+
+All your existing code pieces (factory, batch → DAM hook, reindex helper, routes) already exist; the only thing to add is the tiny provenance dict and the gap detector function, then wire those two calls in:
+
+upload → ingest_video()      → store L0 → bg.queue(_process_levels)     (already there)
+cron   → dam reindex …        → regenerate according to new rules      (already there)
+
+With that, every asset--past or future--can always be brought up to the latest spec with a single command, while day-to-day uploads stay snappy.
+
+Short answer
+	•	The "gap-detector" and provenance logic live in the video.modules.dam plug-in (services.py, models/storage.py, models/embeddings.py).
+	•	Your core pipeline (video/core/*) doesn’t need to change--its job is still to scan → create BatchArtifact → hand over to whatever modules want to enrich the data.
+	•	Everything I described is a thin new layer on top of the DAM plug-in you already have; you only need to add a few lines, not redesign the whole stack.
+
+⸻
+
+Where each piece belongs
+
+Concern	File / layer	Work still to do
+Provenance dict attached to every stored vector	video/modules/dam/models/embeddings.py – when you return a vector, include{"producer": {...}} in the dict you push to the store	2 lines per generate_* helper
+Storage records the provenance	video/modules/dam/models/storage.py → in store_video / store_level_vectors just keep whatever embedding["producer"] you get	already keeps arbitrary metadata → nothing exotic
+Gap-detector (missing_layers())	put it in video/modules/dam/services.py so both CLI & REST can call it	copy-paste the snippet, wire it into ingest_video() before background queue
+Bulk re-index	you already have reindex_all_videos() plus the CLI/REST verbs; just make it call missing_layers() first so it becomes incremental	3-4 lines
+Hierarchical slice ids	VideoSlice already has cache_key; expose a helperslice_id(video_uuid, slice_obj) in hierarchy.py	1 helper function
+Background queue	already exists (_process_levels, BackgroundTasks)	no change
+
+Everything else (BatchArtifact, core pipeline, plug-in loader, bootstrap, etc.) is already wired correctly.
+
+⸻
+
+Minimal code drops
+
+1 ▪ Embed provenance when you build a vector
+
+# models/embeddings.py  (inside generate_* helpers)
+
+return {
+    "vector"   : embedding,
+    "start_time": slice_obj.start_time,
+    "end_time"  : slice_obj.end_time,
+    "metadata"  : slice_obj.metadata,
+    "producer"  : {
+        "type"      : "OpenCLIP",
+        "version"   : "v1.2.0",
+        "created_at": datetime.utcnow().isoformat() + "Z",
+    },
+}
+
+2 ▪ Gap detector in services.py
+
+async def missing_layers(video_uuid: str) -> list[str]:
+    from packaging import version
+    vs = get_vector_store()
+    info = await vs.get_video_info(video_uuid)
+    need = []
+    for lvl, rule in EMBEDDING_RULES.items():
+        have = info["levels"].get(lvl, 0)
+        if have == 0:
+            need.append(lvl); continue
+        prod = (await vs.get_video_vector(video_uuid, lvl))["producer"]
+        if (prod["type"] != rule["type"]
+            or version.parse(prod["version"]) < version.parse(rule["min_version"])):
+            need.append(lvl)
+    return need
+
+3 ▪ Use it during ingest
+
+# routes.py  inside ingest_video()
+
+missing = await missing_layers(vid)
+for lvl in missing:
+    bg.add_task(_generate_level, vid, path, lvl)   # your existing helper
+
+4 ▪ Make re-index incremental
+
+# services.reindex_all_videos()
+need = await missing_layers(uuid)
+for lvl in need:
+    # regenerate just that level …
+
+
+⸻
+
+Result
+	•	Old videos gain new layers the first time you touch them or when you run video dam reindex.
+	•	New uploads are light-weight (only L0 is blocking) and the rest happens async.
+	•	You can reference any level/slice by a stable slice_id, e.g.
+c774…-2fa1… → "beat #4 where the cook chops lettuce".
+
+No changes to core logic or the bootstrap sequence are required; you are only enriching the DAM plug-in.
+
+Yes -- those helpers are exactly the kind of thing you’d park in video/modules/dam/transforms/…
+
+Think of "transforms" as the DAM-side analogue of the core BatchProcessor stages:
+
+Layer	Responsibility	Lives in
+core	generic file → BatchArtifact orchestration	video/core/…
+dam	domain-specific enrichment (scene split, embeddings, provenance checks, gap detector, etc.)	video/modules/dam/transforms/*
+
+So the provenance stamping, gap-detector, incremental re-embedding, key-frame extraction … those are all transforms that operate after a video is known to the system (i.e. after BatchArtifact creation).
+
+⸻
+
+Suggested structure
+
+video/modules/dam/
+└── transforms/
+    ├── __init__.py
+    ├── base.py              # common ABC
+    ├── visual_clip.py       # OpenCLIP → vector + provenance
+    ├── audio_whisper.py     # Whisper → transcript + SBERT vector
+    ├── motion_videomae.py   # VideoMAE/BaFormer → motion vector
+    ├── hierarchy_scenes.py  # PySceneDetect → L1 slices
+    ├── gap_detector.py      # finds missing / outdated layers
+    └── reindex.py           # orchestration helper
+
+	•	Each file defines one class XxxTransform(BaseTransform)
+(BaseTransform just enforces .run(video_uuid, path, **ctx) → dict)
+	•	Register them in video/modules/dam/transforms/__init__.py:
+
+from .base import registry
+from .visual_clip import VisualClip
+from .audio_whisper import AudioWhisper
+# …
+
+
+	•	services.py (or routes.py background tasks) just asks the registry to
+resolve & execute the transforms that are missing/out-of-date:
+
+from video.modules.dam.transforms import registry
+
+missing = await registry["gap_detector"].run(uuid_, path)
+
+for tr_name in missing:        # e.g. ["visual_clip", "motion_videomae"]
+    bg.add_task(registry[tr_name].run, uuid_, path)
+
+
+
+⸻
+
+How this fits with what we already wired
+	1.	Core still stops at "file is indexed".
+	2.	DAM ingest endpoint (routes.py):
+	•	stores L0 immediately
+	•	calls gap_detector → figures out which transforms are needed
+	•	schedules them as background tasks
+	3.	reindex_all_videos() just loops over videos and forces
+gap_detector+transforms again (optionally with a min_version).
+
+No extra plumbing in __main__, bootstrap or api.py is required; the transform registry is imported when DAM’s plug-in is loaded (step ② of bootstrap), so everything is available everywhere.
+
+⸻
+
+TL;DR
+
+The "provenance + gap-detector + incremental embedding" work is precisely what you meant by "add transforms to the DAM module".
+Just drop each self-contained operation into video/modules/dam/transforms/, register it, and let the DAM service/CLI call the registry when it needs to enrich or back-fill data.
+
+In my docker/web-app/**/** I intend to be able to drag and drop files in my DAMExplorer UI and icon files/ folders/ /list trees and tags… given that I can click on a media and do things with it, I would have a ui/ux friendly way of doing things with these file artifacts that I can also batch and that can be searched semantically in a very simple search bar. This gets to be more complex in actual terms of making it happen, we have most recently worked on camera recorder creating these video artifacts when record start stop like a normal camera would, and these get created in the specific media location and metadata (like all things) video in particular. You still with me? 
+
+Absolutely --I’m with you, and the pieces you already have line up nicely with that vision.
+Below is a high-level "glue plan" showing how the UI you described can ride on top of the infrastructure we’ve put in place, plus the extra endpoints / events you’ll want to expose so the explorer stays real-time and drag-and-drop-friendly.
+
+⸻
+
+1 Drag-&-Drop ingest flow
+
+Step	What the browser does	Backend piece	Notes
+① user drops files/folders	JS reads them into an HTML <input type=file multiple>	POST /api/v1/upload (already in video.modules.uploader.routes)	Large files stream straight to _INCOMING/web/ so you never fill browser memory.
+② immediate feedback	returns {"status":"queued","files":[…]}	respond synchronously	Explorer shows a toast "queued ✅".
+③ background ingest	uploader’s ingest_files() runs → core ingest_folder()	legacy files are moved → hashed → DB; a BatchArtifact is produced	At this moment only the core batch exists.
+④ DAM enrichment	DAM’s gap-detector transform kicks in (see previous message)	scheduled as background tasks	Produces L0–L3 vectors, thumbnails, etc.
+
+Real-time UI progress
+	•	Use the tiny in-memory _jobs{} dict you already expose (/jobs/{id}) or
+	•	Emit WebSocket events (you have video.ws) so the explorer can show a live "spinner → done" overlay per file.
+
+⸻
+
+2 Folder tree & tags
+	•	You’re already storing batch_name and full paths in SQLite.
+Drive the left-hand folder tree directly from SELECT DISTINCT batch or from the new DAM vector-store’s videos table.
+	•	Tagging:
+	•	Add a generic JSON tags: List[str] column (or Pydantic field) to VideoArtifact metadata.
+	•	Expose PATCH /dam/videos/{uuid} to update tags (and any other user-editable fields).
+
+⸻
+
+3 Semantic search bar
+	•	Front-end just POST /dam/search with the free-text query.
+	•	Response already gives you uuid, timecode, score and level → build result cards.
+
+⸻
+
+4 Camera-recorder integration
+
+Your HW-accelerated recorder is already auto-patched by video.core.auto:
+	1.	HWAccelRecorder.stop_recording() fires.
+	2.	_patch_hwcapture() calls core ingest_folder() on the capture directory.
+	3.	Exactly the same DAM transforms run, so the footage appears in the explorer a few seconds later.
+
+No extra wiring needed--just make sure the recorder writes into a watched location (or passes the capture dir to ingest_folder() directly).
+
+⸻
+
+5 Minimal additions you still need
+	1.	Web-socket broadcast for:
+	•	batch created (batch_id, name, path list)
+	•	batch finished (success / fail counts)
+	•	dam-transform finished (uuid, levels added)
+	2.	Thumbnail endpoint
+You referenced /static/thumbs/{sha1}_{t}.jpg in the sample cards--expose exactly that folder via StaticFiles.
+	3.	Tag CRUD on videos (simple PATCH/GET/DELETE endpoints).
+	4.	gap_detector transform implementation (the "what’s missing?" step).
+Skeleton: compare vector versions & existing slices, return a list of transform names to run.
+
+⸻
+
+TL;DR
+	•	All ingestion paths--drop-zone, recorder, old CLI--already converge via ingest_folder() → core batch → DAM transforms.
+	•	The explorer UI only needs:
+	•	POST /api/v1/upload (done)
+	•	GET /jobs/{id} or WebSocket events for progress
+	•	GET /dam/videos, /dam/videos/{uuid} (already)
+	•	POST /dam/search (already)
+	•	Optional PATCH routes for tags / custom metadata.
+	•	"Transforms" are the right abstraction for adding or re-generating any enrichment layer (embeddings, thumbnails, transcripts, …).
+
+Let me know which of those missing pieces you’d like fleshed out first--happy to draft code stubs or API specs for any of them.
+
+
+
+``` 
+Cdaprod/ThatDamToolbox/.
+├── data
+│   ├── db
+│   │   ├── live.init.lock
+│   │   ├── live.sqlite3
+│   │   ├── live.sqlite3-shm
+│   │   └── live.sqlite3-wal
+│   ├── logs
+│   ├── media
+│   ├── previews
+│   └── tmp
+├── docker
+│   ├── base
+│   │   └── Dockerfile
+│   ├── compose
+│   │   ├── docker-compose.infra.yaml
+│   │   └── docker-compose.prod.yaml
+│   ├── README.md
+│   └── web-app
+│       ├── Dockerfile
+│       ├── next.config.js
+│       ├── next-env.d.ts
+│       ├── node_modules
+│       ├── package.json
+│       ├── package-lock.json
+│       ├── postcss.config.js
+│       ├── README.md
+│       ├── src
+│       │   ├── app
+│       │   │   ├── api
+│       │   │   │   ├── health
+│       │   │   │   │   └── route.ts
+│       │   │   │   └── […path]
+│       │   │   │       └── route.ts
+│       │   │   ├── dashboard
+│       │   │   │   ├── camera-monitor
+│       │   │   │   │   ├── layout.tsx
+│       │   │   │   │   └── page.tsx
+│       │   │   │   ├── dam-explorer
+│       │   │   │   │   └── page.tsx
+│       │   │   │   ├── explorer
+│       │   │   │   │   └── page.tsx
+│       │   │   │   ├── layout.tsx
+│       │   │   │   ├── live
+│       │   │   │   │   └── page.tsx
+│       │   │   │   ├── motion
+│       │   │   │   │   └── page.tsx
+│       │   │   │   ├── page.tsx
+│       │   │   │   ├── README.md
+│       │   │   │   └── witness
+│       │   │   │       └── page.tsx
+│       │   │   ├── layout.tsx
+│       │   │   ├── MainLayout.tsx
+│       │   │   └── page.tsx
+│       │   ├── components
+│       │   │   ├── CameraMonitor.tsx
+│       │   │   ├── Cards.tsx
+│       │   │   ├── DAMApp.tsx
+│       │   │   ├── DAMExplorer.tsx
+│       │   │   ├── dashboardTools.ts
+│       │   │   ├── modals
+│       │   │   │   ├── CameraMonitorModal.tsx
+│       │   │   │   └── DAMExplorerModal.tsx
+│       │   │   ├── Sidebar.tsx
+│       │   │   └── ToolCard.tsx
+│       │   ├── hooks
+│       │   │   └── useTheme.ts
+│       │   ├── lib
+│       │   │   ├── apiAssets.ts
+│       │   │   ├── useVideoEvents.ts
+│       │   │   ├── useVideoSocket.ts
+│       │   │   ├── useVideoWs.ts
+│       │   │   ├── videoApi.ts
+│       │   │   ├── videoQueries.ts
+│       │   │   └── video.ts
+│       │   ├── providers
+│       │   │   ├── AppProviders.tsx
+│       │   │   ├── AssetProvider.tsx
+│       │   │   ├── CaptureContext.tsx
+│       │   │   ├── CaptureProviderImpl.tsx
+│       │   │   ├── CaptureProvider.tsx
+│       │   │   ├── ModalProvider.tsx
+│       │   │   ├── QueryProvider.tsx
+│       │   │   ├── README.md
+│       │   │   └── VideoSocketProvider.tsx
+│       │   └── styles
+│       │       └── globals.css
+│       ├── tailwind.config.js
+│       └── tsconfig.json
+├── docker-compose.yaml
+├── Dockerfile
+├── docs
+│   ├── API-LOGS
+│   ├── CAMERA-MONITOR-TODO.md
+│   ├── CLOUD-INIT-DEPLOYMENT.md
+│   ├── EVAL_AND_ENHANCEMENT_DAM_ARCH.md
+│   └── YT_VID_CONTEXT.md
+├── entrypoint.sh
+├── main.py
+├── Media-Indexer-Stdlib-Prototype
+│   ├── data
+│   │   ├── db
+│   │   └── media
+│   └── video
+├── README.md
+├── requirements.txt
+├── run_video.py
+├── scripts
+│   ├── build-push-multiarch.sh
+│   ├── docker-build-tag.sh
+│   ├── list_functions.py
+│   ├── list_functions_recursive.py
+│   └── manual_wal_db_sync.sh
+├── setup.py
+├── sqlite
+├── tests
+│   ├── api_client.py
+│   ├── conftest.py
+│   ├── curl-examples.sh
+│   ├── demo_api.py
+│   ├── docker-build-run.sh
+│   ├── test_api_client.py
+│   ├── test_api.py
+│   ├── test_cli.py
+│   └── test_integration.py
+└── video
+    ├── api.py
+    ├── bootstrap.py
+    ├── cli.py
+    ├── commands.py
+    ├── config.py
+    ├── core
+    │   ├── artifacts
+    │   │   ├── audio.py
+    │   │   ├── base.py
+    │   │   ├── batch.py
+    │   │   ├── document.py
+    │   │   ├── __init__.py
+    │   │   └── video.py
+    │   ├── auto.py
+    │   ├── facades
+    │   │   ├── __init__.py
+    │   │   └── video_facade.py
+    │   ├── factory.py
+    │   ├── ingest.py
+    │   ├── __init__.py
+    │   ├── processor.py
+    │   ├── proxy
+    │   │   └── media_proxy.py
+    │   └── README.md
+    ├── dam
+    │   └── __pycache__
+    │       ├── __init__.cpython-312.pyc
+    │       └── main.cpython-312.pyc
+    ├── db.py
+    ├── helpers
+    │   ├── artifact_bridge.py
+    │   ├── __init__.py
+    │   └── pydantic_compat.py
+    ├── hwaccel.py
+    ├── __init__.py
+    ├── lifecycle.py
+    ├── __main__.py
+    ├── models
+    │   └── __init__.py
+    ├── modules
+    │   ├── dam
+    │   │   ├── commands.py
+    │   │   ├── __init__.py
+    │   │   ├── models
+    │   │   │   ├── embeddings.py
+    │   │   │   ├── faiss_store.py
+    │   │   │   ├── hierarchy.py
+    │   │   │   ├── __init__.py
+    │   │   │   └── storage.py
+    │   │   ├── module.cfg
+    │   │   ├── README.md
+    │   │   ├── routes.py
+    │   │   └── services.py
+    │   ├── explorer
+    │   │   ├── commands.py
+    │   │   ├── __init__.py
+    │   │   └── routes.py
+    │   ├── ffmpeg_console
+    │   │   ├── commands.py
+    │   │   ├── ffmpeg_console.py
+    │   │   ├── __init__.py
+    │   │   ├── README.md
+    │   │   ├── requirements.txt
+    │   │   └── routes.py
+    │   ├── hwcapture
+    │   │   ├── audiosync.py
+    │   │   ├── camerarecorder.py
+    │   │   ├── commands.py
+    │   │   ├── hwcapture.py
+    │   │   ├── __init__.py
+    │   │   ├── module.cfg
+    │   │   ├── __pycache__
+    │   │   │   ├── __init__.cpython-312.pyc
+    │   │   │   └── routes.cpython-312.pyc
+    │   │   ├── README.md
+    │   │   ├── requirements.txt
+    │   │   ├── routes.py
+    │   │   └── tracker.py
+    │   ├── __init__.py
+    │   ├── motion_extractor
+    │   │   ├── commands.py
+    │   │   ├── __init__.py
+    │   │   ├── module.cfg
+    │   │   ├── motion_extractor.py
+    │   │   ├── __pycache__
+    │   │   │   ├── commands.cpython-312.pyc
+    │   │   │   ├── __init__.cpython-312.pyc
+    │   │   │   ├── motion_extractor.cpython-312.pyc
+    │   │   │   └── routes.cpython-312.pyc
+    │   │   ├── README.md
+    │   │   ├── requirements.txt
+    │   │   └── routes.py
+    │   ├── __pycache__
+    │   │   └── __init__.cpython-312.pyc
+    │   ├── trim_idle
+    │   │   ├── commands.py
+    │   │   ├── __init__.py
+    │   │   ├── __pycache__
+    │   │   │   ├── __init__.cpython-312.pyc
+    │   │   │   └── routes.cpython-312.pyc
+    │   │   ├── routes.py
+    │   │   └── trimmer.py
+    │   └── uploader
+    │       ├── cli.py
+    │       ├── __init__.py
+    │       └── routes.py
+    ├── paths.py
+    ├── preview.py
+    ├── probe.py
+    ├── __pycache__
+    │   ├── bootstrap.cpython-312.pyc
+    │   ├── cli.cpython-312.pyc
+    │   ├── commands.cpython-312.pyc
+    │   ├── config.cpython-312.pyc
+    │   ├── db.cpython-312.pyc
+    │   ├── __init__.cpython-312.pyc
+    │   ├── __main__.cpython-312.pyc
+    │   ├── preview.cpython-312.pyc
+    │   ├── probe.cpython-312.pyc
+    │   ├── scanner.cpython-312.pyc
+    │   ├── server.cpython-312.pyc
+    │   └── sync.cpython-312.pyc
+    ├── README.md
+    ├── scanner.py
+    ├── schema.sql
+    ├── server.py
+    ├── storage
+    │   ├── auto.py
+    │   ├── base.py
+    │   ├── __pycache__
+    │   │   ├── auto.cpython-312.pyc
+    │   │   └── base.cpython-312.pyc
+    │   ├── README.md
+    │   └── wal_proxy.py
+    ├── sync.py
+    ├── test_script.py
+    ├── tui.py
+    ├── video.1
+    ├── video-2.cfg
+    ├── video.cfg
+    ├── web
+    │   ├── __init__.py
+    │   ├── static
+    │   │   ├── app.js
+    │   │   ├── components
+    │   │   │   ├── batch-card.js
+    │   │   │   ├── dam-client.js
+    │   │   │   ├── dam-explorer.js
+    │   │   │   ├── explorer.js
+    │   │   │   ├── ffmpeg-console.js
+    │   │   │   ├── live-preview.js
+    │   │   │   ├── object-renderer.js
+    │   │   │   ├── upload-card.js
+    │   │   │   └── video-card.js
+    │   │   ├── favicon
+    │   │   │   ├── android-chrome-192x192.png
+    │   │   │   ├── android-chrome-512x512.png
+    │   │   │   ├── apple-touch-icon.png
+    │   │   │   ├── favicon-16x16.png
+    │   │   │   ├── favicon-32x32.png
+    │   │   │   ├── favicon.ico
+    │   │   │   └── site.webmanifest
+    │   │   └── styles.css
+    │   └── templates
+    │       ├── base.html
+    │       ├── camera-monitor.html
+    │       ├── dam-modules.html
+    │       ├── dashboard.html
+    │       └── partials
+    │           ├── _analytics_card.html
+    │           ├── _batch_card.html
+    │           ├── _batch_ops_card.html
+    │           ├── _explorer_card.html
+    │           ├── _ffmpeg_card.html
+    │           ├── _library_card.html
+    │           ├── _motion_card.html
+    │           ├── _preview_card.html
+    │           ├── _search_card.html
+    │           ├── _sidebar.html
+    │           ├── _upload_card.html
+    │           ├── _videos_card.html
+    │           └── _witness_card.html
+    └── ws.py
+
+69 directories, 240 files
+``` 
+
+
+Awesome -- with the directory tree locked-in we can start layering features on top of it instead of reshuffling code.
+
+Below is a concise roadmap of "next-up" items (all incremental; you can cherry-pick). After the list I’ve sketched the first two in more detail so you can dive straight into code if you want.
+
+Feature	Purpose	Touches	Effort
+1. Batch-progress WebSocket	Live progress bar in DAMExplorer while BatchProcessor works.	video/core/processor.py, video/ws/*.py, front-end hook	★★☆☆☆
+2. Thumbnail service	Serve data/previews/* so cards show image snapshots & timeline scrubs.	video/api.py (StaticFiles mount)	★☆☆☆☆
+3. Tag patch endpoint	Quickly annotate / correct artefacts from UI.	dam/routes.py + tiny store helper	★★☆☆☆
+4. Pluggable DAM "transforms"	Extra enrichments (transcript, OCR, motion) that run after vectors.	new video/modules/dam/transforms/ + background worker tweak	★★★☆☆
+5. Gap detector	Auto-queue re-embeds when a model version bumps.	services.py heartbeat / cron-style loop	★★★★☆
+
+
+⸻
+
+1 Batch-progress WebSocket (backend side)
+
+video/ws/events.py
+
+from fastapi import WebSocket
+from collections import defaultdict
+import asyncio, json, logging
+
+log = logging.getLogger("video.ws.events")
+_subscribers: dict[str, set[WebSocket]] = defaultdict(set)
+
+async def subscribe(channel: str, ws: WebSocket):
+    await ws.accept()
+    _subscribers[channel].add(ws)
+    try:
+        while True:          # keep connection open
+            await ws.receive_text()
+    except Exception:
+        pass
+    finally:
+        _subscribers[channel].discard(ws)
+
+async def broadcast(channel: str, event: dict):
+    dead = []
+    msg  = json.dumps(event)
+    for ws in _subscribers[channel]:
+        try:
+            await ws.send_text(msg)
+        except Exception:
+            dead.append(ws)
+    for ws in dead:
+        _subscribers[channel].discard(ws)
+
+video/core/processor.py (inside _process_video loop)
+
+from video.ws.events import broadcast
+
+# after batch.complete_video(...)
+await broadcast("batch_progress", {
+    "batch_id": batch.id,
+    "processed": batch.processed_videos,
+    "total": batch.total_videos,
+})
+
+If you don’t want to make process_batch async right now just wrap the
+broadcast call in asyncio.create_task.
+
+⸻
+
+Front-end hook (Next JS)
+
+src/lib/useBatchProgress.ts
+
+import { useEffect, useState } from "react";
+
+export function useBatchProgress(batchId: string) {
+  const [progress, setProgress] = useState({ processed: 0, total: 1 });
+
+  useEffect(() => {
+    const ws = new WebSocket(`ws://${location.host}/ws/batch`);
+    ws.onopen  = () => ws.send("sub");          // keepalive packet
+    ws.onclose = () => console.log("socket closed");
+
+    ws.onmessage = (evt) => {
+      const ev = JSON.parse(evt.data);
+      if (ev.batch_id === batchId)
+        setProgress({ processed: ev.processed, total: ev.total });
+    };
+    return () => ws.close();
+  }, [batchId]);
+
+  return progress;        // hook returns {processed, total}
+}
+
+Now your DAMExplorer progress bar can just call the hook.
+
+⸻
+
+2 Thumbnail service
+
+Inside video/api.py before other app.include_router lines:
+
+from fastapi.staticfiles import StaticFiles
+from video.config import DATA_DIR
+
+app.mount(
+    "/thumbs",
+    StaticFiles(directory=DATA_DIR / "previews"),
+    name="thumbs",
+)
+
+If you adopt the FFmpeg thumbnailer from earlier snippets you’ll be writing
+JPEGs to data/previews/<sha1>_123s.jpg which lines up perfectly with the
+URLs your dashboard already builds (/thumbs/{sha1}_{time}.jpg).
+
+⸻
+
+What’s next?
+	1.	Pick one of the items (or suggest a new one).
+	2.	I’ll deliver a full code patch / test plan for that slice, just like the
+scaffold above but end-to-end complete.
+	3.	Rinse & repeat until the web-app feels ✨ polished ✨.
+
+Let me know which feature you’d like to land first!

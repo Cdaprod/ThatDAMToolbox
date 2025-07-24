@@ -1,4 +1,4 @@
-// /docker/web-app/components/modals/DAMExplorerModal.tsx
+// /docker/web-app/src/components/modals/DAMExplorerModal.tsx
 'use client';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';

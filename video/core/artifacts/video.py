@@ -17,78 +17,84 @@ Consumers can now do:
 
 from __future__ import annotations
 
-import hashlib, json
-from dataclasses import asdict, dataclass, field
+import hashlib
+import json
+from dataclasses import asdict, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .base   import Artifact, ArtifactState, ArtifactEventType
-from .video_metadata_container import VideoMetaContainer
-from .metadata import TechMeta        # used internally by extract_metadata()
+from pydantic import ConfigDict
+from pydantic.dataclasses import dataclass  # Pydantic-aware dataclass
 
-# (*)  ---- If you want Pydantic’s dataclass wrapper, uncomment:  -------------
-# from pydantic.dataclasses import dataclass  # type: ignore  # noqa: E501
-# ----------------------------------------------------------------------------
+from .base import Artifact, ArtifactState, ArtifactEventType
+from .metadata import VideoMetaContainer, TechMeta
 
-
-# ────────────────────────────────────────────────────────────────────────────
-# The artefact
-# ────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------- #
+# artefact                                                                    #
+# --------------------------------------------------------------------------- #
 @dataclass
 class VideoArtifact(Artifact):
     # ---- identity ----------------------------------------------------------
     filename   : str = ""
     source_type: str = ""
 
-    # ---- source location ---------------------------------------------------
+    # ---- physical source ---------------------------------------------------
     file_path  : Optional[str] = None
     file_hash  : Optional[str] = None
 
-    # ---- expandable metadata container ------------------------------------
+    # ---- rich, structured metadata ----------------------------------------
     meta: VideoMetaContainer = field(default_factory=VideoMetaContainer)
 
-    # ---- backwards-compat "processing results" bucket ----------------------
+    # ---- free-form processing bucket --------------------------------------
     processing_results: Dict[str, Any] = field(default_factory=dict)
 
+    # ---- pydantic settings -------------------------------------------------
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     # -----------------------------------------------------------------------
-    # Lifecycle helpers
+    # Hooks                                                                   #
     # -----------------------------------------------------------------------
     def __post_init__(self) -> None:
         super().__post_init__()
-        self.emit(ArtifactEventType.CREATED,
-                  {"filename": self.filename, "source_type": self.source_type})
+        self.emit(
+            ArtifactEventType.CREATED,
+            {"filename": self.filename, "source_type": self.source_type},
+        )
 
     # -----------------------------------------------------------------------
-    # Public API
+    # API                                                                     #
     # -----------------------------------------------------------------------
-    # Existing helper kept intact – now writes into meta.tech
     def extract_metadata(self) -> None:
-        # Replace with real ffprobe later
-        tech = self.meta.tech
+        """Stub – replace with real ffprobe logic later."""
+        tech: TechMeta = self.meta.tech or TechMeta()
         tech.duration   = 120.5
         tech.resolution = (1920, 1080)
         tech.codec      = "h264"
         tech.bitrate    = 5_000_000
         tech.frame_rate = 30.0
-
-        self.emit(ArtifactEventType.METADATA_EXTRACTED,
-                  tech.dict(exclude_none=True))
+        self.meta.tech = tech
+        self.emit(ArtifactEventType.METADATA_EXTRACTED, tech.model_dump(exclude_none=True))
 
     def set_source_data(
-        self, *,
-        file_path : Optional[str]  = None,
-        file_data : Optional[bytes] = None
+        self,
+        *,
+        file_path: Optional[str] = None,
+        file_data: Optional[bytes] = None,
     ) -> None:
         if file_path:
             self.file_path = file_path
             self.file_hash = self._hash_file(file_path)
-            self.emit(ArtifactEventType.SOURCE_ATTACHED,
-                      {"file_path": file_path, "hash": self.file_hash})
+            self.emit(
+                ArtifactEventType.SOURCE_ATTACHED,
+                {"file_path": file_path, "hash": self.file_hash},
+            )
         elif file_data:
             self.file_hash = self._hash_bytes(file_data)
-            self.emit(ArtifactEventType.DATA_ATTACHED,
-                      {"bytes": len(file_data), "hash": self.file_hash})
+            self.emit(
+                ArtifactEventType.DATA_ATTACHED,
+                {"bytes": len(file_data), "hash": self.file_hash},
+            )
 
     def validate(self) -> bool:
         if not self.filename:
@@ -100,22 +106,19 @@ class VideoArtifact(Artifact):
         return True
 
     # -----------------------------------------------------------------------
-    # (De)serialisation helpers
+    # Serialisation helpers                                                   #
     # -----------------------------------------------------------------------
     def to_dict(self, *, exclude_none: bool = True) -> Dict[str, Any]:
-        """
-        Convert to a plain ``dict`` (JSON-serialisable).
-        Non-serialisable stdlib types (Path, datetime, tuples) are coerced.
-        """
         try:
-            base = self.dict(by_alias=True, exclude_none=exclude_none)  # type: ignore[attr-defined]
+            base = self.model_dump(exclude_none=exclude_none)  # type: ignore[attr-defined]
         except Exception:
             base = asdict(self)
 
-        # Post-process stdlib types
+        # Coerce stdlib types
         for k, v in list(base.items()):
             if exclude_none and v is None:
-                base.pop(k); continue
+                base.pop(k)
+                continue
             if isinstance(v, Path):
                 base[k] = str(v)
             elif isinstance(v, datetime):
@@ -123,32 +126,29 @@ class VideoArtifact(Artifact):
             elif isinstance(v, tuple):
                 base[k] = list(v)
 
-        # Inject the meta container (skip empty fragments for brevity)
+        # Always serialise meta (may be empty {})
         base["meta"] = self.meta.to_dict()
         return base
 
     def to_json(self, *, exclude_none: bool = True, **kwargs) -> str:
-        return json.dumps(self.to_dict(exclude_none=exclude_none),
-                          default=str, **kwargs)
+        return json.dumps(self.to_dict(exclude_none=exclude_none), default=str, **kwargs)
 
     # -----------------------------------------------------------------------
-    # Private helpers
+    # internals                                                               #
     # -----------------------------------------------------------------------
     @staticmethod
     def _hash_file(path: str) -> str:
-        sha256 = hashlib.sha256()
+        sha = hashlib.sha256()
         with open(path, "rb") as fh:
             for chunk in iter(lambda: fh.read(8192), b""):
-                sha256.update(chunk)
-        return sha256.hexdigest()
+                sha.update(chunk)
+        return sha.hexdigest()
 
     @staticmethod
     def _hash_bytes(data: bytes) -> str:
         return hashlib.sha256(data).hexdigest()
 
-    # -----------------------------------------------------------------------
-    # Event reducer (unchanged)
-    # -----------------------------------------------------------------------
+    # Event reducer – unchanged
     def _apply(self, event):  # noqa: D401
         if event.type == ArtifactEventType.PROCESSING_STARTED:
             self.state = ArtifactState.PROCESSING
