@@ -1,12 +1,17 @@
-//app/dashboard/explorer/page.tsx
+// /docker/web-app/src/app/dashboard/explorer/page.tsx
 'use client';
 import ExplorerCard from '@/components/ExplorerCard';
 
 export default function ExplorerPage() {
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">Explorer</h1>
-      <ExplorerCard />
-    </div>
+    <section className="mx-auto w-full max-w-7xl p-4 md:p-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* default vertical card */}
+        <ExplorerCard />
+
+        {/* horizontal variant */}
+        <ExplorerCard orientation="horizontal" title="Quick Access" />
+      </div>
+    </section>
   );
 }

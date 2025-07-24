@@ -1,5 +1,4 @@
 /* /web-app/src/styles/globals.css */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,6 +16,9 @@
   --accent: #0066cc;
 }
 
+/* --- Global Attributes --- */
+html { @apply text-[14px] md:text-[15px] lg:text-[16px]; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -24,8 +26,6 @@ html, body {
                Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   /* The font stack above ensures system UI font fallback */
 }
-
-
 
 body {
   background-color: var(--bg-color);
