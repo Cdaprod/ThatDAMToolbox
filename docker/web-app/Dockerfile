@@ -1,93 +1,89 @@
 # /docker/web-app/Dockerfile
+#
+# Folder layout inside the image
+# ┌─ /app
+# │   ├─ node_modules     ← installed once during build
+# │   └─ src/             ← your application source (bind-mount in dev)
+# └───────────────────────────────────────────────────────────────────────────
 
-########################################
-# Stage 0 • Base image
-########################################
+##############################################################################
+# Stage 0 ▸ Base image (common for all other stages)
+##############################################################################
 FROM node:18-alpine AS base
-WORKDIR /src/app
+# Everything below /app
+WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=development
+ENV NODE_ENV=development      # may be overridden later
 
-########################################
-# Stage 1 • Install dependencies
-########################################
+##############################################################################
+# Stage 1 ▸ Install dependencies only once
+##############################################################################
 FROM base AS deps
 
-# libc6-compat is needed by some native modules
+# native addons sometimes need this
 RUN apk add --no-cache libc6-compat
 
-# Copy only package manifest + lockfiles
+# copy only manifest / lock-files
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
-# Install strictly from lockfile
-# Force install based on lockfile with graceful fallback
+# install *strictly* from whichever lock-file is present
 RUN \
   if [ -f yarn.lock ]; then \
-    echo "🧶  Found yarn.lock. Installing..." && \
-    yarn install --frozen-lockfile; \
+        echo "🧶  Installing with yarn…" && yarn install --frozen-lockfile ;\
   elif [ -f package-lock.json ]; then \
-    echo "📦  Found package-lock.json. Trying npm ci..." && \
-    npm ci || (echo "⚠️  npm ci failed, falling back to npm install..." && npm install); \
+        echo "📦  Installing with npm ci…" && npm ci \
+     || (echo '⚠️  npm ci failed – falling back to npm install' && npm install) ;\
   elif [ -f pnpm-lock.yaml ]; then \
-    echo "📦  Found pnpm-lock.yaml. Installing with pnpm..." && \
-    corepack enable pnpm && pnpm install --frozen-lockfile; \
+        echo "📦  Installing with pnpm…" && corepack enable pnpm && pnpm install --frozen-lockfile ;\
   else \
-    echo "⚠️  No lockfile found. Running npm install..." && \
-    npm install; \
+        echo '⚠️  No lockfile found – running npm install' && npm install ;\
   fi
 
-########################################
-# Stage 2 • Development image
-########################################
+##############################################################################
+# Stage 2 ▸ Development image  (hot-reload, bind-mount source)
+##############################################################################
 FROM base AS development
-WORKDIR /src/app
+# keep runtime deps in /app/node_modules
+COPY --from=deps /app/node_modules /app/node_modules
 
-# Pull in installed deps
-COPY --from=deps /src/app/node_modules ./node_modules
-
-# Copy source
+# source lives in a dedicated folder that we will bind-mount
+WORKDIR /app/src
 COPY . .
 
-# Expose dev port
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
-########################################
-# Stage 3 • Production build
-########################################
+##############################################################################
+# Stage 3 ▸ Build the production artefacts
+##############################################################################
 FROM base AS builder
-WORKDIR /src/app
-
-# Pull in deps & source
-COPY --from=deps /src/app/node_modules ./node_modules
+# bring in deps + source
+COPY --from=deps /app/node_modules /app/node_modules
+WORKDIR /app/src
 COPY . .
 
-# Run Next.js build
+# generate static /.next output (respect NEXT_PUBLIC_* env vars at build time)
 RUN npm run build
 
-########################################
-# Stage 4 • Production runner
-########################################
+##############################################################################
+# Stage 4 ▸ Lightweight runtime image
+##############################################################################
 FROM node:18-alpine AS production
-WORKDIR /src/app
-
+WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs \
- && adduser --system --uid 1001 --ingroup nodejs nextjs
+# non-root user for safety
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 --ingroup nodejs nextjs
 
-# Copy built output & deps
-COPY --from=builder /src/app/public      ./public
-COPY --from=builder /src/app/.next       ./.next
-COPY --from=builder /src/app/node_modules ./node_modules
+# copy build artefacts + runtime deps
+COPY --from=builder /app/src/public   ./public
+COPY --from=builder /app/src/.next    ./.next
+COPY --from=deps    /app/node_modules ./node_modules
 
-# Switch to unprivileged user
 USER nextjs:nodejs
-
-# Expose prod port
 EXPOSE 3000
 
-# Start Next.js standalone server
-CMD ["node", "server.js"]
+# Next 14 standalone server (inside .next) works out of the box
+CMD ["node", ".next/standalone/server.js"]
