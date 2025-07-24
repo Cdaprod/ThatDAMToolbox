@@ -3,56 +3,42 @@
 """
 video/__init__.py
 ───────────────────────────────────────────────────────────────────────────────
-Light-weight public façade – the heavy lifting (storage backend, plug-in
-auto-load, legacy patches, WAL snapshot thread, …) happens once in
-`video.bootstrap`.
+Light-weight façade.  All heavy lifting (storage back-end, plug-in discovery,
+legacy shims, WAL snapshot thread, …) is done once in `video.bootstrap`.
 
-Importing **video** gives you:
+Importing **video** gives you
 
     >>> from video import MediaIndexer, DB, STORAGE, routers, config
-
-Public symbols
-~~~~~~~~~~~~~~
-• MediaIndexer – high-level helper gluing scanner ⇆ DB ⇆ iOS-sync  
-• DB / STORAGE – singletons created by *bootstrap*  
-• routers      – list of FastAPI routers aggregated from every plug-in  
-• config       – runtime-config helper
 """
 
 from __future__ import annotations
 
-import importlib                      # <-- needed for dynamic import below
+import importlib
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-# --------------------------------------------------------------------------- #
-# 0.  One-time application bootstrap                                          #
-# --------------------------------------------------------------------------- #
-# Side-effects: creates STORAGE/DB, auto-loads plug-ins, applies legacy shims
-from video import bootstrap as _bootstrap       # noqa: E402  (side-effects!)
-
-DB      = _bootstrap.DB          # backward-compat global
-STORAGE = _bootstrap.STORAGE     # advanced callers can poke inside
-
-# FastAPI router list collected by `video.modules.__init__`
-routers = importlib.import_module("video.modules").routers
-
-# Re-export config helper (exact same object used everywhere else)
-from video import config  # noqa: E402, F401
+from typing import Any, Dict, List
 
 log = logging.getLogger(__name__)
 
-# --------------------------------------------------------------------------- #
-# 1.  MediaIndexer façade (unchanged)                                         #
-# --------------------------------------------------------------------------- #
-from .scanner import Scanner        # noqa: E402
-from .sync    import PhotoSync      # noqa: E402
+# ────────────────────────────────────────────────────────────────────────────
+# 0.  Local imports that do *not* depend on bootstrap
+#     (they only reference `video` at runtime, not import-time)
+# ────────────────────────────────────────────────────────────────────────────
+from video.scanner import Scanner          # noqa: E402
+from video.sync    import PhotoSync        # noqa: E402
+
+# Place-holders – will be overwritten right after bootstrap runs
+DB = None
+STORAGE = None
+routers: list = []                         # FastAPI routers
 
 
+# ────────────────────────────────────────────────────────────────────────────
+# 1.  MediaIndexer façade (defined *before* bootstrap to break the cycle)
+# ────────────────────────────────────────────────────────────────────────────
 class MediaIndexer:
     """
-    High-level façade that unifies *scanner ⇆ database ⇆ iOS Photos* workflows.
+    One object that unifies *scanner ⇆ database ⇆ iOS Photos* workflows.
     """
 
     def __init__(
@@ -61,17 +47,15 @@ class MediaIndexer:
         root_path: Path | str | None = None,
         db: "video.db.MediaDB" | None = None,
     ) -> None:
-        from video.db import MediaDB  # local import avoids import cycle
+        from video.db import MediaDB          # local import – avoids cycle
 
-        self.db: MediaDB = db or DB
+        self.db: MediaDB = db or DB           # type: ignore[arg-type]
         self.scanner     = Scanner(self.db, root_path)
         self.sync        = PhotoSync(self.db)
 
-        log.debug(
-            "MediaIndexer ready (db=%s, root=%s)",
-            self.db.db_path,
-            self.scanner.root_path,
-        )
+        log.debug("MediaIndexer ready (db=%s, root=%s)",
+                  getattr(self.db, "db_path", "?"),
+                  self.scanner.root_path)
 
     # ── Scanner helpers ────────────────────────────────────────────────────
     def scan(self, root_path: Path | None = None, workers: int = 4) -> Dict[str, int]:
@@ -114,7 +98,7 @@ class MediaIndexer:
                 self.db.remember_copy(sha1, tgt)
                 copied += 1
                 log.info("Copied %s → %s", src.name, tgt)
-            except Exception as exc:               # pragma: no-cover
+            except Exception as exc:  # pragma: no-cover
                 log.warning("Skip %s (%s)", src.name, exc)
                 skipped += 1
 
@@ -135,9 +119,27 @@ class MediaIndexer:
         return stats
 
 
-# --------------------------------------------------------------------------- #
-# 2.  Public re-exports                                                       #
-# --------------------------------------------------------------------------- #
+# ────────────────────────────────────────────────────────────────────────────
+# 2.  Run bootstrap *once* – now that MediaIndexer is available
+# ────────────────────────────────────────────────────────────────────────────
+from video import bootstrap as _bootstrap      # noqa: E402  (side-effects!)
+
+DB      = _bootstrap.DB
+STORAGE = _bootstrap.STORAGE
+
+# The list of plug-in routers filled by video.modules.__init__
+routers = importlib.import_module("video.modules").routers
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# 3.  Re-export config helper
+# ────────────────────────────────────────────────────────────────────────────
+from video import config  # noqa: E402, F401
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# 4.  Public API
+# ────────────────────────────────────────────────────────────────────────────
 __all__ = [
     "MediaIndexer",
     "DB",
