@@ -2,7 +2,7 @@
 import '@/styles/globals.css';
 import AppProviders from '@/providers/AppProviders';
 import TopBar from '@/components/TopBar';
-import MainLayout from '@/components/MainLayout'; // new client component
+import MainLayout from './MainLayout'; // new client component
 
 export const metadata = {
   title: '🎬 Video Dashboard',
