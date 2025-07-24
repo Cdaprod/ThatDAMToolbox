@@ -2,48 +2,35 @@
 # SPDX-License-Identifier: MIT
 """
 video/core/auto.py
-──────────────────────────────────────────────────────────────────────────────
-Hot-patch legacy helpers so old code keeps working after the core refactor.
 
-Patched on import by *video.bootstrap* (idempotent).
+Bridges a few "old-world" entry-points into the new core pipeline while
+remaining **idempotent** and tolerant of partially-initialised globals.
 
-Patches applied
-───────────────
-1. MediaDB.add_video(...)          → funnels through new core factory
-2. ingest.ingest_files(...)        → also calls new pipeline
-3. HWAccelRecorder.stop_recording  → ingests recording directory
+Patched once on import by video.bootstrap.
 """
 from __future__ import annotations
 
 import logging
 from functools import wraps
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Sequence
 
 log = logging.getLogger("video.core.auto")
 
 # ───────────────────────── helpers ──────────────────────────────────────────
-def _already(flag_owner: object, flag: str = "_auto_patched") -> bool:
-    """Return **True** if *flag_owner* already carries the marker flag."""
-    return bool(getattr(flag_owner, flag, False))
+def _already(obj: object, flag: str = "_auto_patched") -> bool:
+    return bool(getattr(obj, flag, False))
 
 
-def _mark_done(flag_owner: object, flag: str = "_auto_patched") -> None:
-    """Set a marker so we never patch the same object twice."""
-    setattr(flag_owner, flag, True)
+def _mark_done(obj: object, flag: str = "_auto_patched") -> None:
+    setattr(obj, flag, True)
 
 
-def _safe_patch(target: object, attr: str, build_wrapper: Callable) -> None:
-    """
-    Replace *target.attr* with a wrapper returned by *build_wrapper*.
-
-    • Silently skips if the attribute is missing.
-    • Logs successes and "skipped" cases.
-    """
+def _safe_patch(target: object, attr: str, build_wrapper):
+    """Replace *target.attr* with wrapper produced by *build_wrapper*."""
     if not hasattr(target, attr):
-        log.debug("skip patch – %s.%s not found", target, attr)
+        log.debug("skip patch – %s.%s missing", target, attr)
         return
-
     original = getattr(target, attr)
 
     @wraps(original)
@@ -54,19 +41,25 @@ def _safe_patch(target: object, attr: str, build_wrapper: Callable) -> None:
     log.debug("✓ patched %s.%s", target, attr)
 
 
-# ─────────────────────── patch #1 – MediaDB.add_video ───────────────────────
-def _patch_media_db() -> None:
-    from video import bootstrap as _bootstrap
+# Import lazily so we don’t create fresh DB instances in worker processes
+from video.core.ingest import ingest_folder
 
-    DB = _bootstrap.DB
-    if DB is None or _already(DB.__class__):
+
+# ─────────────── 1) MediaDB.add_video ───────────────────────────────────────
+def _patch_media_db():
+    from video import bootstrap as _bp          # lazy to avoid cycles
+    DB = getattr(_bp, "DB", None)
+    if DB is None:
+        log.debug("DB singleton not yet ready – skipping add_video patch")
+        return
+    if _already(DB.__class__):
         return
 
-    from video.core.factory import create_from_path
-
     def _impl(orig, self, path: str | Path, sha1: str, meta: dict | None = None):
-        orig(self, str(path), sha1, meta)           # legacy behaviour
-        create_from_path(Path(path))                # new pipeline
+        # keep legacy behaviour
+        orig(self, str(path), sha1, meta)
+        # feed new pipeline (batch per parent dir)
+        ingest_folder(Path(path).parent, batch_name="legacy_scan")
         return sha1
 
     _safe_patch(DB.__class__, "add_video", _impl)
@@ -74,30 +67,28 @@ def _patch_media_db() -> None:
     log.info("✅ MediaDB.add_video patched")
 
 
-# ───────────────────── patch #2 – ingest.ingest_files ───────────────────────
-def _patch_legacy_ingest() -> None:
+# ─────────────── 2) ingest.ingest_files ─────────────────────────────────────
+def _patch_legacy_ingest():
     try:
-        from video import ingest as _ingest_mod
+        from video import ingest as ing_mod
     except ImportError:
         return
-    if _already(_ingest_mod):
+    if _already(ing_mod):
         return
 
-    from video.core.factory import create_from_path
-
     def _impl(orig, paths: Sequence[str | Path], *, batch_name: str | None = None):
-        res = orig(paths, batch_name=batch_name)    # keep original return
-        for parent in {Path(p).parent for p in paths}:
-            create_from_path(parent)
+        res = orig(paths, batch_name=batch_name)
+        for p in {Path(p).parent for p in paths}:
+            ingest_folder(p, batch_name=batch_name or "legacy_batch")
         return res
 
-    _safe_patch(_ingest_mod, "ingest_files", _impl)
-    _mark_done(_ingest_mod)
+    _safe_patch(ing_mod, "ingest_files", _impl)
+    _mark_done(ing_mod)
     log.info("✅ ingest.ingest_files patched")
 
 
-# ─────────────── patch #3 – HWAccelRecorder.stop_recording ──────────────────
-def _patch_hwcapture() -> None:
+# ─────────────── 3) HWAccelRecorder.stop_recording ──────────────────────────
+def _patch_hwcapture():
     try:
         from video.modules.hwcapture.hwcapture import HWAccelRecorder
     except Exception:
@@ -105,13 +96,11 @@ def _patch_hwcapture() -> None:
     if _already(HWAccelRecorder):
         return
 
-    from video.core.factory import create_from_path
-
     def _impl(orig, self, *a, **kw):
         out = orig(self, *a, **kw)
         try:
-            create_from_path(Path(self.output_file).parent)
-        except Exception as exc:          # pragma: no cover
+            ingest_folder(Path(self.output_file).parent, batch_name="hwcapture")
+        except Exception as exc:                 # pragma: no cover
             log.warning("auto-ingest after capture failed: %s", exc)
         return out
 
@@ -120,9 +109,9 @@ def _patch_hwcapture() -> None:
     log.info("✅ HWAccelRecorder.stop_recording patched")
 
 
-# ───────────────────────── run all patches once ─────────────────────────────
+# ─────────────── run all patches (idempotent) ───────────────────────────────
 for _fn in (_patch_media_db, _patch_legacy_ingest, _patch_hwcapture):
     try:
         _fn()
-    except Exception as exc:              # pragma: no cover
+    except Exception as exc:                     # pragma: no cover
         log.warning("%s failed: %s", _fn.__name__, exc)
