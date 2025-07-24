@@ -1,37 +1,31 @@
-// /docker/web-app/src/providers/CaptureProvider.tsx
+// src/providers/CaptureProvider.tsx
 'use client';
-import { createContext, useContext, useState } from 'react';
-import { useVideoSocketCtx } from '@/context/VideoSocketContext';
-import { CaptureContext }    from './CaptureContext';
 
-interface CaptureCtx {
-  recording: boolean;
-  start(): void;
-  stop(): void;
-}
+import React, { ReactNode, useState } from 'react';
+import { useVideoSocketCtx } from './VideoSocketProvider';
+import { CaptureContext }   from './CaptureContext';    // ← import, don’t recreate
 
-const Ctx = createContext<CaptureCtx | null>(null);
-export const useCapture = () => useContext(Ctx)!;
-
-export default function CaptureProvider({ children }: { children: React.ReactNode }) {
+export default function CaptureProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const { sendJSON } = useVideoSocketCtx();
-  const [recording, setRec] = useState(false);
+  const [recording, setRecording] = useState(false);
+
+  const start = () => {
+    sendJSON({ action: 'start_record' });
+    setRecording(true);
+  };
+
+  const stop = () => {
+    sendJSON({ action: 'stop_record' });
+    setRecording(false);
+  };
 
   return (
-    <Ctx.Provider
-      value={{
-        recording,
-        start: () => {
-          sendJSON({ action: 'start_record' });
-          setRec(true);
-        },
-        stop: () => {
-          sendJSON({ action: 'stop_record' });
-          setRec(false);
-        },
-      }}
-    >
+    <CaptureContext.Provider value={{ recording, start, stop }}>
       {children}
-    </Ctx.Provider>
+    </CaptureContext.Provider>
   );
 }

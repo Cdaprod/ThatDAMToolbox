@@ -1,4 +1,4 @@
-// /docker/web-app/src/providers/CaptureContext.tsx
+// src/providers/CaptureContext.tsx
 'use client';
 import { createContext, useContext } from 'react';
 
@@ -14,4 +14,10 @@ export const CaptureContext = createContext<CaptureCtx>({
   stop  : () => console.warn('Capture context not ready'),
 });
 
-export const useCapture = () => useContext(CaptureContext);
+export const useCapture = () => {
+  const ctx = useContext(CaptureContext);
+  if (!ctx) {
+    throw new Error('useCapture must be inside a <CaptureProvider>');
+  }
+  return ctx;
+};

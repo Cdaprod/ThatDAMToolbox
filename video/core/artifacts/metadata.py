@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 class MetaBase(BaseModel):
     class Config:
         extra = "allow"
-        orm_mode = True
+        #orm_mode = True
+        from_attribute = True
         json_encoders = {set: list}
 
 # ── fragments ──────────────────────────────────────────────────────────── #
