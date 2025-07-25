@@ -1,8 +1,18 @@
-// lib/video.ts
-const VIDEO_BASE = '/api/video';
+// /docker/web-app/src/lib/video.ts
 
+// Base URL for FastAPI backend (from env, fallback for local dev)
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+
+// Standard GET request helper
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// Standard POST request helper
 async function post<T>(path: string, data: any): Promise<T> {
-  const res = await fetch(`${VIDEO_BASE}/${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -11,15 +21,22 @@ async function post<T>(path: string, data: any): Promise<T> {
   return res.json();
 }
 
-// now your "SDK" functions
+// ─── API Functions ─────────────────────────────────────────────
+
+// Launch a scan job (remains POST, if required by FastAPI)
 export function scan(root: string, workers = 4) {
-  return post<{ scanned: number }>('scan', { action: 'scan', root, workers });
+  return post<{ scanned: number }>('/scan', { root, workers });
 }
 
+// Get library statistics (GET /stats)
 export function stats() {
-  return post<{ totalFiles: number; totalSize: number }>('stats', { action: 'stats' });
+  // Adjust the type keys if your /stats returns different ones!
+  return get<{ files: number; batches: number; duration_sec: number; total_bytes: number }>('/stats');
 }
 
+// Get recent file list (GET /recent?limit=N)
 export function recent(limit = 10) {
-  return post<{ path: string; modified: string }[]>('recent', { action: 'recent', limit });
+  return get<{ path: string; modified: string }[]>(`/recent?limit=${limit}`);
 }
+
+// You can add more endpoints following this pattern

@@ -26,7 +26,7 @@ from video.storage.base import StorageEngine
 from video.bootstrap    import STORAGE
 from video              import modules
 
-from video.ws           import ws
+from video.ws import router as ws_router
 
 origins = [
     "http://localhost:3000",      # your Next dev server
@@ -50,7 +50,7 @@ log = logging.getLogger("video.api")
 # ------------------------------------------------------------------------
 # mount static, websocket, first-party routers exactly like before
 app.mount("/static", static, name="static")
-app.include_router(ws.router)
+app.include_router(ws_router)
 app.include_router(router)
 
 # ---------------------------------------------------------------------------

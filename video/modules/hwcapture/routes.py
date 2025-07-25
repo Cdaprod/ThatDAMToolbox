@@ -17,14 +17,19 @@ from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from .hwcapture import list_video_devices, HWAccelRecorder
+from .hwcapture import stream_jpeg_frames
+
 from video.config import get_module_path
+
 
 router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
 _log   = logging.getLogger("video.hwcapture")
 
+
 # Use module-registered directories!
 STREAMS_DIR = get_module_path("hwcapture", "streams")
 RECORDS_DIR = get_module_path("hwcapture", "records")
+
 
 # ──────────── MJPEG generator ─────────────
 def _mjpeg_generator(cmd: list[str]):
@@ -41,11 +46,13 @@ def _mjpeg_generator(cmd: list[str]):
     finally:
         proc.terminate()
         proc.wait()
+        
 
 # ──────────── Endpoints ─────────────
 @router.get("/devices")
 async def devices():
     return list_video_devices()
+
 
 @router.get("/stream", include_in_schema=False)
 async def stream(
@@ -63,7 +70,9 @@ async def stream(
     gen = _mjpeg_generator(cmd)
     return StreamingResponse(gen, media_type="multipart/x-mixed-replace; boundary=frame")
 
+
 _jobs: dict[str, HWAccelRecorder] = {}
+
 
 @router.post("/record")
 async def start_record(
@@ -80,6 +89,7 @@ async def start_record(
     _log.info("▶ recording %s → %s (%s)", device, out_path, job_id)
     return {"job": job_id, "file": str(out_path)}
 
+
 @router.delete("/record/{job_id}")
 async def stop_record(job_id: str):
     rec = _jobs.pop(job_id, None)
@@ -88,6 +98,7 @@ async def stop_record(job_id: str):
     await run_in_threadpool(rec.stop_recording)
     _log.info("⏹ stopped %s", job_id)
     return {"stopped": job_id}
+    
     
 @router.post("/witness_record")
 async def witness_record(duration: int = 60):
@@ -102,6 +113,7 @@ async def witness_record(duration: int = 60):
                          "stabilised":"main_stab.mp4"}
     threading.Thread(target=_worker, daemon=True).start()
     return {"job": job_id, "status":"started"}
+
 
 @router.get("/ndi_stream", include_in_schema=False)
 async def ndi_stream(
@@ -125,3 +137,22 @@ async def ndi_stream(
     gen = _mjpeg_generator(cmd)
     return StreamingResponse(gen,
                              media_type="multipart/x-mixed-replace; boundary=frame")
+
+
+@router.get("/stream_mjpeg", include_in_schema=False)
+async def stream_mjpeg(
+    device: str = Query("/dev/video0"),
+    quality: int = Query(80)
+):
+    boundary = "--frame"
+    generator = (
+        boundary.encode() + b"\r\n"
+        + b"Content-Type: image/jpeg\r\n\r\n"
+        + frame
+        + b"\r\n"
+        for frame in stream_jpeg_frames(device, quality)
+    )
+    return StreamingResponse(
+        generator,
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )

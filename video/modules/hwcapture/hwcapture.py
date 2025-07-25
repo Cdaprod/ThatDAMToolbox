@@ -163,6 +163,35 @@ def get_device_info(device="/dev/video0"):
     """Get device capabilities."""
     return _probe_v4l2_device(device)
 
+def stream_jpeg_frames(
+    device: str = "/dev/video0",
+    quality: int = 80
+):
+    """
+    Generator yielding JPEG-encoded frames from `device`.
+    Usage:  for jpg_bytes in stream_jpeg_frames(): ...
+    """
+    import cv2
+    cap = cv2.VideoCapture(device)
+    if not cap.isOpened():
+        # device unavailable → stop iteration
+        return
+
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                # skip on read-fail
+                continue
+
+            # Optional: you can hook in any hwcapture.add_* overlay here
+            _, jpg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+            yield jpg.tobytes()
+
+    finally:
+        cap.release()
+        
+
 # Internal implementation
 def _has_vc7():
     """Detect usable v4l2_request encoders."""

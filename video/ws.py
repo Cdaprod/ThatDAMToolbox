@@ -2,138 +2,152 @@
 # SPDX-License-Identifier: MIT
 """
 video/ws.py
-──────────────────────────────────────────────────────────────────────────────
-Tiny pub-sub hub for Web-Socket clients.
 
-•  Mount once (already done in video.api):
-       app.include_router(ws.router)
-
-•  Emit events from anywhere in the backend:
-       await ws.broadcast("job_update", {"id": job_id, "progress": 0.42})
-
-Clients receive JSON messages shaped like:
-       { "event": "<event>", "data": { … } }
-
-Binary frames are supported via:
-       await ws.broadcast_bytes(b"\xff\xd8…")        # raw JPEG, etc.
+→ /ws/control   – JSON control & status (list_devices, start_record, stop_record)
+→ /ws/webrtc    – SDP signaling for ultra-low-latency WebRTC preview
 """
-from __future__ import annotations
-
 import asyncio
 import json
-from typing import Any, Set
+import logging
+import fractions
+import cv2
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from typing import Any, Dict, Set, Optional
 
-# --------------------------------------------------------------------------- #
-# Internal state                                                              #
-# --------------------------------------------------------------------------- #
-_router  = APIRouter()
-_clients: Set[WebSocket] = set()
-_lock    = asyncio.Lock()                 # protects _clients set
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
+from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
+from av import VideoFrame
 
-PING_INTERVAL = 20        # seconds
-PING_TIMEOUT  = 10        # seconds
+from video.modules.hwcapture.hwcapture import list_video_devices, HWAccelRecorder
 
+router = APIRouter(prefix="/ws")
+_log = logging.getLogger("video.ws")
 
-# --------------------------------------------------------------------------- #
-# Web-Socket endpoint                                                         #
-# --------------------------------------------------------------------------- #
-@_router.websocket("/ws")                 # →  ws://<host>:<port>/ws
-async def websocket_endpoint(ws: WebSocket):
+# ──────────── Control WebSocket ───────────────────────────────────────────────
+_control_clients: Set[WebSocket] = set()
+_clients_lock = asyncio.Lock()
+_recorder: Optional[HWAccelRecorder] = None
+_recording_lock = asyncio.Lock()
+
+@router.websocket("/control")
+async def ws_control(ws: WebSocket):
     await ws.accept()
-    async with _lock:
-        _clients.add(ws)
-
-    # fire-and-forget heartbeat
-    ping_task = asyncio.create_task(_ping_loop(ws))
-
-    # greet client (nice for console debugging)
-    await ws.send_json({"event": "connected", "data": {"msg": "hi 👋"}})
-
+    async with _clients_lock:
+        _control_clients.add(ws)
     try:
-        # simple echo so devs can test from browser console
         while True:
-            msg = await ws.receive_text()
             try:
-                parsed = json.loads(msg)
-            except Exception:
-                parsed = msg
-            await ws.send_json({"event": "echo", "data": parsed})
+                text = await ws.receive_text()
+                cmd  = json.loads(text)
+            except json.JSONDecodeError:
+                await ws.send_json({"event":"error","data":"invalid JSON"})
+                continue
+
+            action = cmd.get("action")
+            if action == "list_devices":
+                devices = list_video_devices()
+                await ws.send_json({"event":"device_list","data":devices})
+            elif action == "start_record":
+                await _start_record(cmd, ws)
+            elif action == "stop_record":
+                await _stop_record(ws)
+            else:
+                await ws.send_json({"event":"error","data":f"Unknown action {action}"})
     except WebSocketDisconnect:
         pass
     finally:
-        ping_task.cancel()
-        async with _lock:
-            _clients.discard(ws)
+        async with _clients_lock:
+            _control_clients.discard(ws)
 
+async def _start_record(cmd: Dict[str,Any], ws: WebSocket):
+    global _recorder
+    async with _recording_lock:
+        if _recorder:
+            return await ws.send_json({"event":"error","data":"Already recording"})
+        device   = cmd.get("device", "/dev/video0")
+        codec    = cmd.get("codec",  "h264")
+        filename = cmd.get("filename", "record.mp4")
+        rec = HWAccelRecorder(device=device, output_file=filename)
+        _recorder = rec
+        await asyncio.to_thread(rec.start_recording_hw, codec)
+        await _broadcast_control({"event":"recording_started","data":{"file":filename}})
 
-# --------------------------------------------------------------------------- #
-# Public helpers                                                              #
-# --------------------------------------------------------------------------- #
-async def _broadcast_json(payload: dict[str, Any]) -> None:
-    dead: list[WebSocket] = []
-    async with _lock:
-        for ws in _clients:
+async def _stop_record(ws: WebSocket):
+    global _recorder
+    async with _recording_lock:
+        if not _recorder:
+            return await ws.send_json({"event":"error","data":"Not recording"})
+        rec = _recorder
+        _recorder = None
+        await asyncio.to_thread(rec.stop_recording)
+        await _broadcast_control({"event":"recording_stopped","data":{}})
+
+async def _broadcast_control(msg: Dict[str,Any]):
+    async with _clients_lock:
+        for client in set(_control_clients):
             try:
-                await ws.send_json(payload)
-            except Exception:
-                dead.append(ws)
-        for ws in dead:
-            _clients.discard(ws)
+                await client.send_json(msg)
+            except:
+                _control_clients.discard(client)
 
 
-async def broadcast(event: str, data: Any) -> None:
-    """Push a JSON event to **all** connected clients."""
-    await _broadcast_json({"event": event, "data": data})
+# ──────────── WebRTC Preview ────────────────────────────────────────────────
+class CameraTrack(VideoStreamTrack):
+    """
+    VideoStreamTrack that pulls frames from OpenCV for WebRTC.
+    """
+    def __init__(self, device: str, width: int, height: int, fps: int):
+        super().__init__()
+        self.cap = cv2.VideoCapture(device)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
+        self.pts = 0
+        self.interval_us = int(1_000_000 / fps)
+
+    async def recv(self) -> VideoFrame:
+        await asyncio.sleep(self.interval_us / 1_000_000)
+        ret, frame = self.cap.read()
+        if not ret:
+            raise asyncio.CancelledError
+        vframe = VideoFrame.from_ndarray(frame, format="bgr24")
+        vframe.pts = self.pts
+        vframe.time_base = fractions.Fraction(1, 1_000_000)
+        self.pts += self.interval_us
+        return vframe
+
+    def stop(self):
+        super().stop()
+        self.cap.release()
 
 
-async def broadcast_bytes(blob: bytes) -> None:
-    """Push a binary payload (e.g. JPEG) to every connected client."""
-    dead: list[WebSocket] = []
-    async with _lock:
-        for ws in _clients:
-            try:
-                await ws.send_bytes(blob)
-            except Exception:
-                dead.append(ws)
-        for ws in dead:
-            _clients.discard(ws)
+@router.post("/webrtc")
+async def offer(request: Request):
+    """
+    Exchange SDP offer/answer. Client POSTs:
+        { "sdp": "...", "type": "offer" }
+    Returns:
+        { "sdp": "...", "type": "answer" }
+    """
+    params = await request.json()
+    offer  = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
+    pc = RTCPeerConnection()
+    pc_id = f"PeerConnection-{id(pc)}"
+    _log.info(f"{pc_id} Created for {request.client}")
 
-# --------------------------------------------------------------------------- #
-# Internal heartbeat                                                          #
-# --------------------------------------------------------------------------- #
-async def _ping_loop(ws: WebSocket) -> None:
-    """Periodic ping; drop connection if client stops replying."""
-    try:
-        while True:
-            await asyncio.sleep(PING_INTERVAL)
-            try:
-                await ws.send_json({"event": "ping"})
-                # wait for any response within timeout
-                await asyncio.wait_for(ws.receive_text(), timeout=PING_TIMEOUT)
-            except asyncio.TimeoutError:
-                await ws.close(code=1001)  # going away / idle
-                break
-    except Exception:
-        # any error → connection cleanup in caller
-        pass
+    track = CameraTrack(device="/dev/video0", width=1920, height=1080, fps=60)
+    pc.addTrack(track)
 
+    @pc.on("connectionstatechange")
+    async def on_state():
+        _log.info(f"{pc_id} State: {pc.connectionState}")
+        if pc.connectionState in ("failed","closed","disconnected"):
+            await pc.close()
+            track.stop()
 
-# --------------------------------------------------------------------------- #
-# Facade object expected by `video.api`                                       #
-# --------------------------------------------------------------------------- #
-class _WSFacade:
-    """Tiny wrapper so `video.api` can `from video.ws import ws`."""
+    await pc.setRemoteDescription(offer)
+    answer = await pc.createAnswer()
+    await pc.setLocalDescription(answer)
 
-    router = _router
-    broadcast = staticmethod(broadcast)
-    broadcast_bytes = staticmethod(broadcast_bytes)
-
-
-# This is what `video.api` imports:
-ws = _WSFacade()
-
-# Limit what `from video.ws import *` exposes
-__all__ = ["ws", "broadcast", "broadcast_bytes"]
+    return {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
