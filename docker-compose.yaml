@@ -114,8 +114,10 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./docker/web-app:/app:rw
-      - ./docker/web-app/node_modules:/app/node_modules:rw
-      - ./docker/web-app/.next:/app/.next
+      #- ./docker/web-app/node_modules:/app/node_modules:rw
+      #- ./docker/web-app/.next:/app/.next
+      - /app/node_modules           # Anonymous volume, container owns it
+      - /app/.next                  # Anonymous volume, container owns it
     depends_on:
       - video-api
     restart: unless-stopped
