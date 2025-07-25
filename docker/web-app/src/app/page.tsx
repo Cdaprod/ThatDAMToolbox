@@ -11,7 +11,7 @@ export default function HomePage() {
       {/* --- hero / status banner --------------------------------------- */}
       <header className="w-full max-w-5xl mb-8">
         <h1 className="text-4xl font-extrabold py-6 text-center">
-          🎬 Video Dashboard 🎬
+          🎬 Cdaprods Video Dashboard
         </h1>
       </header>
 
