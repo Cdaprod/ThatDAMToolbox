@@ -1,5 +1,5 @@
-# /video/modules/hwcapture/routes.py
 """
+video/modules/hwcapture/routes.py
 FastAPI endpoints:
 
 GET  /hwcapture/devices             – JSON list of /dev/video? capabilities
@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .hwcapture import list_video_devices, HWAccelRecorder
 from .hwcapture import stream_jpeg_frames
+from .hwcapture import record as cli_record
 
 from video.config import get_module_path
 
@@ -41,8 +42,17 @@ def _mjpeg_generator(cmd: list[str]):
             if not size_bytes:
                 break
             size = int.from_bytes(size_bytes, "big")
-            jpg  = proc.stdout.read(size)
-            yield boundary + b"\r\n" + b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n"
+            jpg = proc.stdout.read(size)
+            chunk = (
+                boundary
+                + b"\r\n"
+                + b"Content-Type: image/jpeg\r\n\r\n"
+                + jpg
+                + b"\r\n"
+            )
+            yield chunk
+            # free references immediately
+            del jpg, chunk
     finally:
         proc.terminate()
         proc.wait()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-hwcapture.py - Hardware-accelerated Video Capture
+video/module/hwcapture.py - Hardware-accelerated Video Capture
 
 Drop-in module for hardware-accelerated video capture and encoding.
 Optimized for HDMI-to-CSI setups with VideoCore VII GPU acceleration.
@@ -33,7 +33,8 @@ def has_hardware_accel():
     """Check if hardware acceleration is available."""
     return _has_vc7()
 
-def record(device="/dev/video0", output="recording.mp4", duration=None, codec="h264"):
+def record(device="/dev/video0", output="rec.mp4", duration=None,
+           codec="h264", timecode: str = None):
     """
     Simple hardware-accelerated recording.
     
@@ -42,6 +43,7 @@ def record(device="/dev/video0", output="recording.mp4", duration=None, codec="h
         output: Output filename
         duration: Recording duration in seconds (None = manual stop)
         codec: Video codec ('h264' or 'hevc')
+        timecode: Timecode synced between UI and Metadata
     """
     recorder = HWAccelRecorder(device, output)
     try:
@@ -190,7 +192,6 @@ def stream_jpeg_frames(
 
     finally:
         cap.release()
-        
 
 # Internal implementation
 def _has_vc7():
@@ -223,13 +224,14 @@ def _probe_v4l2_device(device="/dev/video0"):
 
 class HWAccelRecorder:
     """Hardware-accelerated recorder for live video streams."""
-    
-    def __init__(self, device="/dev/video0", output_file="output.mp4"):
+    def __init__(self, device="/dev/video0", output_file="output.mp4",
+                 metadata_timecode: str = None):
         self.device = device
         self.output_file = output_file
+        self.metadata_timecode = metadata_timecode
         self.recording = False
         self.process = None
-        
+       
         # Probe device capabilities
         self.width, self.height, self.fps = _probe_v4l2_device(device)
         if not all([self.width, self.height, self.fps]):
@@ -238,18 +240,18 @@ class HWAccelRecorder:
         logging.info(f"Device: {device}, Resolution: {self.width}x{self.height}, FPS: {self.fps}")
     
     def start_recording_hw(self, vcodec="h264"):
-        """Start hardware-accelerated recording directly from V4L2 device."""
         if not _has_vc7():
             raise RuntimeError("VideoCore VII not available")
+        codec_map = {"h264":"h264_v4l2m2m","hevc":"hevc_v4l2request"}
         
-        codec_map = {
-            "h264": "h264_v4l2m2m",
-            "hevc": "hevc_v4l2request"
-        }
-        
-        # Direct V4L2 to file encoding - bypasses OpenCV entirely
         cmd = [
             _FFMPEG, "-y",
+        ]
+        # if we were passed a timecode, inject it:
+        if self.metadata_timecode:
+            cmd += ["-timecode", self.metadata_timecode]
+        
+        cmd += [
             "-f", "v4l2",
             "-framerate", str(int(self.fps)),
             "-video_size", f"{self.width}x{self.height}",
@@ -257,7 +259,7 @@ class HWAccelRecorder:
             "-c:v", codec_map[vcodec],
             "-pix_fmt", "yuv420p",
             "-preset", "fast",
-            "-b:v", "5M",  # 5 Mbps bitrate
+            "-b:v", "5M",
             self.output_file
         ]
         
@@ -271,6 +273,8 @@ class HWAccelRecorder:
         if self.process and self.recording:
             self.process.terminate()
             self.process.wait()
+            # drop the Popen reference to aid GC
+            self.process = None
             self.recording = False
             logging.info("Recording stopped")
 

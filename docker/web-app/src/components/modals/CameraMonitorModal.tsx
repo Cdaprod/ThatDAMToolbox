@@ -50,7 +50,7 @@ export default function CameraMonitorModal({ open, onClose }: Props) {
 
               {/* Body: simply reuse the full component */}
               <div className="flex-1 overflow-auto bg-gray-50">
-                <CameraMonitor compact /> {/* pass a prop if your component supports it */}
+                <CameraMonitor /> {/* implement `CameraMonitor compact` and pass a prop when component supports it */}
               </div>
             </Dialog.Panel>
           </Transition.Child>

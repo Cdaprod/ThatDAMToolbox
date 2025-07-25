@@ -1,14 +1,136 @@
-import React, { useState, useEffect } from 'react';
+// docker/web-app/src/components/CameraMonitor.tsx
+import React, { useState, useEffect, useCallback } from 'react';
 import { useVideoSocketCtx } from '@providers/VideoSocketProvider';
 
+// --- 1) TYPES & ENUMS ---
+type Codec = 'h264' | 'hevc';
+type Feed  = 'main' | 'aux';
+
+interface DeviceListEvt {
+  event: 'device_list';
+  data: Array<{ path: string; width: number; height: number; fps: number }>;
+}
+interface SelectStreamMsg {
+  action:'select_stream';
+  feed: Feed;
+  device: string;
+}
+interface SetCodecMsg {
+  action: 'set_codec';
+  codec: Codec;
+}
+interface StartRecordMsg {
+  action:   'start_record';
+  feed:     Feed;
+  device:   string;
+  filename: string;
+  codec:    Codec;
+  timecode: string;   // e.g. "01:23:45:18"
+}
+interface StopRecordMsg {
+  action: 'stop_record';
+  feed:   Feed;
+}
+interface ToggleOverlayMsg {
+  action:  'toggle_overlay';
+  overlay: 'focusPeaking' | 'zebras' | 'falseColor';
+  enabled: boolean;
+}
+interface ListDevicesMsg {
+  action: 'list_devices';
+}
+type OutboundMsg = StartRecordMsg | StopRecordMsg | ToggleOverlayMsg | SelectStreamMsg | SetCodecMsg | ListDevicesMsg;
+
+interface RecordingStatusEvt {
+  event: 'recording_status';
+  data:  { feed: Feed; elapsed: number; };
+}
+interface RecordingStartedEvt {
+  event: 'recording_started';
+  data:  { file: string; };
+}
+interface RecordingStoppedEvt {
+  event: 'recording_stopped';
+  data:  {};
+}
+interface OverlayToggledEvt {
+  event: 'overlay_toggled';
+  data:  { overlay: 'focusPeaking'|'zebras'|'falseColor'; enabled: boolean; };
+}
+interface BatteryEvt {
+  event: 'battery';
+  data:  { level: number };
+}
+interface HistogramEvt {
+  event: 'histogram';
+  data:  { buckets: number[] };
+}
+type InboundMsg =
+  | RecordingStatusEvt
+  | RecordingStartedEvt
+  | RecordingStoppedEvt
+  | OverlayToggledEvt
+  | BatteryEvt
+  | HistogramEvt;
+
+
+// --- 2) FORMAT HOOKS ---
+function useTimecode(initial = {h:0,m:0,s:0,f:0}) {
+  const [tc, setTc] = useState(initial);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTc(prev => {
+        let {h,m,s,f} = prev;
+        f++;
+        if (f >= 30) { f=0; s++; }
+        if (s >= 60) { s=0; m++; }
+        if (m >= 60) { m=0; h++; }
+        return {h,m,s,f};
+      });
+    }, 33);
+    return () => clearInterval(id);
+  }, []);
+  const format = useCallback(() => {
+    const z = (n:number) => n.toString().padStart(2,'0');
+    return `${z(tc.h)}:${z(tc.m)}:${z(tc.s)}:${z(tc.f)}`;
+  }, [tc]);
+  return { tc, format };
+}
+
+// Helper function to format recording time
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
 const CameraMonitor: React.FC = () => {
-  // State management
+  const { sendJSON } = useVideoSocketCtx();
+  
+  /* State management */
+  const [selectedDevice, setSelectedDevice] = useState<string>('/dev/video0');
+  const [selectedCodec, setSelectedCodec] = useState<Codec>('h264');
+  const [devices, setDevices] = useState<string[]>([]);
+  const [deviceInfo, setDeviceInfo] = useState({ width: 0, height: 0, fps: 0 });
+  
+  const [previewWidth, setPreviewWidth]   = useState(1280);
+  const [previewHeight, setPreviewHeight] = useState(720);
+  const [previewFps, setPreviewFps]       = useState(30);
+
+  
+  // Recording state - using server-driven timing
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [timecode, setTimecode] = useState({ hours: 1, minutes: 23, seconds: 45, frames: 18 });
+  
+  // Timecode
+  const { tc: timecode, format: formatTimecode } = useTimecode({h:1,m:23,s:45,f:18});
+  
+  // Overlays
   const [focusPeakingActive, setFocusPeakingActive] = useState(false);
   const [zebrasActive, setZebrasActive] = useState(false);
   const [falseColorActive, setFalseColorActive] = useState(false);
+  
   const [batteryLevel, setBatteryLevel] = useState(85);
   const [streamOK, setStreamOK] = useState(true);
   
@@ -21,66 +143,124 @@ const CameraMonitor: React.FC = () => {
   // Histogram data
   const [histogramData, setHistogramData] = useState([20, 45, 65, 80, 70, 55, 40, 25]);
 
-  /* ------------------------------------------------------------------ */
-  /*  Web-Socket bindings                                               */
-  /* ------------------------------------------------------------------ */
-  const { sendJSON } = useVideoSocketCtx();           // broadcast helper
-
-  /** inbound → update local UI (you can shape this any way you like) */
   useEffect(() => {
-    const handle = (ev: MessageEvent) => {
-      try {
-        const msg = JSON.parse(ev.data);
-        if (msg.type === 'recording-status') {
-          setIsRecording(msg.isRecording);
-          setRecordingTime(msg.elapsed || 0);
-        }
-        if (msg.type === 'battery') setBatteryLevel(msg.level);
-      } catch {/* ignore non-JSON */}
+    const msg: ListDevicesMsg = { action: 'list_devices' };
+    sendJSON(msg);
+    
+    const handler = (ev: MessageEvent) => {
+      const msg = JSON.parse(ev.data) as InboundMsg | DeviceListEvt;
+      if (msg.event === 'device_list') {
+        setDevices(msg.data.map(d => d.path));
+        const info = msg.data.find(d => d.path === msg.data[0]?.path);
+        if (info) setDeviceInfo(info);
+      }
     };
-    // quick attach / detach – the socket lives in the provider
-    window.addEventListener('video-socket-message', handle as any);
-    return () => window.removeEventListener('video-socket-message', handle as any);
-  }, []);
-
-
-  // Update timecode
+    window.addEventListener('video-socket-message', handler as any);
+    return () => window.removeEventListener('video-socket-message', handler as any);
+  }, [sendJSON]);
+  
+  // Sync preview settings to the selected device’s capabilities
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimecode(prev => {
-        let { hours, minutes, seconds, frames } = prev;
-        frames++;
-        if (frames >= 30) {
-          frames = 0;
-          seconds++;
-          if (seconds >= 60) {
-            seconds = 0;
-            minutes++;
-            if (minutes >= 60) {
-              minutes = 0;
-              hours++;
-            }
-          }
-        }
-        return { hours, minutes, seconds, frames };
-      });
-    }, 33);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update recording time
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
+    const { width, height, fps } = deviceInfo;
+    if (width > 0 && height > 0 && fps > 0) {
+      setPreviewWidth(width);
+      setPreviewHeight(height);
+      // round the incoming fps to the nearest integer
+      const roundedFps = Math.round(fps);
+      setPreviewFps(roundedFps);
     }
-    return () => clearInterval(interval);
-  }, [isRecording]);
+  }, [deviceInfo]);
 
-  // Battery drain simulation
+  const handleRecordToggle = useCallback(() => {
+    setIsRecording(prev => {
+      const next = !prev;
+  
+      if (next) {
+        // ISO timestamp, safe for filenames after a bit of cleanup
+        const now = new Date().toISOString().replace(/[:.]/g,'-');
+        const filename = `capture_${now}.mp4`;
+        sendJSON({
+          action:   'start_record',
+          feed:     'main',
+          device:   selectedDevice,
+          filename,
+          codec:    selectedCodec,
+          timecode: formatTimecode(),
+        } as StartRecordMsg);
+      } else {
+        sendJSON({ action: 'stop_record', feed: 'main' } as StopRecordMsg);
+      }
+  
+      return next;
+    });
+  }, [selectedDevice, selectedCodec, formatTimecode, sendJSON]);
+  
+  // Handler: codec change
+  const handleCodecChange = useCallback((newCodec: Codec) => {
+    setSelectedCodec(newCodec);
+    // Immediately notify backend of codec change
+    const msg: SetCodecMsg = {
+      action: 'set_codec',
+      codec: newCodec,
+    };
+    sendJSON(msg);
+  }, [sendJSON]);
+
+  // Handler: device change
+  const handleDeviceChange = useCallback((device: string) => {
+    setSelectedDevice(device);
+    const msg: SelectStreamMsg = {
+      action: 'select_stream',
+      feed: 'main',
+      device: device,
+    };
+    sendJSON(msg);
+  }, [sendJSON]);
+
+  /** 3) Typed inbound socket handler */
+  useEffect(() => {
+    const onSocket = (ev: MessageEvent) => {
+      let msg: InboundMsg;
+      try { msg = JSON.parse(ev.data); }
+      catch { return; }
+
+      switch (msg.event) {
+        case 'recording_status':
+          // Use server-driven recording time
+          setRecordingTime(msg.data.elapsed);
+          setIsRecording(true);
+          break;
+
+        case 'recording_started':
+          setIsRecording(true);
+          setRecordingTime(0); // Reset timer on new recording
+          break;
+
+        case 'recording_stopped':
+          setIsRecording(false);
+          break;
+
+        case 'overlay_toggled':
+          if (msg.data.overlay === 'focusPeaking') setFocusPeakingActive(msg.data.enabled);
+          if (msg.data.overlay === 'zebras')       setZebrasActive(msg.data.enabled);
+          if (msg.data.overlay === 'falseColor')   setFalseColorActive(msg.data.enabled);
+          break;
+
+        case 'battery':
+          setBatteryLevel(msg.data.level);
+          break;
+
+        case 'histogram':
+          setHistogramData(msg.data.buckets);
+          break;
+      }
+    };
+
+    window.addEventListener('video-socket-message', onSocket as any);
+    return () => window.removeEventListener('video-socket-message', onSocket as any);
+  }, []);
+
+  // Battery drain simulation (remove if backend provides real data)
   useEffect(() => {
     const interval = setInterval(() => {
       if (isRecording && Math.random() < 0.1) {
@@ -91,7 +271,7 @@ const CameraMonitor: React.FC = () => {
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  // Histogram animation
+  // Histogram animation (remove if backend provides real data)
   useEffect(() => {
     const interval = setInterval(() => {
       setHistogramData(prev => prev.map(() => Math.random() * 80 + 10));
@@ -99,17 +279,6 @@ const CameraMonitor: React.FC = () => {
 
     return () => clearInterval(interval);
   }, []);
-
-  const formatTime = (time: number) => {
-    const mins = Math.floor(time / 60).toString().padStart(2, '0');
-    const secs = (time % 60).toString().padStart(2, '0');
-    return `${mins}:${secs}`;
-  };
-
-  const formatTimecode = () => {
-    const { hours, minutes, seconds, frames } = timecode;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
-  };
 
   return (
     <div className="w-screen h-screen bg-gradient-to-br from-gray-900 to-black text-white font-sans overflow-hidden select-none flex flex-col">
@@ -136,6 +305,10 @@ const CameraMonitor: React.FC = () => {
           0% { left: -2px; }
           100% { left: 100%; }
         }
+        @keyframes zebraStripe {
+          0% { background-position: 0 0; }
+          100% { background-position: 20px 0; }
+        }
         .status-dot-active { animation: blink 1s infinite; }
         .status-dot-recording { animation: pulse 0.5s infinite; }
         .recording-blink { animation: recordBlink 1s infinite; }
@@ -147,6 +320,23 @@ const CameraMonitor: React.FC = () => {
             radial-gradient(circle at 70% 30%, rgba(255, 0, 0, 0.3) 1px, transparent 1px),
             radial-gradient(circle at 20% 70%, rgba(255, 0, 0, 0.3) 1px, transparent 1px);
           background-size: 40px 40px, 60px 60px, 80px 80px;
+        }
+        .zebra-overlay {
+          background: repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 2px,
+            rgba(255, 255, 0, 0.4) 2px,
+            rgba(255, 255, 0, 0.4) 4px
+          );
+          animation: zebraStripe 1s linear infinite;
+        }
+        .falsecolor-overlay {
+          background: 
+            radial-gradient(circle at 25% 25%, rgba(255, 0, 255, 0.3) 20px, transparent 20px),
+            radial-gradient(circle at 75% 75%, rgba(0, 255, 255, 0.3) 15px, transparent 15px),
+            radial-gradient(circle at 50% 50%, rgba(255, 255, 0, 0.2) 30px, transparent 30px);
+          background-size: 60px 60px, 80px 80px, 100px 100px;
         }
       `}</style>
 
@@ -176,94 +366,160 @@ const CameraMonitor: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex flex-1">
         <div className="flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden">
-          {/* Video Placeholder */}
-          {!streamOK && (
-            <div className="text-gray-600 text-3xl text-center opacity-60">📹 NO SIGNAL</div>
+
+          { /* NO SIGNAL / PREVIEW */ }
+          {!streamOK ? (
+            <div className="flex flex-col items-center">
+              {/* Put a fun GIF in your public folder as "/no-signal.gif" */}
+              <img
+                src="https://media.giphy.com/media/3o6ZsY1skhUgE5r6Lm/giphy.gif"
+                alt="No signal"
+                className="w-32 h-32 mb-4"
+              />
+              <span className="text-gray-600 text-lg">Uh-oh, no camera feed!</span>
+            </div>
+          ) : (
+            <img
+              src={`/api/v1/hwcapture/stream?device=${encodeURIComponent(selectedDevice)}&width=${previewWidth}&height=${previewHeight}&fps=${previewFps}`}
+              alt="Live Preview"
+              className="w-full h-full object-contain absolute top-0 left-0 z-0"
+              onError={() => setStreamOK(false)}
+              onLoad={() => setStreamOK(true)}
+            />
           )}
-          
-          {/* Mock Live Preview */}
-          <img 
-            src="/api/v1/hwcapture/stream?device=/dev/video0&width=1280&height=720&fps=30"
-            alt="Live Preview"
-            className="w-full h-full object-contain absolute top-0 left-0 z-0"
-            onError={() => setStreamOK(false)}
-            onLoad={() => setStreamOK(true)}
 
-          />
-
-          {/* Video Overlays */}
+          {/* Recording "REC" overlay */}
           {isRecording && (
             <div className="absolute top-4 right-4 bg-red-600/90 text-white px-4 py-2 rounded-full font-bold text-xs recording-blink">
               ● REC {formatTime(recordingTime)}
             </div>
           )}
 
+          {/* Input info badge */}
           <div className="absolute top-4 left-4 bg-black/80 p-2.5 rounded text-xs leading-relaxed">
-            <div>4K UHD 3840×2160</div>
-            <div>29.97p ProRes 422 HQ</div>
-            <div>HDMI Input</div>
+            <div>
+              {deviceInfo.width}×{deviceInfo.height}
+            </div>
+            <div>
+              {deviceInfo.fps.toFixed(2)} fps
+            </div>
+            <div>
+              {selectedDevice.replace('/dev/', '')}
+            </div>
           </div>
 
+          {/* Timecode display */}
           <div className="absolute bottom-4 left-4 bg-black/90 px-3 py-2 rounded font-mono text-base text-green-500 font-bold">
             {formatTimecode()}
           </div>
 
+          {/* Focus peaking overlay */}
           {focusPeakingActive && (
             <div className="absolute inset-0 opacity-100 transition-opacity duration-300 focus-peaking-overlay pointer-events-none"></div>
           )}
-        </div>
 
+          {/* Zebra overlay */}
+          {zebrasActive && (
+            <div className="absolute inset-0 opacity-100 transition-opacity duration-300 zebra-overlay pointer-events-none"></div>
+          )}
+
+          {/* False color overlay */}
+          {falseColorActive && (
+            <div className="absolute inset-0 opacity-100 transition-opacity duration-300 falsecolor-overlay pointer-events-none"></div>
+          )}
+
+        </div>
         {/* Control Panel */}
         <div className="w-45 bg-gradient-to-b from-gray-700 to-gray-900 border-l border-gray-700 p-3 overflow-y-auto">
+
+          {/* ◆ Device & Codec Selectors ◆ */}
+          <div className="mb-4 bg-black/20 border border-gray-600 rounded-md p-2.5">
+            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">
+              Source & Codec
+            </div>
+
+            {/* Device dropdown */}
+            <label className="text-xs text-gray-300">Input:</label>
+            <select
+              value={selectedDevice}
+              onChange={e => handleDeviceChange(e.target.value)}
+              className="w-full mb-2 p-1 bg-gray-800 text-white text-sm rounded"
+            >
+              {devices.map(dev => (
+                <option key={dev} value={dev}>{dev}</option>
+              ))}
+            </select>
+
+            {/* Codec dropdown */}
+            <label className="text-xs text-gray-300">Codec:</label>
+            <select
+              value={selectedCodec}
+              onChange={e => handleCodecChange(e.target.value as Codec)}
+              className="w-full p-1 bg-gray-800 text-white text-sm rounded"
+            >
+              <option value="h264">H.264</option>
+              <option value="hevc">HEVC</option>
+            </select>
+          </div>
+          
           {/* Recording Controls */}
           <div className="mb-4 bg-black/30 border border-gray-600 rounded-md p-2.5">
             <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">Record</div>
-            <button
-              className={`w-full p-2 mb-1 bg-gradient-to-br from-red-600 to-red-800 border border-red-600 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-red-500 hover:to-red-700 hover:-translate-y-0.5 font-bold ${isRecording ? 'record-pulse' : ''}`}
-              onClick={() => {
-                const next = !isRecording;
-                setIsRecording(next);                        // optimistic UI
-                sendJSON({
-                  action: next ? 'start_record' : 'stop_record',
-                  device: '/dev/video0',
-                });
-              }}
+            <button 
+              onClick={handleRecordToggle}
+              className={`w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${
+                isRecording 
+                  ? 'from-red-600 to-red-800 border-red-600 record-pulse' 
+                  : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'
+              }`}
             >
-              {isRecording ? '⏸ PAUSE' : '● RECORD'}
-            </button>            <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
+              {isRecording ? '⏸ STOP REC' : '● RECORD'}
+            </button>
+            <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
               ▶ PLAY
             </button>
             <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
               ⏹ STOP
             </button>
           </div>
-
+          
           {/* Monitoring Tools */}
           <div className="mb-4 bg-black/30 border border-gray-600 rounded-md p-2.5">
-            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">Monitor</div>
-            <button 
-              className={`w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${focusPeakingActive ? 'from-orange-600 to-orange-800 border-orange-600 shadow-lg shadow-orange-500/30' : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'}`}
-              onClick={() => setFocusPeakingActive(!focusPeakingActive)}
-            >
-              Focus Peaking
-            </button>
-            <button 
-              className={`w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${zebrasActive ? 'from-orange-600 to-orange-800 border-orange-600 shadow-lg shadow-orange-500/30' : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'}`}
-              onClick={() => setZebrasActive(!zebrasActive)}
-            >
-              Zebras
-            </button>
-            <button 
-              className={`w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${falseColorActive ? 'from-orange-600 to-orange-800 border-orange-600 shadow-lg shadow-orange-500/30' : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'}`}
-              onClick={() => setFalseColorActive(!falseColorActive)}
-            >
-              False Color
-            </button>
-            <button className="w-full p-2 mb-1 bg-gradient-to-br from-orange-600 to-orange-800 border border-orange-600 shadow-lg shadow-orange-500/30 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5">
-              Histogram
-            </button>
-          </div>
+            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">
+              Monitor
+            </div>
 
+            {(['focusPeaking','zebras','falseColor'] as const).map(o => {
+              const active =
+                o === 'focusPeaking' ? focusPeakingActive :
+                o === 'zebras'       ? zebrasActive :
+                                       falseColorActive;
+              const label =
+                o === 'focusPeaking' ? 'Focus Peaking' :
+                o === 'zebras'       ? 'Zebras' :
+                                       'False Color';
+
+              return (
+                <button
+                  key={o}
+                  className={`
+                    w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs
+                    cursor-pointer transition-all duration-200 hover:-translate-y-0.5 
+                    ${
+                      active
+                        ? 'from-orange-600 to-orange-800 border-orange-600 shadow-lg shadow-orange-500/30'
+                        : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'
+                    }
+                  `}
+                  onClick={() => handleToggleOverlay(o)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          
+          
           {/* Display Settings */}
           <div className="mb-4 bg-black/30 border border-gray-600 rounded-md p-2.5">
             <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">Display</div>
