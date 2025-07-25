@@ -1,0 +1,15 @@
+[Unit]
+Description=Camera capture Go service
+After=multi-user.target
+
+[Service]
+Type=simple
+User=video
+ExecStart=/usr/local/bin/capture-daemon /dev/video0
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

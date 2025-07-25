@@ -156,20 +156,28 @@ def _start_db_backup() -> None:
 
     interval  = int(os.getenv("DB_SNAPSHOT_SECS", "300"))
     db_path   = Path(os.getenv("VIDEO_DB_PATH", str(DB.db_path)))
-    backup_to = Path(os.getenv("VIDEO_DB_BACKUP",
-                               "/data/db/media_index.sqlite3"))
+    backup_env = os.getenv("VIDEO_DB_BACKUP", "/data/db/media_index.sqlite3")
+    backup_to = Path(backup_env)
+
+    # If backup_to is a directory (or ends with a separator), append db file name
+    if backup_to.exists() and backup_to.is_dir():
+        backup_to = backup_to / db_path.name
+    elif backup_env.endswith(os.sep):
+        backup_to = backup_to / db_path.name
 
     def _loop() -> None:
         while True:
             try:
+                # Force WAL checkpoint
                 with sqlite3.connect(db_path) as cx:
                     cx.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                # Copy database to a temporary file, then atomically replace backup
                 tmp = backup_to.with_suffix(".tmp")
                 shutil.copy2(db_path, tmp)
                 tmp.replace(backup_to)
                 log.debug("DB snapshot → %s", backup_to)
             except Exception as exc:
-                log.warning("DB snapshot failed: %s", exc)
+                log.warning("DB snapshot failed: %r", exc)
             time.sleep(interval)
 
     threading.Thread(target=_loop, daemon=True, name="db-backup").start()
