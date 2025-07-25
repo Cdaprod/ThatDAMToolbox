@@ -47,7 +47,7 @@ FROM base AS development
 COPY --from=deps /app/node_modules /app/node_modules
 
 # source lives in a dedicated folder that we will bind-mount
-WORKDIR /app/src
+WORKDIR /app
 COPY . .
 
 EXPOSE 3000
