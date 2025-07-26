@@ -1,3 +1,78 @@
+# ThatDamToolbox -- GitHub CI/CD & Automation Directory
+#### .github/README.md
+
+This `.github` directory contains all meta-repo automation for **CI/CD, environment engineering, build pipelines, versioning, and documentation generation**.  
+Every major CI job is defined here using [GitHub Actions](https://docs.github.com/en/actions), enabling robust, idempotent, and reproducible automation for both Dockerized and bare-metal Go host services.
+
+## **Directory Overview**
+
+```text
+.github/
+├── GitVersion.yml         # Semantic versioning and release rules (via GitVersion)
+├── README.md              # (This file)
+└── workflows/             # All GitHub Actions workflows
+├── ci-build-and-publish.yml
+├── ci-engineer-env.yml
+├── generate-docker-diagram.yml
+├── generate-nodeprop-config.yml
+└── README.md
+``` 
+
+- **GitVersion.yml** -- [GitVersion](https://gitversion.net/) config: controls semantic versioning, release, and tagging policy for Docker images and monorepo versioning.
+- **workflows/** -- Each `.yml` file is a GitHub Actions workflow automating builds, deployments, codegen, or diagram generation.
+
+---
+
+## **Workflows At-a-Glance**
+
+- **ci-build-and-publish.yml**  
+  Detects service changes and builds/pushes *only* changed Docker images in parallel, auto-tagged using GitVersion, supporting DockerHub and GHCR.
+
+- **ci-engineer-env.yml**  
+  Fully engineers and simulates the host environment: builds all Go binaries, configures system users/dirs, builds all Docker images, and generates an up-to-date repo architecture diagram--mirroring production bring-up.
+
+- **generate-docker-diagram.yml**  
+  Generates a [Graphviz](https://graphviz.gitlab.io/) SVG diagram from your `docker-compose.yaml`, visually documenting container/service topology.
+
+- **generate-nodeprop-config.yml**  
+  Runs a custom NodeProp config/code generator, commits any changes to config artifacts, and ensures the latest environment YAMLs are always present.
+
+- **README.md**  
+  *This file*: Explains directory purpose and workflow patterns.
+
+---
+
+## **Conventions**
+
+- **DRY_RUN** and safe push: All workflows can be run in "dry run" (no push/tag) or live mode.
+- **Architecture Diagrams**: All diagram outputs are placed in `public/serve/` for easy publishing.
+- **Automated versioning:** Uses `GitVersion.yml` rules for semantic versioning; tags are applied automatically.
+
+---
+
+## **Extending CI/CD**
+
+To add a new workflow, place a `.yml` file under `.github/workflows/`.  
+To add new versioning rules, update `.github/GitVersion.yml`.  
+All codegen and doc artifacts (e.g., architecture SVGs, NodeProp configs) are committed by bot steps when changed.
+
+---
+
+## **Troubleshooting**
+
+- CI log output is visible in the Actions tab.
+- To debug service builds, check the artifact build reports and SVG diagrams.
+- Manual runs: All workflows support `workflow_dispatch` for ad hoc execution.
+
+---
+
+*For workflow-specific docs, see `.github/workflows/README.md`.*
+
+---
+---
+
+# Graveyard
+
 # Complete Monorepo CI/CD Workflow
 
 Below is a pattern many monorepos use to make Docker builds parallel, idempotent, and name-safe.
