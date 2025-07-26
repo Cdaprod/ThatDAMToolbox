@@ -24,9 +24,10 @@ from av import VideoFrame
 
 # ------ ALL hwcapture imports are via the public API ------
 from video.modules.hwcapture import (
-    list_video_devices, HWAccelRecorder, stream_jpeg_frames,
+    list_video_devices, HWAccelRecorder,
     record_multiple, capture_multiple, has_hw
 )
+from video.modules.hwcapture.hwcapture import stream_jpeg_framesn
 
 router = APIRouter(prefix="/ws")
 _log = logging.getLogger("video.ws")
