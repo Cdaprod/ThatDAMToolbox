@@ -30,12 +30,13 @@ from .hwcapture import (
     has_hardware_accel as has_hw,
     record, capture,
     list_video_devices, get_device_info,
-    HWAccelRecorder,
+    HWAccelRecorder, record_multiple,
+    stream_jpeg_frames,
 )
 from .camerarecorder import CameraRecorder
 
 __all__ = [
     "has_hw", "record", "capture",
     "list_video_devices", "get_device_info",
-    "CameraRecorder",
+    "CameraRecorder", "record_multiple",  "stream_jpeg_frames",
 ]
