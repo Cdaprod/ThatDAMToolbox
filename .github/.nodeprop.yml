@@ -1,21 +1,21 @@
-id: bfab7d4184d67d97bb3fffd415b1a1de7d7c28c7c44900000b154b388fcdbe33
+id: 64699d0215e70a7a38f8976e189541fb990d5859429ecf6eb116a7a38c0ea02e
 name: Cdaprod/ThatDAMToolbox
 address: https://github.com/Cdaprod/ThatDAMToolbox
 capabilities:
-- docker-compose
-- containerized
 - pipeline
+- containerized
+- docker-compose
 status: active
 metadata:
   description: Auto-generated configuration for 'Cdaprod/ThatDAMToolbox' in Cdaprod
     domain.
   owner: Cdaprod
-  last_updated: '2025-07-26T06:07:59Z'
+  last_updated: '2025-07-26T15:59:42Z'
   github:
     stars: 0
     forks: 0
     issues: 0
-    latest_commit: '2025-07-26T06:07:59Z'
+    latest_commit: '2025-07-26T15:59:42Z'
     license: No License
   custom_properties:
     deploy_environment: null
@@ -23,7 +23,7 @@ metadata:
     auto_scale: null
     service: null
     app: ThatDAMToolbox
-    image: Cdaprod/ThatDAMToolbox:5631b0e
+    image: Cdaprod/ThatDAMToolbox:adcf4bf
     domain: ThatDAMToolbox.cdaprod.dev
     network: Cdaprod-network
     networking:
