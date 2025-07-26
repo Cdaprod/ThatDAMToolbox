@@ -18,16 +18,16 @@ services:
     # --- Environment ---------------------------
     user: "1000:1000"
     # --- Device permissions & hotplug ----------
-    # devices:
-    #   - /dev/video0:/dev/video0
-    #   - /dev/video1:/dev/video1
-    #   - /dev/vchiq:/dev/vchiq
-    #   - /dev/dri:/dev/dri             # DRM for encoders/GL
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+      - /dev/vchiq:/dev/vchiq
+      - /dev/dri:/dev/dri               # DRM for encoders/GL
     device_cgroup_rules:
       - "c 81:* rmw"                    # hot-plug /dev/video*
     group_add:
       - "44"                            # video group (GID 44 on Pi OS)
-    privileged: true                    # access /dev/video*
+    privileged: true                    # access /dev/video* (ready to depriciate to "false")
     environment:
       TZ:               "America/New_York"
       VIDEO_MODE:       "api"
