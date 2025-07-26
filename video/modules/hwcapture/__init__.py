@@ -28,7 +28,7 @@ from . import routes, commands   # side-effects register CLI & REST
 
 from .hwcapture import (
     has_hardware_accel as has_hw,
-    record, capture,
+    record, capture, capture_multiple,
     list_video_devices, get_device_info,
     HWAccelRecorder, record_multiple,
     stream_jpeg_frames,
@@ -36,7 +36,7 @@ from .hwcapture import (
 from .camerarecorder import CameraRecorder
 
 __all__ = [
-    "has_hw", "record", "capture",
+    "has_hw", "record", "capture", "capture_multiple",
     "list_video_devices", "get_device_info",
     "CameraRecorder", "record_multiple",  "stream_jpeg_frames",
 ]
