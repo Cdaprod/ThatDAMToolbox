@@ -117,6 +117,7 @@ secrets.json
 # If you have generated or temporary files, add patterns here
 *clipboard*
 *.disabled
+host/releases/
 
 # ---- Uncomment to ignore these if needed ----
 # /scripts/cli.py

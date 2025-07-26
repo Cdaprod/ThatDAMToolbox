@@ -17,6 +17,11 @@ Thumbs.db
 *.code-workspace
 
 ###############################
+#  Host layer golang/releases
+###############################
+host/releases/
+
+###############################
 #  Python artefacts
 ###############################
 __pycache__/
