@@ -1,0 +1,7 @@
+go 1.20
+
+use (
+    ./host/services/shared
+    ./host/services/api-gateway
+    ./host/services/capture-daemon
+)
