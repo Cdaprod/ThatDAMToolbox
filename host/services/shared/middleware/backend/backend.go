@@ -15,6 +15,12 @@ import (
     "net/http/httputil"
     "net/url"
     "strings"
+<<<<<<< HEAD
+=======
+    "time"
+    
+    "github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware"
+>>>>>>> origin/main
 )
 
 // AuthenticationMiddleware validates JWT tokens and sets user context
@@ -159,3 +165,34 @@ func CacheMiddleware(cacheDuration time.Duration) func(http.Handler) http.Handle
         })
     }
 }
+
+// --- Stubs for undefined helpers and types (replace with real ones or import from middleware) ---
+
+type cacheEntry struct {
+    body        []byte
+    contentType string
+    statusCode  int
+    timestamp   time.Time
+}
+
+type cacheRecorder struct {
+    http.ResponseWriter
+    body       []byte
+    statusCode int
+}
+
+func (r *cacheRecorder) WriteHeader(code int) { r.statusCode = code; r.ResponseWriter.WriteHeader(code) }
+func (r *cacheRecorder) Write(b []byte) (int, error) { r.body = append(r.body, b...); return r.ResponseWriter.Write(b) }
+
+type responseRecorder struct {
+    http.ResponseWriter
+    statusCode int
+}
+
+func (r *responseRecorder) WriteHeader(code int) { r.statusCode = code; r.ResponseWriter.WriteHeader(code) }
+
+// Replace this with a real implementation
+func isPublicEndpoint(path string) bool         { return false }
+func validateJWT(token, secret string) (string, error) { return "user", nil }
+func proxyToPythonBackend(w http.ResponseWriter, r *http.Request, backendURL, prefix string) {}
+func getClientIP(r *http.Request) string { return "127.0.0.1" }
