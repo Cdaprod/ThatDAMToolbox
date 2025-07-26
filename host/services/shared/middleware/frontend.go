@@ -1,4 +1,5 @@
 // ================================
+// /host/services/shared/middleware/frontend.go
 // FRONTEND MIDDLEWARE (UI Layer)
 // ================================
 package frontend

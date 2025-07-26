@@ -1,0 +1,56 @@
+# .github/workflows/generate-nodeprop-config.yml
+
+name: Generate NodeProp Configuration
+
+on:
+  push:
+    branches: ['**']
+    tags:     ['*']
+    paths:
+      - ".nodeprop.yaml"
+      - ".nodeprop.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'  # daily at 6am UTC
+
+jobs:
+  generate-config:
+    name: Generate NodeProp YAML + Commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Run NodeProp Generator
+        id: nodeprop
+        uses: Cdaprod/nodeprop-action@v1.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: '.nodeprop.yml'
+          storage-path: 'configs'
+
+      - name: Show Generated YAML
+        run: |
+          echo "------ .nodeprop.yml ------"
+          cat .nodeprop.yml || echo "❌ YAML not found"
+          echo "------ configs/ listing ------"
+          ls -al configs || echo "❌ No configs directory"
+
+      - name: Commit NodeProp YAMLs to Git
+        run: |
+          git config user.name "CDA NodeProp Bot"
+          git config user.email "nodeprop@cdaprod.dev"
+
+          git add .nodeprop.yml configs/
+
+          # Only commit if there are actual changes
+          if git diff --cached --quiet; then
+            echo "✅ No changes to commit"
+          else
+            git commit -m "chore: update NodeProp config [skip ci]"
+            git push
+          fi

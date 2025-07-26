@@ -1,72 +1,47 @@
+// /host/services/capture-daemon/main.go
 package main
 
 import (
-    "fmt"
     "log"
     "os"
-    "os/exec"
-    "path/filepath"
+    "os/signal"
+    "syscall"
     "time"
+
+    "ThatDamToolbox/host/services/capture-daemon/scanner"
+    "ThatDamToolbox/host/services/capture-daemon/runner"
+    "ThatDamToolbox/host/services/capture-daemon/registry"
 )
-
-// Configurable params
-var (
-    defaultDevice   = "/dev/video0"
-    defaultCodec    = "h264"
-    defaultRes      = "1920x1080"
-    defaultFps      = "30"  // Changed to string
-    defaultOutDir   = "/var/media/records"
-    ffmpegPath      = "ffmpeg"
-)
-
-// ensureDir creates output directory if not present.
-func ensureDir(dir string) {
-    if err := os.MkdirAll(dir, 0755); err != nil {
-        log.Fatalf("Failed to create output dir: %v", err)
-    }
-}
-
-// buildOutputFilename generates a timestamped output filename for the device.
-func buildOutputFilename(device string) string {
-    timestamp := time.Now().UTC().Format("20060102T150405Z")
-    devName := filepath.Base(device)
-    return filepath.Join(defaultOutDir, devName+"-"+defaultCodec+"-"+timestamp+".mp4")
-}
-
-// runFFmpeg runs ffmpeg as a subprocess and blocks until it exits or is killed.
-func runFFmpeg(device, outFile string) error {
-    args := []string{
-        "-hide_banner", "-loglevel", "warning",
-        "-f", "v4l2",
-        "-framerate", defaultFps,
-        "-video_size", defaultRes,
-        "-i", device,
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-tune", "zerolatency",
-        outFile,
-    }
-    cmd := exec.Command(ffmpegPath, args...)
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    return cmd.Run()
-}
 
 func main() {
-    device := defaultDevice
-    if len(os.Args) > 1 {
-        device = os.Args[1]
-    }
+    log.Println("ThatDamToolbox capture-daemon starting...")
 
-    ensureDir(defaultOutDir)
+    // Initialize registry (tracks device->worker)
+    reg := registry.NewRegistry()
 
-    for {
-        outFile := buildOutputFilename(device)
-        log.Printf("Starting capture: %s → %s\n", device, outFile)
-        err := runFFmpeg(device, outFile)
-        if err != nil {
-            log.Printf("Capture error: %v", err)
+    // Set up signal handler for graceful shutdown
+    sigs := make(chan os.Signal, 1)
+    signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
+    // Poll interval for device scanning
+    pollInterval := 5 * time.Second
+
+    // Main event loop
+    go func() {
+        for {
+            // Scan for video devices (could combine multiple scanners)
+            devices, err := scanner.ScanAll()  // You write ScanAll to combine V4L2, Pi, IPCam, etc.
+            if err != nil {
+                log.Printf("Device scan error: %v", err)
+            } else {
+                reg.Update(devices) // Registry: starts/stops runners as needed
+            }
+            time.Sleep(pollInterval)
         }
-        time.Sleep(3 * time.Second) // Wait before restarting
-    }
+    }()
+
+    // Block until shutdown
+    <-sigs
+    log.Println("Shutting down capture-daemon...")
+    reg.StopAll()
 }

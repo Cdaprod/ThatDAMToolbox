@@ -1,0 +1,82 @@
+# .github/workflows/generate-docker-diagram.yml
+
+name: Generate Docker Compose Diagram
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "docker-compose.yaml"
+      - ".github/workflows/generate-docker-diagram.yml"
+
+jobs:
+  generate-diagram:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Graphviz
+        run: sudo apt-get install -y graphviz
+
+      - name: Install Python Dependencies
+        run: pip install pyyaml
+
+      - name: Create Diagram Output Directory
+        run: mkdir -p public/serve/
+
+      - name: Generate GraphViz DOT from docker-compose.yaml
+        run: |
+          python3 <<EOF
+          import yaml
+          import os
+
+          with open("docker-compose.yaml") as f:
+              compose = yaml.safe_load(f)
+
+          services = compose.get("services", {})
+          networks = compose.get("networks", {})
+          volumes = compose.get("volumes", {})
+
+          dot = ['digraph docker_compose {',
+                 '  rankdir=LR;',
+                 '  node [shape=box, style=filled, color=lightblue];']
+
+          for name, svc in services.items():
+              dot.append(f'  "{name}" [label="{name}"];')
+
+              for dep in svc.get("depends_on", []):
+                  if isinstance(dep, str):
+                      dot.append(f'  "{dep}" -> "{name}";')
+
+              for net in svc.get("networks", []):
+                  net_id = f"net::{net}"
+                  dot.append(f'  "{name}" -> "{net_id}" [style=dotted, color=gray];')
+                  dot.append(f'  "{net_id}" [label="{net}" shape=ellipse color=lightgray];')
+
+              for vol in svc.get("volumes", []):
+                  vol_name = vol if isinstance(vol, str) else vol.get("source", "unknown")
+                  vol_id = f"vol::{vol_name}"
+                  dot.append(f'  "{name}" -> "{vol_id}" [style=dashed, color=darkgreen];')
+                  dot.append(f'  "{vol_id}" [label="{vol_name}" shape=cylinder color=lightgreen];')
+
+          dot.append("}")
+          with open("public/serve/repository-docker-structure.dot", "w") as f:
+              f.write("\n".join(dot))
+          EOF
+
+      - name: Convert DOT to SVG
+        run: |
+          dot -Tsvg public/serve/repository-docker-structure.dot -o public/serve/repository-docker-structure.svg
+
+      - name: Commit and Push Diagram
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(diagram): update repository-docker-structure.svg"
+          file_pattern: public/serve/repository-docker-structure.*

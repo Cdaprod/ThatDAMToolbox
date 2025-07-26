@@ -1,0 +1,100 @@
+# .github/workflows/ci-engineer-env.yml
+
+name: Engineer Production Environment
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "release/**"]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+jobs:
+  engineer-env:
+    name: Build & Validate Full Production Environment
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      # Can be used for later conditional logic
+      GO_VERSION: '1.21'
+      PYTHON_VERSION: '3.11'
+
+    steps:
+      # === Checkout codebase ===
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # === Setup build tooling ===
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install system tools (simulate prod host)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz jq ffmpeg v4l-utils
+
+      # === Engineer Host Environment ===
+      - name: Create Host System Users/Dirs
+        run: |
+          sudo useradd -r -s /bin/false -G video camera-proxy || true
+          sudo useradd -r -s /bin/false -G video capture-user || true
+          sudo mkdir -p /var/media/records /var/lib/thatdamtoolbox/db
+          sudo chown -R $USER:video /var/media/records
+          sudo chown -R $USER:www-data /var/lib/thatdamtoolbox
+
+      # === Build Host Go Binaries ===
+      - name: Build Host Services (Go)
+        run: |
+          make clean-go
+          make build-all
+          ls -lh host/services/api-gateway/api-gateway host/services/camera-proxy/camera-proxy host/services/capture-daemon/capture-daemon-new
+
+      # === Build Docker Images ===
+      - name: Build Docker Images
+        run: |
+          docker compose build
+
+      # === (Optional) Run Container Smoke Tests ===
+      - name: Run Docker Compose Up (test)
+        run: |
+          docker compose up -d
+          sleep 10
+          docker compose ps
+          docker compose logs
+
+      # === Generate Architecture Diagram ===
+      - name: Generate Repo Architecture Diagram
+        run: make arch-diagram
+
+      # === Commit and Push Artifacts ===
+      - name: Commit and Push Diagrams/Docs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(ci): update architecture diagram"
+          file_pattern: "public/serve/repository-architecture.*"
+
+      # === Clean up Docker/Host ===
+      - name: Clean Up
+        if: always()
+        run: |
+          docker compose down --volumes || true
+
+      # === Test Host Binary (optional, no cameras in CI) ===
+      - name: Run Host Binary (no hardware)
+        run: |
+          host/services/capture-daemon/capture-daemon-new --help || true

@@ -1,3 +1,4 @@
+// /host/services/camera-proxy/main.go
 package main
 
 import (
