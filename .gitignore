@@ -53,6 +53,7 @@ dist/
 *.gz
 *.tar
 *.tar.gz
+data/
 
 # ---- Metadata/output folders ----
 /metadata/
