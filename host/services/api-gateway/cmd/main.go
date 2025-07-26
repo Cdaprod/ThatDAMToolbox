@@ -18,7 +18,7 @@ import (
     "github.com/gorilla/websocket"
 
     "github.com/Cdaprod/ThatDamToolbox/host/services/api-gateway/pkg/middleware"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/middleware/backend"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/backend"
     "github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/frontend"
     "github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/host"
 )

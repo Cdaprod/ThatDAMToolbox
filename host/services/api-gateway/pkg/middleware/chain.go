@@ -2,28 +2,28 @@ package middleware
 
 import "net/http"
 
-// Middleware is a func that wraps an http.Handler.
+// Middleware represents a middleware function
 type Middleware func(http.Handler) http.Handler
 
-// Chain holds an ordered list of Middleware.
+// Chain represents a chain of middleware
 type Chain struct {
     middlewares []Middleware
 }
 
-// New returns an empty Chain.
-func New() *Chain {
-    return &Chain{middlewares: []Middleware{}}
+// New creates a new middleware chain
+func New(middlewares ...Middleware) *Chain {
+    return &Chain{middlewares: middlewares}
 }
 
-// Use appends a middleware to the chain.
-func (c *Chain) Use(m Middleware) *Chain {
-    c.middlewares = append(c.middlewares, m)
+// Use adds a middleware to the chain
+func (c *Chain) Use(middleware Middleware) *Chain {
+    c.middlewares = append(c.middlewares, middleware)
     return c
 }
 
-// Build applies all middlewares in reverse order, returning the final handler.
-func (c *Chain) Build(final http.Handler) http.Handler {
-    handler := final
+// Build creates the final handler with all middleware applied
+func (c *Chain) Build(handler http.Handler) http.Handler {
+    // Apply middleware in reverse order (last added runs first)
     for i := len(c.middlewares) - 1; i >= 0; i-- {
         handler = c.middlewares[i](handler)
     }

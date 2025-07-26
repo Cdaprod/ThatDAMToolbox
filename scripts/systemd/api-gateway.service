@@ -1,0 +1,29 @@
+[Unit]
+Description=ThatDamToolbox API Gateway
+After=network.target
+Wants=multi-user.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+ExecStart=/usr/local/bin/api-gateway \
+  -addr=:8089 \
+  -api-prefix=/api/ \
+  -backend-url=http://localhost:8080 \
+  -static-dir=/opt/thatdamtoolbox/web \
+  -media-dir=/var/media/records \
+  -db-path=/var/lib/thatdamtoolbox/live.sqlite3
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/media/records /var/lib/thatdamtoolbox
+
+[Install]
+WantedBy=multi-user.target

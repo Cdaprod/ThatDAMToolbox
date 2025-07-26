@@ -1,0 +1,29 @@
+[Unit]
+Description=ThatDamToolbox Camera Proxy
+After=network.target
+Wants=multi-user.target
+
+[Service]
+Type=simple
+User=camera-proxy
+Group=video
+ExecStart=/usr/local/bin/camera-proxy
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment=PROXY_PORT=8000
+Environment=BACKEND_URL=http://localhost:8080
+Environment=FRONTEND_URL=http://localhost:3000
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/dev
+SupplementaryGroups=video
+
+[Install]
+WantedBy=multi-user.target

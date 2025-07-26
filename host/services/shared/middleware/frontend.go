@@ -1,7 +1,6 @@
 // ================================
 // FRONTEND MIDDLEWARE (UI Layer)
 // ================================
-
 package frontend
 
 import (

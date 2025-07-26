@@ -1,0 +1,24 @@
+[Unit]
+Description=ThatDamToolbox Capture Daemon
+After=network.target
+Wants=multi-user.target
+
+[Service]
+Type=simple
+User=video
+Group=video
+ExecStart=/usr/local/bin/capture-daemon-new /dev/video0
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/media/records /dev
+SupplementaryGroups=video
+
+[Install]
+WantedBy=multi-user.target
