@@ -15,12 +15,9 @@ import (
     "net/http/httputil"
     "net/url"
     "strings"
-<<<<<<< HEAD
-=======
     "time"
-    
+
     "github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware"
->>>>>>> origin/main
 )
 
 // AuthenticationMiddleware validates JWT tokens and sets user context
