@@ -1,0 +1,1 @@
+# Placeholder directory for the [video/](/video/) module.

@@ -1,5 +1,7 @@
 # video/README.md
 
+## technically.. this directory would exist under [docker/video](/docker/video/)
+
 ## That DAM Toolbox
 
 ```
