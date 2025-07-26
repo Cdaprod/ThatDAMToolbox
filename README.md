@@ -62,6 +62,33 @@ Browser  →  FastAPI  →  Database
 
 ## Core Features
 
+### 🧺 Docker Compose Service Topology
+
+**This diagram is a high-level overview of how our three containers, their mounted volumes, and the shared network fit together:**
+
+![Compose Service Topology](/public/serve/repository-docker-structure.svg)
+
+### Services
+- video-api (FastAPI backend)
+- video-web (Next.js frontend)
+- video-cli (CLI utilities)
+### Volumes
+- Host media library:
+  - /mnt/b/Video/thatdamtoolbox → /data
+  - /mnt/b/Video/_INCOMING → /data/_INCOMING
+  - Local project video folder: ./video → /video
+### Frontend code & build output:
+  - ./docker/web-app → /app
+  - /app/node_modules & /app/.next for runtime dependencies
+- Database WAL store for CLI: db_wal → /var/lib/thatdamtoolbox/db
+### Network
+- All three services attach to the damnet bridge network for internal communication.
+- The frontend (video-web) also connects to video-api over its published ports.
+
+This topology ensures that each container has direct, read-write access to the same media directories, while isolating inter-service traffic on a dedicated Docker network.
+
+---
+
 ### ✨ AI-Powered Media Processing
 
 - **Hierarchical Video Embeddings**: Multi-layer (L0-L3) vector representations
@@ -82,6 +109,8 @@ Browser  →  FastAPI  →  Database
 - **Network Sync**: SMB/NAS integration with metadata preservation
 - **Stock Platform Publishing**: Automated uploads to licensing platforms
 - **iPhone Photos Integration**: Seamless HEIC/ProRes import workflows
+
+---
 
 ## AI Video Processing
 
@@ -115,6 +144,8 @@ sequenceDiagram
 - **L1**: Frame-level analysis and feature extraction
 - **L2**: Scene segmentation and content understanding
 - **L3**: Semantic relationships and cross-video connections
+
+---
 
 ## System Architecture Details
 
@@ -303,6 +334,8 @@ graph RL
     class RANDOM,NULL,STDIN,VIDEO0,V4L2REQ charDevice
 ``` 
 
+---
+
 ### API Endpoints
 
 ```mermaid
@@ -328,6 +361,8 @@ The FastAPI server provides comprehensive REST endpoints:
 - `/paths` - Path Management
 - `/jobs` - Job Monitoring & Status
 
+--- 
+
 ## Hardware Context
 
 ### Device Integration Matrix
@@ -336,43 +371,45 @@ The system integrates with various hardware and virtual devices for optimal perf
 
 ```mermaid
 graph RL
-    subgraph “Input Sources”
+    subgraph "Input Sources"
         CAM[IP Cameras<br/>Network Sources]
         FILES[Video Files<br/>Local Storage]
         UPLOAD[Upload Sources<br/>HTTP/API]
         BACKUP[Backup Sources<br/>External Storage]
     end
 
-    subgraph “Network Devices”
+    subgraph "Network Devices"
         ETH[eth0 - Network Interface]
         DOCKER[docker0 - Bridge Interface]
         LO[lo - Loopback Interface]
     end
 
-    subgraph “Character Devices (/dev/c)”
-        VIDEO0[“/dev/video* - Camera Nodes”]
-        RANDOM[“/dev/random - Entropy Source”]
-        NULL[“/dev/null - Null Device”]
+    subgraph "Character Devices (/dev/c)"
+        VIDEO0["/dev/video* - Camera Nodes"]
+        RANDOM["/dev/random - Entropy Source"]
+        NULL["/dev/null - Null Device"]
     end
 
-    subgraph “Block Devices (/dev/b)”
-        SSD[“/dev/sda - Primary Storage”]
-        BACKUP_DISK[“/dev/sdb - Backup Storage”]
-        LOOP[“/dev/loop0 - Loop Device”]
+    subgraph "Block Devices (/dev/b)"
+        SSD["/dev/sda - Primary Storage"]
+        BACKUP_DISK["/dev/sdb - Backup Storage"]
+        LOOP["/dev/loop0 - Loop Device"]
     end
 
-    subgraph “API Application”
+    subgraph "API Application"
         API[Video API Server<br/>Port 8080<br/>FastAPI/Uvicorn]
     end
 
-    CAM —> ETH
-    FILES —> SSD
-    UPLOAD —> DOCKER
-    BACKUP —> BACKUP_DISK
-    VIDEO0 —> API
-    ETH —> API
-    SSD —> API
+    CAM --> ETH
+    FILES --> SSD
+    UPLOAD --> DOCKER
+    BACKUP --> BACKUP_DISK
+    VIDEO0 --> API
+    ETH --> API
+    SSD --> API
 ```
+
+---
 
 ## Installation
 
@@ -421,13 +458,13 @@ from video import MediaIndexer
 indexer = MediaIndexer()
 
 # Scan a directory
-indexer.scan(“/path/to/media”)
+indexer.scan("/path/to/media")
 
 # Get recent files
 recent_media = indexer.get_recent()
 
 # Search content
-results = indexer.search(“sunset beach”)
+results = indexer.search("sunset beach")
 ```
 
 ### Web Interface
@@ -443,17 +480,17 @@ Create JSON workflows for complex operations:
 
 ```json
 {
-  “workflow”: [
+  "workflow": [
     {
-      “action”: “sync_album”,
-      “root”: “/media/workspace”,
-      “album”: “Project Alpha”,
-      “category”: “edit”,
-      “copy”: true
+      "action": "sync_album",
+      "root": "/media/workspace",
+      "album": "Project Alpha",
+      "category": "edit",
+      "copy": true
     },
-    { “action”: “scan”, “root”: “/media/incoming” },
-    { “action”: “backup”, “backup_root”: “/media/archive” },
-    { “action”: “stats” }
+    { "action": "scan", "root": "/media/incoming" },
+    { "action": "backup", "backup_root": "/media/archive" },
+    { "action": "stats" }
   ]
 }
 ```
@@ -475,8 +512,8 @@ POST /api/embedding/videos/ingest
 Content-Type: application/json
 
 {
-  “path”: “/media/video.mp4”,
-  “generate_levels”: [“L1”, “L2”, “L3”]
+  "path": "/media/video.mp4",
+  "generate_levels": ["L1", "L2", "L3"]
 }
 ```
 
