@@ -30,6 +30,7 @@ from .hwcapture import (
     has_hardware_accel as has_hw,
     record, capture,
     list_video_devices, get_device_info,
+    HWAccelRecorder,
 )
 from .camerarecorder import CameraRecorder
 
