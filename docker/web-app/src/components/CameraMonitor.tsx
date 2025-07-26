@@ -113,51 +113,85 @@ const CameraMonitor: React.FC = () => {
   const [selectedCodec, setSelectedCodec] = useState<Codec>('h264');
   const [devices, setDevices] = useState<string[]>([]);
   const [deviceInfo, setDeviceInfo] = useState({ width: 0, height: 0, fps: 0 });
-  
+  const [devicesAvailableNow, setDevicesAvailableNow] = useState<string[]>([]);
+  const [allDevicesSeen, setAllDevicesSeen] = useState<string[]>(() => {
+    // Try to load last seen from localStorage
+    const stored = typeof window !== 'undefined' && window.localStorage.getItem('cameraDevices');
+    return stored ? JSON.parse(stored) : [];
+  });
   const [previewWidth, setPreviewWidth]   = useState(1280);
   const [previewHeight, setPreviewHeight] = useState(720);
   const [previewFps, setPreviewFps]       = useState(30);
-
-  
   // Recording state - using server-driven timing
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  
   // Timecode
   const { tc: timecode, format: formatTimecode } = useTimecode({h:1,m:23,s:45,f:18});
-  
   // Overlays
   const [focusPeakingActive, setFocusPeakingActive] = useState(false);
   const [zebrasActive, setZebrasActive] = useState(false);
   const [falseColorActive, setFalseColorActive] = useState(false);
-  
   const [batteryLevel, setBatteryLevel] = useState(85);
   const [streamOK, setStreamOK] = useState(true);
-  
+  // Histogram data
+  const [histogramData, setHistogramData] = useState([20, 45, 65, 80, 70, 55, 40, 25]);
   // Slider states
   const [brightness, setBrightness] = useState(80);
   const [contrast, setContrast] = useState(100);
   const [saturation, setSaturation] = useState(100);
   const [volume, setVolume] = useState(75);
-  
-  // Histogram data
-  const [histogramData, setHistogramData] = useState([20, 45, 65, 80, 70, 55, 40, 25]);
 
   useEffect(() => {
-    const msg: ListDevicesMsg = { action: 'list_devices' };
-    sendJSON(msg);
-    
+    sendJSON({ action: 'list_devices' } as ListDevicesMsg);
+  
     const handler = (ev: MessageEvent) => {
-      const msg = JSON.parse(ev.data) as InboundMsg | DeviceListEvt;
-      if (msg.event === 'device_list') {
-        setDevices(msg.data.map(d => d.path));
-        const info = msg.data.find(d => d.path === msg.data[0]?.path);
-        if (info) setDeviceInfo(info);
-      }
+      try {
+        const msg = JSON.parse(ev.data) as InboundMsg | DeviceListEvt;
+        if (msg.event === 'device_list') {
+          const nowList = msg.data.map(d => d.path);
+  
+          setDevicesAvailableNow(nowList);
+  
+          // Merge with all previously seen devices
+          setAllDevicesSeen(prev => {
+            const merged = Array.from(new Set([...prev, ...nowList]));
+            // Persist to localStorage
+            window.localStorage.setItem('cameraDevices', JSON.stringify(merged));
+            return merged;
+          });
+  
+          // Fallback logic for selectedDevice
+          if (!nowList.includes(selectedDevice)) {
+            // Try to restore last selection from localStorage
+            const lastSelected = window.localStorage.getItem('lastSelectedDevice');
+            if (lastSelected && nowList.includes(lastSelected)) {
+              setSelectedDevice(lastSelected);
+              // Optionally notify backend:
+              sendJSON({
+                action: 'select_stream',
+                feed: 'main',
+                device: lastSelected,
+              } as SelectStreamMsg);
+            } else if (nowList.length > 0) {
+              setSelectedDevice(nowList[0]);
+              sendJSON({
+                action: 'select_stream',
+                feed: 'main',
+                device: nowList[0],
+              } as SelectStreamMsg);
+            }
+          }
+  
+          // Set device info if available
+          const info = msg.data.find(d => d.path === selectedDevice) || msg.data[0];
+          if (info) setDeviceInfo(info);
+        }
+      } catch {}
     };
+  
     window.addEventListener('video-socket-message', handler as any);
     return () => window.removeEventListener('video-socket-message', handler as any);
-  }, [sendJSON]);
+  }, [sendJSON, selectedDevice]);
   
   // Sync preview settings to the selected device’s capabilities
   useEffect(() => {
@@ -209,6 +243,7 @@ const CameraMonitor: React.FC = () => {
   // Handler: device change
   const handleDeviceChange = useCallback((device: string) => {
     setSelectedDevice(device);
+    window.localStorage.setItem('lastSelectedDevice', device);
     const msg: SelectStreamMsg = {
       action: 'select_stream',
       feed: 'main',
@@ -445,8 +480,18 @@ const CameraMonitor: React.FC = () => {
               onChange={e => handleDeviceChange(e.target.value)}
               className="w-full mb-2 p-1 bg-gray-800 text-white text-sm rounded"
             >
-              {devices.map(dev => (
-                <option key={dev} value={dev}>{dev}</option>
+              {allDevicesSeen.map(dev => (
+                <option
+                  key={dev}
+                  value={dev}
+                  disabled={!devicesAvailableNow.includes(dev)}
+                  style={{
+                    color: devicesAvailableNow.includes(dev) ? '#fff' : '#888',
+                    background: devicesAvailableNow.includes(dev) ? '' : '#333',
+                  }}
+                >
+                  {dev}{!devicesAvailableNow.includes(dev) ? ' (offline)' : ''}
+                </option>
               ))}
             </select>
 
