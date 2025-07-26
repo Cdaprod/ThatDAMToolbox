@@ -11,6 +11,7 @@ import (
     "net/http/httputil"
     "path/filepath"
     "strings"
+    "time"
 )
 
 // StaticFileMiddleware serves static assets with proper caching

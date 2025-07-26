@@ -3,7 +3,7 @@ package middleware
 
 import (
     "compress/gzip"
-    "io"
+    "time"
     "net/http"
 )
 
