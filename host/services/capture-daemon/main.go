@@ -8,9 +8,9 @@ import (
     "syscall"
     "time"
 
-    "ThatDamToolbox/host/services/capture-daemon/scanner"
-    "ThatDamToolbox/host/services/capture-daemon/runner"
-    "ThatDamToolbox/host/services/capture-daemon/registry"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
 )
 
 func main() {
