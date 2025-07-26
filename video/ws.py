@@ -13,6 +13,7 @@ import time
 import fractions
 import cv2
 import queue
+import base64
 import numpy as np
 
 from typing import Any, Dict, Set, Optional
@@ -259,6 +260,70 @@ class CameraTrack(VideoStreamTrack):
     def stop(self):
         super().stop()
         self.cap.release()
+
+
+@router.websocket("/camera")
+async def ws_camera(ws: WebSocket):
+    """
+    WebSocket camera control & single-frame capture endpoint.
+    Example actions:
+      { "action": "list_devices" }
+      { "action": "capture_frame", "device": "/dev/video0" }
+    """
+    await ws.accept()
+    _log.info("Camera WS client connected")
+    try:
+        await ws.send_json({"event": "camera_ws_ready"})
+        while True:
+            try:
+                msg = await ws.receive_text()
+                try:
+                    data = json.loads(msg)
+                except Exception as e:
+                    await ws.send_json({"event": "error", "data": f"JSON parse: {str(e)}"})
+                    continue
+
+                action = data.get("action")
+                # 1. List available video devices
+                if action == "list_devices":
+                    devices = list_video_devices()
+                    await ws.send_json({"event": "device_list", "data": devices})
+
+                # 2. Capture a single JPEG frame from a specified device (base64)
+                elif action == "capture_frame":
+                    device = data.get("device", "/dev/video0")
+                    cap = cv2.VideoCapture(device)
+                    if not cap.isOpened():
+                        await ws.send_json({"event": "error", "data": f"Failed to open {device}"})
+                        cap.release()
+                        continue
+                    ret, frame = cap.read()
+                    cap.release()
+                    if not ret:
+                        await ws.send_json({"event": "error", "data": f"Read failed from {device}"})
+                        continue
+                    _, jpg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                    # Send base64 for easy front-end display (data:image/jpeg;base64,...)
+                    await ws.send_json({
+                        "event": "frame",
+                        "device": device,
+                        "data": base64.b64encode(jpg).decode("ascii")
+                    })
+
+                # (Extend here: add "start_stream", "stop_stream", etc if needed)
+
+                else:
+                    await ws.send_json({"event": "error", "data": f"Unknown action: {action}"})
+            except WebSocketDisconnect:
+                _log.info("Camera WS client disconnected")
+                break
+            except Exception as e:
+                await ws.send_json({"event": "error", "data": f"Exception: {str(e)}"})
+    finally:
+        try:
+            await ws.close()
+        except Exception:
+            pass
 
 
 @router.post("/webrtc")
