@@ -1,0 +1,28 @@
+digraph docker_compose {
+  rankdir=LR;
+  node [shape=box, style=filled, color=lightblue];
+  "video-api" [label="video-api"];
+  "video-api" -> "vol::/mnt/b/Video/thatdamtoolbox:/data:rw" [style=dashed, color=darkgreen];
+  "vol::/mnt/b/Video/thatdamtoolbox:/data:rw" [label="/mnt/b/Video/thatdamtoolbox:/data:rw" shape=cylinder color=lightgreen];
+  "video-api" -> "vol::/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" [style=dashed, color=darkgreen];
+  "vol::/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" [label="/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" shape=cylinder color=lightgreen];
+  "video-api" -> "vol::./video:/video:rw" [style=dashed, color=darkgreen];
+  "vol::./video:/video:rw" [label="./video:/video:rw" shape=cylinder color=lightgreen];
+  "video-web" [label="video-web"];
+  "video-api" -> "video-web";
+  "video-web" -> "net::damnet" [style=dotted, color=gray];
+  "net::damnet" [label="damnet" shape=ellipse color=lightgray];
+  "video-web" -> "vol::./docker/web-app:/app:rw" [style=dashed, color=darkgreen];
+  "vol::./docker/web-app:/app:rw" [label="./docker/web-app:/app:rw" shape=cylinder color=lightgreen];
+  "video-web" -> "vol::/app/node_modules" [style=dashed, color=darkgreen];
+  "vol::/app/node_modules" [label="/app/node_modules" shape=cylinder color=lightgreen];
+  "video-web" -> "vol::/app/.next" [style=dashed, color=darkgreen];
+  "vol::/app/.next" [label="/app/.next" shape=cylinder color=lightgreen];
+  "video-cli" [label="video-cli"];
+  "video-cli" -> "vol::/mnt/b/Video/thatdamtoolbox:/data:rw" [style=dashed, color=darkgreen];
+  "vol::/mnt/b/Video/thatdamtoolbox:/data:rw" [label="/mnt/b/Video/thatdamtoolbox:/data:rw" shape=cylinder color=lightgreen];
+  "video-cli" -> "vol::/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" [style=dashed, color=darkgreen];
+  "vol::/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" [label="/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" shape=cylinder color=lightgreen];
+  "video-cli" -> "vol::db_wal:/var/lib/thatdamtoolbox/db:rw" [style=dashed, color=darkgreen];
+  "vol::db_wal:/var/lib/thatdamtoolbox/db:rw" [label="db_wal:/var/lib/thatdamtoolbox/db:rw" shape=cylinder color=lightgreen];
+}
