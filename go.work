@@ -1,8 +1,6 @@
 go 1.20
 
-use (
-    ./host/services/shared
-    ./host/services/api-gateway
-    ./host/services/capture-daemon
-    # add other modules as needed
-)
+use ./host/services/shared
+use ./host/services/api-gateway
+// use ./host/services/camera-proxy
+use ./host/services/capture-daemon

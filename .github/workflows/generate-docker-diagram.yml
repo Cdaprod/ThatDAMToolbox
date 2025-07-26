@@ -2,6 +2,9 @@
 
 name: Generate Docker Compose Diagram
 
+permissions:
+  contents: write
+  
 on:
   workflow_dispatch:
   push:
