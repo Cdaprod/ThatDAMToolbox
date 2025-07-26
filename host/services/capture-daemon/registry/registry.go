@@ -1,84 +1,88 @@
-// /host/services/capture-daemon/registry/registry.go
 package registry
 
 import (
-    "sync"
     "encoding/json"
-    "os"
-    "time"
+    "log"
     "net/http"
+    "os"
+    "sync"
+    "time"
+
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 )
 
-type DeviceInfo struct {
-    UID         string    `json:"uid"`
-    Kind        string    `json:"kind"`    // e.g. "usb", "ip", "pi"
-    Path        string    `json:"path"`    // e.g. "/dev/video2"
-    Name        string    `json:"name"`
-    Capabilities map[string]interface{} `json:"capabilities"`
-    Status      string    `json:"status"`  // "online", "offline"
-    LastSeen    time.Time `json:"last_seen"`
-    // ...more fields as needed
+// Device represents the minimal info stored for each discovered device.
+type Device struct {
+    ID       string                 `json:"id"`
+    Name     string                 `json:"name"`
+    LastSeen time.Time              `json:"last_seen"`
+    Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
-type DeviceScanner interface {
-    Scan() ([]DeviceInfo, error)
-}
-
+// Registry tracks devices and their associated runner goroutines.
 type Registry struct {
-    scanners []DeviceScanner
-    mu       sync.RWMutex
-    devices  map[string]DeviceInfo
+    mu      sync.Mutex
+    devices map[string]Device
+    runners map[string]runner.RunnerControl
 }
 
-func NewRegistry(scanners []DeviceScanner) *Registry {
+// NewRegistry creates an empty registry.
+func NewRegistry() *Registry {
     return &Registry{
-        scanners: scanners,
-        devices:  make(map[string]DeviceInfo),
+        devices: make(map[string]Device),
+        runners: make(map[string]runner.RunnerControl),
     }
 }
 
-// Periodically rescan and persist
-func (r *Registry) Run(ctx context.Context, interval time.Duration, persistPath string) {
-    for {
-        select {
-        case <-ctx.Done():
-            return
-        case <-time.After(interval):
-            r.scanAll()
-            r.persist(persistPath)
-        }
+// Update scans for devices, starts runners for new ones, stops removed ones.
+func (r *Registry) Update() {
+    scanned, err := scanner.ScanAll()
+    if err != nil {
+        log.Printf("⚠️  scan error: %v", err)
+        return
     }
-}
 
-func (r *Registry) scanAll() {
     r.mu.Lock()
     defer r.mu.Unlock()
-    for _, s := range r.scanners {
-        devices, err := s.Scan()
-        if err != nil { continue }
-        for _, d := range devices {
-            d.LastSeen = time.Now()
-            r.devices[d.UID] = d
+
+    seen := make(map[string]struct{})
+
+    // Start runners for newly discovered devices
+    for _, d := range scanned {
+        seen[d.ID] = struct{}{}
+        if _, ok := r.devices[d.ID]; !ok {
+            log.Printf("➕ Device discovered: %s (%s)", d.ID, d.Name)
+            ctl := runner.StartRunner(d.ID)
+            r.runners[d.ID] = ctl
+        }
+        r.devices[d.ID] = Device{
+            ID:       d.ID,
+            Name:     d.Name,
+            LastSeen: time.Now(),
         }
     }
-    // Remove stale devices if desired
+
+    // Stop runners for devices no longer present
+    for id := range r.devices {
+        if _, stillThere := seen[id]; !stillThere {
+            log.Printf("➖ Device removed: %s", id)
+            if ctl, has := r.runners[id]; has {
+                close(ctl.StopChan)
+                delete(r.runners, id)
+            }
+            delete(r.devices, id)
+        }
+    }
 }
 
-func (r *Registry) persist(path string) {
-    r.mu.RLock()
-    defer r.mu.RUnlock()
-    file, err := os.Create(path)
-    if err != nil { return }
-    defer file.Close()
-    _ = json.NewEncoder(file).Encode(r.devices)
-}
-
+// ServeAPI exposes a simple JSON endpoint listing all current devices.
 func (r *Registry) ServeAPI(addr string) {
-    http.HandleFunc("/devices", func(w http.ResponseWriter, r *http.Request) {
-        r.mu.RLock()
-        defer r.mu.RUnlock()
+    http.HandleFunc("/devices", func(w http.ResponseWriter, req *http.Request) {
+        r.mu.Lock()
+        defer r.mu.Unlock()
         w.Header().Set("Content-Type", "application/json")
-        _ = json.NewEncoder(w).Encode(r.devices)
+        json.NewEncoder(w).Encode(r.devices)
     })
     log.Fatal(http.ListenAndServe(addr, nil))
 }

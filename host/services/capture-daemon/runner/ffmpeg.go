@@ -2,6 +2,8 @@
 package runner
 
 import (
+    "context"
+    "fmt"
     "log"
     "os"
     "os/exec"
@@ -9,69 +11,91 @@ import (
     "time"
 )
 
-type FFmpegConfig struct {
-    Device   string
-    Codec    string
-    Res      string
-    Fps      string
-    OutDir   string
-    FfmpegPath string
+// Config holds the parameters for a single device capture loop.
+type Config struct {
+    Device      string        // e.g. "/dev/video0"
+    Codec       string        // e.g. "h264"
+    Resolution  string        // e.g. "1920x1080"
+    FPS         int           // e.g. 30
+    OutDir      string        // e.g. "/var/media/records"
+    FFmpegPath  string        // e.g. "ffmpeg"
+    RetryDelay  time.Duration // e.g. 3 * time.Second
 }
 
-func DefaultFFmpegConfig(device string) FFmpegConfig {
-    return FFmpegConfig{
-        Device:   device,
-        Codec:    "h264",
-        Res:      "1920x1080",
-        Fps:      "30",
-        OutDir:   "/var/media/records",
-        FfmpegPath: "ffmpeg",
+// DefaultConfig returns a reasonable default Config for the given device.
+func DefaultConfig(device string) Config {
+    return Config{
+        Device:     device,
+        Codec:      "h264",
+        Resolution: "1920x1080",
+        FPS:        30,
+        OutDir:     "/var/media/records",
+        FFmpegPath: "ffmpeg",
+        RetryDelay: 3 * time.Second,
     }
 }
 
-func ensureDir(dir string) error {
-    return os.MkdirAll(dir, 0755)
-}
+// RunCaptureLoop runs ffmpeg in a loop until the ctx is canceled.
+// It restarts ffmpeg on error after RetryDelay.
+func RunCaptureLoop(ctx context.Context, cfg Config) error {
+    // Ensure output directory exists
+    if err := os.MkdirAll(cfg.OutDir, 0o755); err != nil {
+        return fmt.Errorf("failed to create output dir %q: %w", cfg.OutDir, err)
+    }
 
-func buildOutputFilename(cfg FFmpegConfig) string {
-    timestamp := time.Now().UTC().Format("20060102T150405Z")
-    devName := filepath.Base(cfg.Device)
-    return filepath.Join(cfg.OutDir, devName+"-"+cfg.Codec+"-"+timestamp+".mp4")
-}
-
-func RunFFmpegLoop(cfg FFmpegConfig, stop <-chan struct{}) {
-    _ = ensureDir(cfg.OutDir)
     for {
         select {
-        case <-stop:
-            log.Printf("[ffmpeg] Stopping capture for %s", cfg.Device)
-            return
+        case <-ctx.Done():
+            log.Printf("[ffmpeg] context canceled, stopping capture for %s", cfg.Device)
+            return nil
         default:
         }
+
         outFile := buildOutputFilename(cfg)
-        log.Printf("[ffmpeg] Starting capture: %s → %s", cfg.Device, outFile)
-        err := runFFmpegOnce(cfg, outFile)
-        if err != nil {
-            log.Printf("[ffmpeg] Capture error on %s: %v", cfg.Device, err)
+        log.Printf("[ffmpeg] starting capture: %s → %s", cfg.Device, outFile)
+
+        // Use a child context so ffmpeg is killed when parent ctx is done
+        cmdCtx, cancel := context.WithCancel(ctx)
+        args := []string{
+            "-hide_banner",
+            "-loglevel", "warning",
+            "-f", "v4l2",
+            "-framerate", fmt.Sprint(cfg.FPS),
+            "-video_size", cfg.Resolution,
+            "-i", cfg.Device,
+            "-c:v", cfg.Codec,
+            "-preset", "veryfast",
+            "-tune", "zerolatency",
+            outFile,
         }
-        time.Sleep(3 * time.Second)
+        cmd := exec.CommandContext(cmdCtx, cfg.FFmpegPath, args...)
+        cmd.Stdout = os.Stdout
+        cmd.Stderr = os.Stderr
+
+        if err := cmd.Run(); err != nil {
+            // If ctx was canceled, exit cleanly
+            if ctx.Err() != nil {
+                cancel()
+                return nil
+            }
+            log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
+        }
+
+        cancel()
+
+        // Pause before retrying
+        select {
+        case <-ctx.Done():
+            return nil
+        case <-time.After(cfg.RetryDelay):
+        }
     }
 }
 
-func runFFmpegOnce(cfg FFmpegConfig, outFile string) error {
-    args := []string{
-        "-hide_banner", "-loglevel", "warning",
-        "-f", "v4l2",
-        "-framerate", cfg.Fps,
-        "-video_size", cfg.Res,
-        "-i", cfg.Device,
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-tune", "zerolatency",
-        outFile,
-    }
-    cmd := exec.Command(cfg.FfmpegPath, args...)
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    return cmd.Run()
+// buildOutputFilename constructs a timestamped filename under cfg.OutDir.
+func buildOutputFilename(cfg Config) string {
+    ts := time.Now().UTC().Format("20060102T150405Z")
+    base := filepath.Base(cfg.Device)
+    filename := fmt.Sprintf("%s-%s-%s.mp4", base, cfg.Codec, ts)
+    return filepath.Join(cfg.OutDir, filename)
 }

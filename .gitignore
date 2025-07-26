@@ -118,6 +118,7 @@ secrets.json
 *clipboard*
 *.disabled
 host/releases/
+go.sum
 
 # ---- Uncomment to ignore these if needed ----
 # /scripts/cli.py

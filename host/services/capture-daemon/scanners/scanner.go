@@ -1,37 +1,44 @@
-// Package scanner provides a pluggable interface for discovering devices.
 package scanner
 
-// Scanner is implemented by all device discovery modules (V4L2, Pi, IPCam, etc.)
+import "time"
+
+// Device represents everything we know about a discovered capture device.
+type Device struct {
+    ID           string                 `json:"id"`             // was UID
+    Kind         string                 `json:"kind,omitempty"` // "v4l2", "usb", "ip", etc.
+    Path         string                 `json:"path,omitempty"` // e.g. "/dev/video0"
+    Name         string                 `json:"name"`           // human-readable
+    Capabilities map[string]interface{} `json:"capabilities"`   // whatever the scanner filled in
+    Status       string                 `json:"status,omitempty"`
+    LastSeen     time.Time              `json:"last_seen"`
+}
+
+// Scanner is implemented by each discovery module.
 type Scanner interface {
     Scan() ([]Device, error)
 }
 
-// Device represents a discovered video or audio capture device.
-type Device struct {
-    ID   string // Unique identifier for the device
-    Name string // Human-readable device name
-    // ...add more fields as needed (Type, Path, Metadata, etc.)
-}
-
 var scanners []Scanner
 
-// Register allows a scanner module to add itself to the global registry.
-// Usually called from init() in each scanner implementation.
+// Register adds a new discovery backend (called in each scanner’s init).
 func Register(s Scanner) {
     scanners = append(scanners, s)
 }
 
-// ScanAll invokes Scan() on all registered scanners, merging their results.
-// Errors from individual scanners are ignored (but could be logged).
+// ScanAll runs every scanner and merges their results.
 func ScanAll() ([]Device, error) {
     var all []Device
+    now := time.Now()
     for _, s := range scanners {
-        devices, err := s.Scan()
+        devs, err := s.Scan()
         if err != nil {
-            // Optionally log error: log.Printf("scanner error: %v", err)
+            // optionally log
             continue
         }
-        all = append(all, devices...)
+        for _, d := range devs {
+            d.LastSeen = now
+            all = append(all, d)
+        }
     }
     return all, nil
 }
