@@ -1,6 +1,8 @@
-go 1.20
+go 1.23
 
-use ./host/services/shared
-use ./host/services/api-gateway
-// use ./host/services/camera-proxy
-use ./host/services/capture-daemon
+use (
+    ./host/services/shared
+    ./host/services/api-gateway
+    ./host/services/camera-proxy
+    ./host/services/capture-daemon
+)
