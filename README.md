@@ -3,8 +3,10 @@
 # Media Indexer & DAM Toolbox
 
 [![CI-Build-and-Publish](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-build-and-publish.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-build-and-publish.yml)
-
 [![Generate NodeProp Configuration](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-nodeprop-config.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-nodeprop-config.yml)
+[![Generate Docker Compose Diagram](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-docker-diagram.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-docker-diagram.yml)
+[![Engineer Production Environment](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-engineer-env.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-engineer-env.yml)
+
 
 <div align="center">
 
