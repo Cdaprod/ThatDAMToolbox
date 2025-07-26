@@ -39,7 +39,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        gosu tini \
+        gosu tini v4l-utils \
         build-essential git curl wget ca-certificates \
         ffmpeg libgl1 libglib2.0-0 \
         bash bash-completion zsh locales tmux \
