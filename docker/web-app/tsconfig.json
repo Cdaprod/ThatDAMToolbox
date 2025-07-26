@@ -3,7 +3,11 @@
   "compilerOptions": {
     "baseUrl": "src",
     "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -15,10 +19,26 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "paths": {
-      "@/*": ["*"],
-      "@/components/*": ["components/*"]
-    }
+      "@/*": [
+        "*"
+      ],
+      "@/components/*": [
+        "components/*"
+      ]
+    },
+    "allowJs": true,
+    "esModuleInterop": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
