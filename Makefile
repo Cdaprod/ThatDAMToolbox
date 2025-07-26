@@ -99,17 +99,16 @@ enable-services: ## Enable all services
 	@echo "Enabling services..."
 	-sudo systemctl enable api-gateway camera-proxy capture-daemon
 
-.PHONY: tidy-mods
-tidy-mods:
-    @echo "🔍 Finding all go.mod modules…"
-    @find host/services -maxdepth 2 -name go.mod | \
-      sed 's:/go.mod::' | \
-      while read -r dir; do \
-        printf "📦 Tidying %-30s" "$$dir"; \
-        (cd "$$dir" && go mod tidy) && echo " ✓" || echo " ✗"; \
-      done
-    @echo "🔄 Syncing workspace…"
-    @go work sync
+# extract all the "use" paths from go.work (ignoring the "go" line)
+WORKMODS := $(shell sed -n 's/^\s*use\s*//;t;d' go.work)
+
+.PHONY: tidy
+tidy:
+	@echo "→ tidying workspace modules:"
+	@for mod in $(WORKMODS); do \
+	  echo "  • $$mod"; \
+	  (cd $$mod && go mod tidy) || exit 1; \
+	done
 
 # =============================================================================
 # SERVICE MANAGEMENT
