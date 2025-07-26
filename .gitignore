@@ -119,6 +119,7 @@ secrets.json
 *.disabled
 host/releases/
 go.sum
+/sqlite
 
 # ---- Uncomment to ignore these if needed ----
 # /scripts/cli.py

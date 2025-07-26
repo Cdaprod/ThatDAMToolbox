@@ -16,6 +16,8 @@ Thumbs.db
 .vscode/
 *.code-workspace
 
+/sqlite
+
 ###############################
 #  Host layer golang
 ###############################
