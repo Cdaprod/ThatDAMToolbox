@@ -7,7 +7,6 @@ package backend
 
 import (
     "bytes"
-    "context"
     "encoding/json"
     "fmt"
     "io"
@@ -16,7 +15,6 @@ import (
     "net/http/httputil"
     "net/url"
     "strings"
-    "time"
 )
 
 // AuthenticationMiddleware validates JWT tokens and sets user context

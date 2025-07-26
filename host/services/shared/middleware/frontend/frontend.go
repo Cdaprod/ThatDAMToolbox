@@ -5,15 +5,12 @@
 package frontend
 
 import (
-    "context"
     "fmt"
     "net/http"
     "net/url"
     "net/http/httputil"
-    "path"
     "path/filepath"
     "strings"
-    "time"
 )
 
 // StaticFileMiddleware serves static assets with proper caching

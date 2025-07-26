@@ -6,14 +6,12 @@
 package host
 
 import (
-    "context"
     "fmt"
     "log"
     "net/http"
     "os"
     "runtime"
     "syscall"
-    "time"
 )
 
 // SystemResourceMiddleware monitors system resources and blocks requests if resources are low
