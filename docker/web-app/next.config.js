@@ -64,5 +64,3 @@ module.exports = {
     // NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_WS_URL
   },
 }
-
-module.exports = nextConfig
