@@ -39,7 +39,7 @@ jobs:
 
       # 4) Install Python and JS deps
       - name: 📦 Install Python packages
-        run: pip install pyyaml ast
+        run: pip install pyyaml
       - name: 📦 Install React component graph tool
         run: npm install -g react-component-graph
 
