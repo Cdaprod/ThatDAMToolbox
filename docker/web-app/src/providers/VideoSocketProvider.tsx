@@ -12,7 +12,7 @@ const VideoSocketCtx = createContext<Ctx | null>(null);
 
 export default function VideoSocketProvider({ children }: { children: ReactNode }) {
   const { sendJSON } = useVideoSocket(
-    process.env.NEXT_PUBLIC_WS_BASE_URL ?? 'ws://localhost:8080/ws/camera',
+    process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080/ws/camera',
     {
       onMessage: (ev) => {
         // log for debugging

@@ -314,6 +314,37 @@ const CameraMonitor: React.FC = () => {
 
     return () => clearInterval(interval);
   }, []);
+  
+  const handleFullscreenToggle = useCallback(() => {
+    const videoElement = document.querySelector('.camera-video-feed') as HTMLElement;
+    if (!videoElement) return;
+    if (
+      !document.fullscreenElement &&
+      !(document as any).webkitFullscreenElement &&
+      !(document as any).mozFullScreenElement &&
+      !(document as any).msFullscreenElement
+    ) {
+      if (videoElement.requestFullscreen) {
+        videoElement.requestFullscreen();
+      } else if ((videoElement as any).webkitRequestFullscreen) {
+        (videoElement as any).webkitRequestFullscreen();
+      } else if ((videoElement as any).mozRequestFullScreen) {
+        (videoElement as any).mozRequestFullScreen();
+      } else if ((videoElement as any).msRequestFullscreen) {
+        (videoElement as any).msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen();
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
+      }
+    }
+  }, []);
 
   return (
     <div className="w-screen h-screen bg-gradient-to-br from-gray-900 to-black text-white font-sans overflow-hidden select-none flex flex-col">
@@ -414,15 +445,23 @@ const CameraMonitor: React.FC = () => {
               <span className="text-gray-600 text-lg">Uh-oh, no camera feed!</span>
             </div>
           ) : (
-            <img
-              src={`/api/v1/hwcapture/stream?device=${encodeURIComponent(selectedDevice)}&width=${previewWidth}&height=${previewHeight}&fps=${previewFps}`}
-              alt="Live Preview"
-              className="w-full h-full object-contain absolute top-0 left-0 z-0"
-              onError={() => setStreamOK(false)}
-              onLoad={() => setStreamOK(true)}
-            />
+            <div className="relative w-full h-full">
+              <img
+                src={`/api/v1/hwcapture/stream?device=${encodeURIComponent(selectedDevice)}&width=${previewWidth}&height=${previewHeight}&fps=${previewFps}`}
+                alt="Live Preview"
+                className="camera-video-feed w-full h-full object-contain absolute top-0 left-0 z-0"
+                onError={() => setStreamOK(false)}
+                onLoad={() => setStreamOK(true)}
+              />
+              <button
+                className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1 rounded hover:bg-black/90 transition-opacity duration-200 opacity-70 hover:opacity-100 z-10"
+                onClick={handleFullscreenToggle}
+              >
+                ⛶ Fullscreen
+              </button>
+            </div>
           )}
-
+          
           {/* Recording "REC" overlay */}
           {isRecording && (
             <div className="absolute top-4 right-4 bg-red-600/90 text-white px-4 py-2 rounded-full font-bold text-xs recording-blink">

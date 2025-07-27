@@ -1,0 +1,8 @@
+services:
+  camera-agent:
+    image: camera-agent:latest
+    environment:
+      - DEVICE_ID=${HOSTNAME}               # or whatever unique ID you choose
+      - SERVER_WS=ws://central-host:8080/ws/camera
+    restart: unless-stopped
+    # not exposing any ports--this is a pure client
