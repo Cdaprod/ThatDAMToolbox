@@ -104,25 +104,43 @@ jobs:
       # ────────────────────────────────────────────────────────────────────
       - name: 🚪 Generate API Endpoint Map DOT
         run: |
-          python3 <<EOF
+          python3 <<'EOF'
           import ast, os
-          endpoints=[]
-          for root,_,files in os.walk("video"):
+
+          endpoints = []
+          for root, _, files in os.walk("video"):
               for f in files:
-                  if f=="routes.py" or f.endswith("api.py"):
-                      path=os.path.join(root,f)
-                      tree=ast.parse(open(path).read())
+                  if f == "routes.py" or f.endswith("api.py"):
+                      path = os.path.join(root, f)
+                      try:
+                          source = open(path, encoding="utf-8").read()
+                      except OSError:
+                          continue
+                      tree = ast.parse(source, filename=path)
                       for node in ast.walk(tree):
-                          if isinstance(node, ast.Call) and hasattr(node.func,"attr") and node.func.attr in ("get","post","delete","patch","put"):
-                              method=node.func.attr.upper()
-                              route=node.args[0].s if node.args else "<dynamic>"
-                              mod=root.replace(os.sep,".")
-                              endpoints.append((method,f"{mod}:{route}"))
-          dot=["digraph api {","  node [shape=plaintext];"]
-          for m,r in endpoints:
-              dot.append(f'  "{m} {r}";')
+                          if (
+                              isinstance(node, ast.Call)
+                              and hasattr(node.func, "attr")
+                              and node.func.attr in ("get", "post", "delete", "patch", "put")
+                          ):
+                              method = node.func.attr.upper()
+                              route = "<dynamic>"
+                              if node.args:
+                                  arg0 = node.args[0]
+                                  if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                                      route = arg0.value
+                                  elif isinstance(arg0, ast.Str):  # older Python AST
+                                      route = arg0.s
+                              mod = root.replace(os.sep, ".")
+                              endpoints.append((method, f"{mod}:{route}"))
+
+          dot = ["digraph api {", "  node [shape=plaintext];"]
+          for method, route in endpoints:
+              dot.append(f'  "{method} {route}";')
           dot.append("}")
-          open("public/serve/api-endpoints.dot","w").write("\n".join(dot))
+
+          with open("public/serve/api-endpoints.dot", "w", encoding="utf-8") as out:
+              out.write("\n".join(dot))
           EOF
 
       - name: 🖼 Convert API Endpoints SVG
