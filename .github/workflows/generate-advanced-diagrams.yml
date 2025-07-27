@@ -48,159 +48,183 @@ jobs:
         run: mkdir -p public/serve/
 
       # ────────────────────────────────────────────────────────────────────
-      # Docker Compose Diagram
+      # Docker-Compose Diagram
       # ────────────────────────────────────────────────────────────────────
-      - name: 🐳 Generate Docker-Compose DOT
+      - name: 🐳 Generate Docker-Compose Diagram
         run: |
-          python3 <<EOF
-          import yaml
-          with open("docker-compose.yaml") as f:
-              c = yaml.safe_load(f)
-          dot=["digraph docker_compose {","  rankdir=LR;","  node [shape=box, style=filled, color=lightblue];"]
-          for svc,conf in c.get("services",{}).items():
-              dot.append(f'  "{svc}" [label="{svc}"];')
-              for dep in conf.get("depends_on",[]):
-                  dot.append(f'  "{dep}" -> "{svc}" [style=solid];')
-              for net in conf.get("networks",{}):
-                  dot.append(f'  "{svc}" -> "net::{net}" [style=dotted];')
-          dot.append("}")
-          open("public/serve/docker-compose.dot","w").write("\n".join(dot))
-          EOF
-
-      - name: 🖼 Convert Docker-Compose SVG
-        run: dot -Tsvg public/serve/docker-compose.dot -o public/serve/docker-compose.svg
+          if [ ! -f public/serve/docker-compose.svg ]; then
+            python3 <<'EOF'
+            import yaml
+            with open("docker-compose.yaml") as f:
+                c = yaml.safe_load(f)
+            dot = [
+                "digraph docker_compose {",
+                "  rankdir=LR;",
+                "  node [shape=box, style=filled, color=lightblue];"
+            ]
+            for svc, conf in c.get("services", {}).items():
+                dot.append(f'  "{svc}" [label="{svc}"];')
+                for dep in conf.get("depends_on", []):
+                    dot.append(f'  "{dep}" -> "{svc}" [style=solid];')
+                for net in conf.get("networks", {}):
+                    dot.append(f'  "{svc}" -> "net::{net}" [style=dotted];')
+            dot.append("}")
+            open("public/serve/docker-compose.dot","w").write("\n".join(dot))
+            EOF
+            dot -Tsvg public/serve/docker-compose.dot -o public/serve/docker-compose.svg
+          else
+            echo "⏩ docker-compose.svg exists, skipping"
+          fi
 
       # ────────────────────────────────────────────────────────────────────
-      # Backend Module Dependency Graph
+      # Backend Modules Diagram
       # ────────────────────────────────────────────────────────────────────
-      - name: 🔗 Generate Backend Module Dependency DOT
+      - name: 🔗 Generate Backend-Modules Diagram
         run: |
-          python3 <<EOF
-          import os, ast
-          edges=set()
-          modules_dir="video/modules"
-          for root,_,files in os.walk(modules_dir):
-              pkg = root.replace(os.sep,".").rstrip(".")
-              for f in files:
-                  if f.endswith(".py"):
-                      path=os.path.join(root,f)
-                      tree=ast.parse(open(path).read())
-                      for node in ast.walk(tree):
-                          if isinstance(node,ast.ImportFrom) and node.module and node.module.startswith("video.modules"):
-                              src=pkg; tgt=node.module.split(".")[2]
-                              edges.add((src,tgt))
-          lines=["digraph modules {","  rankdir=LR;"]
-          for a,b in edges:
-              lines.append(f'  "{a}" -> "{b}";')
-          lines.append("}")
-          open("public/serve/backend-modules.dot","w").write("\n".join(lines))
-          EOF
-
-      - name: 🖼 Convert Backend Modules SVG
-        run: dot -Tsvg public/serve/backend-modules.dot -o public/serve/backend-modules.svg
+          if [ ! -f public/serve/backend-modules.svg ]; then
+            python3 <<'EOF'
+            import os, ast
+            edges = set()
+            for root, _, files in os.walk("video/modules"):
+                pkg = root.replace(os.sep, ".").rstrip(".")
+                for f in files:
+                    if f.endswith(".py"):
+                        path = os.path.join(root, f)
+                        tree = ast.parse(open(path, encoding="utf-8").read())
+                        for node in ast.walk(tree):
+                            if (
+                                isinstance(node, ast.ImportFrom)
+                                and node.module
+                                and node.module.startswith("video.modules")
+                            ):
+                                src = pkg
+                                tgt = node.module.split(".")[2]
+                                edges.add((src, tgt))
+            lines = ["digraph modules {", "  rankdir=LR;"]
+            for a, b in sorted(edges):
+                lines.append(f'  "{a}" -> "{b}";')
+            lines.append("}")
+            open("public/serve/backend-modules.dot","w").write("\n".join(lines))
+            EOF
+            dot -Tsvg public/serve/backend-modules.dot -o public/serve/backend-modules.svg
+          else
+            echo "⏩ backend-modules.svg exists, skipping"
+          fi
 
       # ────────────────────────────────────────────────────────────────────
-      # API Endpoint Map
+      # API Endpoints Diagram
       # ────────────────────────────────────────────────────────────────────
-      - name: 🚪 Generate API Endpoint Map DOT
+      - name: 🚪 Generate API-Endpoints Diagram
         run: |
-          python3 <<'EOF'
-          import ast, os
-
-          endpoints = []
-          for root, _, files in os.walk("video"):
-              for f in files:
-                  if f == "routes.py" or f.endswith("api.py"):
-                      path = os.path.join(root, f)
-                      try:
-                          source = open(path, encoding="utf-8").read()
-                      except OSError:
-                          continue
-                      tree = ast.parse(source, filename=path)
-                      for node in ast.walk(tree):
-                          if (
-                              isinstance(node, ast.Call)
-                              and hasattr(node.func, "attr")
-                              and node.func.attr in ("get", "post", "delete", "patch", "put")
-                          ):
-                              method = node.func.attr.upper()
-                              route = "<dynamic>"
-                              if node.args:
-                                  arg0 = node.args[0]
-                                  if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
-                                      route = arg0.value
-                                  elif isinstance(arg0, ast.Str):  # older Python AST
-                                      route = arg0.s
-                              mod = root.replace(os.sep, ".")
-                              endpoints.append((method, f"{mod}:{route}"))
-
-          dot = ["digraph api {", "  node [shape=plaintext];"]
-          for method, route in endpoints:
-              dot.append(f'  "{method} {route}";')
-          dot.append("}")
-
-          with open("public/serve/api-endpoints.dot", "w", encoding="utf-8") as out:
-              out.write("\n".join(dot))
-          EOF
-
-      - name: 🖼 Convert API Endpoints SVG
-        run: dot -Tsvg public/serve/api-endpoints.dot -o public/serve/api-endpoints.svg
+          if [ ! -f public/serve/api-endpoints.svg ]; then
+            python3 <<'EOF'
+            import ast, os
+            endpoints = []
+            for root, _, files in os.walk("video"):
+                for f in files:
+                    if f == "routes.py" or f.endswith("api.py"):
+                        path = os.path.join(root, f)
+                        try:
+                            src = open(path, encoding="utf-8").read()
+                        except OSError:
+                            continue
+                        tree = ast.parse(src, filename=path)
+                        for node in ast.walk(tree):
+                            if (
+                                isinstance(node, ast.Call)
+                                and hasattr(node.func, "attr")
+                                and node.func.attr.upper() in ("GET","POST","DELETE","PATCH","PUT")
+                            ):
+                                method = node.func.attr.upper()
+                                route = "<dynamic>"
+                                if node.args:
+                                    a0 = node.args[0]
+                                    if isinstance(a0, ast.Constant) and isinstance(a0.value, str):
+                                        route = a0.value
+                                    elif isinstance(a0, ast.Str):
+                                        route = a0.s
+                                mod = root.replace(os.sep, ".")
+                                endpoints.append((method, f"{mod}:{route}"))
+            dot = ["digraph api {", "  node [shape=plaintext];"]
+            for method, route in endpoints:
+                dot.append(f'  "{method} {route}";')
+            dot.append("}")
+            open("public/serve/api-endpoints.dot","w").write("\n".join(dot))
+            EOF
+            dot -Tsvg public/serve/api-endpoints.dot -o public/serve/api-endpoints.svg
+          else
+            echo "⏩ api-endpoints.svg exists, skipping"
+          fi
 
       # ────────────────────────────────────────────────────────────────────
       # Frontend Component Tree
       # ────────────────────────────────────────────────────────────────────
-      - name: 🌲 Generate Frontend Component Tree SVG
-        run: react-component-graph -p docker/web-app/src -o public/serve/frontend-components.svg
+      - name: 🌲 Generate Frontend Components Diagram
+        run: |
+          if [ ! -f public/serve/frontend-components.svg ]; then
+            react-component-graph -p docker/web-app/src -o public/serve/frontend-components.svg
+          else
+            echo "⏩ frontend-components.svg exists, skipping"
+          fi
 
       # ────────────────────────────────────────────────────────────────────
       # CI/CD Pipeline Diagram
       # ────────────────────────────────────────────────────────────────────
-      - name: 🔄 Generate CI/CD Pipeline DOT
+      - name: 🔄 Generate CI/CD Pipeline Diagram
         run: |
-          python3 <<EOF
-          import yaml
-          with open(".github/workflows/generate-architecture-diagrams.yml") as f:
-              wf=yaml.safe_load(f)
-          dot=["digraph ci_cd {","  rankdir=TB;"]
-          for job,conf in wf.get("jobs",{}).items():
-              dot.append(f'  "{job}" [shape=box];')
-              for step in conf.get("steps",[]):
-                  name=step.get("name","<unnamed>")
-                  dot.append(f'  "{job}" -> "{name}";')
-          dot.append("}")
-          open("public/serve/ci-cd.dot","w").write("\n".join(dot))
-          EOF
-
-      - name: 🖼 Convert CI/CD SVG
-        run: dot -Tsvg public/serve/ci-cd.dot -o public/serve/ci-cd.svg
+          if [ ! -f public/serve/ci-cd.svg ]; then
+            python3 <<'EOF'
+            import yaml
+            wf = yaml.safe_load(open(".github/workflows/generate-architecture-diagrams.yml"))
+            dot = ["digraph ci_cd {", "  rankdir=TB;"]
+            for job,conf in wf.get("jobs",{}).items():
+                dot.append(f'  "{job}" [shape=box];')
+                for step in conf.get("steps",[]):
+                    name = step.get("name","<step>")
+                    dot.append(f'  "{job}" -> "{name}";')
+            dot.append("}")
+            open("public/serve/ci-cd.dot","w").write("\n".join(dot))
+            EOF
+            dot -Tsvg public/serve/ci-cd.dot -o public/serve/ci-cd.svg
+          else
+            echo "⏩ ci-cd.svg exists, skipping"
+          fi
 
       # ────────────────────────────────────────────────────────────────────
       # Database Schema Diagram
       # ────────────────────────────────────────────────────────────────────
-      - name: 🗄️ Generate DB Schema SVG
+      - name: 🗄️ Generate DB Schema Diagram
         run: |
-          # Assumes sqlite3-to-erd is installed; replace with your ERD tool
-          sqlite3 /data/db/live.sqlite3 .schema | sqlite3-to-erd -o public/serve/db-schema.svg
+          if [ ! -f public/serve/db-schema.svg ]; then
+            # Assumes sqlite3-to-erd is installed; replace with your ERD tool
+            sqlite3 /data/db/live.sqlite3 .schema | sqlite3-to-erd -o public/serve/db-schema.svg
+          else
+            echo "⏩ db-schema.svg exists, skipping"
+          fi
 
       # ────────────────────────────────────────────────────────────────────
-      # Hardware/Device Topology
+      # Hardware Topology Diagram
       # ────────────────────────────────────────────────────────────────────
-      - name: 🌐 Generate Hardware Topology DOT
+      - name: 🌐 Generate Hardware Topology Diagram
         run: |
-          python3 <<EOF
-          # NOTE: customize this to reflect your Pi network, NDI, ESP32, etc.
-          dot=["graph topology {","  node [shape=box];"]
-          devices = ["raspberry-pi","esp32-display","ndi-sender"]
-          for d in devices:
-              dot.append(f'  "{d}";')
-          dot.append('  "raspberry-pi" -- "esp32-display" [label="I2C/SPI"];')
-          dot.append('  "raspberry-pi" -- "ndi-sender"   [label="Ethernet/WiFi"];')
-          dot.append("}")
-          open("public/serve/hardware-topology.dot","w").write("\n".join(dot))
-          EOF
-
-      - name: 🖼 Convert Hardware Topology SVG
-        run: dot -Tsvg public/serve/hardware-topology.dot -o public/serve/hardware-topology.svg
+          if [ ! -f public/serve/hardware-topology.svg ]; then
+            python3 <<'EOF'
+            dot = [
+              "graph topology {",
+              "  node [shape=box];",
+              '  "raspberry-pi";',
+              '  "esp32-display";',
+              '  "ndi-sender";',
+              '  "raspberry-pi" -- "esp32-display" [label="I2C/SPI"];',
+              '  "raspberry-pi" -- "ndi-sender"   [label="Ethernet/WiFi"];',
+              "}"
+            ]
+            open("public/serve/hardware-topology.dot","w").write("\n".join(dot))
+            EOF
+            dot -Tsvg public/serve/hardware-topology.dot -o public/serve/hardware-topology.svg
+          else
+            echo "⏩ hardware-topology.svg exists, skipping"
+          fi
 
       # 6) Commit back
       - name: 💾 Commit and push diagrams
