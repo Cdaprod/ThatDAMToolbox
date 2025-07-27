@@ -1,0 +1,192 @@
+name: Generate Architecture Diagrams
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "docker-compose.yaml"
+      - ".github/workflows/generate-architecture-diagrams.yml"
+      - "video/modules/**"
+      - "video/**/*routes.py"
+      - "docker/web-app/src/**"
+      - ".github/workflows/generate-docker-diagram.yml"
+
+jobs:
+  generate-diagrams:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Checkout
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Setup Python & Node
+      - name: ⚙️ Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: ⚙️ Set up Node.js 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      # 3) Install system deps
+      - name: 🛠 Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      # 4) Install Python and JS deps
+      - name: 📦 Install Python packages
+        run: pip install pyyaml ast
+      - name: 📦 Install React component graph tool
+        run: npm install -g react-component-graph
+
+      # 5) Prepare output dir
+      - name: 📁 Create diagram output directory
+        run: mkdir -p public/serve/
+
+      # ────────────────────────────────────────────────────────────────────
+      # Docker Compose Diagram
+      # ────────────────────────────────────────────────────────────────────
+      - name: 🐳 Generate Docker-Compose DOT
+        run: |
+          python3 <<EOF
+          import yaml
+          with open("docker-compose.yaml") as f:
+              c = yaml.safe_load(f)
+          dot=["digraph docker_compose {","  rankdir=LR;","  node [shape=box, style=filled, color=lightblue];"]
+          for svc,conf in c.get("services",{}).items():
+              dot.append(f'  "{svc}" [label="{svc}"];')
+              for dep in conf.get("depends_on",[]):
+                  dot.append(f'  "{dep}" -> "{svc}" [style=solid];')
+              for net in conf.get("networks",{}):
+                  dot.append(f'  "{svc}" -> "net::{net}" [style=dotted];')
+          dot.append("}")
+          open("public/serve/docker-compose.dot","w").write("\n".join(dot))
+          EOF
+
+      - name: 🖼 Convert Docker-Compose SVG
+        run: dot -Tsvg public/serve/docker-compose.dot -o public/serve/docker-compose.svg
+
+      # ────────────────────────────────────────────────────────────────────
+      # Backend Module Dependency Graph
+      # ────────────────────────────────────────────────────────────────────
+      - name: 🔗 Generate Backend Module Dependency DOT
+        run: |
+          python3 <<EOF
+          import os, ast
+          edges=set()
+          modules_dir="video/modules"
+          for root,_,files in os.walk(modules_dir):
+              pkg = root.replace(os.sep,".").rstrip(".")
+              for f in files:
+                  if f.endswith(".py"):
+                      path=os.path.join(root,f)
+                      tree=ast.parse(open(path).read())
+                      for node in ast.walk(tree):
+                          if isinstance(node,ast.ImportFrom) and node.module and node.module.startswith("video.modules"):
+                              src=pkg; tgt=node.module.split(".")[2]
+                              edges.add((src,tgt))
+          lines=["digraph modules {","  rankdir=LR;"]
+          for a,b in edges:
+              lines.append(f'  "{a}" -> "{b}";')
+          lines.append("}")
+          open("public/serve/backend-modules.dot","w").write("\n".join(lines))
+          EOF
+
+      - name: 🖼 Convert Backend Modules SVG
+        run: dot -Tsvg public/serve/backend-modules.dot -o public/serve/backend-modules.svg
+
+      # ────────────────────────────────────────────────────────────────────
+      # API Endpoint Map
+      # ────────────────────────────────────────────────────────────────────
+      - name: 🚪 Generate API Endpoint Map DOT
+        run: |
+          python3 <<EOF
+          import ast, os
+          endpoints=[]
+          for root,_,files in os.walk("video"):
+              for f in files:
+                  if f=="routes.py" or f.endswith("api.py"):
+                      path=os.path.join(root,f)
+                      tree=ast.parse(open(path).read())
+                      for node in ast.walk(tree):
+                          if isinstance(node, ast.Call) and hasattr(node.func,"attr") and node.func.attr in ("get","post","delete","patch","put"):
+                              method=node.func.attr.upper()
+                              route=node.args[0].s if node.args else "<dynamic>"
+                              mod=root.replace(os.sep,".")
+                              endpoints.append((method,f"{mod}:{route}"))
+          dot=["digraph api {","  node [shape=plaintext];"]
+          for m,r in endpoints:
+              dot.append(f'  "{m} {r}";')
+          dot.append("}")
+          open("public/serve/api-endpoints.dot","w").write("\n".join(dot))
+          EOF
+
+      - name: 🖼 Convert API Endpoints SVG
+        run: dot -Tsvg public/serve/api-endpoints.dot -o public/serve/api-endpoints.svg
+
+      # ────────────────────────────────────────────────────────────────────
+      # Frontend Component Tree
+      # ────────────────────────────────────────────────────────────────────
+      - name: 🌲 Generate Frontend Component Tree SVG
+        run: react-component-graph -p docker/web-app/src -o public/serve/frontend-components.svg
+
+      # ────────────────────────────────────────────────────────────────────
+      # CI/CD Pipeline Diagram
+      # ────────────────────────────────────────────────────────────────────
+      - name: 🔄 Generate CI/CD Pipeline DOT
+        run: |
+          python3 <<EOF
+          import yaml
+          with open(".github/workflows/generate-architecture-diagrams.yml") as f:
+              wf=yaml.safe_load(f)
+          dot=["digraph ci_cd {","  rankdir=TB;"]
+          for job,conf in wf.get("jobs",{}).items():
+              dot.append(f'  "{job}" [shape=box];')
+              for step in conf.get("steps",[]):
+                  name=step.get("name","<unnamed>")
+                  dot.append(f'  "{job}" -> "{name}";')
+          dot.append("}")
+          open("public/serve/ci-cd.dot","w").write("\n".join(dot))
+          EOF
+
+      - name: 🖼 Convert CI/CD SVG
+        run: dot -Tsvg public/serve/ci-cd.dot -o public/serve/ci-cd.svg
+
+      # ────────────────────────────────────────────────────────────────────
+      # Database Schema Diagram
+      # ────────────────────────────────────────────────────────────────────
+      - name: 🗄️ Generate DB Schema SVG
+        run: |
+          # Assumes sqlite3-to-erd is installed; replace with your ERD tool
+          sqlite3 /data/db/live.sqlite3 .schema | sqlite3-to-erd -o public/serve/db-schema.svg
+
+      # ────────────────────────────────────────────────────────────────────
+      # Hardware/Device Topology
+      # ────────────────────────────────────────────────────────────────────
+      - name: 🌐 Generate Hardware Topology DOT
+        run: |
+          python3 <<EOF
+          # NOTE: customize this to reflect your Pi network, NDI, ESP32, etc.
+          dot=["graph topology {","  node [shape=box];"]
+          devices = ["raspberry-pi","esp32-display","ndi-sender"]
+          for d in devices:
+              dot.append(f'  "{d}";')
+          dot.append('  "raspberry-pi" -- "esp32-display" [label="I2C/SPI"];')
+          dot.append('  "raspberry-pi" -- "ndi-sender"   [label="Ethernet/WiFi"];')
+          dot.append("}")
+          open("public/serve/hardware-topology.dot","w").write("\n".join(dot))
+          EOF
+
+      - name: 🖼 Convert Hardware Topology SVG
+        run: dot -Tsvg public/serve/hardware-topology.dot -o public/serve/hardware-topology.svg
+
+      # 6) Commit back
+      - name: 💾 Commit and push diagrams
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(diagrams): update architecture diagrams'
+          file_pattern: 'public/serve/*.svg'
