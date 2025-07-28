@@ -15,9 +15,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic   import BaseModel, Field
 from typing     import Optional, List, Dict, Any, Annotated
 
-from .    import modules
-from .cli import run_cli_from_json
-from .web import templates, static
+from video.api import modules
+from video.cli import run_cli_from_json
+from video.web import templates, static
 
 from video.helpers      import index_folder_as_batch, model_validator
 from video.core         import get_manifest as core_get_manifest
@@ -30,7 +30,7 @@ from video.ws import router as ws_router
 
 origins = [
     "http://localhost:3000",      # your Next dev server
-    "https://your.production.url" # your prod domain
+    #"https://your.production.url" # your prod domain
 ]
 
 app = FastAPI(title="Video DAM API")
@@ -317,5 +317,5 @@ for r in modules.routers:            # modules.routers is populated in bootstrap
     app.include_router(r)
     log.info("✔ plug-in router mounted: %s", r.prefix)
     
-from .api.modules import setup_module_static_mounts
+from video.api.modules import setup_module_static_mounts
 setup_module_static_mounts(app)
