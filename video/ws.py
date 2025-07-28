@@ -18,7 +18,7 @@ import numpy as np
 from typing import Any, Dict, Set
 
 from fastapi import Query, APIRouter, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
 from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from av import VideoFrame
 
