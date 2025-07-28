@@ -1,0 +1,14 @@
+[Unit]
+Description=Chromium Kiosk Mode
+After=graphical.target
+
+[Service]
+User=cdaprod
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/usr/bin/chromium --kiosk http://localhost:3000/
+Restart=always
+RestartSec=5
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=graphical.target
