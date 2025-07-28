@@ -26,7 +26,7 @@ from video.storage.base import StorageEngine
 from video.bootstrap    import STORAGE
 from video              import modules
 
-from video.ws import router as ws_router
+from video.ws           import router as ws_router
 
 origins = [
     "http://localhost:3000",      # your Next dev server
@@ -308,14 +308,3 @@ async def backup(source: str, destination: Optional[str] = None):
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "video-api"}
-
-
-# ------------------------------------------------------------------------
-# Include routers collected by bootstrap
-# ------------------------------------------------------------------------
-for r in modules.routers:            # modules.routers is populated in bootstrap
-    app.include_router(r)
-    log.info("✔ plug-in router mounted: %s", r.prefix)
-    
-from video.api.modules import setup_module_static_mounts
-setup_module_static_mounts(app)
