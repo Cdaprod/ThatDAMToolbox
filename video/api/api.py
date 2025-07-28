@@ -316,3 +316,6 @@ async def health():
 for r in modules.routers:            # modules.routers is populated in bootstrap
     app.include_router(r)
     log.info("✔ plug-in router mounted: %s", r.prefix)
+    
+from .api.modules import setup_module_static_mounts
+setup_module_static_mounts(app)

@@ -171,25 +171,40 @@ def stream_jpeg_frames(
 ):
     """
     Generator yielding JPEG-encoded frames from `device`.
-    Usage:  for jpg_bytes in stream_jpeg_frames(): ...
+    If the device cannot be opened or a frame read fails,
+    yields a static "No Signal" JPEG every second.
     """
-    import cv2
+    # Prepare a single "No Signal" frame ahead of time
+    def make_fallback():
+        blank = np.zeros((360, 640, 3), dtype=np.uint8)
+        cv2.putText(
+            blank, "No Signal",
+            (int(blank.shape[1]*0.1), int(blank.shape[0]*0.5)),
+            cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 3, cv2.LINE_AA
+        )
+        _, jpg = cv2.imencode('.jpg', blank)
+        return jpg.tobytes()
+
+    fallback_jpg = make_fallback()
+
     cap = cv2.VideoCapture(device)
     if not cap.isOpened():
-        # device unavailable → stop iteration
+        # camera unavailable → yield fallback once, then stop
+        yield fallback_jpg
         return
 
     try:
         while True:
             ok, frame = cap.read()
-            if not ok:
-                # skip on read-fail
+            if not ok or frame is None:
+                # on read-fail, yield fallback and pause briefly
+                yield fallback_jpg
+                time.sleep(1)
                 continue
 
-            # Optional: you can hook in any hwcapture.add_* overlay here
+            # encode and yield real frame
             _, jpg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
             yield jpg.tobytes()
-
     finally:
         cap.release()
 

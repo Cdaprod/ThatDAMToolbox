@@ -26,7 +26,7 @@ export function useVideoWs(
   }, []);
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080/ws';
+    const url = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080/ws/camera';
     const ws  = new WebSocket(url);
     wsRef.current = ws;
 

@@ -31,6 +31,25 @@ from video.modules.hwcapture import (
 router = APIRouter(prefix="/ws")
 _log = logging.getLogger("video.ws")
 
+def _no_signal_html(module: str, device: str) -> HTMLResponse:
+    html = f"""
+    <html>
+      <head><title>{module} – No Signal</title>
+        <style>
+          body {{ background: #000; color: #fff; text-align: center; font-family: sans-serif; }}
+          h1 {{ margin-top: 2em; }}
+        </style>
+      </head>
+      <body>
+        <h1>🎬 Oops… {module} stream unavailable!</h1>
+        <p>Device <code>{device}</code> can’t be opened.</p>
+        <img src="https://media.giphy.com/media/3o6ZsY1skhUgE5r6Lm/giphy.gif"
+             alt="No signal GIF" style="max-width:80%;margin-top:1em;" />
+      </body>
+    </html>
+    """
+    return HTMLResponse(html, status_code=200)
+
 # ──────────── WS Event Utility ──────────────
 class WSResp:
     ERROR_UNKNOWN     = {"event":"error","data":"unknown action"}
@@ -221,35 +240,13 @@ async def preview_mjpeg(
     cap = cv2.VideoCapture(device)
     if not cap.isOpened():
         cap.release()
-        from fastapi.responses import HTMLResponse
-
-        html = """
-        <html>
-          <head>
-            <title>No Signal</title>
-            <style>
-              body { background: #000; color: #fff; text-align: center; font-family: sans-serif; }
-              h1 { margin-top: 2em; }
-              p  { font-size: 1.2em; }
-            </style>
-          </head>
-          <body>
-            <h1>🎬 Oops... No Signal!</h1>
-            <p>Your camera seems to be on a coffee break… ☕</p>
-            <img 
-              src="https://media.giphy.com/media/3o6ZsY1skhUgE5r6Lm/giphy.gif" 
-              alt="No signal GIF" 
-              style="max-width:80%; margin-top:1em;"
-            />
-          </body>
-        </html>
-        """
-        return HTMLResponse(html, status_code=200)
+        # reuse our helper, and call out that it's hwcapture failing
+        return _no_signal_html("hwcapture", device)
     cap.release()
-    boundary = "frame"
+
     return StreamingResponse(
         stream_jpeg_frames(device=device, quality=quality),
-        media_type=f"multipart/x-mixed-replace; boundary={boundary}"
+        media_type="multipart/x-mixed-replace; boundary=frame"
     )
 
 # ──────────── Recording status (from module state) ──────────────
