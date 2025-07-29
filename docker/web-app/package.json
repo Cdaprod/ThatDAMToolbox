@@ -4,10 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && next export -o ../video/web/static/next-dam-explorer",
+    "build": "rm -rf build && next build && next export -o build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "docker:build": "docker build -t thatdamtoolbox-web-app:dev .",
+    "docker:run": "docker run --rm -p 3000:3000 thatdamtoolbox-web-app:dev",
+    "docker:sh": "docker run -it --rm thatdamtoolbox-web-app:dev sh",
+    "test": "echo \"No test framework configured\" && exit 0"
   },
   "dependencies": {
     "next": "14.0.4",

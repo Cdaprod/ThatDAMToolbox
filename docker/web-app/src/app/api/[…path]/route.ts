@@ -1,11 +1,12 @@
 // src/app/api/video/[...path]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { apiBaseUrlServer } from '@/lib/networkConfig';
 
 export const runtime  = 'nodejs';        // we need full Node APIs (stream → stream)
 export const dynamic  = 'force-dynamic';
 
-const API_ORIGIN =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const API_ORIGIN = 
+  apiBaseUrlServer();
 
 /** Strip hop-by-hop headers that mustn’t be forwarded */
 const hopByHop = new Set([

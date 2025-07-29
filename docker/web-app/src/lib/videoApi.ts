@@ -1,9 +1,9 @@
 // lib/videoApi.ts
-const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { apiUrl } from './networkConfig';
 
 /* ---------- helpers ---------- */
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, { next: { revalidate: 0 }, ...init });
+  const res = await fetch(apiUrl(path), { next: { revalidate: 0 }, ...init });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }

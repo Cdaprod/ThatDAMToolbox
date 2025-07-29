@@ -1,5 +1,5 @@
-// video/lib/videoApi.ts
-// SPDX-License-Identifier: MIT
+// video/lib/apiAssets.ts
+import { apiUrl } from './networkConfig';
 
 /* ------------------------------------------------------------------ *
  * 1.  Shared types                                                   *
@@ -29,7 +29,7 @@ export interface FolderNode {
 /* ------------------------------------------------------------------ *
  * 2.  Fetch helper                                                   *
  * ------------------------------------------------------------------ */
-const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api';
+const API = apiUrl();
 
 async function $<T = unknown>(
   url: string,

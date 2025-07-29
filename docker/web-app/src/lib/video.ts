@@ -1,7 +1,9 @@
 // /docker/web-app/src/lib/video.ts
 
-// Base URL for FastAPI backend (from env, fallback for local dev)
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+import { apiUrl } from './networkConfig';   // <<-- ADD THIS
+
+// Base URL for FastAPI backend (runtime resolved, robust to host mode, LAN, etc)
+const API_BASE = apiUrl();    // <<-- CHANGE THIS
 
 // Standard GET request helper
 async function get<T>(path: string): Promise<T> {

@@ -2,6 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
+import { wsUrl } from '@/lib/networkConfig';
 import { useVideoSocket } from '@lib/useVideoSocket';
 
 interface Ctx {
@@ -12,7 +13,8 @@ const VideoSocketCtx = createContext<Ctx | null>(null);
 
 export default function VideoSocketProvider({ children }: { children: ReactNode }) {
   const { sendJSON } = useVideoSocket(
-    process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080/ws',
+    //process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080/ws',
+    wsUrl(),
     {
       onMessage: (ev) => {
         // log for debugging

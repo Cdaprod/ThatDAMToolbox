@@ -1,4 +1,3 @@
-// tsconfig.json (put at your project root)
 {
   "compilerOptions": {
     "baseUrl": "src",
@@ -22,8 +21,20 @@
       "@/*": [
         "*"
       ],
-      "@/components/*": [
+      "@components/*": [
         "components/*"
+      ],
+      "@app/*": [
+        "app/*"
+      ],
+      "@lib/*": [
+        "lib/*"
+      ],
+      "@styles/*": [
+        "styles/*"
+      ],
+      "@providers/*": [
+        "providers/*"
       ]
     },
     "allowJs": true,

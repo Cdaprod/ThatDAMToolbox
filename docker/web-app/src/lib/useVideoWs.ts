@@ -1,7 +1,7 @@
-// /docker/web-app/src/lib/useVideoWs.ts
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { wsUrl } from './networkConfig';
 
 export interface UseVideoWsReturn {
   /** Mutable ref to the underlying WebSocket */
@@ -26,7 +26,8 @@ export function useVideoWs(
   }, []);
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080/ws/camera';
+    // Use your wsUrl utility for consistent, dynamic WS URLs
+    const url = wsUrl('/ws/camera');
     const ws  = new WebSocket(url);
     wsRef.current = ws;
 
