@@ -1,8 +1,9 @@
-// host/services/capture-daemon/scanners/v4l2.go
-package scanner
+// host/services/capture-daemon/scanner/v4l2.go
+package v4l2
 
 import (
     "io/ioutil"
+    //"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
     "strings"
     "path/filepath"

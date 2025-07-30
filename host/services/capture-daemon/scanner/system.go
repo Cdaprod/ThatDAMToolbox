@@ -1,4 +1,4 @@
-// in capture-daemon/scanners/system.go
+// /host/services/capture-daemon/scanner/system.go
 package scanner
 
 import (
@@ -7,7 +7,6 @@ import (
     "syscall"
     "os"
     "path/filepath"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 )
 
 func init() {

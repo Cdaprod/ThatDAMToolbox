@@ -1,3 +1,4 @@
+// /host/services/capture-daemon/registry/registry.go
 package registry
 
 import (

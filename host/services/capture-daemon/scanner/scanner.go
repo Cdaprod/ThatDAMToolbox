@@ -1,3 +1,4 @@
+// /host/services/capture-daemon/scanner/scanner.go
 package scanner
 
 import "time"

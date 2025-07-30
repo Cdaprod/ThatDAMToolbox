@@ -1,3 +1,4 @@
+// /host/services/capture-daemon/scanner/csi_or_usb.go
 package scanner
 
 import (
