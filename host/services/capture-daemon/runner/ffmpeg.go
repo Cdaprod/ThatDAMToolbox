@@ -54,7 +54,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		outFile := buildOutputFilename(cfg)
 		log.Printf("[ffmpeg] starting capture: %s → %s", cfg.Device, outFile)
 
-		// Create child context so ffmpeg is killed when parent ctx is done
+		// Create child context so ffmpeg dies when parent ctx is done
 		cmdCtx, cancel := context.WithCancel(ctx)
 
 		args := []string{
@@ -74,8 +74,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		cmd.Stderr = os.Stderr
 
 		if err := cmd.Run(); err != nil {
-			// If ctx was canceled, exit cleanly
-			if ctx.Err() != nil {
+			if ctx.Err() != nil { // normal shutdown
 				cancel()
 				return nil
 			}
@@ -84,7 +83,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 
 		cancel()
 
-		// Pause before retrying
+		// wait a bit before retrying
 		select {
 		case <-ctx.Done():
 			return nil
@@ -97,6 +96,5 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 func buildOutputFilename(cfg Config) string {
 	ts := time.Now().UTC().Format("20060102T150405Z")
 	base := filepath.Base(cfg.Device)
-	filename := fmt.Sprintf("%s-%s-%s.mp4", base, cfg.Codec, ts)
-	return filepath.Join(cfg.OutDir, filename)
+	return filepath.Join(cfg.OutDir, fmt.Sprintf("%s-%s-%s.mp4", base, cfg.Codec, ts))
 }
