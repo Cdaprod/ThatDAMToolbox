@@ -1,4 +1,4 @@
-/host/services/capture-daemon/scanners/v4l2.go
+// host/services/capture-daemon/scanners/v4l2.go
 package scanners
 
 import (
