@@ -45,3 +45,7 @@ func (s *V4L2Scanner) Scan() ([]registry.DeviceInfo, error) {
     }
     return devices, nil
 }
+
+func init() {
+    scanner.Register(&V4L2Scanner{})
+}
