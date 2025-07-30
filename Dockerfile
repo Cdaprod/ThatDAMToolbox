@@ -205,7 +205,9 @@ COPY --from=frontend-build \
      /thatdamtoolbox/video/web/static/components/
 
 # 5) Runtime‐only ENV overrides
-ENV VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
+ENV \
+    XDG_CACHE_HOME=/var/lib/thatdamtoolbox/cache \
+    VIDEO_DATA_DIR=/var/lib/thatdamtoolbox \
     VIDEO_DB_PATH=/var/lib/thatdamtoolbox/db/live.sqlite3 \
     VIDEO_MEDIA_ROOT=/var/lib/thatdamtoolbox/media \
     VIDEO_PROCESSED_DIR=/var/lib/thatdamtoolbox/_PROCESSED \
