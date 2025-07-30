@@ -10,7 +10,7 @@ services:
     build:
       context: ./host/services/capture-daemon
       dockerfile: Dockerfile
-    image: cdaprod/capture-daemon:latest    # Can omit for local dev, keep for registry pushes
+    image: cdaprod/video-capture-daemon:latest    # Can omit for local dev, keep for registry pushes
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     volumes:
@@ -86,7 +86,7 @@ services:
       # VIDEO_STORAGE=weaviate                    # Use Weaviate backend
       # WEAVIATE_URL=http://localhost:8081        # For Weaviate backend:
       # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
-      CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
+      CAPTURE_REGISTRY_URL: "http://127.0.0.1:9000"
 
     
     # --- Storage mounts ------------------------
