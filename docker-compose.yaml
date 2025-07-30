@@ -6,7 +6,7 @@ networks:
     driver: bridge
 
 services:
-capture-daemon:
+  capture-daemon:
     build:                       # ← build from source each `compose build`
       context: .                 # repo root
       dockerfile: host/services/capture-daemon/Dockerfile
