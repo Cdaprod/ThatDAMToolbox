@@ -2,13 +2,14 @@
 package runner
 
 import (
-    "context"
-    "fmt"
+    "encoding/json"
     "log"
-    "os"
-    "os/exec"
-    "path/filepath"
+    "net/http"
+    "sync"
     "time"
+
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 )
 
 // Config holds the parameters for a single device capture loop.
@@ -98,4 +99,39 @@ func buildOutputFilename(cfg Config) string {
     base := filepath.Base(cfg.Device)
     filename := fmt.Sprintf("%s-%s-%s.mp4", base, cfg.Codec, ts)
     return filepath.Join(cfg.OutDir, filename)
+}
+
+// Update receives the device list that main.go already discovered.
+func (r *Registry) Update(devices []scanner.Device) {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+
+    seen := make(map[string]struct{})
+
+    // Start runners for newly discovered devices
+    for _, d := range devices {
+        seen[d.ID] = struct{}{}
+        if _, ok := r.devices[d.ID]; !ok {
+            log.Printf("➕ Device discovered: %s (%s)", d.ID, d.Name)
+            ctl := runner.StartRunner(d.Path)
+            r.runners[d.ID] = ctl
+        }
+        r.devices[d.ID] = Device{
+            ID:       d.ID,
+            Name:     d.Name,
+            LastSeen: time.Now(),
+        }
+    }
+
+    // Stop runners for devices no longer present
+    for id := range r.devices {
+        if _, stillThere := seen[id]; !stillThere {
+            log.Printf("➖ Device removed: %s", id)
+            if ctl, has := r.runners[id]; has {
+                close(ctl.StopChan)
+                delete(r.runners, id)
+            }
+            delete(r.devices, id)
+        }
+    }
 }

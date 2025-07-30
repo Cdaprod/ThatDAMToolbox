@@ -3,7 +3,6 @@ package v4l2
 
 import (
     "path/filepath"
-    "fmt"
 
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 )
