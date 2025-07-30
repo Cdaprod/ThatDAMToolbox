@@ -19,7 +19,7 @@ services:
     # privileged: true                  # depriciated for security compliance
     user: "1000:1000"
     # --- Device permissions & hotplug ----------
-    devices:
+    devices: []
       #- /dev/video0:/dev/video0
       #- /dev/video1:/dev/video1
       #- /dev/vchiq:/dev/vchiq
