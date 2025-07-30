@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -105,13 +106,48 @@ func (r *Registry) StopAll() {
 // --------------------------------------------------
 
 // ServeAPI exposes GET /devices on the given address and blocks.
+// ServeAPI exposes GET /devices on the given address and blocks.
 func (r *Registry) ServeAPI(addr string) error {
-	http.HandleFunc("/devices", func(w http.ResponseWriter, _ *http.Request) {
+	http.HandleFunc("/devices", func(w http.ResponseWriter, req *http.Request) {
 		r.mu.Lock()
-		defer r.mu.Unlock()
+		empty := len(r.devices) == 0
+		snapshot := make(map[string]Device, len(r.devices))
+		for k, v := range r.devices {
+			snapshot[k] = v
+		}
+		r.mu.Unlock()
+
+		// If the client wants HTML and we have no devices → show meme
+		if empty && strings.Contains(req.Header.Get("Accept"), "text/html") {
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte(noDevicesHTML))
+			return
+		}
+
+		// Default: JSON
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(r.devices)
+		_ = json.NewEncoder(w).Encode(snapshot)
 	})
+
 	log.Printf("🌐 registry API listening on %s", addr)
 	return http.ListenAndServe(addr, nil)
 }
+
+// Inline "no devices" HTML page with Kermit-shrug GIF
+const noDevicesHTML = `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>No Cameras Detected</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font-family:system-ui,Roboto,Helvetica,Arial,sans-serif;
+display:flex;flex-direction:column;align-items:center;justify-content:center;
+height:100vh;margin:0;background:#fafafa;color:#444;text-align:center}
+h1{font-size:2rem;margin:1rem}
+img{max-width:260px;height:auto}
+</style>
+</head><body>
+<h1>Oops -- your devices are on a coffee break!</h1>
+<img src="https://gifdb.com/images/high/kermit-shrug-i-don-t-know-7m8kdymv037lcqm3.webp"
+     alt="Kermit shrugging">
+</body></html>`
