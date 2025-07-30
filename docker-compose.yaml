@@ -7,23 +7,24 @@ networks:
 
 services:
   capture-daemon:
-    build:                       # ← build from source each `compose build`
+    build:
       context: ./host/services/capture-daemon
       dockerfile: Dockerfile
-      target: runtime            # use the "runtime" stage in that Dockerfile
-    image: cdaprod/capture-daemon:latest
-    privileged: true             # v4l2 ioctl + modprobe
-    pid: host                    # share /proc with the host (needed for ffmpeg)
+    image: cdaprod/capture-daemon:latest    # Can omit for local dev, keep for registry pushes
+    privileged: true                        # Needed for /dev and v4l2
+    pid: host
     volumes:
       - /dev:/dev
       - /lib/modules:/lib/modules:ro
-      - ./records:/records
+      - ./data/modules/hwcapture/records:/records   # Adjust to your persistent record dir
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:9000/devices"]
       interval: 10s
       timeout: 3s
       retries: 3
-    restart: unless-stopped      # keep running 24 / 7
+    restart: unless-stopped
+    environment:
+      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
 
 
   video-api:
