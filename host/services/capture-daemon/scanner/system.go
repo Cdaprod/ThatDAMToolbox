@@ -2,25 +2,23 @@
 package scanner
 
 import (
-    "fmt"
-    "unsafe"
-    "syscall"
-    "os"
     "path/filepath"
 )
 
+// init auto-registers this scanner
 func init() {
-    scanner.Register(systemScanner{})
+    Register(systemScanner{})
 }
 
 type systemScanner struct{}
 
-func (systemScanner) Scan() ([]scanner.Device, error) {
+func (systemScanner) Scan() ([]Device, error) {
     dev, err := findFirstCaptureDevice()
     if err != nil {
         return nil, err
     }
-    return []scanner.Device{{ID: dev, Name: filepath.Base(dev)}}, nil
+    return []Device{{
+        ID:   dev,
+        Name: filepath.Base(dev),
+    }}, nil
 }
-
-// ...then your findFirstCaptureDevice/isCaptureNode/sortedVideoNodes helper code here...
