@@ -7,10 +7,10 @@ permissions:
   
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "docker-compose.yaml"
-      - ".github/workflows/generate-docker-diagram.yml"
+# push:
+#   paths:
+#     - "docker-compose.yaml"
+#     - ".github/workflows/generate-docker-diagram.yml"
 
 jobs:
   generate-diagram:

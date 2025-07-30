@@ -3,15 +3,15 @@
 name: Generate NodeProp Configuration
 
 on:
-  push:
-    branches: ['**']
-    tags:     ['*']
-    paths:
-      - '.github/.nodeprop.yaml'
-      - '.github/.nodeprop.yml'
+# push:
+#   branches: ['**']
+#   tags:     ['*']
+#   paths:
+#     - '.github/.nodeprop.yaml'
+#     - '.github/.nodeprop.yml'
   workflow_dispatch:
-  schedule:
-    - cron: '0 6 * * *'  # daily at 6am UTC
+# schedule:
+#   - cron: '0 6 * * *'  # daily at 6am UTC
 
 jobs:
   generate-config:
