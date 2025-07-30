@@ -13,7 +13,7 @@ import (
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
     // import any scanner implementations so their init() calls Register()
-    _ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanners/v4l2"
+    _ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner/v4l2"
 )
 
 func main() {
