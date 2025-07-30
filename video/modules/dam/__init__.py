@@ -20,6 +20,7 @@ MODULE_PATH_DEFAULTS = {
     "embeddings": "embeddings",       # For vector storage, Faiss, etc
     "manifests":  "manifests",        # For DAM-level manifest objects
     "previews":   "previews",         # For low-res or embedding previews
+    "cache":      "cache",            # NEW – local temp / working cache
 }
 register_module_paths(
     "dam",
