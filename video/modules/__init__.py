@@ -38,6 +38,11 @@ for modname in os.listdir(_this_dir):
         defaults = getattr(mod, "MODULE_PATH_DEFAULTS", None)
         if isinstance(defaults, dict):
             full = {k: MODULES_ROOT / modname / v for k, v in defaults.items()}
+            
+            # ✅ Ensure folders exist
+            for path in full.values():
+                path.mkdir(parents=True, exist_ok=True)
+
             register_module_paths(modname, full)
             log.info(f"Registered paths for {modname}: {full!r}")
 

@@ -1,3 +1,4 @@
+# /video/api/modules.py
 from fastapi.staticfiles import StaticFiles
 from fastapi import HTTPException
 from video.config import _MODULE_PATH_REGISTRY
