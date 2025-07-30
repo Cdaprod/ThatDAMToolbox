@@ -438,7 +438,7 @@ const CameraMonitor: React.FC = () => {
             <div className="flex flex-col items-center">
               {/* Put a fun GIF in your public folder as "/no-signal.gif" */}
               <img
-                src="https://media.giphy.com/media/3o6ZsY1skhUgE5r6Lm/giphy.gif"
+                src="https://media1.tenor.com/m/1VZnQCgDgFkAAAAC/no-cameras-clinton-sparks.gif"
                 alt="No signal"
                 className="w-32 h-32 mb-4"
               />
