@@ -22,8 +22,8 @@ services:
     devices:
       #- /dev/video0:/dev/video0
       #- /dev/video1:/dev/video1
-      - /dev/vchiq:/dev/vchiq
-      - /dev/dri:/dev/dri               # DRM for encoders/GL
+      #- /dev/vchiq:/dev/vchiq
+      #- /dev/dri:/dev/dri               # DRM for encoders/GL
     device_cgroup_rules:
       - "c 81:* rmw"                    # hot-plug /dev/video*
     group_add:
