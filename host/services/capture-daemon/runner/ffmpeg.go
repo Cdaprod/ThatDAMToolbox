@@ -9,7 +9,6 @@ import (
     "time"
 
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 )
 
 // Config holds the parameters for a single device capture loop.
