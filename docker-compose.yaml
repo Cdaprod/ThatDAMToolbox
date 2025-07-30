@@ -6,6 +6,26 @@ networks:
     driver: bridge
 
 services:
+capture-daemon:
+    build:                       # ← build from source each `compose build`
+      context: .                 # repo root
+      dockerfile: host/services/capture-daemon/Dockerfile
+      target: runtime            # use the "runtime" stage in that Dockerfile
+    image: cdaprod/capture-daemon:latest
+    privileged: true             # v4l2 ioctl + modprobe
+    pid: host                    # share /proc with the host (needed for ffmpeg)
+    volumes:
+      - /dev:/dev
+      - /lib/modules:/lib/modules:ro
+      - ./records:/records
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/devices"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped      # keep running 24 / 7
+
+
   video-api:
     build:
       context: .
@@ -65,6 +85,8 @@ services:
       # VIDEO_STORAGE=weaviate                    # Use Weaviate backend
       # WEAVIATE_URL=http://localhost:8081        # For Weaviate backend:
       # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
+      CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
+
     
     # --- Storage mounts ------------------------
     volumes:
@@ -80,6 +102,9 @@ services:
       - /dev:/dev:rw,rshared
       - ./video:/video:rw
     restart: unless-stopped
+    depends_on:
+      capture-daemon:
+        condition: service_healthy
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
