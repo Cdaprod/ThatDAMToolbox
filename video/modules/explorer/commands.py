@@ -15,7 +15,6 @@ from argparse import Namespace
 
 from video.cli import register
 from video.core import get_manifest
-from video.bootstrap import STORAGE               # the AutoStorage singleton
 from video.models import CardResponse
 from .routes import _rows_to_cards, _manifest_to_cards  # reuse converters
 
