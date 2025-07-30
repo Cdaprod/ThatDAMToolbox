@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from fastapi.responses import RedirectResponse
-from video.bootstrap        import STORAGE                 # AutoStorage singleton
 from video.storage.base     import StorageEngine
 from video.core             import get_manifest            # core.batch → manifest
 from video.models           import CardResponse, VideoCard, SceneThumb
@@ -32,6 +31,8 @@ def _stamp(request: Request) -> str:
 # Dependency injection helper
 # --------------------------------------------------------------------------- #
 def _store() -> StorageEngine:        # keeps typing clean everywhere
+    # Late-import avoids circular-import during bootstrap
+    from video.bootstrap import STORAGE
     return STORAGE
 
 
