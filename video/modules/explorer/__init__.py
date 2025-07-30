@@ -1,15 +1,29 @@
+# video/modules/explorer/__init__.py
 """
-/video/modules/explorer/__init__.py
+Explorer plug-in.
 
-Explorer plug-in  – primary discovery front-end
-
-Adds:
-• REST  GET /explorer               – recent artifacts (grid view)
-• REST  GET /explorer/batch/{id}    – batch drill-down
-• CLI   video explore [...]         – optional (see commands.py)
+Registers its on-disk data directories (thumb caches, search indexes, …)
+so the core `video.api.modules.setup_module_static_mounts()` helper can mount
+them automatically – exactly like hwcapture & dam.
 """
-from . import routes        # auto-mount via video.api plug-in loader
-from . import commands      # optional: registers CLI verb
 
-# Re-export router so other code can import easily
-router = routes.router
+from video.config import register_module_paths, DATA_DIR
+
+MODULE_PATH_DEFAULTS = {
+    # directory → purpose → how the front-end will reach it
+    "thumbs":   "thumbs",    # GET /modules/explorer/thumbs/…
+    "cache":    "cache",     # cached manifests, pre-rendered JSON, …
+    "exports":  "exports",   # user-initiated CSV/ZIP exports, etc.
+}
+
+register_module_paths(
+    "explorer",
+    {k: DATA_DIR / "modules" / "explorer" / v
+     for k, v in MODULE_PATH_DEFAULTS.items()}
+)
+
+# REST routes
+from .routes import router      # auto-mounted by core plug-in loader
+from . import commands          # optional: registers CLI verb
+
+__all__ = ["router"]
