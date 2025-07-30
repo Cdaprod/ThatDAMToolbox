@@ -28,7 +28,7 @@ type v4l2_capability struct {
 // actually has V4L2_CAP_VIDEO_CAPTURE set.
 func findFirstCaptureDevice() (string, error) {
     for _, node := range sortedVideoNodes() {
-        if isCaptureNode(node) {
+        if IsCaptureNode(node) {
             return node, nil
         }
     }
@@ -42,8 +42,8 @@ func sortedVideoNodes() []string {
     return matches
 }
 
-// isCaptureNode does the VIDIOC_QUERYCAP ioctl and checks the CAP flag
-func isCaptureNode(dev string) bool {
+// IsCaptureNode does the VIDIOC_QUERYCAP ioctl and checks the CAP flag
+func IsCaptureNode(dev string) bool {
     f, err := os.OpenFile(dev, os.O_RDONLY|syscall.O_NONBLOCK, 0)
     if err != nil {
         return false
