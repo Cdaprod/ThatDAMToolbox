@@ -12,8 +12,8 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 )
 
-// Device represents the minimal info stored for each discovered device.
-type Device = scanner.Device // re-export for convenience
+// Device is an alias to scanner.Device so callers don’t need to import both
+type Device = scanner.Device
 
 // Registry tracks devices and their cancellation callbacks.
 type Registry struct {
@@ -30,9 +30,11 @@ func NewRegistry() *Registry {
 	}
 }
 
-// ---------------- public helpers ----------------
+// --------------------------------------------------
+// Public helpers
+// --------------------------------------------------
 
-// Update merges a freshly-scanned device list into the registry.
+// Update merges a freshly-scanned device list into the registry and logs changes.
 func (r *Registry) Update(devs []scanner.Device) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -40,13 +42,20 @@ func (r *Registry) Update(devs []scanner.Device) {
 	seen := make(map[string]struct{})
 	for _, d := range devs {
 		seen[d.ID] = struct{}{}
-		r.devices[d.ID] = d // refresh LastSeen etc.
+
+		// refresh LastSeen so callers always get a recent timestamp
+		d.LastSeen = time.Now()
+		if _, exists := r.devices[d.ID]; !exists {
+			log.Printf("➕ new device: %s (%s)", d.ID, d.Name)
+		}
+		r.devices[d.ID] = d
 	}
 
+	// detect disappearances
 	for id := range r.devices {
-		if _, ok := seen[id]; !ok {
-			// device disappeared → stop its runner (if any) and forget it
-			if cancel, has := r.stopFuncs[id]; has {
+		if _, stillThere := seen[id]; !stillThere {
+			log.Printf("➖ device removed: %s", id)
+			if cancel, ok := r.stopFuncs[id]; ok {
 				cancel()
 				delete(r.stopFuncs, id)
 			}
@@ -55,7 +64,7 @@ func (r *Registry) Update(devs []scanner.Device) {
 	}
 }
 
-// List returns a **copy** of the current devices map.
+// List returns a snapshot copy of the registry’s devices map.
 func (r *Registry) List() map[string]Device {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -66,7 +75,7 @@ func (r *Registry) List() map[string]Device {
 	return cp
 }
 
-// HasRunner reports whether a cancel func is registered for id.
+// HasRunner reports whether we’ve registered a cancel func for id.
 func (r *Registry) HasRunner(id string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -74,7 +83,7 @@ func (r *Registry) HasRunner(id string) bool {
 	return ok
 }
 
-// RegisterStopFunc stores a cancel func for this device.
+// RegisterStopFunc stores the cancel func for a running capture loop.
 func (r *Registry) RegisterStopFunc(id string, cancel context.CancelFunc) {
 	r.mu.Lock()
 	r.stopFuncs[id] = cancel
@@ -91,9 +100,11 @@ func (r *Registry) StopAll() {
 	}
 }
 
-// ---------------- tiny HTTP helper ----------------
+// --------------------------------------------------
+// Tiny HTTP helper
+// --------------------------------------------------
 
-// ServeAPI exposes GET /devices and returns any listen error.
+// ServeAPI exposes GET /devices on the given address and blocks.
 func (r *Registry) ServeAPI(addr string) error {
 	http.HandleFunc("/devices", func(w http.ResponseWriter, _ *http.Request) {
 		r.mu.Lock()
@@ -101,5 +112,6 @@ func (r *Registry) ServeAPI(addr string) error {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(r.devices)
 	})
+	log.Printf("🌐 registry API listening on %s", addr)
 	return http.ListenAndServe(addr, nil)
 }
