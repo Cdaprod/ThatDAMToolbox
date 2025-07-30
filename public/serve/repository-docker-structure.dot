@@ -2,10 +2,12 @@ digraph docker_compose {
   rankdir=LR;
   node [shape=box, style=filled, color=lightblue];
   "video-api" [label="video-api"];
-  "video-api" -> "vol::/mnt/b/Video/thatdamtoolbox:/data:rw" [style=dashed, color=darkgreen];
-  "vol::/mnt/b/Video/thatdamtoolbox:/data:rw" [label="/mnt/b/Video/thatdamtoolbox:/data:rw" shape=cylinder color=lightgreen];
-  "video-api" -> "vol::/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" [style=dashed, color=darkgreen];
-  "vol::/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" [label="/mnt/b/Video/_INCOMING:/data/_INCOMING:rw" shape=cylinder color=lightgreen];
+  "video-api" -> "vol::${DATA_ROOT:-./data}:/data:rw" [style=dashed, color=darkgreen];
+  "vol::${DATA_ROOT:-./data}:/data:rw" [label="${DATA_ROOT:-./data}:/data:rw" shape=cylinder color=lightgreen];
+  "video-api" -> "vol::${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw" [style=dashed, color=darkgreen];
+  "vol::${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw" [label="${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw" shape=cylinder color=lightgreen];
+  "video-api" -> "vol::db_wal:/var/lib/thatdamtoolbox/db:rw" [style=dashed, color=darkgreen];
+  "vol::db_wal:/var/lib/thatdamtoolbox/db:rw" [label="db_wal:/var/lib/thatdamtoolbox/db:rw" shape=cylinder color=lightgreen];
   "video-api" -> "vol::./video:/video:rw" [style=dashed, color=darkgreen];
   "vol::./video:/video:rw" [label="./video:/video:rw" shape=cylinder color=lightgreen];
   "video-web" [label="video-web"];
