@@ -8,8 +8,8 @@ networks:
 services:
   capture-daemon:
     build:                       # ← build from source each `compose build`
-      context: .                 # repo root
-      dockerfile: host/services/capture-daemon/Dockerfile
+      context: ./host/services/capture-daemon
+      dockerfile: Dockerfile
       target: runtime            # use the "runtime" stage in that Dockerfile
     image: cdaprod/capture-daemon:latest
     privileged: true             # v4l2 ioctl + modprobe
