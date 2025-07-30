@@ -1,37 +1,58 @@
+#!/usr/bin/env python3
 """
 /video/modules/uploader/__init__.py
-
-video.modules.uploader
+(video.modules.uploader)
 ======================
 
-Small write-side companion to *explorer*:
-• REST router (POST /api/v1/upload/…)            →  routes.py
-• Optional CLI verb  `video upload …`            →  cli.py
+Write-side companion to *explorer*:
 
-Because the core app’s auto-loader just import-scans every
-`video.modules.*` package, all we need to do here is expose
-our FastAPI router (and, if desired, register the CLI hook).
+• REST  – POST /api/v1/upload/…          → routes.py
+• CLI   – `video upload …`               → commands.py
+• Paths – auto-created module data dirs  → DATA_DIR/modules/uploader/…
 
-Nothing else is executed at import-time, so unit tests can
-`s.importlib.reload()` the module safely.
+The core plug-in loader (video.modules.__init__) just has to `import` this
+package; everything else is handled automatically.
 """
-from importlib import import_module
+from __future__ import annotations
+
 import logging
+from importlib import import_module
+from pathlib   import Path
+
+from video.config import DATA_DIR, register_module_paths
 
 log = logging.getLogger("video.uploader")
 
-# ── REST router --------------------------------------------------------------
-_routes = import_module(".routes", __name__)
-router  = _routes.router         # <-- re-export so api.py can see it
-log.debug("uploader router ready")
+# ─────────────────────────────────────────────────────────────────────────────
+# 1) Declare per-module data directories  (exposed later at /modules/uploader/*)
+# ─────────────────────────────────────────────────────────────────────────────
+MODULE_PATH_DEFAULTS = {
+    "staging": "_INCOMING/web",         # raw multipart uploads land here first
+}
 
-# ── CLI verb (optional) ------------------------------------------------------
+register_module_paths(
+    "uploader",
+    {k: DATA_DIR / "modules" / "uploader" / v for k, v in MODULE_PATH_DEFAULTS.items()},
+)
+
+# ensure they exist on boot
+for p in register_module_paths("uploader")["uploader"].values():  # type: ignore[arg-type]
+    Path(p).mkdir(parents=True, exist_ok=True)
+    log.debug("Ensured directory: %s", p)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2) REST router (re-export for the FastAPI auto-includer)
+# ─────────────────────────────────────────────────────────────────────────────
+router = import_module(".routes", __name__).router
+log.debug("Uploader router ready")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3) CLI verb – registers itself with video.cli via side-effects
+# ─────────────────────────────────────────────────────────────────────────────
 try:
-    import_module(".cli", __name__)
-    log.debug("uploader CLI verb registered")
+    import_module(".commands", __name__)
+    log.debug("Uploader CLI verb registered")
 except ImportError:
-    # If argparse helpers / requests aren’t installed in a minimal build,
-    # we quietly skip – the REST API still works.
-    log.debug("uploader CLI verb not loaded (optional)")
+    log.debug("Uploader CLI verb skipped (optional dependency missing)")
 
 __all__ = ["router"]
