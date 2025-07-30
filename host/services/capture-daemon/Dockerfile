@@ -8,6 +8,6 @@ RUN CGO_ENABLED=0 go build -o capture-daemon ./main.go
 
 # ---------- runtime stage ----------
 FROM alpine:3.20 AS runtime
-RUN apk add --no-cache ffmpeg tini v4l2loopback-dkms
+RUN apk add --no-cache ffmpeg tini
 COPY --from=build /src/capture-daemon /usr/local/bin/capture-daemon
 ENTRYPOINT ["/sbin/tini","--"]          # final CMD supplied by compose
