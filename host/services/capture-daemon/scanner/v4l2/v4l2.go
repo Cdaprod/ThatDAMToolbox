@@ -1,20 +1,18 @@
-// host/services/capture-daemon/scanner/v4l2.go
+// /host/services/capture-daemon/scanner/v4l2/v4l2.go
 package v4l2
 
 import (
-    "io/ioutil"
-    //"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
-    "strings"
     "path/filepath"
     "fmt"
+
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 )
 
-// V4L2Scanner detects /dev/video* devices
 type V4L2Scanner struct{}
 
 const fallbackDev = "/dev/video9"
 
+// If *all* /dev/video* nodes are fallback, assume no real camera
 func hasRealCamera(nodes []string) bool {
     for _, n := range nodes {
         if n != fallbackDev {
@@ -24,17 +22,17 @@ func hasRealCamera(nodes []string) bool {
     return false
 }
 
-func (s *V4L2Scanner) Scan() ([]registry.DeviceInfo, error) {
+func (s *V4L2Scanner) Scan() ([]scanner.Device, error) {
     files, _ := filepath.Glob("/dev/video*")
     if !hasRealCamera(files) {
         // ensure the fallback is still reported
         files = append(files, fallbackDev)
     }
 
-    var devices []registry.DeviceInfo
+    var devices []scanner.Device
     for _, file := range files {
-        devices = append(devices, registry.DeviceInfo{
-            UID:  file,
+        devices = append(devices, scanner.Device{
+            ID:   file,
             Kind: "v4l2",
             Path: file,
             Name: filepath.Base(file),
