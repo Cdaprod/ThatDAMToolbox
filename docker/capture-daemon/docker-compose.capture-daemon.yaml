@@ -1,0 +1,21 @@
+# /docker/capture-daemon/docker-compose.capture-daemon.yaml
+# `docker compose run --rm host-init` run once after boot
+services:
+  host-init:
+    image: alpine:3.20
+    privileged: true          # needed for modprobe
+    pid: host                 # so we touch host’s /proc, modules, /dev
+    network_mode: none
+    volumes:
+      - /lib/modules:/lib/modules:ro     # allow modprobe
+      - /dev:/dev                        # to list /dev/video*
+    entrypoint: /bin/sh -c '
+      set -e
+      if ls /dev/video[0-8] >/dev/null 2>&1 ; then
+          echo "⇢ Real camera detected – skipping loopback"
+          exit 0
+      fi
+      echo "⇢ No camera – inserting v4l2loopback at /dev/video9"
+      modprobe v4l2loopback devices=1 video_nr=9 card_label=NoCamera exclusive_caps=1
+    '
+    restart: "no"
