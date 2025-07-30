@@ -3,7 +3,7 @@ package scanners
 
 import (
     "io/ioutil"
-    "ThatDamToolbox/host/services/capture-daemon/registry"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
     "strings"
     "path/filepath"
     "fmt"
