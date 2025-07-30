@@ -106,8 +106,17 @@ func (r *Registry) StopAll() {
 // --------------------------------------------------
 
 // ServeAPI exposes GET /devices on the given address and blocks.
-// ServeAPI exposes GET /devices on the given address and blocks.
 func (r *Registry) ServeAPI(addr string) error {
+	// redirect bare "/" to /devices
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/" { // only root--not other unknown paths
+			http.Redirect(w, req, "/devices", http.StatusFound)
+			return
+		}
+		http.NotFound(w, req)
+	})
+
+	// main handler
 	http.HandleFunc("/devices", func(w http.ResponseWriter, req *http.Request) {
 		r.mu.Lock()
 		empty := len(r.devices) == 0
@@ -117,14 +126,14 @@ func (r *Registry) ServeAPI(addr string) error {
 		}
 		r.mu.Unlock()
 
-		// If the client wants HTML and we have no devices → show meme
+		// Serve meme if browser (+ empty registry)
 		if empty && strings.Contains(req.Header.Get("Accept"), "text/html") {
 			w.Header().Set("Content-Type", "text/html")
 			_, _ = w.Write([]byte(noDevicesHTML))
 			return
 		}
 
-		// Default: JSON
+		// Otherwise JSON
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(snapshot)
 	})
@@ -147,7 +156,7 @@ h1{font-size:2rem;margin:1rem}
 img{max-width:260px;height:auto}
 </style>
 </head><body>
-<h1>Oops -- your devices are on a coffee break!</h1>
+<h1>Oops—your devices are on a coffee break!</h1>
 <img src="https://gifdb.com/images/high/kermit-shrug-i-don-t-know-7m8kdymv037lcqm3.webp"
      alt="Kermit shrugging">
 </body></html>`
