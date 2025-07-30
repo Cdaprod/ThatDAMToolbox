@@ -1,5 +1,5 @@
 // in capture-daemon/scanners/system.go
-package scanners
+package scanner
 
 import (
     "fmt"

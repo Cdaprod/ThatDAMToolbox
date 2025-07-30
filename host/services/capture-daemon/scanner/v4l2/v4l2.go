@@ -1,5 +1,5 @@
 // host/services/capture-daemon/scanners/v4l2.go
-package scanners
+package scanner
 
 import (
     "io/ioutil"
