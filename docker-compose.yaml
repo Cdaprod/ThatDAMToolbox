@@ -138,6 +138,7 @@ services:
   # --- Optional CLI one-shot "scan" container ---------
   video-cli:
     image: cdaprod/video:dev
+    profiles: [hydrate-backend]
     entrypoint: ["python", "-m", "video"]
     # one-off scan job
     command: ["scan", "--root", "/data/_INCOMING", "--workers", "1"]
