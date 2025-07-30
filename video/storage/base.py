@@ -31,3 +31,13 @@ class StorageEngine(ABC):
 
     def search_vector(self, *_, **__) -> List[Dict[str, Any]]:  # pragma: no cover
         return []
+
+    # ---------- explorer helpers ----------
+    def list_all_folders(self) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    def list_assets(self, folder: Path) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    def set_position(self, sha1: str, pos: int) -> None:
+        """Persist drag-and-drop order (optional)."""

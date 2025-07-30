@@ -170,10 +170,29 @@ class AutoStorage(StorageEngine):
     # ───── direct children of one folder ───────────────────────────────
     def list_assets(self, folder: Path) -> list[dict]:
         like = f"{folder.as_posix().rstrip('/')}/%"
-        rows = self._db.execute(
-            "SELECT * FROM files WHERE path LIKE ?", (like,)
-        )
-        return [dict(r) for r in rows]
+        rows = self._db.execute("SELECT * FROM files WHERE path LIKE ?", (like,))
+
+        def _row_to_asset(r):
+            mime = r["mime"] or ""
+            _kind = (
+                "image"     if mime.startswith("image/")
+                else "video"    if mime.startswith("video/")
+                else "document"
+            )
+            return {
+                "id"      : r["sha1"],
+                "name"    : os.path.basename(r["path"]),
+                "type"    : _kind,
+                "size"    : r["size_bytes"] or 0,
+                "created" : r["created_at"],
+                "modified": r["updated_at"],
+                "path"    : r["path"],
+                "tags"    : json.loads(r["tags"] or "[]"),
+                "status"  : r.get("status", "processed"),
+                "thumbnail": f"/static/thumbs/{r['sha1']}_0.jpg",
+            }
+
+        return [_row_to_asset(r) for r in rows]
 
     # ───── drag-and-drop sort-order persistence ────────────────────────
     def set_position(self, sha1: str, pos: int) -> None:
