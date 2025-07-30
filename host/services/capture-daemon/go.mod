@@ -8,4 +8,3 @@ require (
 )
 
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared => ../shared
-replace github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner => ./scanner
