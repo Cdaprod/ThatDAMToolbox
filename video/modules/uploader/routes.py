@@ -7,9 +7,10 @@
 # ---------------------------------------------------------------------------
 from __future__ import annotations
 
-import logging, time
+import logging
+import time
 from pathlib import Path
-from typing  import List, Optional
+from typing import List, Optional
 
 from fastapi import (
     APIRouter,
@@ -22,22 +23,27 @@ from fastapi import (
 )
 
 from video.core.ingest import ingest_files
-from video.config      import _MODULE_PATH_REGISTRY
+from video.config      import get_module_path, WEB_UPLOADS as _FALLBACK_WU
 
-log        = logging.getLogger("video.uploader")
-router     = APIRouter(prefix="/api/v1/upload", tags=["upload"])
+log    = logging.getLogger("video.uploader")
+router = APIRouter(prefix="/api/v1/upload", tags=["upload"])
 
-# Resolve the staging directory that was registered in __init__.py
-WEB_UPLOADS: Path = _MODULE_PATH_REGISTRY["uploader"]["staging"]  # type: ignore[index]
+# ───────────────────────────── staging dir ──────────────────────────────
+try:
+    WEB_UPLOADS: Path = get_module_path("uploader", "staging")
+except Exception:                         # registry not yet populated? fall back
+    WEB_UPLOADS = _FALLBACK_WU            # defined in config.py
+
 WEB_UPLOADS.mkdir(parents=True, exist_ok=True)
 log.info("Uploader initialised – staging dir: %s", WEB_UPLOADS)
 
-
+# ─────────────────────────── helpers ────────────────────────────────────
 def _stamp(req: Request) -> str:
-    """Return concise METHOD PATH string for log lines."""
+    """Return concise 'METHOD /path' string for log lines."""
     return f"{req.method} {req.url.path}"
 
 
+# ─────────────────────────── endpoint ───────────────────────────────────
 @router.post("/", summary="Upload 1–N files (async ingest)")
 async def upload_batch(
     request: Request,
@@ -48,7 +54,7 @@ async def upload_batch(
     """
     Workflow
     ────────
-    1. Stream each *UploadFile* into the per-module `staging` folder.
+    1. Stream each *UploadFile* into the staging folder.
     2. Queue `ingest_files()` (background) which moves + hashes + DB-registers.
     3. Return immediately with a *queued* JSON payload.
     """
