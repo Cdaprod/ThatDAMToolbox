@@ -1,33 +1,31 @@
 # /docker/capture-daemon/docker-compose.capture-daemon.yaml
 services:
   capture-daemon:
-    image: alpine:3.20
     build:
-      context: ../../host/services/capture-daemon
+      context: ../../host/services/capture-daemon      # adjust if path differs
       target: runtime
-    profiles: [capture-daemon]
-    privileged: true          # needed for modprobe
-    pid: host                 # so we touch host’s /proc, modules, /dev
-    network_mode: none
+    image: cdaprod/capture-daemon:dev                  # tag for reuse
+    profiles: ["capture-daemon"]
+    privileged: true          # needed for modprobe + /dev access
+    pid: host                 # so modprobe touches host kernel
+    network_mode: bridge      # expose :9000 (don't use none)
     volumes:
       - ./records:/records
-      - /lib/modules:/lib/modules:ro     # allow modprobe
-      - /dev:/dev                        # to list /dev/video*
+      - /lib/modules:/lib/modules:ro
+      - /dev:/dev
     environment:
-      # default path inside container; you can override at launch
       CAPTURE_OUTDIR: /records
     ports:
       - "9000:9000"
-    entrypoint: /bin/sh -c '
-      set -e
-      if ls /dev/video[0-8] >/dev/null 2>&1 ; then
+    entrypoint: >
+      /bin/sh -c '
+        set -e
+        if ls /dev/video[0-8] >/dev/null 2>&1 ; then
           echo "⇢ Real camera detected – skipping loopback"
-          exit 0
-      fi
-      echo "⇢ No camera – inserting v4l2loopback at /dev/video9"
-      modprobe v4l2loopback devices=1 video_nr=9 card_label=NoCamera exclusive_caps=1
-    '
+        else
+          echo "⇢ No camera – inserting v4l2loopback at /dev/video9"
+          modprobe v4l2loopback devices=1 video_nr=9 card_label=NoCamera exclusive_caps=1
+        fi
+        exec /sbin/tini -- capture-daemon        # hand off to the Go binary
+      '
     restart: "no"
-    deploy:
-      restart_policy:
-        condition: non
