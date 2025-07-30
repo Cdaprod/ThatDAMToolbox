@@ -1,29 +1,40 @@
-# video/modules/explorer/__init__.py
+#!/usr/bin/env python3
 """
-Explorer plug-in.
+Explorer plug-in – browsable media feed & batch viewer.
 
-Registers its on-disk data directories (thumb caches, search indexes, …)
-so the core `video.api.modules.setup_module_static_mounts()` helper can mount
-them automatically – exactly like hwcapture & dam.
+Adds
+• REST  – /explorer/…  (see routes.py)
+• CLI   – `video explore …` (see commands.py)
 """
+
+from __future__ import annotations
+from importlib import import_module
+import logging
 
 from video.config import register_module_paths, DATA_DIR
 
+log = logging.getLogger("video.explorer")
+
+# --------------------------------------------------------------------------- #
+#  Declare and register all data folders used by this module
+# --------------------------------------------------------------------------- #
 MODULE_PATH_DEFAULTS = {
-    # directory → purpose → how the front-end will reach it
-    "thumbs":   "thumbs",    # GET /modules/explorer/thumbs/…
-    "cache":    "cache",     # cached manifests, pre-rendered JSON, …
-    "exports":  "exports",   # user-initiated CSV/ZIP exports, etc.
+    "cache":   "cache",
+    "exports": "exports",
+    "thumbs":  "thumbs",
 }
 
 register_module_paths(
     "explorer",
-    {k: DATA_DIR / "modules" / "explorer" / v
-     for k, v in MODULE_PATH_DEFAULTS.items()}
+    {k: DATA_DIR / "modules" / "explorer" / v for k, v in MODULE_PATH_DEFAULTS.items()},
 )
+log.debug("Explorer paths registered: %s", MODULE_PATH_DEFAULTS)
 
-# REST routes
-from .routes import router      # auto-mounted by core plug-in loader
-from . import commands          # optional: registers CLI verb
+# --------------------------------------------------------------------------- #
+#  Side-effect imports – make routes & CLI verbs visible to the host app
+# --------------------------------------------------------------------------- #
+routes   = import_module(".routes",   __name__)
+commands = import_module(".commands", __name__)      # defines CLI verb
 
+router = routes.router               # re-export for FastAPI autoload
 __all__ = ["router"]
