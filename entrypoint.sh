@@ -35,6 +35,22 @@ declare -a DATA_DIRS=(
 [[ -n "${TORCH_HOME:-}" ]] && DATA_DIRS+=("$TORCH_HOME")
 
 # ---------------------------------------------------------------------------
+# Extra module-specific data roots
+# ---------------------------------------------------------------------------
+MODULES_ROOT=${MODULES_ROOT:-/data/modules}
+
+# Explicit DAM sub-folders we know the app will touch
+declare -a DAM_DIRS=(
+  "${MODULES_ROOT}/dam/cache"
+  "${MODULES_ROOT}/dam/embeddings"
+  "${MODULES_ROOT}/dam/manifests"
+  "${MODULES_ROOT}/dam/previews"
+)
+
+# Append to the master list
+DATA_DIRS+=("${DAM_DIRS[@]}")
+
+# ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
 
