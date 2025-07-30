@@ -22,26 +22,39 @@ func hasRealCamera(nodes []string) bool {
 }
 
 func (s *V4L2Scanner) Scan() ([]scanner.Device, error) {
-    files, _ := filepath.Glob("/dev/video*")
-    if !hasRealCamera(files) {
-        // ensure the fallback is still reported
-        files = append(files, fallbackDev)
-    }
+	files, _ := filepath.Glob("/dev/video*")
 
-    var devices []scanner.Device
-    for _, file := range files {
-        devices = append(devices, scanner.Device{
-            ID:   file,
-            Kind: "v4l2",
-            Path: file,
-            Name: filepath.Base(file),
-            Capabilities: map[string]interface{}{
-                "source": "v4l2",
-            },
-            Status: "online",
-        })
-    }
-    return devices, nil
+	var devices []scanner.Device
+	for _, file := range files {
+		if !scanner.IsCaptureNode(file) { // <- reuse helper via exported wrapper
+			continue
+		}
+		devices = append(devices, scanner.Device{
+			ID:   file,
+			Kind: "v4l2",
+			Path: file,
+			Name: filepath.Base(file),
+			Capabilities: map[string]interface{}{
+				"source":  "v4l2",
+				"capture": true,
+			},
+			Status: "online",
+		})
+	}
+
+	// if nothing was valid, fall back to the dummy node
+	if len(devices) == 0 {
+		const fallbackDev = "/dev/video9"
+		devices = append(devices, scanner.Device{
+			ID:   fallbackDev,
+			Kind: "dummy",
+			Path: fallbackDev,
+			Name: filepath.Base(fallbackDev),
+			Status: "offline",
+		})
+	}
+
+	return devices, nil
 }
 
 func init() {

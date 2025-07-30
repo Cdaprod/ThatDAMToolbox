@@ -29,7 +29,7 @@ func DefaultConfig(device string) Config {
 		Codec:      "h264",
 		Resolution: "1920x1080",
 		FPS:        30,
-		OutDir:     "/var/media/records",
+		OutDir:     ResolveOutDir(),   // <- was "/var/media/records"
 		FFmpegPath: "ffmpeg",
 		RetryDelay: 3 * time.Second,
 	}
