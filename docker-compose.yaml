@@ -27,24 +27,24 @@ services:
       - "c 81:* rmw"                    # hot-plug /dev/video*
     group_add:
       - "44"                            # video group (GID 44 on Pi OS)
-    privileged: true                    # access /dev/video* (ready to depriciate to "false")
+    # privileged: true                  # depriciated for security compliance
     environment:
       TZ:               "America/New_York"
       VIDEO_MODE:       "api"
       PYTHONWARNINGS:   >-
             ignore::DeprecationWarning,
             ignore::UserWarning:google.protobuf.runtime_version
-      # cache location so DAM can write
+      # __cache location so DAM can write__
       XDG_CACHE_HOME:   /data/cache
       HF_HOME:          /data/cache/huggingface
       TORCH_HOME:       /data/cache/torch
-      UVICORN_WORKERS:        "1"              # dev: 1  •  prod: 4
-      VIDEO_FORCE_STDHTTP:    "0"          # 1: Force stdlib HTTP (optional)
+      UVICORN_WORKERS:        "1"       # dev: 1  •  prod: 4
+      VIDEO_FORCE_STDHTTP:    "0"       # 1: Force stdlib HTTP (optional)
       # ------------------------------------------------------------------
       # Make ALL mutable data live under one bind-mount ( /data )
       # ------------------------------------------------------------------
       
-      # override any others if you want–but everything else will fall back into $VIDEO_DATA_DIR:
+      # __override any others if you want–but everything else will fall back into $VIDEO_DATA_DIR:__
       VIDEO_DATA_DIR:         /data
       VIDEO_MEDIA_ROOT:       /data/media
       VIDEO_PROCESSED_ROOT:   /data/_PROCESSED
@@ -66,15 +66,16 @@ services:
     
     # --- Storage mounts ------------------------
     volumes:
-      # 1) your SMB-mounted data (media, previews, etc.)
+      # __ 1) your SMB-mounted data (media, previews, etc.)__
       # (Depricated for below)- /mnt/b/Video/thatdamtoolbox:/data:rw
       - "${DATA_ROOT:-./data}:/data:rw"
-      # 2) incoming staging dir
+      # __2) incoming staging dir__
       # (Depricated) - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
       - "${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw"
-      # 3) local-only WAL DB
+      # __3) local-only WAL DB__
       - db_wal:/var/lib/thatdamtoolbox/db:rw
-      # 4. Live source for hot-reload (dev only)
+      # __4) Live source for hot-reload (dev only)__
+      - /dev:/dev:rw,rshared
       - ./video:/video:rw
     restart: unless-stopped
     # --- Entrypoint & Health -------------------
