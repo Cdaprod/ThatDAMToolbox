@@ -11,6 +11,7 @@ services:
       context: ./host/services/capture-daemon
       dockerfile: Dockerfile
     image: cdaprod/video-capture-daemon:latest    # Can omit for local dev, keep for registry pushes
+    init: false
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     volumes:
