@@ -1,0 +1,67 @@
+# ------------------------------------------------------------------------------
+# Nginx front door for That DAM Toolbox
+# Rendered at container start with envsubst → /etc/nginx/nginx.conf
+# ------------------------------------------------------------------------------
+
+user  nginx;
+worker_processes  auto;
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events { worker_connections 1024; }
+
+http {
+    ##
+    ## sensible defaults
+    ##
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+    tcp_nopush    on;
+    tcp_nodelay   on;
+    keepalive_timeout 65;
+
+    ##
+    ## gzip for text assets
+    ##
+    gzip on; gzip_vary on; gzip_min_length 1000; gzip_comp_level 5;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/rss+xml text/javascript;
+
+    ##
+    ## upstream back-ends
+    ##   – If the gateway runs with `network_mode: host`* these resolve to 127.0.0.1
+    ##   – If the gateway runs on a user bridge they resolve to Docker DNS names.
+    ##
+    upstream video_api { server ${API_HOST:-video-api}:${API_PORT:-8080}; }
+    upstream video_web { server ${WEB_HOST:-video-web}:${WEB_PORT:-3000}; }
+
+    server {
+        listen 80 default_server;
+        server_name _;   # catch-all
+
+        # ------------------ health ------------------------------------------
+        location = /health {
+            proxy_pass http://video_api/health;
+            proxy_set_header Host $host;
+        }
+
+        # ------------------ REST / websocket / streams ----------------------
+        location /api/       { include proxy_defaults.conf; proxy_pass http://video_api; }
+        location /ws/        { include proxy_ws.conf;       proxy_pass http://video_api; }
+        location /stream/    { include proxy_nobuf.conf;    proxy_pass http://video_api; }
+
+        # ------------------ static frontend -------------------------------
+        location / {
+            root /usr/share/nginx/html;              # static export (if present)
+            try_files $uri $uri/ @video_web;
+        }
+
+        # fall-through → Next.js dev server / SSR
+        location @video_web { include proxy_defaults.conf; proxy_pass http://video_web; }
+
+        client_max_body_size 100m;
+    }
+}
+
+# ---------- reusable snippet includes ----------------------------------------
+# (dropped next to nginx.conf by the entrypoint script)

@@ -3,6 +3,28 @@ name: That DAM Toolbox          # must match root compose file
 
 services:
 # ──────────────────────────────────────────────────────────────
+# Event-broker
+# ──────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: thatdamtoolbox-rabbitmq
+    restart: unless-stopped
+    networks: [damnet]
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: video
+      RABBITMQ_DEFAULT_PASS: video
+      RABBITMQ_DEFAULT_VHOST: /
+    ports: ["5672:5672", "15672:15672"]   # 15672 optional (management UI)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ──────────────────────────────────────────────────────────────
 # Object-store
 # ──────────────────────────────────────────────────────────────
   minio:
