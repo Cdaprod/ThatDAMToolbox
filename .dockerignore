@@ -86,8 +86,20 @@ CHANGELOG*
 *.disabled
 
 ###############################
+# Credentials
+###############################
+secrets/
+dam_token.txt
+credentials*.json
+secrets*.json
+*.pem
+*.key
+*.crt
+
+###############################
 #  Docker build artefacts
 ###############################
 Dockerfile*
 docker-compose*.yml
+docker-compose*.yaml
 .dockerignore                # (this file itself is ignored automatically)

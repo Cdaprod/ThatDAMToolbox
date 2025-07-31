@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────
+# 1) Build Next.js static export
+# ──────────────────────────────────────────────
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY docker/web-app/package*.json ./
+RUN npm ci --only=production
+COPY docker/web-app .
+RUN npm run build           # results in /app/out
+
+# ──────────────────────────────────────────────
+# 2) Installer / Hot-spot image
+# ──────────────────────────────────────────────
+FROM debian:bookworm-slim
+
+# == build-time arg: SHA of the one-time token (not the token itself) ==
+ARG  EPHEMERAL_TOKEN_SHA
+ENV  EPHEMERAL_TOKEN_SHA=${EPHEMERAL_TOKEN_SHA}
+
+RUN test -n "$EPHEMERAL_TOKEN_SHA" || (echo "EPHEMERAL_TOKEN_SHA build arg missing" >&2 && exit 1)
+
+# Base packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        nginx avahi-daemon libnss-mdns hostapd dnsmasq \
+        iproute2 iputils-ping inxi curl diffutils sudo && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Static files
+COPY --from=builder /app/out /var/www/html
+
+# Setup script
+COPY setup.sh /setup.sh
+RUN chmod +x /setup.sh
+
+LABEL org.opencontainers.image.title="ThatDAMToolbox Hotspot Installer" \
+      org.opencontainers.image.description="Ephemeral, idempotent appliance builder" \
+      com.thatdamtoolbox.token.sha256="${EPHEMERAL_TOKEN_SHA}"
+
+EXPOSE 80 53/udp 67/udp
+
+# default: dry-run
+CMD ["/setup.sh"]

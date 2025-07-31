@@ -1,0 +1,23 @@
+# playbook.yml  (excerpt)
+- name: Copy token and run installer container
+  hosts: dam_pi
+  vars:
+    token: "{{ lookup('ansible.builtin.vault', 'dam_token') }}"
+  tasks:
+    - copy:
+        dest: /tmp/dam_token
+        content: "{{ token }}"
+        mode: "0400"
+    - community.docker.docker_container:
+        name: hotspot-installer
+        image: thatdam-hotspot-installer:latest
+        privileged: true
+        network_mode: host
+        env:
+          SETUP_TOKEN_FILE: /run/secrets/token
+        secrets:
+          - src: /tmp/dam_token
+            mode: "0400"
+            uid: "0"
+            gid: "0"
+            name: token

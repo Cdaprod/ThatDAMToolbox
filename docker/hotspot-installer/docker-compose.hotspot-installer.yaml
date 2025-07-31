@@ -1,0 +1,18 @@
+secrets:
+  dam_token:
+    file: ./secrets/dam_token.txt   # ← generated once, .gitignored
+
+services:
+  hotspot-installer:
+    build:
+      context: ./docker/hotspot-installer
+      args:
+        EPHEMERAL_TOKEN_SHA: ${EPHEMERAL_TOKEN_SHA}  # export when you build
+    image: thatdam-hotspot-installer:latest
+    privileged: true          # needs wlan0 + host networking
+    network_mode: host
+    secrets:
+      - source: dam_token
+        target: dam_token                     # -> /run/secrets/dam_token
+    environment:
+      SETUP_TOKEN_FILE: /run/secrets/dam_token

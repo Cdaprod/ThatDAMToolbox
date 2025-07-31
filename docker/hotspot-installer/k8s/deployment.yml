@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dam-ephemeral-token
+type: Opaque
+data:
+  token: <base64-encoded-32-byte-hex>   # echo -n "$(cat token.txt)" | base64
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotspot-installer
+spec:
+  template:
+    spec:
+      hostNetwork: true         # same as --net host
+      hostPID:     true         # if you need it
+      containers:
+      - name: installer
+        image: thatdam-hotspot-installer:latest
+        securityContext:
+          privileged: true
+        env:
+        - name: SETUP_TOKEN_FILE
+          value: /var/run/secrets/thatdam/token
+        volumeMounts:
+        - name: token-vol
+          mountPath: /var/run/secrets/thatdam
+          readOnly: true
+      volumes:
+      - name: token-vol
+        secret:
+          secretName: dam-ephemeral-token
+          items:
+          - key: token
+            path: token

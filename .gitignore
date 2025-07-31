@@ -108,6 +108,8 @@ yolov8n.pt
 htmlcov/
 
 # ---- Credentials ----
+secrets/
+dam_token.txt
 credentials.json
 secrets.json
 *.pem
