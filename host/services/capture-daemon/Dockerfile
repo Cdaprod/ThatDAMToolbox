@@ -9,7 +9,7 @@ COPY host/services/capture-daemon/go.mod ./capture-daemon/
 COPY host/services/shared/go.mod ./shared/
 
 # 3. Pre-build deps using vendor (assumes you have run `go mod vendor` already)
-COPY host/services/capture-daemon/vendor ./capture-daemon/vendor
+#COPY host/services/capture-daemon/vendor ./capture-daemon/vendor
 
 # 4. Copy the rest of the sources (including shared)
 COPY host/services/capture-daemon/ ./capture-daemon/
