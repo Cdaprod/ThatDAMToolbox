@@ -5,7 +5,7 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /src
 
 # (1) bring in your workspace file so Go knows about both modules
-COPY go.work go.work.sum ./
+COPY go.work ./
 
 # (2) copy only the module roots first to prime the cache
 COPY host/services/shared/go.mod    host/services/shared/
