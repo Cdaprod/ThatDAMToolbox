@@ -1,7 +1,10 @@
 // /host/services/capture-daemon/scanner/system.go
 package scanner
 
-import "path/filepath"
+import (
+    "path/filepath"
+    "fmt"
+) 
 
 // auto-register this backend at init-time
 func init() {
