@@ -33,14 +33,3 @@ func (systemScanner) Scan() ([]Device, error) {
         return nil, fmt.Errorf("no usable capture devices")
     }
     return out, nil
-}
-
-func isUsableCapture(node string) bool {
-    out, _ := exec.Command("v4l2-ctl", "--device", node, "--info").Output()
-    s := string(out)
-    if strings.Contains(s, "Driver name      : pispbe") ||
-       strings.Contains(s, "Driver name      : rpi-hevc-dec") {
-        return false
-    }
-    return true
-}
