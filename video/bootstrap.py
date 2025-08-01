@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: MIT
 """
 /video/bootstrap.py
 
@@ -15,7 +14,6 @@ Sequence
 6.  Start WAL-checkpoint → snapshot thread
 7.  Install graceful-shutdown hooks
 """
-
 from __future__ import annotations
 
 import importlib
@@ -97,6 +95,28 @@ def start_server(
 
     from video.server import serve
     serve(host=host, port=port)
+    
+
+
+# ── Event Bus: Prod-grade initialization ─────────────────────
+def _init_eventbus() -> None:
+    """Initialize event bus with proper error handling."""
+    try:
+        from video.core.event import get_bus
+        
+        bus = get_bus()
+        if bus is not None:
+            log.info("EventBus: Initialized successfully")
+        else:
+            log.warning("EventBus: Initialization failed, continuing without event system")
+            
+    except ImportError:
+        log.debug("EventBus: Optional dependency not available")
+    except Exception as exc:
+        log.error("EventBus: Unexpected initialization error - %s", exc)
+
+# Initialize event bus - now properly handles all failure modes
+_init_eventbus()
 
 
 # ────────────────────────── 0. STORAGE / DB ────────────────────────
@@ -185,8 +205,11 @@ def _start_db_backup() -> None:
 
 _start_db_backup()
 
+
 # ─────────── 5. graceful shutdown hooks ─────────────────────────────
 import video.lifecycle  # noqa: F401  (handles SIGTERM + atexit)
+
+video.lifecycle.on_shutdown(_publish_shutdown)   # register once
 
 # ─────────── 6. public symbols ──────────────────────────────────────
 __all__ = [
