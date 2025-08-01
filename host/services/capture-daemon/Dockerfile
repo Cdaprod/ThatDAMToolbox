@@ -5,8 +5,8 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /build
 
 # 2. Copy ONLY go.mod/go.sum first (for cacheable layer)
-COPY host/services/capture-daemon/go.mod host/services/capture-daemon/go.sum ./capture-daemon/
-COPY host/services/shared/go.mod host/services/shared/go.sum ./shared/
+COPY host/services/capture-daemon/go.mod ./capture-daemon/
+COPY host/services/shared/go.mod ./shared/
 
 # 3. Pre-build deps using vendor (assumes you have run `go mod vendor` already)
 COPY host/services/capture-daemon/vendor ./capture-daemon/vendor
