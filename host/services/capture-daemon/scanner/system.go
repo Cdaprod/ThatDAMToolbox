@@ -13,18 +13,34 @@ type systemScanner struct{}
 // Scan discovers the first usable /dev/video* node reported by the
 // shared helpers in csi_or_usb.go and wraps it in a Device.
 func (systemScanner) Scan() ([]Device, error) {
-	dev, err := findFirstCaptureDevice() // helper comes from csi_or_usb.go
-	if err != nil {
-		return nil, err
-	}
-	return []Device{{
-		ID:   dev,
-		Kind: "system",
-		Path: dev,
-		Name: filepath.Base(dev),
-		Capabilities: map[string]interface{}{
-			"source": "system",
-		},
-		Status: "online",
-	}}, nil
+    var out []Device
+    for _, node := range sortedVideoNodes() {
+        if !IsCaptureNode(node) {           // <-- new guard
+            continue
+        }
+        out = append(out, Device{
+            ID:   node,
+            Kind: "system",
+            Path: node,
+            Name: filepath.Base(node),
+            Capabilities: map[string]interface{}{
+                "source": "system",
+            },
+            Status: "online",
+        })
+    }
+    if len(out) == 0 {
+        return nil, fmt.Errorf("no usable capture devices")
+    }
+    return out, nil
+}
+
+func isUsableCapture(node string) bool {
+    out, _ := exec.Command("v4l2-ctl", "--device", node, "--info").Output()
+    s := string(out)
+    if strings.Contains(s, "Driver name      : pispbe") ||
+       strings.Contains(s, "Driver name      : rpi-hevc-dec") {
+        return false
+    }
+    return true
 }

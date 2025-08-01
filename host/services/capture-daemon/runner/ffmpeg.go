@@ -1,4 +1,3 @@
-// /host/services/capture-daemon/runner/ffmpeg.go
 package runner
 
 import (
@@ -9,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 )
 
@@ -30,19 +30,21 @@ func DefaultConfig(device string) Config {
 		Codec:      "h264",
 		Resolution: "1920x1080",
 		FPS:        30,
-		OutDir:     ResolveOutDir(),   // <- was "/var/media/records"
+		OutDir:     ResolveOutDir(),
 		FFmpegPath: "ffmpeg",
 		RetryDelay: 3 * time.Second,
 	}
 }
 
 // RunCaptureLoop runs ffmpeg in a loop until ctx is cancelled.
-// It restarts ffmpeg on error after RetryDelay.
+// It restarts ffmpeg on error after RetryDelay, but gives up after 5 consecutive failures.
 func RunCaptureLoop(ctx context.Context, cfg Config) error {
 	// Ensure output directory exists
 	if err := os.MkdirAll(cfg.OutDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output dir %q: %w", cfg.OutDir, err)
 	}
+
+	fails := 0
 
 	for {
 		select {
@@ -52,20 +54,19 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		default:
 		}
 
+		// Build output file path
 		outFile := buildOutputFilename(cfg)
 		log.Printf("[ffmpeg] starting capture: %s → %s", cfg.Device, outFile)
-		
-        // ── notify → capture.recording_started ────────────────────────────
-        broker.Publish("capture.recording_started", map[string]any{
-            "device": cfg.Device,
-            "file":   outFile,
-            "ts":     time.Now().UTC(),
-        })
 
+		// ── notify → capture.recording_started ────────────────────────────
+		broker.Publish("capture.recording_started", map[string]any{
+			"device":    cfg.Device,
+			"file":      outFile,
+			"timestamp": time.Now().UTC(),
+		})
 
-		// Create child context so ffmpeg dies when parent ctx is done
+		// Launch ffmpeg under a child context
 		cmdCtx, cancel := context.WithCancel(ctx)
-
 		args := []string{
 			"-hide_banner",
 			"-loglevel", "warning",
@@ -82,25 +83,45 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		if err := cmd.Run(); err != nil {
-			if ctx.Err() != nil { // normal shutdown
-				cancel()
-				// fall through to stopped-event below
-            } else {
-                log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
-			}
-		}
-		
-        // ── notify → capture.recording_stopped ────────────────────────────
-        broker.Publish("capture.recording_stopped", map[string]any{
-            "device": cfg.Device,
-            "file":   outFile,
-            "ts":     time.Now().UTC(),
-        })
-
+		err := cmd.Run()
 		cancel()
 
-		// wait a bit before retrying
+		if err != nil {
+			if ctx.Err() != nil {
+				// Normal shutdown
+				broker.Publish("capture.recording_stopped", map[string]any{
+					"device":    cfg.Device,
+					"file":      outFile,
+					"timestamp": time.Now().UTC(),
+				})
+				return nil
+			}
+			log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
+
+			// Count failures and bail out after 5
+			fails++
+			if fails >= 5 {
+				log.Printf("[ffmpeg] giving up on %s after %d errors", cfg.Device, fails)
+				broker.Publish("capture.recording_stopped", map[string]any{
+					"device":    cfg.Device,
+					"file":      outFile,
+					"timestamp": time.Now().UTC(),
+				})
+				return nil
+			}
+		} else {
+			// Reset on success
+			fails = 0
+		}
+
+		// ── notify → capture.recording_stopped ────────────────────────────
+		broker.Publish("capture.recording_stopped", map[string]any{
+			"device":    cfg.Device,
+			"file":      outFile,
+			"timestamp": time.Now().UTC(),
+		})
+
+		// Pause before retrying
 		select {
 		case <-ctx.Done():
 			return nil
