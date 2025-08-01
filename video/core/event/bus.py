@@ -48,24 +48,37 @@ class EventBus:
 
     # ------------------------------------------------------------------ #
     async def start(self) -> None:
-        if self._backend is not None:
+        """
+        Initialise the backend.
+
+        • RabbitMQ → if EVENT_BROKER_URL is set *and* connection succeeds  
+        • In-process → otherwise (zero-dep fallback)
+        """
+        if self._backend is not None:          # already initialised
             return
 
         if self._amqp_url:
             try:
-                import aio_pika  # local-import so library is optional
-                self._aio_pika = aio_pika                 # stash for reuse
-                self._conn     = await aio_pika.connect_robust(self._amqp_url)
+                import aio_pika                        # optional dep
+                self._aio_pika = aio_pika
+                self._conn     = await aio_pika.connect_robust(
+                    self._amqp_url,
+                    timeout=3.0,                       # fail fast
+                    client_properties={"connection_name": "video-eventbus"},
+                )
                 self._chan     = await self._conn.channel()
                 await self._chan.set_qos(prefetch_count=32)
-                self._backend  = None   # use AMQP path
-                _log.info("EventBus connected to RabbitMQ at %s", self._amqp_url)
-            except ModuleNotFoundError as err:
-                _log.warning("aio-pika not installed – falling back to in-proc bus (%s)", err)
-        if self._backend is None:
-            self._backend = _InProcessBackend()
-            _log.info("EventBus using in-process backend")
+                _log.info("EventBus online via RabbitMQ %s", self._amqp_url)
+                return                                # ← AMQP path ready
+            except Exception as exc:                  # noqa: BLE001
+                _log.warning(
+                    "RabbitMQ unavailable (%s) – using in-process bus", exc
+                )
 
+        # Fallback (or ENV not set) → in-process backend
+        self._backend = _InProcessBackend()
+        _log.info("EventBus using in-process backend")
+        
     # ------------------------------------------------------------------ #
     async def publish(self, evt: Event) -> None:
         evt = run_pre(evt)  # apply pre-middleware
