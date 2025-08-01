@@ -84,6 +84,8 @@ docs/
 *clipboard*
 CHANGELOG*
 *.disabled
+# GitVersion cache
+.git/.gitversion
 
 ###############################
 # Credentials

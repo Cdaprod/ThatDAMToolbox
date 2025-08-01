@@ -124,6 +124,9 @@ host/releases/
 go.sum
 /sqlite
 
+# GitVersion cache
+.git/.gitversion
+
 # ---- Uncomment to ignore these if needed ----
 # /scripts/cli.py
 # /scripts/processor.disabled
