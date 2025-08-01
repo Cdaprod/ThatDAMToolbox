@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1
-
+# /host/services/capture-daemon/Dockerfile
 # ---------- builder stage ----------
 FROM golang:1.22-alpine AS builder
 WORKDIR /src
