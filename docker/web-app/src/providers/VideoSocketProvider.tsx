@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { wsUrl } from '@/lib/networkConfig';
-import { useVideoSocket } from '@lib/useVideoSocket';
+import { useVideoSocket } from '@/lib/useVideoSocket';
+import { bus }            from '@/lib/eventBus';
 
 interface Ctx {
   sendJSON: (payload: any) => void;
@@ -19,11 +20,23 @@ export default function VideoSocketProvider({ children }: { children: ReactNode 
       onMessage: (ev) => {
         // log for debugging
         console.log('[ws] message', ev.data);
-        // 〰 broadcast globally
-        window.dispatchEvent(
-          new MessageEvent('video-socket-message', { data: ev.data })
-        );
+        let msg: any;
+        try { msg = JSON.parse(ev.data); } catch { return; }
 
+        switch (msg.event) {
+          case 'device_list':
+            bus.emit('device-list', msg.data);         break;
+          case 'recording_started':
+            bus.emit('recording-start', msg.data);     break;
+          case 'recording_stopped':
+            bus.emit('recording-stop', {});            break;
+          case 'battery':
+            bus.emit('battery', msg.data);             break;
+          case 'histogram':
+            bus.emit('histogram', msg.data);           break;
+          default:
+            console.warn('[ws] unknown frame', msg);
+        }
       },
     }
   );
