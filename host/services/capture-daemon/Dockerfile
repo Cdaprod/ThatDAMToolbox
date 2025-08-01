@@ -1,35 +1,25 @@
-# /host/services/capture-daemon/Dockerfile
-# ---------- builder stage ----------
+# --- Build stage ---
 FROM golang:1.22-alpine AS builder
-WORKDIR /src
+WORKDIR /src/host/services/capture-daemon
 
-# (1) bring in your workspace file so Go knows about both modules
-COPY go.work ./
+# Bring in go.mod + go.sum *first* for cache
+COPY host/services/capture-daemon/go.mod .
 
-# (2) copy only the module roots first to prime the cache
-COPY host/services/shared/go.mod    host/services/shared/
-COPY host/services/capture-daemon/go.mod host/services/capture-daemon/
+# Download only this module’s deps
+RUN go mod download
 
-# (3) grab all deps
-RUN go work download
+# Now bring in all the source for build/lint/test
+COPY host/services/capture-daemon/ .
 
-# (4) copy the rest of your code
-COPY host/services/shared    host/services/shared
-COPY host/services/capture-daemon host/services/capture-daemon
+# (Optional) bring in shared if you import it as a local module
+COPY host/services/shared/ ../../shared/
 
-# (5) verify sums & tidy
-RUN go work tidy
+# Run vet, lint, test, build as needed
+RUN go vet ./...
+RUN go build -o /out/capture-daemon ./main.go
 
-# (6) build a static binary
-RUN CGO_ENABLED=0 \
-    go build -mod=readonly \
-      -o /capture-daemon \
-      host/services/capture-daemon/main.go
-
-# ---------- runtime stage ----------
-FROM alpine:3.20 AS runtime
+# --- Runtime stage ---
+FROM alpine:3.20
 RUN apk add --no-cache ffmpeg tini curl
-
-COPY --from=builder /capture-daemon /usr/local/bin/capture-daemon
-
+COPY --from=builder /out/capture-daemon /usr/local/bin/capture-daemon
 ENTRYPOINT ["/sbin/tini", "-s", "--", "/usr/local/bin/capture-daemon"]
