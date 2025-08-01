@@ -33,3 +33,4 @@ func (systemScanner) Scan() ([]Device, error) {
         return nil, fmt.Errorf("no usable capture devices")
     }
     return out, nil
+}
