@@ -1,29 +1,26 @@
-# ---------- Build Stage ----------
+# ---------- Builder Stage ----------
 FROM golang:1.22-alpine AS builder
 
-# 1. Set up build workspace
 WORKDIR /build
 
-# 2. Copy ONLY go.mod/go.sum first (for cacheable layer)
-COPY host/services/capture-daemon/go.mod ./capture-daemon/
-COPY host/services/shared/go.mod ./shared/
+# Copy only module files for caching
+COPY host/services/capture-daemon/go.mod ./capture-daemon/go.mod
+COPY host/services/shared/go.mod ./shared/go.mod
 
-# 3. Pre-build deps using vendor (assumes you have run `go mod vendor` already)
-#COPY host/services/capture-daemon/vendor ./capture-daemon/vendor
+# Download deps and vendor them (one layer, ensures idempotence)
+WORKDIR /build/capture-daemon
+RUN go mod tidy && go mod vendor
 
-# 4. Copy the rest of the sources (including shared)
+# Copy source after vendoring (avoids cache bust unless code changes)
 COPY host/services/capture-daemon/ ./capture-daemon/
 COPY host/services/shared/ ./shared/
 
-# 5. Build capture-daemon using vendor, output statically linked binary
+# Build statically (never needs network now, uses vendor)
 WORKDIR /build/capture-daemon
 RUN go build -mod=vendor -o /out/capture-daemon ./main.go
 
 # ---------- Runtime Stage ----------
-FROM alpine:3.20 AS runtime
-
+FROM alpine:3.20
 RUN apk add --no-cache ffmpeg tini curl
-
 COPY --from=builder /out/capture-daemon /usr/local/bin/capture-daemon
-
 ENTRYPOINT ["/sbin/tini", "-s", "--", "/usr/local/bin/capture-daemon"]
