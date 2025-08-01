@@ -12,12 +12,15 @@ import (
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
     // import any scanner implementations so their init() calls Register()
     _ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner/v4l2"
 )
 
 func main() {
     log.Println("🔌 ThatDamToolbox capture-daemon starting…")
+    // ① connect to RabbitMQ
+    broker.Init()
 
     // Create a cancellable root context
     ctx, cancel := context.WithCancel(context.Background())
@@ -59,6 +62,9 @@ func main() {
         } else {
             // This will start new runners and stop ones for removed devices
             reg.Update(devices)
+            // ② broadcast latest device table every poll
+            broker.Publish("capture.device_list", devices)
+
         }
 
         // Launch/stop runners based on registry state

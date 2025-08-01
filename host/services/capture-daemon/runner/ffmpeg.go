@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 )
 
 // Config holds the parameters for a single device capture loop.
@@ -53,6 +54,14 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 
 		outFile := buildOutputFilename(cfg)
 		log.Printf("[ffmpeg] starting capture: %s → %s", cfg.Device, outFile)
+		
+        // ── notify → capture.recording_started ────────────────────────────
+        broker.Publish("capture.recording_started", map[string]any{
+            "device": cfg.Device,
+            "file":   outFile,
+            "ts":     time.Now().UTC(),
+        })
+
 
 		// Create child context so ffmpeg dies when parent ctx is done
 		cmdCtx, cancel := context.WithCancel(ctx)
@@ -76,10 +85,18 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		if err := cmd.Run(); err != nil {
 			if ctx.Err() != nil { // normal shutdown
 				cancel()
-				return nil
+				// fall through to stopped-event below
+            } else {
+                log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
 			}
-			log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
 		}
+		
+        // ── notify → capture.recording_stopped ────────────────────────────
+        broker.Publish("capture.recording_stopped", map[string]any{
+            "device": cfg.Device,
+            "file":   outFile,
+            "ts":     time.Now().UTC(),
+        })
 
 		cancel()
 
