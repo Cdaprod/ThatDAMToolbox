@@ -1,6 +1,6 @@
 # Camera Rig Touch Display Project Structure
 
-Place this at `/docker/touch-display/` in your existing repository:
+/docker/touch-display/docs/PROJECT_STRUCTURE.md
 
 ```
 /docker/touch-display/

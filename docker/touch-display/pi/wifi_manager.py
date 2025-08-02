@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+/docker/touch-display/pi/wifi_manager.py
 Camera Rig WiFi Manager Daemon for Raspberry Pi 5
 Communicates with ESP32 WT-SC032 via I2C to manage WiFi connections
 """

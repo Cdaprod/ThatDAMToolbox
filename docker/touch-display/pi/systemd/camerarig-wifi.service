@@ -1,3 +1,4 @@
+# /docker/touch-display/pi/systemd/camerarig-wifi.service
 [Unit]
 Description=Camera Rig WiFi Manager
 Documentation=https://github.com/yourusername/camera-rig

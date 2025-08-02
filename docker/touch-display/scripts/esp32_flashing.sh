@@ -1,4 +1,5 @@
 #!/bin/bash
+# /docker/touch-display/scripts/esp32_flashing.sh
 # ESP32 WT-SC032 Firmware Flashing Script
 
 set -e

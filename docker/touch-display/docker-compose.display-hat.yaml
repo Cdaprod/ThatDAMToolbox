@@ -1,5 +1,6 @@
 ########################################################################
 # 7. Pi-hat / Wi-Fi / Tiny-Display side-car
+# /docker/touch-display/docker-compose.display-hat.yaml
 ########################################################################
 display-agent:
   build:                       # reuse the Dockerfile you pasted

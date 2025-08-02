@@ -1,4 +1,5 @@
 # Camera Rig Touch Display Project
+/docker/touch-display/README.md
 
 A complete integration system for Raspberry Pi 5 + WT-SC032 ESP32 touch display, providing standalone WiFi configuration for camera rig applications.
 

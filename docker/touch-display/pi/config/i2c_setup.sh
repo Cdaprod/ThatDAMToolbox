@@ -1,4 +1,5 @@
 #!/bin/bash
+# /docker/touch-display/pi/config/i2c_setup.sh
 # Camera Rig Touch Display Setup Script for Raspberry Pi 5
 # Run this script on a fresh Raspberry Pi OS installation
 

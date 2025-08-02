@@ -14,6 +14,8 @@ BIN_DIR           := /usr/local/bin
 DATA_DIR          := /var/lib/thatdamtoolbox
 MEDIA_DIR         := /var/media/records
 
+DOCKER_IMAGE ?= thatdamtoolbox
+
 # =============================================================================
 # MAIN TARGETS
 # =============================================================================
@@ -29,13 +31,49 @@ help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # =============================================================================
+# VERSIONING (GitVersion SemVer parity: local == CI)
+# =============================================================================
+
+GITVERSION_CACHE := $(shell git rev-parse --git-dir)/.gitversion
+
+define run_gitversion
+	@if command -v gitversion >/dev/null 2>&1; then \
+	    gitversion /config ./$(ROOT)/.github/GitVersion.yml -verbosity Warn; \
+	else \
+	    docker run --rm -v "$$(pwd)":/repo gittools/gitversion:5 /repo \
+	        /config /repo/.github/GitVersion.yml -verbosity Warn; \
+	fi
+endef
+
+version:
+	@echo "🔍 Computing version with GitVersion..."
+	$(call run_gitversion) | tee $(GITVERSION_CACHE)
+
+ifeq ($(wildcard $(GITVERSION_CACHE)),)
+    $(shell $(MAKE) --no-print-directory version >/dev/null)
+endif
+
+VERSION    := $(shell awk '/^SemVer:/ {print $$2}' $(GITVERSION_CACHE))
+SHORT_SHA  := $(shell git rev-parse --short HEAD)
+
+.PHONY: version
+
+# =============================================================================
 # DOCKER TARGETS
 # =============================================================================
 
 .PHONY: docker-build docker-up docker-down docker-logs docker-restart docker-status
 
-docker-build: ## Build Docker images
-	docker compose build
+docker-build: ## Build Docker images (conditionally tag with TAG_IMAGE=true)
+	@echo "📦 Building $(DOCKER_IMAGE):latest with VERSION=$(VERSION) and SHA=$(SHORT_SHA)"
+	docker compose build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg GIT_SHA=$(SHORT_SHA)
+
+ifneq ($(TAG_IMAGE),)
+	@echo "🏷️ Tagging image as $(DOCKER_IMAGE):$(VERSION)"
+	@docker tag $(DOCKER_IMAGE):latest $(DOCKER_IMAGE):$(VERSION)
+endif
 
 docker-up: ## Start Docker services
 	docker compose up -d
@@ -254,6 +292,25 @@ uninstall-all: ## Uninstall everything
 	-sudo rm -f $(SYSTEMD_DIR)/api-gateway.service $(SYSTEMD_DIR)/camera-proxy.service $(SYSTEMD_DIR)/capture-daemon.service
 	sudo systemctl daemon-reload
 	@echo "Uninstall complete. Data directories preserved."
+
+# =============================================================================
+# VERSION TAGGING
+# =============================================================================
+.PHONY: tag
+
+tag: ## Manually tag the current commit with the computed version
+	@git tag -a "$(VERSION)" -m "Release $(VERSION)"
+	@git push origin "$(VERSION)"
+
+# =============================================================================
+# GITHUB ACTIONS BUILD REPORT ARTIFACT
+# =============================================================================
+.PHONY: download-report
+
+download-report: ## Download GitHub Actions build-report artifact
+	@gh run download --repo $$GITHUB_REPOSITORY --pattern build-report.txt --name build-report
+	@echo "✅ build-report.txt saved"
+	@ls -l build-report.txt
 
 # =============================================================================
 # QUICK REFERENCE
