@@ -66,10 +66,11 @@ services:
   # 2. infrastructure services
   ########################################################################
   rabbitmq:
-    build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile
-    image: cdaprod/thatdamtoolbox-rabbitmq   # was rabbitmq:3.13-alpine
+    image: rabbitmq:3.13-alpine
+    #build:
+      #context: .
+      #dockerfile: docker/rabbitmq/Dockerfile
+    #image: cdaprod/thatdamtoolbox-rabbitmq   # was rabbitmq:3.13-alpine
     container_name: thatdamtoolbox-rabbitmq
     restart: unless-stopped
     networks: [damnet]
