@@ -411,6 +411,137 @@ graph RL
 
 ---
 
+## Architecture Overview
+
+This system provides a multi-layered video processing architecture with clean service boundaries. The **api-gateway** serves as the main entry point, handling all client traffic and proxying to backend services. Host-level services like **camera-proxy** provide device virtualization (exposing cameras to containers without mounts), while **capture-daemon** handles continuous FFmpeg recording. The **pipeline-manager** enables advanced video processing through virtual devices and named pipes.
+
+All services share common middleware for authentication, rate limiting, logging, and caching. The architecture separates concerns cleanly: gateway handles routing and middleware, proxy services manage device access, and capture services handle media processing—all while keeping containers device-agnostic.
+
+### System Flow
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Client[HTTP Client/Browser]
+    end
+
+    subgraph "Gateway Layer"
+        Gateway[api-gateway:8080]
+        Proxy[proxy]
+    end
+
+    subgraph "Host Services"
+        CameraProxy[camera-proxy:8000]
+        CaptureDaemon[capture-daemon:9000]
+        PipelineManager[poc_video-pipeline-manager]
+    end
+
+    subgraph "Backend Services"
+        Backend[Python API Backend]
+        Static[Static SPA Files]
+    end
+
+    subgraph "System Resources"
+        Devices["/dev/video* USB Cameras"]
+        Storage[Disk Storage]
+        VirtualDevices[v4l2loopback Virtual Devices]
+    end
+
+    subgraph "Shared Components"
+        Middleware[shared/middleware]
+        Utils[shared/utils]
+        Types[shared/types]
+    end
+
+    Client --> Gateway
+    Client --> Proxy
+    
+    Gateway --> CameraProxy
+    Gateway --> Backend
+    Gateway --> Static
+    
+    Proxy --> Backend
+    
+    CameraProxy --> Devices
+    CaptureDaemon --> Devices
+    CaptureDaemon --> Storage
+    PipelineManager --> VirtualDevices
+    
+    Gateway -.-> Middleware
+    CameraProxy -.-> Middleware
+    CaptureDaemon -.-> Middleware
+    Proxy -.-> Middleware
+    
+    Middleware --> Utils
+    Middleware --> Types
+``` 
+⸻
+
+## How the Flow Works
+### End-to-End Flow Example:
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    participant Gateway as api-gateway:8080
+    participant Proxy as camera-proxy:8000
+    participant Daemon as capture-daemon:9000
+    participant Pipeline as video-pipeline-manager
+    participant Device as Camera Device
+
+    Note over Client,Device: System Initialization
+    Proxy->>Device: Discover v4l2/USB cameras
+    Daemon->>Device: Scan available devices
+    Pipeline->>Pipeline: Setup virtual device graphs
+
+    Note over Client,Device: Client Requests
+    Client->>Gateway: GET /api/video/
+    Gateway->>Proxy: Proxy API request
+    Proxy->>Client: Return response via Gateway
+
+    Client->>Gateway: GET /stream/:device
+    Gateway->>Proxy: Route stream request
+    Proxy->>Device: Access camera stream
+    Device->>Proxy: Video stream data
+    Proxy->>Gateway: Stream video
+    Gateway->>Client: Live video stream
+
+    Client->>Gateway: WebSocket /ws/
+    Gateway->>Proxy: Upgrade to WebSocket
+    Proxy->>Device: Device control commands
+    Device->>Proxy: Device status/data
+    Proxy->>Client: Real-time updates via Gateway
+
+    Note over Client,Device: Background Operations
+    Daemon->>Device: Continuous capture
+    Device->>Daemon: Video frames
+    Daemon->>Daemon: FFmpeg processing to disk
+
+    Pipeline->>Device: Route processed frames
+    Pipeline->>Pipeline: Manage named-pipe routing
+    Pipeline->>Pipeline: Support ML/inference apps
+``` 
+
+⸻
+
+#### DevOps & Composability
+- Each service can be run as a standalone systemd service or orchestrated in a minimal Compose/Podman/Docker Compose stack. You do not need to bind-mount devices into your containers.
+- Infra upgrades, extensions, and migration: Drop-in additional pipeline processors, swap out middlewares, and swap from POC to production ready by extending only the parts you care about.
+- Frontends can remain "dumb" and make fetch calls to the same endpoints (the API gateway abstracts everything).
+
+⸻
+
+#### How to Extend or Productionize
+- Security: Harden JWT, implement real validateJWT, remove dev-mode CORS and CheckOrigin: true.
+- Monitoring: Add metrics middleware, Prometheus endpoints, journal logs, proper log rotation.
+- Error handling: Ensure all device errors are surfaced through API/WS responses, not just logs.
+- Config management: Use .env files, config maps, or secrets for all paths, keys, intervals.
+- Add tests: System/integration/e2e tests per service.
+- API Versioning: Add /v1/ routes for long-term contract stability.
+- Modular runners: Each camera runner could push frames to a message bus (NATS, MQTT, etc.) for plug-and-play downstream processing (AI, cloud upload, etc).
+
+
+---
+
 ## Installation
 
 ### Prerequisites

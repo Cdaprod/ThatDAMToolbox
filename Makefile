@@ -313,6 +313,49 @@ download-report: ## Download GitHub Actions build-report artifact
 	@ls -l build-report.txt
 
 # =============================================================================
+# INFRA LAYER BOOTSTRAPPING
+# =============================================================================
+
+# ---- Config ----
+INFRA_COMPOSE=docker/compose/infra.yaml
+INFRA_PROFILE=infra
+DOCKER_COMPOSE=docker compose -f $(INFRA_COMPOSE)
+
+# ---- Build All Infra Layer Services ----
+infra-build:
+	$(DOCKER_COMPOSE) build
+
+# ---- Deploy Infra Layer (up in detached mode) ----
+infra-up:
+	$(DOCKER_COMPOSE) up -d --wait --pull always --remove-orphans --profile $(INFRA_PROFILE)
+
+# ---- Wait for All Services to be Healthy ----
+infra-wait:
+	@echo "⏳ Waiting for all infra services to be healthy..."
+	@$(DOCKER_COMPOSE) ps
+	@timeout 90s bash -c 'until $(DOCKER_COMPOSE) ps | grep -q "healthy"; do sleep 3; $(DOCKER_COMPOSE) ps; done'
+	@echo "✅ All infra services healthy!"
+
+# ---- Bootstrap Weaviate (Schema, etc) ----
+infra-bootstrap-weaviate:
+	@echo "🚀 Bootstrapping Weaviate schema..."
+	$(DOCKER_COMPOSE) run --rm weaviate-schema-bootstrap
+
+# ---- One-Stop Infra Layer Bringup (build, up, wait, bootstrap) ----
+infra-up-all: infra-build infra-up infra-wait infra-bootstrap-weaviate
+	@echo "🚦 Infra layer fully deployed and bootstrapped."
+
+# ---- Teardown/Cleanup ----
+infra-down:
+	$(DOCKER_COMPOSE) down --remove-orphans --volumes
+
+# ---- Logs ----
+infra-logs:
+	$(DOCKER_COMPOSE) logs -f
+
+.PHONY: infra-build infra-up infra-wait infra-bootstrap-weaviate infra-up-all infra-down infra-logs
+
+# =============================================================================
 # QUICK REFERENCE
 # =============================================================================
 
