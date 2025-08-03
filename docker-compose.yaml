@@ -40,8 +40,8 @@ services:
     # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
-      video-api: {condition: service_healthy}
-      video-web: {condition: service_started}
+      - video-api
+      - video-web
 
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
@@ -66,11 +66,11 @@ services:
   # 2. infrastructure services
   ########################################################################
   rabbitmq:
-    image: rabbitmq:3.13-alpine
-    #build:
-      #context: .
-      #dockerfile: docker/rabbitmq/Dockerfile
-    #image: cdaprod/thatdamtoolbox-rabbitmq   # was rabbitmq:3.13-alpine
+    #image: rabbitmq:3.13-alpine
+    build:
+      context: .
+      dockerfile: docker/rabbitmq/Dockerfile
+    image: cdaprod/thatdamtoolbox-rabbitmq   # was rabbitmq:3.13-alpine
     container_name: thatdamtoolbox-rabbitmq
     restart: unless-stopped
     networks: [damnet]
@@ -117,8 +117,8 @@ services:
       retries: 3
     restart: unless-stopped
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
+
 
   ########################################################################
   # 4. FastAPI back-end (mapped => reachable on host :8080)
@@ -201,8 +201,7 @@ services:
       - ./video:/video:rw
     restart: unless-stopped
     depends_on:
-      capture-daemon:
-        condition: service_healthy
+      - capture-daemon
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
@@ -278,6 +277,8 @@ services:
       - db_wal:/var/lib/thatdamtoolbox/db:rw
     # do not restart this service automatically
     restart: "no"
+    depends_on:
+      - video-api
 
 ########################################################################
 # container mounted volumes
