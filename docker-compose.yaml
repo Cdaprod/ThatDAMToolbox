@@ -68,8 +68,8 @@ services:
   rabbitmq:
     #image: rabbitmq:3.13-alpine
     build:
-      context: .
-      dockerfile: docker/rabbitmq/Dockerfile
+      context: ./docker/rabbitmq
+      dockerfile: Dockerfile
     image: cdaprod/thatdamtoolbox-rabbitmq   # was rabbitmq:3.13-alpine
     container_name: thatdamtoolbox-rabbitmq
     restart: unless-stopped
