@@ -2,9 +2,10 @@
 FROM rabbitmq:3.9-management
 
 # Enable the Prometheus plugin (for /metrics) and any other you wish
-RUN rabbitmq-plugins enable --offline \
-      rabbitmq_prometheus \
-      rabbitmq_peer_discovery_classic_config
+# (removed: rabbitmq_peer_discovery_classic_config)
+RUN rabbitmq-plugins enable --offline rabbitmq_prometheus 
+
+
 
 # Copy in our custom config and pre-defined topology
 COPY rabbitmq.conf        /etc/rabbitmq/rabbitmq.conf
