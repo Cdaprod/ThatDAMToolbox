@@ -1,0 +1,19 @@
+services:
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    container_name: weaviate
+    ports: ["8081:8080"]
+    # ...env/volumes omitted...
+
+  # Schema bootstrapper (ephemeral, runs after Weaviate is up)
+  weaviate-schema-bootstrap:
+    image: python:3.11
+    depends_on: [weaviate]
+    volumes:
+      - ./docker/weaviate:/weaviate
+    working_dir: /weaviate
+    entrypoint: ["python", "bootstrap-schema.py"]
+    environment:
+      - WEAVIATE_URL=http://weaviate:8080
+      - WEAVIATE_SCHEMA=schema.json
+    profiles: [infra]
