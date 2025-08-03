@@ -73,7 +73,6 @@ http {
             include proxy_defaults.conf;
             proxy_pass http://video_web;
             proxy_set_header Host $host;
-            proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
         }
