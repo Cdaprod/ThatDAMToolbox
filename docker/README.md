@@ -6,13 +6,14 @@ Each first-level directory is a *build context* for one runtime service, plus a 
 ```
 /docker/
 ├── base/                 # Common Python + FFmpeg image
-├── video/                # CLI / batch processor
-├── video-api/            # FastAPI (REST / GraphQL) façade
-├── web/                  # Nginx-served Jinja + JS frontend
-├── dam/                  # Headless DAM API (optional)
-├── modules/              # Extra micro-services (only if truly independent)
-├── compose/              # Compose files for each environment
+├── video/                # FastAPI (REST / GraphQL) façade
+├── compose/              # Compose files
 ├── scripts/              # Helper scripts (build, dev-up, prod-up, …)
+├── tft-display/          # Optional Hardware: Text Based Display
+├── touch-display/        # Optional Hardware; Touch Screen Display
+├── host/                 # Go Host Privileged Services
+├── capture-daemon/       # Go Virtual Video Capture Daemon
+├── nginx/                # Domain Layer Gateway (gw)
 └── README.md             # ← this file
 ```
 
