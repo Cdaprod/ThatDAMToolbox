@@ -1,11 +1,12 @@
 // docker/web-app/src/components/CameraMonitor.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import dynamic from 'next/dynamic';
-import { useQueryClient } from '@tanstack/react-query';
+import dynamic               from 'next/dynamic';
+import { useQueryClient }    from '@tanstack/react-query';
 import { useVideoSocketCtx } from '@providers/VideoSocketProvider';
-import { useLiveRecorder }  from '@/hooks/useLiveRecorder';
-import { useMediaRecorder } from '@/hooks/useMediaRecorder';
-import { useCapture }       from '@/providers/CaptureContext';
+import { useLiveRecorder }   from '@/hooks/useLiveRecorder';
+import { useMediaRecorder }  from '@/hooks/useMediaRecorder';
+import { useCapture }        from '@/providers/CaptureContext';
+import { useTimecode }       from '@/hooks/useTimecode'
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(() => import('./overlays/FocusPeakingOverlay'), { ssr: false });
@@ -85,38 +86,6 @@ type InboundMsg =
   | BatteryEvt
   | HistogramEvt;
 
-
-// --- 2) FORMAT HOOKS ---
-function useTimecode(initial = {h:0,m:0,s:0,f:0}) {
-  const [tc, setTc] = useState(initial);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTc(prev => {
-        let {h,m,s,f} = prev;
-        f++;
-        if (f >= 30) { f=0; s++; }
-        if (s >= 60) { s=0; m++; }
-        if (m >= 60) { m=0; h++; }
-        return {h,m,s,f};
-      });
-    }, 33);
-    return () => clearInterval(id);
-  }, []);
-  const format = useCallback(() => {
-    const z = (n:number) => n.toString().padStart(2,'0');
-    return `${z(tc.h)}:${z(tc.m)}:${z(tc.s)}:${z(tc.f)}`;
-  }, [tc]);
-  return { tc, format };
-}
-
-// Helper function to format recording time
-function formatTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
 const CameraMonitor: React.FC = () => {
   const { sendJSON } = useVideoSocketCtx();
   const queryClient  = useQueryClient();
@@ -171,6 +140,7 @@ const CameraMonitor: React.FC = () => {
   const [contrast, setContrast]       = useState(100);
   const [saturation, setSaturation]   = useState(100);
   const [volume, setVolume]           = useState(75);
+  
   // Context-driven overlay & recording state
   const focusPeakingActive = focusPeaking;
   const zebrasActive       = zebras;
