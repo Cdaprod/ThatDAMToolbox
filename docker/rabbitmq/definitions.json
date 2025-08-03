@@ -1,0 +1,134 @@
+{
+  "users": [
+    {
+      "name": "video",
+      "password": "video",
+      "tags": "administrator"
+    },
+    {
+      "name": "frontend",
+      "password": "frontendpass",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "video",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "frontend",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "frontend.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "capture.segment.created",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "capture.error",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "dam.ingested",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "dam.failed",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "frontend.user.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "events",
+      "vhost": "/",
+      "destination": "capture.segment.created",
+      "destination_type": "queue",
+      "routing_key": "capture.segment.created",
+      "arguments": {}
+    },
+    {
+      "source": "events",
+      "vhost": "/",
+      "destination": "capture.error",
+      "destination_type": "queue",
+      "routing_key": "capture.error",
+      "arguments": {}
+    },
+    {
+      "source": "events",
+      "vhost": "/",
+      "destination": "dam.ingested",
+      "destination_type": "queue",
+      "routing_key": "dam.ingested",
+      "arguments": {}
+    },
+    {
+      "source": "events",
+      "vhost": "/",
+      "destination": "dam.failed",
+      "destination_type": "queue",
+      "routing_key": "dam.failed",
+      "arguments": {}
+    },
+    {
+      "source": "frontend.events",
+      "vhost": "/",
+      "destination": "frontend.user.events",
+      "destination_type": "queue",
+      "routing_key": "frontend.user.*",
+      "arguments": {}
+    }
+  ]
+}
