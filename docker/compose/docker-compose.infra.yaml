@@ -1,7 +1,10 @@
-# docker/compose/infra.yaml
-name: That DAM Toolbox  # must match root compose file
+# docker/compose/docker-compose.infra.yaml
+name: thatdamtoolbox  # must match root compose file
 
 services:
+# ──────────────────────────────────────────────────────────────
+# Nginx Gateway
+# ──────────────────────────────────────────────────────────────
   nginx:
     image: nginx:latest
     profiles: [nginx]
@@ -60,24 +63,6 @@ services:
       retries: 3
 
 # ──────────────────────────────────────────────────────────────
-# Postgres (Weaviate’s vector index)
-# ──────────────────────────────────────────────────────────────
-  postgres:
-    image: postgres:15
-    container_name: weaviate_pg
-    environment:
-      POSTGRES_USER:      weaviate
-      POSTGRES_PASSWORD:  weaviate
-      POSTGRES_DB:        weaviate
-    ports: ["5432:5432"]
-    volumes: ["./data/postgres:/var/lib/postgresql/data"]
-    healthcheck:
-      test: ["CMD","pg_isready","-U","weaviate"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-# ──────────────────────────────────────────────────────────────
 # Weaviate vector-DB
 # ──────────────────────────────────────────────────────────────
   weaviate:
@@ -107,6 +92,24 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+
+# ──────────────────────────────────────────────────────────────
+# Postgres (Weaviate’s vector index)
+# ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: weaviate_pg
+    environment:
+      POSTGRES_USER:      weaviate
+      POSTGRES_PASSWORD:  weaviate
+      POSTGRES_DB:        weaviate
+    ports: ["5432:5432"]
+    volumes: ["./data/postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD","pg_isready","-U","weaviate"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 # ──────────────────────────────────────────────────────────────
 # Simple Flask receiver for MinIO events (matches your blog demo)

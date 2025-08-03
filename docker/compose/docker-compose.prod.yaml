@@ -1,7 +1,23 @@
-# docker/compose/infra.yaml
+# docker/compose/docker-compose.prod.yaml
 name: That DAM Toolbox          # must match root compose file
 
 services:
+# ──────────────────────────────────────────────────────────────
+# Nginx Gateway
+# ──────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:latest
+    profiles: [nginx]
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      # If you build static frontend into ./docker/html:
+      - ./docker/html:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - video-api
+      - video-web
+
 # ──────────────────────────────────────────────────────────────
 # Event-broker
 # ──────────────────────────────────────────────────────────────
