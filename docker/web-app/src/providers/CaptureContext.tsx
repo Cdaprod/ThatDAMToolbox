@@ -12,7 +12,9 @@ export interface CaptureCtx {
 
   // live‐stream state:
   selectedDevice: string;
+  setSelectedDevice: (device: string) => void;  // ← ADDED
   selectedCodec: Codec;
+  setSelectedCodec: (codec: Codec) => void;     // ← ADDED
   deviceInfo: { width: number; height: number; fps: number };
 
   // timecode
@@ -38,7 +40,9 @@ export const CaptureContext = createContext<CaptureCtx>({
   stop:      () => {},
 
   selectedDevice: '',
+  setSelectedDevice: () => {},   // ← ADDED
   selectedCodec:  'h264',
+  setSelectedCodec: () => {},    // ← ADDED
   deviceInfo:     { width: 0, height: 0, fps: 0 },
 
   timecode: '00:00:00:00',

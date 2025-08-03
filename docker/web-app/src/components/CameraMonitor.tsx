@@ -7,27 +7,12 @@ import { useLiveRecorder }  from '@/hooks/useLiveRecorder';
 import { useMediaRecorder } from '@/hooks/useMediaRecorder';
 import { useCapture }       from '@/providers/CaptureContext';
 
-// Dynamically load gl-react overlays (no SSR)
-const FocusPeakingOverlay = dynamic(
-  () => import('./overlays/FocusPeakingOverlay'),
-  { ssr: false }
-);
-const ZebraOverlay = dynamic(
-  () => import('./overlays/ZebraOverlay'),
-  { ssr: false }
-);
-const FalseColorOverlay = dynamic(
-  () => import('./overlays/FalseColorOverlay'),
-  { ssr: false }
-);
-const HistogramMonitor = dynamic(
-  () => import('./overlays/HistogramMonitor'),
-  { ssr: false }
-);
-const WaveformMonitor = dynamic(
-  () => import('./overlays/WaveformMonitor'),
-  { ssr: false }
-);
+// overlays (no-SSR)
+const FocusPeakingOverlay = dynamic(() => import('./overlays/FocusPeakingOverlay'), { ssr: false });
+const ZebraOverlay        = dynamic(() => import('./overlays/ZebraOverlay'),        { ssr: false });
+const FalseColorOverlay   = dynamic(() => import('./overlays/FalseColorOverlay'),   { ssr: false });
+const HistogramMonitor    = dynamic(() => import('./overlays/HistogramMonitor'),    { ssr: false });
+const WaveformMonitor     = dynamic(() => import('./overlays/WaveformMonitor'),     { ssr: false });
 
 // --- 1) TYPES & ENUMS ---
 type Codec = 'h264' | 'hevc';
@@ -136,15 +121,28 @@ const CameraMonitor: React.FC = () => {
   const { sendJSON } = useVideoSocketCtx();
   const queryClient  = useQueryClient();
   
+  // 2) Use context-provided values (single source of truth)
+  const {
+    recording: liveRec,
+    start: liveStart,
+    stop: liveStop,
+    selectedDevice,
+    setSelectedDevice,
+    selectedCodec,
+    setSelectedCodec,
+    deviceInfo,
+    timecode,
+    overlays: { focusPeaking, zebras, falseColor },
+    histogramData,
+    recordingTime,
+  } = useCapture();
+  
   const mediaRef     = useRef<HTMLImageElement | HTMLVideoElement>(null);
   const recorderRef  = useRef<MediaRecorder| null>(null);
   const chunksRef    = useRef<Blob[]>([]);
   
   /* State management */
-  const [selectedDevice, setSelectedDevice]           = useState<string>('/dev/video0');
-  const [selectedCodec, setSelectedCodec]             = useState<Codec>('h264');
   const [devices, setDevices]                         = useState<string[]>([]);
-  const [deviceInfo, setDeviceInfo]                   = useState({ width: 0, height: 0, fps: 0 });
   const [devicesAvailableNow, setDevicesAvailableNow] = useState<string[]>([]);
   const [allDevicesSeen, setAllDevicesSeen]           = useState<string[]>(() => {
     // Try to load last seen from localStorage
@@ -155,14 +153,13 @@ const CameraMonitor: React.FC = () => {
   const [previewHeight, setPreviewHeight]             = useState(720);
   const [previewFps, setPreviewFps]                   = useState(30);
   // Recording state - using server-driven timing
-  const [isRecording, setIsRecording]                 = useState(false);
-  const [recordingTime, setRecordingTime]             = useState(0);
+  //const [isRecording, setIsRecording]                 = useState(false);
   // Timecode
   const { tc: timecode, format: formatTimecode }      = useTimecode({h:1,m:23,s:45,f:18});
   // Overlays
-  const [focusPeakingActive, setFocusPeakingActive]   = useState(false);
-  const [zebrasActive, setZebrasActive]               = useState(false);
-  const [falseColorActive, setFalseColorActive]       = useState(false);
+  //const [focusPeakingActive, setFocusPeakingActive]   = useState(false);
+  //const [zebrasActive, setZebrasActive]               = useState(false);
+  //const [falseColorActive, setFalseColorActive]       = useState(false);
   // Other Indicators
   const [batteryLevel, setBatteryLevel]               = useState(85);
   const [streamOK, setStreamOK]                       = useState(true);
@@ -174,21 +171,11 @@ const CameraMonitor: React.FC = () => {
   const [contrast, setContrast]       = useState(100);
   const [saturation, setSaturation]   = useState(100);
   const [volume, setVolume]           = useState(75);
-  
-  // 1) grab everything from your CaptureProvider
-  const {
-    recording: liveRec,
-    start:     liveStart,
-    stop:      liveStop,
-
-    selectedDevice,
-    selectedCodec,
-    timecode,
-    overlays:     { focusPeaking, zebras, falseColor },
-    histogramData,
-    recordingTime,
-    deviceInfo,
-  } = useCapture();
+  // Context-driven overlay & recording state
+  const focusPeakingActive = focusPeaking;
+  const zebrasActive       = zebras;
+  const falseColorActive   = falseColor;
+  const isRecording        = wsStatus === 'recording' || localRec;
 
   // 2) wire up your “live” WS recorder
   const { status: wsStatus, start: wsStart, stop: wsStop } =
@@ -243,10 +230,10 @@ const CameraMonitor: React.FC = () => {
       form.append('files', lastBlob, `fallback_${Date.now()}.webm`);
       form.append('batch', 'VideoCapture');
       fetch('/api/v1/upload', { method: 'POST', body: form })
-        .then(() => qc.invalidateQueries(['assets']))
+        .then(() => queryClient.invalidateQueries(['assets']))
         .catch(console.error);
     }
-  }, [localRec, lastBlob, qc]);
+  }, [localRec, lastBlob, queryClient]);
   
   useEffect(() => {
     sendJSON({ action: 'list_devices' } as ListDevicesMsg);
@@ -312,29 +299,17 @@ const CameraMonitor: React.FC = () => {
     }
   }, [deviceInfo]);
 
-  // Handler: codec change
-  const handleCodecChange = useCallback((newCodec: Codec) => {
-    setSelectedCodec(newCodec);
-    // Immediately notify backend of codec change
-    const msg: SetCodecMsg = {
-      action: 'set_codec',
-      codec: newCodec,
-    };
-    sendJSON(msg);
-  }, [sendJSON]);
-
-  // Handler: device change
   const handleDeviceChange = useCallback((device: string) => {
-    setSelectedDevice(device);
     window.localStorage.setItem('lastSelectedDevice', device);
-    const msg: SelectStreamMsg = {
-      action: 'select_stream',
-      feed: 'main',
-      device: device,
-    };
-    sendJSON(msg);
-  }, [sendJSON]);
+    setSelectedDevice(device); // context-driven update
+    sendJSON({ action: 'select_stream', feed: 'main', device } as SelectStreamMsg);
+  }, [sendJSON, setSelectedDevice]);
 
+  const handleCodecChange = useCallback((newCodec: Codec) => {
+    setSelectedCodec(newCodec); // context-driven update
+    sendJSON({ action: 'set_codec', codec: newCodec } as SetCodecMsg);
+  }, [sendJSON, setSelectedCodec]);
+  
   /** 3) Typed inbound socket handler */
   useEffect(() => {
     const onSocket = (ev: MessageEvent) => {
@@ -356,12 +331,6 @@ const CameraMonitor: React.FC = () => {
 
         case 'recording_stopped':
           setIsRecording(false);
-          break;
-
-        case 'overlay_toggled':
-          if (msg.data.overlay === 'focusPeaking') setFocusPeakingActive(msg.data.enabled);
-          if (msg.data.overlay === 'zebras')       setZebrasActive(msg.data.enabled);
-          if (msg.data.overlay === 'falseColor')   setFalseColorActive(msg.data.enabled);
           break;
 
         case 'battery':

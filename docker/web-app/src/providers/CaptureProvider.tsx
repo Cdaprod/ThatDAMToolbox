@@ -93,7 +93,9 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
         stop,
 
         selectedDevice,
+        setSelectedDevice,    // <<=== ADDED
         selectedCodec,
+        setSelectedCodec,     // <<=== ADDED
         deviceInfo,
 
         timecode,
