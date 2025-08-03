@@ -54,20 +54,20 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
   // 1) raw fetch
-+  const {
-+    data: assets = [],
-+    refetch: refetchAssets,
-+  } = useQuery({
-+    queryKey: ['assets'],     // must be inside the object
-+    queryFn: listAssets,
-+    staleTime: 60_000,
-+  });
+  const {
+    data: assets = [],
+    refetch: refetchAssets,
+  } = useQuery({
+    queryKey: ['assets'],     // must be inside the object
+    queryFn: listAssets,
+    staleTime: 60_000,
+  });
 
-+  const { data: folders = [] } = useQuery({
-+    queryKey: ['folders'],
-+    queryFn: listFolders,
-+    staleTime: 60_000,
-+  });
+  const { data: folders = [] } = useQuery({
+    queryKey: ['folders'],
+    queryFn: listFolders,
+    staleTime: 60_000,
+  });
 
   // 2) move / delete mutations
   const moveMut = useMutation({
