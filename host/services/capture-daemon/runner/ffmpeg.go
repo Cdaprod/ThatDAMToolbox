@@ -107,7 +107,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 			log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
 
 			// Count failures and bail out after 5
-			fails  
+			fails++
 			if fails >= 5 {
 				log.Printf("[ffmpeg] giving up on %s after %d errors", cfg.Device, fails)
 				broker.Publish("capture.recording_stopped", map[string]any{
