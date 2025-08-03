@@ -209,6 +209,22 @@ _start_db_backup()
 # ─────────── 5. graceful shutdown hooks ─────────────────────────────
 import video.lifecycle  # noqa: F401  (handles SIGTERM + atexit)
 
+# ── define our shutdown publisher ─────────────────────────────────────
+def _publish_shutdown() -> None:
+    """
+    Called on SIGINT/SIGTERM or normal exit.
+    Publishes a simple shutdown event to your broker.
+    """
+    try:
+        # adjust to your broker API if needed
+        from video.core.event import get_bus
+        bus = get_bus()
+        if bus:
+            bus.publish("videoapi.shutdown", {"ts": time.time()})
+    except Exception:
+        log.warning("Shutdown hook: failed to publish shutdown event")
+
+
 video.lifecycle.on_shutdown(_publish_shutdown)   # register once
 
 # ─────────── 6. public symbols ──────────────────────────────────────
