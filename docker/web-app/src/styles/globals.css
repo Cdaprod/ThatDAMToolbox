@@ -31,3 +31,12 @@ body {
   background-color: var(--bg-color);
   color: var(--text-color);
 }
+
+/* inject custom utilities */
+@layer utilities {
+  .bg-theme-background { background-color: var(--theme-background) !important }
+  .bg-theme-primary    { background-color: var(--theme-primary)    !important }
+  .bg-theme-accent     { background-color: var(--theme-accent)     !important }
+  .text-theme-primary  { color:            var(--theme-primary)    !important }
+  .text-theme-accent   { color:            var(--theme-accent)     !important }
+}

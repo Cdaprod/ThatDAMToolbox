@@ -1,10 +1,11 @@
 // src/providers/AppProviders.tsx
 'use client'
 
-import { ReactNode } from 'react'
+import { ReactNode }       from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import dynamic from 'next/dynamic'
+import dynamic             from 'next/dynamic'
 
+import { ThemeProvider }   from '@/context/ThemeContext'
 import VideoSocketProvider from './VideoSocketProvider'
 import AssetProvider       from './AssetProvider'
 import ModalProvider       from './ModalProvider'
@@ -28,16 +29,17 @@ const CaptureProvider = dynamic(
 export default function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={qc}>
-      <VideoSocketProvider>
-        <AssetProvider>
-          <CaptureProvider>
-            <ModalProvider>
-              {children}
-            </ModalProvider>
-          </CaptureProvider>
-        </AssetProvider>
-      </VideoSocketProvider>
-
+      <ThemeProvider>
+        <VideoSocketProvider>
+          <AssetProvider>
+            <CaptureProvider>
+              <ModalProvider>
+                {children}
+              </ModalProvider>
+            </CaptureProvider>
+          </AssetProvider>
+        </VideoSocketProvider>
+      </ThemeProvider>
       <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />
     </QueryClientProvider>
   )

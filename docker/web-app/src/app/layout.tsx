@@ -12,7 +12,13 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-gray-100 text-gray-900">
+      <body 
+        className="min-h-screen flex flex-col"
+        style={{
+          backgroundColor: 'var(--theme-background)',
+          color:           'var(--theme-accent)',
+        }}
+      >
         <AppProviders>
           <TopBar />
           <MainLayout>{children}</MainLayout>
