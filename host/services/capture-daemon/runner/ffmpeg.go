@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+	"strings"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 )
@@ -69,7 +70,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		cmdCtx, cancel := context.WithCancel(ctx)
 		args := []string{
 			"-hide_banner",
-			"-loglevel", "warning",
+			"-loglevel", "error",
 			"-f", "v4l2",
 			"-framerate", fmt.Sprint(cfg.FPS),
 			"-video_size", cfg.Resolution,
@@ -86,7 +87,13 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		err := cmd.Run()
 		cancel()
 
-		if err != nil {
+ 		if err != nil {
+ 			// If the device isn’t a real V4L2 capture node, bail out
+ 			if strings.Contains(err.Error(), "Not a tty") {
+ 				log.Printf("[ffmpeg] %s does not support v4l2 capture (Not a tty), stopping", cfg.Device)
+ 				return nil
+ 			}
+ 			
 			if ctx.Err() != nil {
 				// Normal shutdown
 				broker.Publish("capture.recording_stopped", map[string]any{
@@ -96,10 +103,11 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 				})
 				return nil
 			}
+			
 			log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
 
 			// Count failures and bail out after 5
-			fails++
+			fails  
 			if fails >= 5 {
 				log.Printf("[ffmpeg] giving up on %s after %d errors", cfg.Device, fails)
 				broker.Publish("capture.recording_stopped", map[string]any{
@@ -109,6 +117,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 				})
 				return nil
 			}
+			
 		} else {
 			// Reset on success
 			fails = 0
