@@ -54,25 +54,36 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
   // 1) raw fetch
-  const { data: assets = [], refetch: refetchAssets } = useQuery(
-    ['assets'],
-    listAssets,
-    { staleTime: 60_000 }
-  );
-  const { data: folders = [] } = useQuery(
-    ['folders'],
-    listFolders,
-    { staleTime: 60_000 }
-  );
++  const {
++    data: assets = [],
++    refetch: refetchAssets,
++  } = useQuery({
++    queryKey: ['assets'],     // must be inside the object
++    queryFn: listAssets,
++    staleTime: 60_000,
++  });
+
++  const { data: folders = [] } = useQuery({
++    queryKey: ['folders'],
++    queryFn: listFolders,
++    staleTime: 60_000,
++  });
 
   // 2) move / delete mutations
-  const moveMut = useMutation(moveAssets, {
-    onSuccess: () => qc.invalidateQueries(['assets']),
-  });
-  const deleteMut = useMutation(deleteAssets, {
-    onSuccess: () => qc.invalidateQueries(['assets']),
+  const moveMut = useMutation({
+    mutationFn: ({ ids, toPath }: { ids: string[]; toPath: string }) =>
+      moveAssets(ids, toPath),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['assets'] }),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (ids: string | string[]) =>
+      deleteAssets(ids),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['assets'] }),
+  });
+  
   // 3) filter + vector state
   const [filters, setFilters] = useState<Filters>({});
   const [vectorResults, setVectorResults] = useState<Asset[] | null>(null);
