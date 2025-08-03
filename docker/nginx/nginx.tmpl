@@ -24,12 +24,15 @@ http {
     ##
     ## gzip for text assets
     ##
-    gzip on; gzip_vary on; gzip_min_length 1000; gzip_comp_level 5;
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1000;
+    gzip_comp_level 5;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/rss+xml text/javascript;
 
     ##
     ## upstream back-ends
-    ##   – If the gateway runs with `network_mode: host`* these resolve to 127.0.0.1
+    ##   – If the gateway runs with `network_mode: host` these resolve to 127.0.0.1
     ##   – If the gateway runs on a user bridge they resolve to Docker DNS names.
     ##
     upstream video_api { server ${API_HOST}:${API_PORT}; }
@@ -46,18 +49,34 @@ http {
         }
 
         # ------------------ REST / websocket / streams ----------------------
-        location /api/       { include proxy_defaults.conf; proxy_pass http://video_api; }
-        location /ws/        { include proxy_ws.conf;       proxy_pass http://video_api; }
-        location /stream/    { include proxy_nobuf.conf;    proxy_pass http://video_api; }
+        location /api/    { include proxy_defaults.conf; proxy_pass http://video_api; }
+        location /ws/     { include proxy_ws.conf;       proxy_pass http://video_api; }
+        location /stream/ { include proxy_nobuf.conf;    proxy_pass http://video_api; }
 
-        # ------------------ static frontend -------------------------------
+        # ------------------ Production (static) frontend ------------------
+        # (Uncomment this block once you have built your Next.js app to /usr/share/nginx/html)
+        #
+        # location / {
+        #     root /usr/share/nginx/html;
+        #     try_files $uri $uri/ @video_web;
+        # }
+        #
+        # # fall-through → Next.js SSR/fallback
+        # location @video_web {
+        #     include proxy_defaults.conf;
+        #     proxy_pass http://video_web;
+        # }
+
+        # ------------------ Dev frontend (Next.js) ------------------------
+        # In local dev we don’t have a static build yet--just proxy everything
         location / {
-            root /usr/share/nginx/html;              # static export (if present)
-            try_files $uri $uri/ @video_web;
+            include proxy_defaults.conf;
+            proxy_pass http://video_web;
+            proxy_set_header Host $host;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
         }
-
-        # fall-through → Next.js dev server / SSR
-        location @video_web { include proxy_defaults.conf; proxy_pass http://video_web; }
 
         client_max_body_size 100m;
     }
