@@ -5,7 +5,7 @@ import React, { ReactNode, useState, useEffect } from 'react';
 import { useVideoSocketCtx } from './VideoSocketProvider';
 import { CaptureContext, Codec } from './CaptureContext';
 import { bus } from '@/lib/eventBus';
-import { useTimecode } from '@/components/CameraMonitor';
+import { useTimecode } from '@/hooks/useTimecode';
 
 export default function CaptureProvider({ children }: { children: ReactNode }) {
   const { sendJSON } = useVideoSocketCtx();
