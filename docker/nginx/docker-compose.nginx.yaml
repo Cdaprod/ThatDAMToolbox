@@ -22,8 +22,11 @@ services:
 
     volumes:
       # allow you to override nginx.tmpl without rebuilding
-      - ./docker/nginx/nginx.tmpl:/etc/nginx/nginx.tmpl:ro
-      - ./docker/nginx/html:/usr/share/nginx/html:ro  # optional static export
+      - docker/nginx/proxy_defaults.conf:/etc/nginx/proxy_defaults.conf:ro
+      - docker/nginx/proxy_ws.conf:/etc/nginx/proxy_ws.conf:ro
+      - docker/nginx/proxy_nobuf.conf:/etc/nginx/proxy_nobuf.conf:ro
+      - docker/web-app/out:/usr/share/nginx/html:ro
+      - docker/nginx/nginx.tmpl:/etc/nginx/nginx.tmpl:ro
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
