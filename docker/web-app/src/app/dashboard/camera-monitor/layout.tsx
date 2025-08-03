@@ -9,7 +9,7 @@ export default function CameraMonitorLayout({ children }: { children: ReactNode 
       <div className="absolute top-4 left-4 z-10">
         <Link
           href="/dashboard"
-          className="text-white bg-gray-800 px-3 py-1 rounded hover:bg-gray-700 transition"
+          className="px-3 py-1 rounded transition-colors duration-200 bg-theme-accent text-theme-primary hover:opacity-90"
         >
           ← Back
         </Link>

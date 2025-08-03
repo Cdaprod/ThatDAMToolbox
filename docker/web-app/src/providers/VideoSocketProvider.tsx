@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { wsUrl } from '@/lib/networkConfig';
+import { wsUrl }          from '@/lib/networkConfig';
 import { useVideoSocket } from '@/lib/useVideoSocket';
 import { bus }            from '@/lib/eventBus';
 

@@ -1,9 +1,9 @@
 // /docker/web-app/src/lib/video.ts
 
-import { apiUrl } from './networkConfig';   // <<-- ADD THIS
+import { apiUrl } from './networkConfig';
 
 // Base URL for FastAPI backend (runtime resolved, robust to host mode, LAN, etc)
-const API_BASE = apiUrl();    // <<-- CHANGE THIS
+const API_BASE = apiUrl();
 
 // Standard GET request helper
 async function get<T>(path: string): Promise<T> {

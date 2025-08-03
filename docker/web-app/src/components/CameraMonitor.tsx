@@ -1,6 +1,29 @@
 // docker/web-app/src/components/CameraMonitor.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useVideoSocketCtx } from '@providers/VideoSocketProvider';
+
+// Dynamically load gl-react overlays (no SSR)
+const FocusPeakingOverlay = dynamic(
+  () => import('./overlays/FocusPeakingOverlay'),
+  { ssr: false }
+);
+const ZebraOverlay = dynamic(
+  () => import('./overlays/ZebraOverlay'),
+  { ssr: false }
+);
+const FalseColorOverlay = dynamic(
+  () => import('./overlays/FalseColorOverlay'),
+  { ssr: false }
+);
+const HistogramMonitor = dynamic(
+  () => import('./overlays/HistogramMonitor'),
+  { ssr: false }
+);
+const WaveformMonitor = dynamic(
+  () => import('./overlays/WaveformMonitor'),
+  { ssr: false }
+);
 
 // --- 1) TYPES & ENUMS ---
 type Codec = 'h264' | 'hevc';
@@ -109,37 +132,44 @@ const CameraMonitor: React.FC = () => {
   const { sendJSON } = useVideoSocketCtx();
   
   /* State management */
-  const [selectedDevice, setSelectedDevice] = useState<string>('/dev/video0');
-  const [selectedCodec, setSelectedCodec] = useState<Codec>('h264');
-  const [devices, setDevices] = useState<string[]>([]);
-  const [deviceInfo, setDeviceInfo] = useState({ width: 0, height: 0, fps: 0 });
+  const [selectedDevice, setSelectedDevice]           = useState<string>('/dev/video0');
+  const [selectedCodec, setSelectedCodec]             = useState<Codec>('h264');
+  const [devices, setDevices]                         = useState<string[]>([]);
+  const [deviceInfo, setDeviceInfo]                   = useState({ width: 0, height: 0, fps: 0 });
   const [devicesAvailableNow, setDevicesAvailableNow] = useState<string[]>([]);
-  const [allDevicesSeen, setAllDevicesSeen] = useState<string[]>(() => {
+  const [allDevicesSeen, setAllDevicesSeen]           = useState<string[]>(() => {
     // Try to load last seen from localStorage
     const stored = typeof window !== 'undefined' && window.localStorage.getItem('cameraDevices');
     return stored ? JSON.parse(stored) : [];
   });
-  const [previewWidth, setPreviewWidth]   = useState(1280);
-  const [previewHeight, setPreviewHeight] = useState(720);
-  const [previewFps, setPreviewFps]       = useState(30);
+  const [previewWidth, setPreviewWidth]               = useState(1280);
+  const [previewHeight, setPreviewHeight]             = useState(720);
+  const [previewFps, setPreviewFps]                   = useState(30);
   // Recording state - using server-driven timing
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
+  const [isRecording, setIsRecording]                 = useState(false);
+  const [recordingTime, setRecordingTime]             = useState(0);
   // Timecode
-  const { tc: timecode, format: formatTimecode } = useTimecode({h:1,m:23,s:45,f:18});
+  const { tc: timecode, format: formatTimecode }      = useTimecode({h:1,m:23,s:45,f:18});
   // Overlays
-  const [focusPeakingActive, setFocusPeakingActive] = useState(false);
-  const [zebrasActive, setZebrasActive] = useState(false);
-  const [falseColorActive, setFalseColorActive] = useState(false);
-  const [batteryLevel, setBatteryLevel] = useState(85);
-  const [streamOK, setStreamOK] = useState(true);
+  const [focusPeakingActive, setFocusPeakingActive]   = useState(false);
+  const [zebrasActive, setZebrasActive]               = useState(false);
+  const [falseColorActive, setFalseColorActive]       = useState(false);
+  // Other Indicators
+  const [batteryLevel, setBatteryLevel]               = useState(85);
+  const [streamOK, setStreamOK]                       = useState(true);
   // Histogram data
-  const [histogramData, setHistogramData] = useState([20, 45, 65, 80, 70, 55, 40, 25]);
+  //const [histogramData, setHistogramData]             = useState([20, 45, 65, 80, 70, 55, 40, 25]);
+  const [showScopes, setShowScopes]   = useState(true);
   // Slider states
-  const [brightness, setBrightness] = useState(80);
-  const [contrast, setContrast] = useState(100);
-  const [saturation, setSaturation] = useState(100);
-  const [volume, setVolume] = useState(75);
+  const [brightness, setBrightness]   = useState(80);
+  const [contrast, setContrast]       = useState(100);
+  const [saturation, setSaturation]   = useState(100);
+  const [volume, setVolume]           = useState(75);
+
+  // Ref to the <img> MJPEG element
+  //const imgRef = useRef<HTMLImageElement>(null);
+  // imgRef to mediaRef (so it can point to either an <img> or a <video>
+  const mediaRef = useRef<HTMLImageElement | HTMLVideoElement>(null);
 
   useEffect(() => {
     sendJSON({ action: 'list_devices' } as ListDevicesMsg);
@@ -285,9 +315,6 @@ const CameraMonitor: React.FC = () => {
           setBatteryLevel(msg.data.level);
           break;
 
-        case 'histogram':
-          setHistogramData(msg.data.buckets);
-          break;
       }
     };
 
@@ -307,13 +334,22 @@ const CameraMonitor: React.FC = () => {
   }, [isRecording]);
 
   // Histogram animation (remove if backend provides real data)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHistogramData(prev => prev.map(() => Math.random() * 80 + 10));
-    }, 2000);
+  //useEffect(() => {
+    //const interval = setInterval(() => {
+      //setHistogramData(prev => prev.map(() => Math.random() * 80 + 10));
+    //}, 2000);
 
-    return () => clearInterval(interval);
-  }, []);
+    //return () => clearInterval(interval);
+  //}, []);
+  
+  const handleToggleOverlay = useCallback((overlay: 'focusPeaking'|'zebras'|'falseColor') => {
+    const enabled = overlay === 'focusPeaking'
+      ? !focusPeakingActive
+      : overlay === 'zebras'
+        ? !zebrasActive
+        : !falseColorActive;
+    sendJSON({ action: 'toggle_overlay', overlay, enabled } as ToggleOverlayMsg);
+  }, [focusPeakingActive, zebrasActive, falseColorActive, sendJSON]);
   
   const handleFullscreenToggle = useCallback(() => {
     const videoElement = document.querySelector('.camera-video-feed') as HTMLElement;
@@ -367,43 +403,10 @@ const CameraMonitor: React.FC = () => {
           70% { box-shadow: 0 0 0 6px rgba(255, 0, 0, 0); }
           100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
         }
-        @keyframes waveMove {
-          0% { left: -2px; }
-          100% { left: 100%; }
-        }
-        @keyframes zebraStripe {
-          0% { background-position: 0 0; }
-          100% { background-position: 20px 0; }
-        }
         .status-dot-active { animation: blink 1s infinite; }
         .status-dot-recording { animation: pulse 0.5s infinite; }
         .recording-blink { animation: recordBlink 1s infinite; }
         .record-pulse { animation: recordPulse 0.8s infinite; }
-        .wave-line { animation: waveMove 2s linear infinite; }
-        .focus-peaking-overlay {
-          background: 
-            radial-gradient(circle at 30% 40%, rgba(255, 0, 0, 0.3) 2px, transparent 2px),
-            radial-gradient(circle at 70% 30%, rgba(255, 0, 0, 0.3) 1px, transparent 1px),
-            radial-gradient(circle at 20% 70%, rgba(255, 0, 0, 0.3) 1px, transparent 1px);
-          background-size: 40px 40px, 60px 60px, 80px 80px;
-        }
-        .zebra-overlay {
-          background: repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 2px,
-            rgba(255, 255, 0, 0.4) 2px,
-            rgba(255, 255, 0, 0.4) 4px
-          );
-          animation: zebraStripe 1s linear infinite;
-        }
-        .falsecolor-overlay {
-          background: 
-            radial-gradient(circle at 25% 25%, rgba(255, 0, 255, 0.3) 20px, transparent 20px),
-            radial-gradient(circle at 75% 75%, rgba(0, 255, 255, 0.3) 15px, transparent 15px),
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 0, 0.2) 30px, transparent 30px);
-          background-size: 60px 60px, 80px 80px, 100px 100px;
-        }
       `}</style>
 
       {/* Top Status Bar */}
@@ -428,81 +431,84 @@ const CameraMonitor: React.FC = () => {
           </div>
         </div>
       </div>
-
+          
       {/* Main Content Area */}
       <div className="flex flex-1">
         <div className="flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden">
 
-          { /* NO SIGNAL / PREVIEW */ }
-          {!streamOK ? (
-            <div className="flex flex-col items-center">
-              {/* Put a fun GIF in your public folder as "/no-signal.gif" */}
+          {/* 1) The preview wrapper */}
+          <div className="relative w-full h-full">
+            {streamOK ? (
+              // Live MJPEG
               <img
-                src="https://media1.tenor.com/m/1VZnQCgDgFkAAAAC/no-cameras-clinton-sparks.gif"
-                alt="No signal"
-                className="w-32 h-32 mb-4"
-              />
-              <span className="text-gray-600 text-lg">Uh-oh, no camera feed!</span>
-            </div>
-          ) : (
-            <div className="relative w-full h-full">
-              <img
-                src={`/api/v1/hwcapture/stream?device=${encodeURIComponent(selectedDevice)}&width=${previewWidth}&height=${previewHeight}&fps=${previewFps}`}
-                alt="Live Preview"
+                ref={mediaRef as React.RefObject<HTMLImageElement>}
+                src={`/api/v1/hwcapture/stream?device=${encodeURIComponent(
+                  selectedDevice
+                )}&width=${previewWidth}&height=${previewHeight}&fps=${previewFps}`}
                 className="camera-video-feed w-full h-full object-contain absolute top-0 left-0 z-0"
                 onError={() => setStreamOK(false)}
                 onLoad={() => setStreamOK(true)}
               />
+            ) : (
+              // Animated-GIF fallback
+              <video
+                ref={mediaRef as React.RefObject<HTMLVideoElement>}
+                src="https://media1.tenor.com/m/1VZnQCgDgFkAAAAC/no-cameras-clinton-sparks.gif"
+                autoPlay
+                loop
+                muted
+                className="camera-video-feed w-full h-full object-cover absolute top-0 left-0 z-0"
+                onLoadedData={() => setStreamOK(true)}
+              />
+            )}
+
+            {/* Fullscreen toggle (only when live) */}
+            {streamOK && (
               <button
                 className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1 rounded hover:bg-black/90 transition-opacity duration-200 opacity-70 hover:opacity-100 z-10"
                 onClick={handleFullscreenToggle}
               >
                 ⛶ Fullscreen
               </button>
-            </div>
-          )}
-          
-          {/* Recording "REC" overlay */}
+            )}
+
+            {/* GPU-accelerated overlays */}
+            <FocusPeakingOverlay
+              texture={mediaRef.current}
+              resolution={[previewWidth, previewHeight]}
+              enabled={focusPeakingActive}
+            />
+            <ZebraOverlay
+              texture={mediaRef.current}
+              enabled={zebrasActive}
+            />
+            <FalseColorOverlay
+              texture={mediaRef.current}
+              enabled={falseColorActive}
+            />
+          </div>
+
+
+          { /* Recording indicator */ }
           {isRecording && (
             <div className="absolute top-4 right-4 bg-red-600/90 text-white px-4 py-2 rounded-full font-bold text-xs recording-blink">
               ● REC {formatTime(recordingTime)}
             </div>
           )}
 
-          {/* Input info badge */}
+          { /* Input info badge */ }
           <div className="absolute top-4 left-4 bg-black/80 p-2.5 rounded text-xs leading-relaxed">
-            <div>
-              {deviceInfo.width}×{deviceInfo.height}
-            </div>
-            <div>
-              {deviceInfo.fps.toFixed(2)} fps
-            </div>
-            <div>
-              {selectedDevice.replace('/dev/', '')}
-            </div>
+            <div>{deviceInfo.width}×{deviceInfo.height}</div>
+            <div>{deviceInfo.fps.toFixed(2)} fps</div>
+            <div>{selectedDevice.replace('/dev/', '')}</div>
           </div>
 
-          {/* Timecode display */}
+          { /* Timecode display */ }
           <div className="absolute bottom-4 left-4 bg-black/90 px-3 py-2 rounded font-mono text-base text-green-500 font-bold">
             {formatTimecode()}
           </div>
+        </div> 
 
-          {/* Focus peaking overlay */}
-          {focusPeakingActive && (
-            <div className="absolute inset-0 opacity-100 transition-opacity duration-300 focus-peaking-overlay pointer-events-none"></div>
-          )}
-
-          {/* Zebra overlay */}
-          {zebrasActive && (
-            <div className="absolute inset-0 opacity-100 transition-opacity duration-300 zebra-overlay pointer-events-none"></div>
-          )}
-
-          {/* False color overlay */}
-          {falseColorActive && (
-            <div className="absolute inset-0 opacity-100 transition-opacity duration-300 falsecolor-overlay pointer-events-none"></div>
-          )}
-
-        </div>
         {/* Control Panel */}
         <div className="w-45 bg-gradient-to-b from-gray-700 to-gray-900 border-l border-gray-700 p-3 overflow-y-auto">
 
@@ -691,34 +697,30 @@ const CameraMonitor: React.FC = () => {
 
           {/* Waveform Monitor */}
           <div className="mb-4 bg-black/30 border border-gray-600 rounded-md p-2.5">
-            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">Waveform</div>
-            <div className="w-full h-15 bg-black border border-gray-700 rounded relative overflow-hidden">
-              {[30, 45, 60, 35, 50].map((height, index) => (
-                <div 
-                  key={index}
-                  className="absolute bottom-0 w-0.5 bg-green-500 wave-line"
-                  style={{ 
-                    height: `${height}%`,
-                    animationDelay: `${index * 0.2}s`
-                  }}
-                ></div>
-              ))}
+            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">
+              Waveform
             </div>
+            <WaveformMonitor
+              source={mediaRef.current}
+              width={200}
+              height={60}
+              enabled={showScopes}
+            />
           </div>
 
           {/* Histogram */}
           <div className="mb-4 bg-black/30 border border-gray-600 rounded-md p-2.5">
-            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">Histogram</div>
-            <div className="w-full h-10 bg-black border border-gray-700 rounded flex items-end p-0.5">
-              {histogramData.map((height, index) => (
-                <div 
-                  key={index}
-                  className="flex-1 bg-gradient-to-t from-red-500 via-yellow-500 to-green-500 mx-px opacity-70 rounded-t-sm transition-all duration-500"
-                  style={{ height: `${height}%` }}
-                ></div>
-              ))}
+            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">
+              Histogram
             </div>
+            <HistogramMonitor
+              source={mediaRef.current}
+              width={200}
+              height={40}
+              enabled={showScopes}
+            />
           </div>
+          
         </div>
       </div>
 
