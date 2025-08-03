@@ -148,3 +148,7 @@ go.sum
 
 !/docker/web-app/tsconfig.json
 
+!/docker/rabbitmq/definitions.json
+
+!/docker/weaviate/schema.json
+
