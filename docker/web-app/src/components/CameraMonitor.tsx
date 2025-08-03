@@ -153,9 +153,9 @@ const CameraMonitor: React.FC = () => {
   const [previewHeight, setPreviewHeight]             = useState(720);
   const [previewFps, setPreviewFps]                   = useState(30);
   // Recording state - using server-driven timing
-  //const [isRecording, setIsRecording]                 = useState(false);
+  //const [isRecording, setIsRecording]                    = useState(false);
   // Timecode
-  const { tc: timecode, format: formatTimecode }      = useTimecode({h:1,m:23,s:45,f:18});
+  //const { tc: localTimecode, format: formatLocalTimecode } = useTimecode({h:1,m:23,s:45,f:18});
   // Overlays
   //const [focusPeakingActive, setFocusPeakingActive]   = useState(false);
   //const [zebrasActive, setZebrasActive]               = useState(false);

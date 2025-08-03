@@ -42,7 +42,28 @@ x-platform-arm64: &arm64
 x-user: &uid1000
   user: "1000:1000"
 
-# ---------- shared env blocks ----------
+########################################################################
+# Device Access Anchors
+########################################################################
+x-device-cgroup: &device-cgroup
+  user: "1000:1000"
+  device_cgroup_rules:
+    - "c 81:* rmw"     # all /dev/video* hot-plug
+  group_add:
+    - "44"             # ‘video’ group
+  cap_add:
+    - SYS_ADMIN        # v4l2 ioctls that need CAP_SYS_ADMIN
+
+x-device-requests: &device-requests
+  user: "1000:1000"
+  device_requests:
+    - driver: default
+      count: -1
+      capabilities: ["video4linux"]
+ 
+########################################################################
+# Environment Variable Blocks
+########################################################################
 x-env-video: &env-video
   TZ: "America/New_York"
   VIDEO_MODE: "api"
@@ -68,7 +89,9 @@ x-env-video-data: &env-video-data
   VIDEO_STORAGE:        "auto"
   VIDEO_DEBUG_BOOT:     "0"
 
-# ---------- common volume sets ----------
+########################################################################
+# Common Volume Sets
+########################################################################
 x-vol-video: &vol-video
   - "${DATA_ROOT:-./data}:/data:rw"
   - "${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw"
@@ -78,13 +101,17 @@ x-vol-dev: &vol-dev
   - /app/node_modules            # anonymous
   - /app/.next
 
-# ---------- RabbitMQ defaults ----------
+########################################################################
+# RabbitMQ Defaults
+########################################################################
 x-rabbit-creds: &rabbit-creds
   RABBITMQ_DEFAULT_USER: video
   RABBITMQ_DEFAULT_PASS: video
   RABBITMQ_DEFAULT_VHOST: /
 
-# ---------- Next.js ⇆ API URLs ----------
+########################################################################
+# Next.js ⇆ API URLs
+########################################################################
 x-env-bridge-api: &env-bridge-api
   NEXT_PUBLIC_API_BASE_URL: "http://video-api:8080"
   NEXT_PUBLIC_WS_URL:       "ws://video-api:8080/ws/camera"
@@ -99,6 +126,7 @@ networks:
 ########################################################################
 # Services
 ########################################################################
+
 services:
   ######################################################################
   # 0. one-shot host configurator (profile: setup)
@@ -189,9 +217,8 @@ services:
     container_name: thatdamtoolbox-video-api
     <<: [*arm64, *net-bridge, *uid1000, *common, *logging, *limits-medium]
     ports: ["8080:8080"]         # bridge->host publish
-    device_cgroup_rules: ["c 81:* rmw"]
-    group_add: ["44"]            # video group (Pi OS)
-    cap_add:   ["SYS_ADMIN"]
+    <<: *device-cgroup           # cgroups & caps for /dev/video*
+    <<: *device-requests         # video4linux device_requests
     environment:
       <<: [*env-video, *env-video-data, *env-amqp]
       UVICORN_WORKERS: "1"
