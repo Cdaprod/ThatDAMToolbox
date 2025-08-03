@@ -32,8 +32,8 @@ http {
     ##   – If the gateway runs with `network_mode: host`* these resolve to 127.0.0.1
     ##   – If the gateway runs on a user bridge they resolve to Docker DNS names.
     ##
-    upstream video_api { server ${API_HOST:-video-api}:${API_PORT:-8080}; }
-    upstream video_web { server ${WEB_HOST:-video-web}:${WEB_PORT:-3000}; }
+    upstream video_api { server ${API_HOST}:${API_PORT}; }
+    upstream video_web { server ${WEB_HOST}:${WEB_PORT}; }
 
     server {
         listen 80 default_server;
