@@ -8,6 +8,9 @@ import React, {
   useState,
   useMemo,
 } from 'react';
+import { bus }            from '@/lib/eventBus';
+import { createAsset }    from '@/lib/apiAssets';
+import { useCapture }     from './CaptureContext'; // to get timecode, overlays, etc
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listAssets,
@@ -137,6 +140,53 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
     remove: ids => deleteMut.mutateAsync(ids),
     refresh: refetchAssets,
   };
+  
+  // …inside AssetProvider, after you’ve set up your queries/mutations/view…
+  // grab whatever you need out of your CaptureContext
+  const {
+    // you’ll need to expand CaptureContext to expose these:
+    selectedDevice,
+    selectedCodec,
+    deviceInfo,       // { width, height, fps }
+    timecode,         // e.g. "00:00:12:05"
+    overlays,         // { focusPeaking, zebras, falseColor }
+    histogramData,    // number[]
+    recordingTime,    // in seconds
+  } = useCapture();
+
+  // whenever the backend tells us "recording has stopped," create a new DAM asset
+  React.useEffect(() => {
+    const handleStop = (data: { file: string }) => {
+      const payload = {
+        filename:      data.file,
+        device:        selectedDevice,
+        codec:         selectedCodec,
+        resolution:    `${deviceInfo.width}x${deviceInfo.height}`,
+        fps:           deviceInfo.fps,
+        duration:      recordingTime,
+        timecodeStart: timecode,
+        overlays,
+        histogram:     histogramData,
+        recordedAt:    new Date().toISOString(),
+      };
+
+      createAsset(payload)
+        .then(() => qc.invalidateQueries(['assets']))
+        .catch(err => console.error('Failed to create asset:', err));
+    };
+
+    bus.on('recording-stop', handleStop);
+    return () => void bus.off('recording-stop', handleStop);
+  }, [
+    selectedDevice,
+    selectedCodec,
+    deviceInfo,
+    timecode,
+    overlays,
+    histogramData,
+    recordingTime,
+    qc,
+  ]);
 
   return <AssetCtx.Provider value={value}>{children}</AssetCtx.Provider>;
 }

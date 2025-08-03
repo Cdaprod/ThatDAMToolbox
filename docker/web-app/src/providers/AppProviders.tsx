@@ -31,13 +31,13 @@ export default function AppProviders({ children }: { children: ReactNode }) {
     <QueryClientProvider client={qc}>
       <ThemeProvider>
         <VideoSocketProvider>
-          <AssetProvider>
-            <CaptureProvider>
+          <CaptureProvider>
+            <AssetProvider>
               <ModalProvider>
                 {children}
               </ModalProvider>
-            </CaptureProvider>
-          </AssetProvider>
+            </AssetProvider>
+          </CaptureProvider>
         </VideoSocketProvider>
       </ThemeProvider>
       <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />

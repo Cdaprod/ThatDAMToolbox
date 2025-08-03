@@ -1,7 +1,11 @@
 // docker/web-app/src/components/CameraMonitor.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useQueryClient } from '@tanstack/react-query';
 import { useVideoSocketCtx } from '@providers/VideoSocketProvider';
+import { useLiveRecorder }  from '@/hooks/useLiveRecorder';
+import { useMediaRecorder } from '@/hooks/useMediaRecorder';
+import { useCapture }       from '@/providers/CaptureContext';
 
 // Dynamically load gl-react overlays (no SSR)
 const FocusPeakingOverlay = dynamic(
@@ -130,6 +134,11 @@ function formatTime(seconds: number): string {
 
 const CameraMonitor: React.FC = () => {
   const { sendJSON } = useVideoSocketCtx();
+  const queryClient  = useQueryClient();
+  
+  const mediaRef     = useRef<HTMLImageElement | HTMLVideoElement>(null);
+  const recorderRef  = useRef<MediaRecorder| null>(null);
+  const chunksRef    = useRef<Blob[]>([]);
   
   /* State management */
   const [selectedDevice, setSelectedDevice]           = useState<string>('/dev/video0');
@@ -165,12 +174,80 @@ const CameraMonitor: React.FC = () => {
   const [contrast, setContrast]       = useState(100);
   const [saturation, setSaturation]   = useState(100);
   const [volume, setVolume]           = useState(75);
+  
+  // 1) grab everything from your CaptureProvider
+  const {
+    recording: liveRec,
+    start:     liveStart,
+    stop:      liveStop,
 
-  // Ref to the <img> MJPEG element
-  //const imgRef = useRef<HTMLImageElement>(null);
-  // imgRef to mediaRef (so it can point to either an <img> or a <video>
-  const mediaRef = useRef<HTMLImageElement | HTMLVideoElement>(null);
+    selectedDevice,
+    selectedCodec,
+    timecode,
+    overlays:     { focusPeaking, zebras, falseColor },
+    histogramData,
+    recordingTime,
+    deviceInfo,
+  } = useCapture();
 
+  // 2) wire up your “live” WS recorder
+  const { status: wsStatus, start: wsStart, stop: wsStop } =
+    useLiveRecorder({
+      device:       selectedDevice,
+      codec:        selectedCodec,
+      getTimecode:  () => timecode,
+    });
+
+  // 3) client-side fallback recorder (MediaRecorder → upload)
+  const { recording: localRec, lastBlob, start: localStart, stop: localStop } =
+    useMediaRecorder();
+
+  // 4) toggle between live vs fallback
+  const handleRecordToggle = useCallback(() => {
+    if (wsStatus !== 'idle') {
+      // if already “live recording”, stop it
+      wsStop();
+    } else if (liveRec) {
+      // safety: if CaptureProvider thinks we’re recording, stop it too
+      liveStop();
+    } else {
+      // start live first
+      wsStart(mediaRef.current as HTMLVideoElement);
+      liveStart();
+    }
+
+    // fallback: if stream fails or wsStatus remains idle
+    if (wsStatus === 'idle' && !liveRec) {
+      if (localRec) {
+        localStop();
+      } else {
+        localStart(mediaRef.current as HTMLVideoElement);
+      }
+    }
+  }, [
+    wsStatus,
+    liveRec,
+    localRec,
+    wsStart,
+    wsStop,
+    liveStart,
+    liveStop,
+    localStart,
+    localStop,
+  ]);
+
+  // 5) whenever your MediaRecorder gives you a blob, upload + invalidate
+  React.useEffect(() => {
+    if (!localRec && lastBlob) {
+      const form = new FormData();
+      form.append('files', lastBlob, `fallback_${Date.now()}.webm`);
+      form.append('batch', 'VideoCapture');
+      fetch('/api/v1/upload', { method: 'POST', body: form })
+        .then(() => qc.invalidateQueries(['assets']))
+        .catch(console.error);
+    }
+  }, [localRec, lastBlob, qc]);
+  
   useEffect(() => {
     sendJSON({ action: 'list_devices' } as ListDevicesMsg);
   
@@ -235,30 +312,6 @@ const CameraMonitor: React.FC = () => {
     }
   }, [deviceInfo]);
 
-  const handleRecordToggle = useCallback(() => {
-    setIsRecording(prev => {
-      const next = !prev;
-  
-      if (next) {
-        // ISO timestamp, safe for filenames after a bit of cleanup
-        const now = new Date().toISOString().replace(/[:.]/g,'-');
-        const filename = `capture_${now}.mp4`;
-        sendJSON({
-          action:   'start_record',
-          feed:     'main',
-          device:   selectedDevice,
-          filename,
-          codec:    selectedCodec,
-          timecode: formatTimecode(),
-        } as StartRecordMsg);
-      } else {
-        sendJSON({ action: 'stop_record', feed: 'main' } as StopRecordMsg);
-      }
-  
-      return next;
-    });
-  }, [selectedDevice, selectedCodec, formatTimecode, sendJSON]);
-  
   // Handler: codec change
   const handleCodecChange = useCallback((newCodec: Codec) => {
     setSelectedCodec(newCodec);
@@ -454,6 +507,7 @@ const CameraMonitor: React.FC = () => {
               <video
                 ref={mediaRef as React.RefObject<HTMLVideoElement>}
                 src="https://media1.tenor.com/m/1VZnQCgDgFkAAAAC/no-cameras-clinton-sparks.gif"
+                crossOrigin="anonymous"
                 autoPlay
                 loop
                 muted
@@ -554,17 +608,27 @@ const CameraMonitor: React.FC = () => {
           
           {/* Recording Controls */}
           <div className="mb-4 bg-black/30 border border-gray-600 rounded-md p-2.5">
-            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">Record</div>
-            <button 
+            <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">
+              Record
+            </div>
+          
+            <button
               onClick={handleRecordToggle}
-              className={`w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${
-                isRecording 
-                  ? 'from-red-600 to-red-800 border-red-600 record-pulse' 
-                  : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'
-              }`}
+              className={`
+                w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs
+                cursor-pointer transition-all duration-200 hover:-translate-y-0.5
+                ${
+                  // if live WS is recording, or fallback local is recording
+                  wsStatus === 'recording' || localRec
+                    ? 'from-red-600 to-red-800 border-red-600 record-pulse'
+                    : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'
+                }
+              `}
             >
-              {isRecording ? '⏸ STOP REC' : '● RECORD'}
+              {wsStatus === 'recording' || localRec ? '⏸ STOP REC' : '● RECORD'}
             </button>
+          
+            {/* optional playback buttons, unchanged */}
             <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
               ▶ PLAY
             </button>

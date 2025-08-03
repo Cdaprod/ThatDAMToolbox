@@ -51,6 +51,33 @@ async function $<T = unknown>(
 /* ------------------------------------------------------------------ *
  * 3.  Asset helpers                                                  *
  * ------------------------------------------------------------------ */
+export interface NewAsset {
+  filename:      string;
+  device:        string;
+  codec:         string;
+  resolution:    string;
+  fps:           number;
+  duration:      number;
+  timecodeStart: string;
+  overlays: {
+    focusPeaking: boolean;
+    zebras:       boolean;
+    falseColor:   boolean;
+  };
+  histogram:     number[];
+  recordedAt:    string;
+}
+
+export const createAsset = (asset: NewAsset) =>
+  fetch(`${API}/assets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(asset),
+  }).then(res => {
+    if (!res.ok) throw new Error('Failed to create asset');
+    return res.json();
+  });
+
 export const listAssets = () => $<Asset[]>(`${API}/assets`);
 
 export const getAsset = (id: string) => $<Asset>(`${API}/assets/${id}`);
