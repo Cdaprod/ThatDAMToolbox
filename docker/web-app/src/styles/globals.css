@@ -5,7 +5,7 @@
 
 /* --- Custom global styles below --- */
 :root {
-  transition: background-color .3s, color .3s
+  transition: background-color .3s, color .3s;
   --bg-color: #0d1117;
   --text-color: #eee;
   --accent: #00d4ff;
