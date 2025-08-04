@@ -30,8 +30,9 @@ export function useMediaRecorder({
     if (recorderRef.current) return;     // already recording
     chunksRef.current = [];
 
-    // 1) grab a capped-fps stream
-    const stream = (videoEl as any).captureStream(frameRate);
+    // 1) grab the video element’s live stream (no NaN frameRate)
+    const stream = (videoEl as any).captureStream();
+
 
     // 2) pick a supported mime
     const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || mimeTypes[0];
