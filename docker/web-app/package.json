@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
+    "dev": "node start.js dev",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
+    "start": "NODE_ENV=production node start.js start",
     "export": "next export -o build",
     "build:export": "rm -rf build && next build && next export -o build",
     "lint": "next lint",
