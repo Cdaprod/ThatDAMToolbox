@@ -146,6 +146,9 @@ const CameraMonitor: React.FC = () => {
   const zebrasActive       = zebras;
   const falseColorActive   = falseColor;
 
+  // alias: { recording: localRec }
+  const { recording: localRec, lastBlob, start: localStart, stop: localStop } = useMediaRecorder();
+  
   // 2) wire up your “live” WS recorder
   const { status: wsStatus, start: wsStart, stop: wsStop } =
     useLiveRecorder({
