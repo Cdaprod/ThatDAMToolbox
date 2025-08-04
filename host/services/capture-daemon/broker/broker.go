@@ -5,7 +5,6 @@
 // • reconnect loop      – exponential back-off, loss-tolerant buffer.
 // • non-blocking API    – caller never waits on the network.
 // • Close() helper      – graceful shutdown for `go test` or SIGTERM.
-//
 package broker
 
 import (
@@ -140,6 +139,25 @@ func connectAndPump(ctx context.Context) error {
 	acks := ch.NotifyPublish(make(chan amqp.Confirmation, 1))
 
 	log.Printf("[broker] ✅ connected to %s (exch=%s, buf=%d)", addr, exchangeName, bufSize)
+
+	// Emit service readiness event upon successful connection
+	env := Envelope{
+		Topic:   "capture.service_up",
+		Ts:      time.Now().Unix(),
+		Payload: map[string]any{"service": "capture-daemon"},
+	}
+	body, _ := json.Marshal(env)
+	up := amqp.Publishing{
+		ContentType: "application/json",
+		Timestamp:   time.Now(),
+		Type:        env.Topic,
+		Body:        body,
+	}
+	_, _ = ch.QueueDeclare(up.Type, true, false, false, false, nil)
+	_ = ch.QueueBind(up.Type, up.Type, exchangeName, false, nil)
+	if err := ch.PublishWithContext(ctx, exchangeName, up.Type, false, false, up); err != nil {
+		log.Printf("[broker] failed to publish service_up: %v", err)
+	}
 
 	for {
 		select {
