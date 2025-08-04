@@ -15,6 +15,15 @@ const FalseColorOverlay   = dynamic(() => import('./overlays/FalseColorOverlay')
 const HistogramMonitor    = dynamic(() => import('./overlays/HistogramMonitor'),    { ssr: false });
 const WaveformMonitor     = dynamic(() => import('./overlays/WaveformMonitor'),     { ssr: false });
 
+// helper to format elapsed seconds as HH:MM:SS
+const formatDuration = (seconds: number) => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${pad(h)}:${pad(m)}:${pad(s)}`
+}
+
 // --- 1) TYPES & ENUMS ---
 type Codec = 'h264' | 'hevc';
 type Feed  = 'main' | 'aux';
@@ -125,6 +134,7 @@ const CameraMonitor: React.FC = () => {
   //const [isRecording, setIsRecording]                    = useState(false);
   // Timecode
   //const { tc: localTimecode, format: formatLocalTimecode } = useTimecode({h:1,m:23,s:45,f:18});
+  const { format } = useTimecode();
   // Overlays
   //const [focusPeakingActive, setFocusPeakingActive]   = useState(false);
   //const [zebrasActive, setZebrasActive]               = useState(false);
@@ -486,7 +496,7 @@ const CameraMonitor: React.FC = () => {
           { /* Recording indicator */ }
           {isRecording && (
             <div className="absolute top-4 right-4 bg-red-600/90 text-white px-4 py-2 rounded-full font-bold text-xs recording-blink">
-              ● REC {formatTime(recordingTime)}
+              ● REC {formatDuration(recordingTime)}
             </div>
           )}
 
