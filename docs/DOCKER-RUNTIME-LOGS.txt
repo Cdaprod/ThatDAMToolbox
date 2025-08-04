@@ -1,0 +1,321 @@
+thatdamtoolbox-video-web-app  | 
+thatdamtoolbox-video-web-app  | > thatdamtoolbox-web-app@1.0.0 dev
+thatdamtoolbox-video-web-app  | > next dev
+thatdamtoolbox-video-web-app  | 
+thatdamtoolbox-video-web-app  |    ▲ Next.js 14.0.4
+thatdamtoolbox-video-web-app  |    - Local:        http://localhost:3000
+thatdamtoolbox-video-web-app  | 
+thatdamtoolbox-video-web-app  |  ✓ Ready in 4.4s
+thatdamtoolbox-capture-daemon  | 2025/08/04 14:34:54 🔌 ThatDamToolbox capture-daemon starting…
+thatdamtoolbox-capture-daemon  | 2025/08/04 14:34:54 🌐 registry API listening on :9000
+thatdamtoolbox-capture-daemon  | 2025/08/04 14:34:54 [broker] dial tcp 172.18.0.2:5672: connect: connection refused – reconnecting in 1s
+thatdamtoolbox-capture-daemon  | 2025/08/04 14:34:55 [broker] dial tcp 172.18.0.2:5672: connect: connection refused – reconnecting in 2s
+thatdamtoolbox-capture-daemon  | 2025/08/04 14:34:57 [broker] dial tcp 172.18.0.2:5672: connect: connection refused – reconnecting in 4s
+thatdamtoolbox-capture-daemon  | 2025/08/04 14:35:01 [broker] dial tcp 172.18.0.2:5672: connect: connection refused – reconnecting in 8s
+thatdamtoolbox-capture-daemon  | 2025/08/04 14:35:09 [broker] ✅ connected to amqp://video:video@rabbitmq:5672/ (exch=events, buf=256)
+thatdamtoolbox-video-api       | [entrypoint] 🏗️  Creating required directories...
+thatdamtoolbox-video-api       | [entrypoint] 🔒 Not running as root, skipping permission fix
+thatdamtoolbox-video-api       | [entrypoint] 📁 Media directory contains files, skipping initial scan
+thatdamtoolbox-video-api       | [entrypoint] 🚀 Starting application...
+thatdamtoolbox-video-api       | [entrypoint] Running video command: serve --host 0.0.0.0 --port 8080
+thatdamtoolbox-video-api       | MediaDB.__init__: self=<video.storage.wal_proxy.WALProxyDB object at 0xffff8c798d50> db_path=/var/lib/thatdamtoolbox/db/live.sqlite3 resolved=/var/lib/thatdamtoolbox/db/live.sqlite3
+thatdamtoolbox-video-api       | INFO: Loaded module: video.modules.uploader
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'uploader' to /video/modules/uploader/module.cfg
+thatdamtoolbox-video-api       | INFO: Registered paths for uploader: {'staging': PosixPath('/var/lib/thatdamtoolbox/_INCOMING/sources/WEB_UPLOADS')}
+thatdamtoolbox-video-api       | INFO: Loaded commands for video.modules.uploader
+thatdamtoolbox-video-api       | INFO: Collected router from video.modules.uploader
+thatdamtoolbox-video-api       | INFO: Loaded module: video.modules.motion_extractor
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'motion_extractor' to /video/modules/motion_extractor/module.cfg
+thatdamtoolbox-video-api       | INFO: Registered paths for motion_extractor: {'frames': PosixPath('/data/modules/motion_extractor/frames'), 'outputs': PosixPath('/data/modules/motion_extractor/outputs')}
+thatdamtoolbox-video-api       | INFO: Loaded commands for video.modules.motion_extractor
+thatdamtoolbox-video-api       | INFO: Collected router from video.modules.motion_extractor
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'explorer' to /video/modules/explorer/module.cfg
+thatdamtoolbox-video-api       | INFO: Loaded module: video.modules.explorer
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'explorer' to /video/modules/explorer/module.cfg
+thatdamtoolbox-video-api       | INFO: Registered paths for explorer: {'cache': PosixPath('/data/modules/explorer/cache'), 'exports': PosixPath('/data/modules/explorer/exports'), 'thumbs': PosixPath('/data/modules/explorer/thumbs')}
+thatdamtoolbox-video-api       | INFO: Loaded commands for video.modules.explorer
+thatdamtoolbox-video-api       | INFO: Collected router from video.modules.explorer
+thatdamtoolbox-video-api       | INFO: Loaded module: video.modules.ffmpeg_console
+thatdamtoolbox-video-api       | INFO: Loaded commands for video.modules.ffmpeg_console
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'dam' to /video/modules/dam/module.cfg
+thatdamtoolbox-video-api       | /thatdamtoolbox/venv/lib/python3.11/site-packages/pymilvus/client/__init__.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+thatdamtoolbox-video-api       |   from pkg_resources import DistributionNotFound, get_distribution
+thatdamtoolbox-video-api       | INFO: Loading faiss.
+thatdamtoolbox-video-api       | INFO: Successfully loaded faiss.
+thatdamtoolbox-video-api       | INFO: Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+thatdamtoolbox-video-api       | WARNING: DAM services failed to initialise eagerly – will retry on demand.  [Errno 13] Permission denied: 'cache'
+thatdamtoolbox-video-api       | INFO: Loaded module: video.modules.dam
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'dam' to /video/modules/dam/module.cfg
+thatdamtoolbox-video-api       | INFO: Registered paths for dam: {'embeddings': PosixPath('/data/modules/dam/embeddings'), 'manifests': PosixPath('/data/modules/dam/manifests'), 'previews': PosixPath('/data/modules/dam/previews'), 'cache': PosixPath('/data/modules/dam/cache')}
+thatdamtoolbox-video-api       | INFO: Loaded commands for video.modules.dam
+thatdamtoolbox-video-api       | INFO: Collected router from video.modules.dam
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'hwcapture' to /video/modules/hwcapture/module.cfg
+thatdamtoolbox-video-api       | INFO: Loaded module: video.modules.hwcapture
+thatdamtoolbox-video-api       | INFO: Wrote module config for 'hwcapture' to /video/modules/hwcapture/module.cfg
+thatdamtoolbox-video-api       | INFO: Registered paths for hwcapture: {'streams': PosixPath('/data/modules/hwcapture/streams'), 'records': PosixPath('/data/modules/hwcapture/records')}
+thatdamtoolbox-video-api       | INFO: Loaded commands for video.modules.hwcapture
+thatdamtoolbox-video-api       | INFO: Loaded module: video.modules.trim_idle
+thatdamtoolbox-video-api       | INFO: Loaded commands for video.modules.trim_idle
+thatdamtoolbox-video-api       | INFO: Collected router from video.modules.trim_idle
+thatdamtoolbox-video-api       | WARNING: Backend auto not available, using in-memory storage
+thatdamtoolbox-video-api       | INFO: Using in-memory vector storage
+thatdamtoolbox-video-api       | INFO: Vector storage initialized with backend: auto
+thatdamtoolbox-video-api       | INFO: Vector backend 'auto' ready
+thatdamtoolbox-video-api       | INFO: ✅ MediaDB.add_video patched
+thatdamtoolbox-video-api       | INFO: ✅ HWAccelRecorder.stop_recording patched
+thatdamtoolbox-video-api       | INFO: 📚  Available endpoints:
+thatdamtoolbox-video-api       | INFO:   POST    /api/v1/upload/
+thatdamtoolbox-video-api       | INFO:   POST    /backup
+thatdamtoolbox-video-api       | INFO:   GET     /batches
+thatdamtoolbox-video-api       | INFO:   POST    /batches
+thatdamtoolbox-video-api       | INFO:   GET     /batches/{batch_id}/cards
+thatdamtoolbox-video-api       | INFO:   GET     /batches/{batch_name}
+thatdamtoolbox-video-api       | INFO:   DELETE  /batches/{batch_name}
+thatdamtoolbox-video-api       | INFO:   POST    /cli
+thatdamtoolbox-video-api       | INFO:   GET     /dam/health
+thatdamtoolbox-video-api       | INFO:   POST    /dam/search
+thatdamtoolbox-video-api       | INFO:   GET     /dam/search/similar/{video_uuid}
+thatdamtoolbox-video-api       | INFO:   POST    /dam/system/reindex
+thatdamtoolbox-video-api       | INFO:   GET     /dam/system/stats
+thatdamtoolbox-video-api       | INFO:   GET     /dam/videos
+thatdamtoolbox-video-api       | INFO:   POST    /dam/videos/batch-ingest
+thatdamtoolbox-video-api       | INFO:   POST    /dam/videos/ingest
+thatdamtoolbox-video-api       | INFO:   GET     /dam/videos/{video_uuid}
+thatdamtoolbox-video-api       | INFO:   DELETE  /dam/videos/{video_uuid}
+thatdamtoolbox-video-api       | INFO:   GET     /explorer/
+thatdamtoolbox-video-api       | INFO:   GET     /explorer/assets
+thatdamtoolbox-video-api       | INFO:   GET     /explorer/batch/{batch_id}
+thatdamtoolbox-video-api       | INFO:   GET     /explorer/folders
+thatdamtoolbox-video-api       | INFO:   PATCH   /explorer/{sha1}
+thatdamtoolbox-video-api       | INFO:   GET     /health
+thatdamtoolbox-video-api       | INFO:   GET     /jobs/{job_id}
+thatdamtoolbox-video-api       | INFO:   GET     /media/{sha1}
+thatdamtoolbox-video-api       | INFO:   GET     /modules/dam/cache/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/dam/embeddings/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/dam/manifests/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/dam/previews/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/explorer/cache/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/explorer/exports/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/explorer/thumbs/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/hwcapture/records/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/hwcapture/streams/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/motion_extractor/frames/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/motion_extractor/outputs/list
+thatdamtoolbox-video-api       | INFO:   GET     /modules/uploader/staging/list
+thatdamtoolbox-video-api       | INFO:   POST    /motion/extract
+thatdamtoolbox-video-api       | INFO:   GET     /paths
+thatdamtoolbox-video-api       | INFO:   POST    /paths
+thatdamtoolbox-video-api       | INFO:   DELETE  /paths/{name}
+thatdamtoolbox-video-api       | INFO:   GET     /recent
+thatdamtoolbox-video-api       | INFO:   POST    /scan
+thatdamtoolbox-video-api       | INFO:   POST    /search
+thatdamtoolbox-video-api       | INFO:   GET     /stats
+thatdamtoolbox-video-api       | INFO:   POST    /sync_album
+thatdamtoolbox-video-api       | INFO:   POST    /trim_idle/
+thatdamtoolbox-video-api       | INFO:   GET     /ws/status
+thatdamtoolbox-video-api       | INFO:   POST    /ws/webrtc
+thatdamtoolbox-video-api       | INFO:     Started server process [7]
+thatdamtoolbox-video-api       | INFO:     Waiting for application startup.
+thatdamtoolbox-video-api       | INFO:     Application startup complete.
+thatdamtoolbox-video-api       | INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.340330+00:00 [info] <0.230.0> Feature flags: list of feature flags found:
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.355349+00:00 [info] <0.230.0> Feature flags:   [x] implicit_default_bindings
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.355532+00:00 [info] <0.230.0> Feature flags:   [x] maintenance_mode_status
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.355647+00:00 [info] <0.230.0> Feature flags:   [x] quorum_queue
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.355731+00:00 [info] <0.230.0> Feature flags:   [x] stream_queue
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.355820+00:00 [info] <0.230.0> Feature flags:   [x] user_limits
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.355930+00:00 [info] <0.230.0> Feature flags:   [x] virtual_host_metadata
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.356028+00:00 [info] <0.230.0> Feature flags: feature flag states written to disk: yes
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.693671+00:00 [notice] <0.44.0> Application syslog exited with reason: stopped
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:34:57.693882+00:00 [notice] <0.230.0> Logging: switching to configured handler(s); following messages may not be visible in this log output
+thatdamtoolbox-rabbitmq        | [38;5;87m2025-08-04 14:34:57.712532+00:00 [notice] <0.230.0> Logging: configured log handlers are now ACTIVE[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.615671+00:00 [info] <0.230.0> ra: starting system quorum_queues[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.615936+00:00 [info] <0.230.0> starting Ra system: quorum_queues in directory: /var/lib/rabbitmq/mnesia/rabbit@rabbitmq/quorum/rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.617509+00:00 [info] <0.301.0> ra system 'quorum_queues' running pre init for 0 registered servers[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.619309+00:00 [info] <0.304.0> ra: meta data store initialised for system quorum_queues. 0 record(s) recovered[0m
+thatdamtoolbox-rabbitmq        | [38;5;87m2025-08-04 14:35:00.619695+00:00 [notice] <0.316.0> WAL: ra_log_wal init, open tbls: ra_log_open_mem_tables, closed tbls: ra_log_closed_mem_tables[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.625057+00:00 [info] <0.230.0> ra: starting system coordination[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.625177+00:00 [info] <0.230.0> starting Ra system: coordination in directory: /var/lib/rabbitmq/mnesia/rabbit@rabbitmq/coordination/rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.627321+00:00 [info] <0.345.0> ra system 'coordination' running pre init for 0 registered servers[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.629084+00:00 [info] <0.346.0> ra: meta data store initialised for system coordination. 0 record(s) recovered[0m
+thatdamtoolbox-rabbitmq        | [38;5;87m2025-08-04 14:35:00.629414+00:00 [notice] <0.356.0> WAL: ra_coordination_log_wal init, open tbls: ra_coordination_log_open_mem_tables, closed tbls: ra_coordination_log_closed_mem_tables[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.635144+00:00 [info] <0.230.0> [0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.635144+00:00 [info] <0.230.0>  Starting RabbitMQ 3.9.29 on Erlang 25.3.2.9 [jit][0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.635144+00:00 [info] <0.230.0>  Copyright (c) 2007-2023 VMware, Inc. or its affiliates.[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.635144+00:00 [info] <0.230.0>  Licensed under the MPL 2.0. Website: https://rabbitmq.com[0m
+thatdamtoolbox-rabbitmq        | [38;5;160m2025-08-04 14:35:00.635396+00:00 [error] <0.230.0> This release series has reached end of life and is no longer supported. Please visit https://rabbitmq.com/versions.html to learn more and upgrade[0m
+thatdamtoolbox-rabbitmq        | 
+thatdamtoolbox-rabbitmq        |   ##  ##      RabbitMQ 3.9.29
+thatdamtoolbox-rabbitmq        |   ##  ##
+thatdamtoolbox-rabbitmq        |   ##########  Copyright (c) 2007-2023 VMware, Inc. or its affiliates.
+thatdamtoolbox-rabbitmq        |   ######  ##
+thatdamtoolbox-rabbitmq        |   ##########  Licensed under the MPL 2.0. Website: https://rabbitmq.com
+thatdamtoolbox-rabbitmq        | 
+thatdamtoolbox-rabbitmq        |   Erlang:      25.3.2.9 [jit]
+thatdamtoolbox-rabbitmq        |   TLS Library: OpenSSL - OpenSSL 3.1.5 30 Jan 2024
+thatdamtoolbox-rabbitmq        |   Release series support status: out of support
+thatdamtoolbox-rabbitmq        | 
+thatdamtoolbox-rabbitmq        |   Doc guides:  https://rabbitmq.com/documentation.html
+thatdamtoolbox-rabbitmq        |   Support:     https://rabbitmq.com/contact.html
+thatdamtoolbox-rabbitmq        |   Tutorials:   https://rabbitmq.com/getstarted.html
+thatdamtoolbox-rabbitmq        |   Monitoring:  https://rabbitmq.com/monitoring.html
+thatdamtoolbox-rabbitmq        | 
+thatdamtoolbox-rabbitmq        |   Logs: /var/log/rabbitmq/rabbit@%n.log
+thatdamtoolbox-rabbitmq        |         /var/log/rabbitmq/rabbit@rabbitmq_upgrade.log
+thatdamtoolbox-rabbitmq        |         <stdout>
+thatdamtoolbox-rabbitmq        | 
+thatdamtoolbox-rabbitmq        |   Config file(s): /etc/rabbitmq/rabbitmq.conf
+thatdamtoolbox-rabbitmq        |                   /etc/rabbitmq/conf.d/10-defaults.conf
+thatdamtoolbox-rabbitmq        | 
+thatdamtoolbox-rabbitmq        |   Starting broker...2025-08-04 14:35:00.639542+00:00 [info] <0.230.0> [0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>  node           : rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>  home dir       : /var/lib/rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>  config file(s) : /etc/rabbitmq/rabbitmq.conf[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>                 : /etc/rabbitmq/conf.d/10-defaults.conf[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>  cookie hash    : H1/AVNF0HMx8cCACjZnlbw==[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>  log(s)         : /var/log/rabbitmq/rabbit@%n.log[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>                 : /var/log/rabbitmq/rabbit@rabbitmq_upgrade.log[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>                 : <stdout>[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:00.639542+00:00 [info] <0.230.0>  database dir   : /var/lib/rabbitmq/mnesia/rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.179089+00:00 [info] <0.230.0> Feature flags: list of feature flags found:[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.179260+00:00 [info] <0.230.0> Feature flags:   [x] drop_unroutable_metric[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.179426+00:00 [info] <0.230.0> Feature flags:   [x] empty_basic_get_metric[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.179740+00:00 [info] <0.230.0> Feature flags:   [x] implicit_default_bindings[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.179964+00:00 [info] <0.230.0> Feature flags:   [x] maintenance_mode_status[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.180163+00:00 [info] <0.230.0> Feature flags:   [x] quorum_queue[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.180257+00:00 [info] <0.230.0> Feature flags:   [x] stream_queue[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.180330+00:00 [info] <0.230.0> Feature flags:   [x] user_limits[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.180439+00:00 [info] <0.230.0> Feature flags:   [x] virtual_host_metadata[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.180557+00:00 [info] <0.230.0> Feature flags: feature flag states written to disk: yes[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.652445+00:00 [info] <0.230.0> Running boot step pre_boot defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.652590+00:00 [info] <0.230.0> Running boot step rabbit_global_counters defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.653067+00:00 [info] <0.230.0> Running boot step rabbit_osiris_metrics defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.653264+00:00 [info] <0.230.0> Running boot step rabbit_core_metrics defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.654543+00:00 [info] <0.230.0> Running boot step rabbit_alarm defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.660273+00:00 [info] <0.380.0> Memory high watermark set to 3175 MiB (3329232076 bytes) of 7937 MiB (8323080192 bytes) total[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.664935+00:00 [info] <0.382.0> Enabling free disk space monitoring[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.665085+00:00 [info] <0.382.0> Disk free limit set to 50MB[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.668837+00:00 [info] <0.230.0> Running boot step code_server_cache defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.669078+00:00 [info] <0.230.0> Running boot step file_handle_cache defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.669510+00:00 [info] <0.385.0> Limiting to approx 1048479 file handles (943629 sockets)[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.669782+00:00 [info] <0.386.0> FHC read buffering: OFF[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.669907+00:00 [info] <0.386.0> FHC write buffering: ON[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.671715+00:00 [info] <0.230.0> Running boot step worker_pool defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.671997+00:00 [info] <0.367.0> Will use 4 processes for default worker pool[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.672472+00:00 [info] <0.367.0> Starting worker pool 'worker_pool' with 4 processes in it[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.673195+00:00 [info] <0.230.0> Running boot step database defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.677042+00:00 [info] <0.230.0> Waiting for Mnesia tables for 30000 ms, 9 retries left[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.681724+00:00 [info] <0.230.0> Successfully synced tables from a peer[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.682018+00:00 [info] <0.230.0> Waiting for Mnesia tables for 30000 ms, 9 retries left[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.685608+00:00 [info] <0.230.0> Successfully synced tables from a peer[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.703250+00:00 [info] <0.230.0> Waiting for Mnesia tables for 30000 ms, 9 retries left[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.703496+00:00 [info] <0.230.0> Successfully synced tables from a peer[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.703635+00:00 [info] <0.230.0> Peer discovery backend rabbit_peer_discovery_classic_config does not support registration, skipping registration.[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.703809+00:00 [info] <0.230.0> Running boot step database_sync defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.703981+00:00 [info] <0.230.0> Running boot step feature_flags defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.704408+00:00 [info] <0.230.0> Running boot step codec_correctness_check defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.704566+00:00 [info] <0.230.0> Running boot step external_infrastructure defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.704813+00:00 [info] <0.230.0> Running boot step rabbit_event defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.705462+00:00 [info] <0.230.0> Running boot step rabbit_registry defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.707065+00:00 [info] <0.230.0> Running boot step rabbit_auth_mechanism_amqplain defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.707450+00:00 [info] <0.230.0> Running boot step rabbit_auth_mechanism_cr_demo defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.707843+00:00 [info] <0.230.0> Running boot step rabbit_auth_mechanism_plain defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.708059+00:00 [info] <0.230.0> Running boot step rabbit_exchange_type_direct defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.708424+00:00 [info] <0.230.0> Running boot step rabbit_exchange_type_fanout defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.708780+00:00 [info] <0.230.0> Running boot step rabbit_exchange_type_headers defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.709138+00:00 [info] <0.230.0> Running boot step rabbit_exchange_type_topic defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.709279+00:00 [info] <0.230.0> Running boot step rabbit_mirror_queue_mode_all defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.709527+00:00 [info] <0.230.0> Running boot step rabbit_mirror_queue_mode_exactly defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.709733+00:00 [info] <0.230.0> Running boot step rabbit_mirror_queue_mode_nodes defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.709996+00:00 [info] <0.230.0> Running boot step rabbit_priority_queue defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.710295+00:00 [info] <0.230.0> Priority queues enabled, real BQ is rabbit_variable_queue[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.711886+00:00 [info] <0.230.0> Running boot step rabbit_queue_location_client_local defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.712114+00:00 [info] <0.230.0> Running boot step rabbit_queue_location_min_masters defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.712429+00:00 [info] <0.230.0> Running boot step rabbit_queue_location_random defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.712687+00:00 [info] <0.230.0> Running boot step kernel_ready defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.712758+00:00 [info] <0.230.0> Running boot step rabbit_sysmon_minder defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.715929+00:00 [info] <0.230.0> Running boot step rabbit_epmd_monitor defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.717115+00:00 [info] <0.408.0> epmd monitor knows us, inter-node communication (distribution) port: 25672[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.717398+00:00 [info] <0.230.0> Running boot step guid_generator defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.722730+00:00 [info] <0.230.0> Running boot step rabbit_node_monitor defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.723405+00:00 [info] <0.412.0> Starting rabbit_node_monitor[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.723747+00:00 [info] <0.230.0> Running boot step delegate_sup defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.725268+00:00 [info] <0.230.0> Running boot step rabbit_memory_monitor defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.725844+00:00 [info] <0.230.0> Running boot step core_initialized defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.725961+00:00 [info] <0.230.0> Running boot step upgrade_queues defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.735161+00:00 [info] <0.230.0> Running boot step channel_tracking defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.735709+00:00 [info] <0.230.0> Setting up a table for channel tracking on this node: tracked_channel_on_node_rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.736279+00:00 [info] <0.230.0> Setting up a table for channel tracking on this node: tracked_channel_table_per_user_on_node_rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.737108+00:00 [info] <0.230.0> Running boot step rabbit_channel_tracking_handler defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.737374+00:00 [info] <0.230.0> Running boot step connection_tracking defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.737820+00:00 [info] <0.230.0> Setting up a table for connection tracking on this node: tracked_connection_on_node_rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.738172+00:00 [info] <0.230.0> Setting up a table for per-vhost connection counting on this node: tracked_connection_per_vhost_on_node_rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.738560+00:00 [info] <0.230.0> Setting up a table for per-user connection counting on this node: tracked_connection_table_per_user_on_node_rabbit@rabbitmq[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.739122+00:00 [info] <0.230.0> Running boot step rabbit_connection_tracking_handler defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.739317+00:00 [info] <0.230.0> Running boot step rabbit_exchange_parameters defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.739577+00:00 [info] <0.230.0> Running boot step rabbit_mirror_queue_misc defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.739876+00:00 [info] <0.230.0> Running boot step rabbit_policies defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.740732+00:00 [info] <0.230.0> Running boot step rabbit_policy defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.740952+00:00 [info] <0.230.0> Running boot step rabbit_queue_location_validator defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.741288+00:00 [info] <0.230.0> Running boot step rabbit_quorum_memory_manager defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.742124+00:00 [info] <0.230.0> Running boot step rabbit_stream_coordinator defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.742517+00:00 [info] <0.230.0> Running boot step rabbit_vhost_limit defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.742721+00:00 [info] <0.230.0> Running boot step rabbit_mgmt_reset_handler defined by app rabbitmq_management[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.742854+00:00 [info] <0.230.0> Running boot step rabbit_mgmt_db_handler defined by app rabbitmq_management_agent[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.742938+00:00 [info] <0.230.0> Management plugin: using rates mode 'basic'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.743436+00:00 [info] <0.230.0> Running boot step recovery defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.745510+00:00 [info] <0.450.0> Making sure data directory '/var/lib/rabbitmq/mnesia/rabbit@rabbitmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L' for vhost '/' exists[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.751225+00:00 [info] <0.450.0> Starting message stores for vhost '/'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.751568+00:00 [info] <0.454.0> Message store "628WB79CIFDYO9LJI6DKMI09L/msg_store_transient": using rabbit_msg_store_ets_index to provide index[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.754382+00:00 [info] <0.450.0> Started message store of type transient for vhost '/'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.755264+00:00 [info] <0.458.0> Message store "628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent": using rabbit_msg_store_ets_index to provide index[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.758371+00:00 [info] <0.450.0> Started message store of type persistent for vhost '/'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.770376+00:00 [info] <0.450.0> Recovering 6 queues of type rabbit_classic_queue took 23ms[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.770568+00:00 [info] <0.450.0> Recovering 0 queues of type rabbit_quorum_queue took 0ms[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.770775+00:00 [info] <0.450.0> Recovering 0 queues of type rabbit_stream_queue took 0ms[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.782973+00:00 [info] <0.230.0> Running boot step empty_db_check defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.783137+00:00 [info] <0.230.0> Will not seed default virtual host and user: have definitions to load...[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.783348+00:00 [info] <0.230.0> Running boot step rabbit_looking_glass defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.783541+00:00 [info] <0.230.0> Running boot step rabbit_core_metrics_gc defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.783896+00:00 [info] <0.230.0> Running boot step background_gc defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.784126+00:00 [info] <0.230.0> Running boot step routing_ready defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.784325+00:00 [info] <0.230.0> Running boot step pre_flight defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.784467+00:00 [info] <0.230.0> Running boot step notify_cluster defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.784646+00:00 [info] <0.230.0> Running boot step networking defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.784941+00:00 [info] <0.230.0> Running boot step definition_import_worker_pool defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.785337+00:00 [info] <0.367.0> Starting worker pool 'definition_import_pool' with 4 processes in it[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.785771+00:00 [info] <0.230.0> Running boot step cluster_name defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.785907+00:00 [info] <0.230.0> Running boot step direct_client defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.786091+00:00 [info] <0.230.0> Running boot step rabbit_maintenance_mode_state defined by app rabbit[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.786223+00:00 [info] <0.230.0> Creating table rabbit_node_maintenance_states for feature flag `maintenance_mode_status`[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.786573+00:00 [info] <0.230.0> Running boot step rabbit_management_load_definitions defined by app rabbitmq_management[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.787152+00:00 [info] <0.519.0> Resetting node maintenance status[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.805932+00:00 [info] <0.578.0> Management plugin: HTTP (non-TLS) listener started on port 15672[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.806495+00:00 [info] <0.606.0> Statistics database started.[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.806901+00:00 [info] <0.605.0> Starting worker pool 'management_worker_pool' with 3 processes in it[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.821543+00:00 [info] <0.620.0> Prometheus metrics: HTTP (non-TLS) listener started on port 9419[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.822986+00:00 [info] <0.519.0> Applying definitions from file at '/etc/rabbitmq/definitions.json'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.823139+00:00 [info] <0.519.0> Asked to import definitions. Acting user: rmq-internal[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.823564+00:00 [info] <0.519.0> Importing concurrently 2 users...[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.828397+00:00 [info] <0.513.0> Successfully changed password for user 'video'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.828569+00:00 [info] <0.513.0> Successfully set user tags for user 'video' to [administrator][0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.828628+00:00 [info] <0.514.0> Successfully changed password for user 'frontend'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.829297+00:00 [info] <0.514.0> Successfully set user tags for user 'frontend' to [administrator][0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.829583+00:00 [info] <0.519.0> Importing concurrently 1 vhosts...[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.834877+00:00 [info] <0.519.0> Importing concurrently 2 permissions...[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.840886+00:00 [info] <0.513.0> Successfully set permissions for 'video' in virtual host '/' to '.*', '.*', '.*'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.843980+00:00 [info] <0.514.0> Successfully set permissions for 'frontend' in virtual host '/' to '.*', '.*', '.*'[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.844285+00:00 [info] <0.519.0> Importing concurrently 2 exchanges...[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.848932+00:00 [info] <0.519.0> Importing concurrently 5 queues...[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.921956+00:00 [info] <0.519.0> Importing concurrently 5 bindings...[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.937228+00:00 [info] <0.519.0> Ready to start client connection listeners[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.946879+00:00 [info] <0.681.0> started TCP listener on [::]:128[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:01.950134+00:00 [info] <0.699.0> started TCP listener on [::]:5672[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:02.058015+00:00 [info] <0.519.0> Server startup complete; 4 plugins started.[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:02.058015+00:00 [info] <0.519.0>  * rabbitmq_prometheus[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:02.058015+00:00 [info] <0.519.0>  * rabbitmq_management[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:02.058015+00:00 [info] <0.519.0>  * rabbitmq_web_dispatch[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:02.058015+00:00 [info] <0.519.0>  * rabbitmq_management_agent[0m
+thatdamtoolbox-rabbitmq        |  completed with 4 plugins.
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:09.350862+00:00 [info] <0.704.0> accepting AMQP connection <0.704.0> (172.18.0.3:34590 -> 172.18.0.2:5672)[0m
+thatdamtoolbox-rabbitmq        | 2025-08-04 14:35:09.353629+00:00 [info] <0.704.0> connection <0.704.0> (172.18.0.3:34590 -> 172.18.0.2:5672): user 'video' authenticated and granted access to vhost '/'[0m

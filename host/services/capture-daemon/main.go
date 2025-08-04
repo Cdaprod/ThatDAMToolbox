@@ -4,6 +4,7 @@ package main
 import (
     "context"
     "log"
+    "net/http"
     "os"
     "os/signal"
     "syscall"
@@ -13,6 +14,7 @@ import (
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
+    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/api"
     // import any scanner implementations so their init() calls Register()
     _ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner/v4l2"
 )
@@ -21,6 +23,7 @@ func main() {
     log.Println("🔌 ThatDamToolbox capture-daemon starting…")
     // ① connect to RabbitMQ
     broker.Init()
+    broker.Publish("capture.service_up", map[string]any{"ts": time.Now().Unix()})
 
     // Create a cancellable root context
     ctx, cancel := context.WithCancel(context.Background())
