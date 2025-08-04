@@ -499,7 +499,7 @@ const CameraMonitor: React.FC = () => {
 
           { /* Timecode display */ }
           <div className="absolute bottom-4 left-4 bg-black/90 px-3 py-2 rounded font-mono text-base text-green-500 font-bold">
-            {formatTimecode()}
+            {format()}
           </div>
         </div> 
 
