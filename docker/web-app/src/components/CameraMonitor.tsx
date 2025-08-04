@@ -443,7 +443,7 @@ const CameraMonitor: React.FC = () => {
           <div className="relative w-full h-full">
             {streamOK ? (
               // Live MJPEG
-              <img
+              <video
                 ref={mediaRef as React.RefObject<HTMLImageElement>}
                 src={`/api/v1/hwcapture/stream?device=${encodeURIComponent(
                   selectedDevice
