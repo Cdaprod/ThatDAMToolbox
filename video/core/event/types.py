@@ -20,6 +20,11 @@ class Topic(str, enum.Enum):
     DAM_INGESTED            = "dam.ingested"
     DAM_FAILED              = "dam.failed"
 
+    # service readiness events
+    CAPTURE_SERVICE_UP      = "capture.service_up"
+    VIDEO_API_SERVICE_UP    = "video.api.service_up"
+    WEB_SERVICE_UP          = "web.service_up"
+
     # generic life-cycle
     LIFECYCLE_STARTUP       = "lifecycle.startup"
     LIFECYCLE_SHUTDOWN      = "lifecycle.shutdown"

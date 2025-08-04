@@ -2,7 +2,7 @@
 import pkgutil, importlib, uuid, logging, json
 
 from pathlib    import Path
-from fastapi import (
+from fastapi    import (
     FastAPI,
     APIRouter,
     Depends,
@@ -10,23 +10,25 @@ from fastapi import (
     HTTPException,
     Request,
 )
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic   import BaseModel, Field
-from typing     import Optional, List, Dict, Any, Annotated
+from fastapi.responses          import FileResponse, HTMLResponse
+from fastapi.middleware.cors    import CORSMiddleware
+from pydantic                   import BaseModel, Field
+from typing                     import Optional, List, Dict, Any, Annotated
 
-from video.api import modules
-from video.cli import run_cli_from_json
-from video.web import templates, static
+from video.api              import modules
+from video.cli              import run_cli_from_json
+from video.web              import templates, static
 
-from video.helpers      import index_folder_as_batch, model_validator
-from video.core         import get_manifest as core_get_manifest
-from video.models       import Manifest, VideoArtifact, Slice, CardResponse, VideoCard, SceneThumb
-from video.storage.base import StorageEngine
-from video.bootstrap    import STORAGE
-from video              import modules
+from video.helpers          import index_folder_as_batch, model_validator
+from video.core             import get_manifest as core_get_manifest
+from video.core.event       import get_bus
+from video.core.event.types import Event, Topic
+from video.models           import Manifest, VideoArtifact, Slice, CardResponse, VideoCard, SceneThumb
+from video.storage.base     import StorageEngine
+from video.bootstrap        import STORAGE
+from video                  import modules
 
-from video.ws           import router as ws_router
+from video.ws               import router as ws_router
 
 origins = [
     "http://localhost:3000",      # your Next dev server
@@ -52,6 +54,12 @@ log = logging.getLogger("video.api")
 app.mount("/static", static, name="static")
 app.include_router(ws_router)
 app.include_router(router)
+
+@app.on_event("startup")
+async def _emit_service_up() -> None:
+    bus = get_bus()
+    if bus:
+        await bus.publish(Event(topic=Topic.VIDEO_API_SERVICE_UP))
 
 # ---------------------------------------------------------------------------
 # BaseModels
