@@ -37,10 +37,13 @@ func main() {
 
     // Create registry and start its HTTP API (optional)
     reg := registry.NewRegistry()
+    // --- API mux: serve REST endpoints (devices, etc) ---
     go func() {
-        // e.g. listen on port 9000 for /devices
-        if err := reg.ServeAPI(":9000"); err != nil {
-            log.Fatalf("registry API failed: %v", err)
+        mux := http.NewServeMux()
+        api.RegisterRoutes(mux, reg) // ← new
+        log.Printf("🌐 REST API listening on :9000")
+        if err := http.ListenAndServe(":9000", mux); err != nil {
+            log.Fatalf("REST API failed: %v", err)
         }
     }()
 
