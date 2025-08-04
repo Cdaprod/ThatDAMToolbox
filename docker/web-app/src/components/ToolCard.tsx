@@ -22,7 +22,7 @@ export default function ToolCard({
 
   const { id, title, icon: Icon, color } = tool;
 
-  // (unchanged) your sizing classes
+  // Sizing and style classes
   const sizeClasses: Record<'small'|'medium'|'large', string> = {
     small:  'p-2 sm:p-4 min-h-[100px] sm:min-h-[120px]',
     medium: 'p-3 sm:p-6 min-h-[120px] sm:min-h-[160px]',
@@ -40,34 +40,6 @@ export default function ToolCard({
   };
 
   return (
-<<<<<<< ours
-    <Link href={href} className="w-full h-full">
-      <a
-        onMouseEnter={() => onFocus?.(id)}
-        className={clsx(
-          // 1) flat white background
-          'bg-white rounded-xl shadow-sm hover:shadow-md',
-          // 2) smooth transition for shadow
-          'transition-shadow duration-150 ease-out',
-          // 3) fill its grid cell
-          'w-full h-full flex flex-col items-center justify-center',
-          // 4) responsive padding & height
-          sizeClasses[size],
-          // 5) if it's in the "related" section, give it a light ring
-          isRelated && 'ring-2 ring-indigo-100',
-        )}
-      >
-        {/* Icon with your per-tool color as its text color */}
-        <Icon
-          className={clsx(iconClasses[size], color, 'flex-shrink-0')}
-          aria-hidden="true"
-        />
-        {/* Title in dark gray */}
-        <span className={clsx(titleClasses[size], 'text-gray-900')}>
-          {title}
-        </span>
-      </a>
-=======
     <Link
       href={href}
       onMouseEnter={() => onFocus?.(id)}
@@ -83,8 +55,9 @@ export default function ToolCard({
         className={clsx(iconClasses[size], color, 'flex-shrink-0')}
         aria-hidden="true"
       />
-      <span className={clsx(titleClasses[size], 'text-gray-900')}>{title}</span>
->>>>>>> theirs
+      <span className={clsx(titleClasses[size], 'text-gray-900')}>
+        {title}
+      </span>
     </Link>
   );
 }

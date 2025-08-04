@@ -145,7 +145,6 @@ const CameraMonitor: React.FC = () => {
   const focusPeakingActive = focusPeaking;
   const zebrasActive       = zebras;
   const falseColorActive   = falseColor;
-  const isRecording        = wsStatus === 'recording' || localRec;
 
   // 2) wire up your “live” WS recorder
   const { status: wsStatus, start: wsStart, stop: wsStop } =
@@ -154,10 +153,9 @@ const CameraMonitor: React.FC = () => {
       codec:        selectedCodec,
       getTimecode:  () => timecode,
     });
-
-  // 3) client-side fallback recorder (MediaRecorder → upload)
-  const { recording: localRec, lastBlob, start: localStart, stop: localStop } =
-    useMediaRecorder();
+  
+  
+  const isRecording = wsStatus === 'recording' || localRec;
 
   // 4) toggle between live vs fallback
   const handleRecordToggle = useCallback(() => {
