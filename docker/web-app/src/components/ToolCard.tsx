@@ -40,6 +40,7 @@ export default function ToolCard({
   };
 
   return (
+<<<<<<< ours
     <Link href={href} className="w-full h-full">
       <a
         onMouseEnter={() => onFocus?.(id)}
@@ -66,6 +67,24 @@ export default function ToolCard({
           {title}
         </span>
       </a>
+=======
+    <Link
+      href={href}
+      onMouseEnter={() => onFocus?.(id)}
+      className={clsx(
+        'w-full h-full bg-white rounded-xl shadow-sm hover:shadow-md',
+        'transition-shadow duration-150 ease-out',
+        'flex flex-col items-center justify-center',
+        sizeClasses[size],
+        isRelated && 'ring-2 ring-theme-accent'
+      )}
+    >
+      <Icon
+        className={clsx(iconClasses[size], color, 'flex-shrink-0')}
+        aria-hidden="true"
+      />
+      <span className={clsx(titleClasses[size], 'text-gray-900')}>{title}</span>
+>>>>>>> theirs
     </Link>
   );
 }

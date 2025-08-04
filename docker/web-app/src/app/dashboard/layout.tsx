@@ -10,7 +10,7 @@ export default function DashboardLayout({
     <div className="flex min-h-screen flex-col">
 
       <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-auto p-6 transition-colors duration-200 bg-theme-background text-theme-primary">
+        <main className="flex-1 overflow-auto p-6 transition-colors duration-200">
           {children}
         </main>
       </div>

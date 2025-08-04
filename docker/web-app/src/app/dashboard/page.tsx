@@ -25,9 +25,9 @@ export default function DashboardMain() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       {/* ────── live stats card ────── */}
-      <section className="rounded-lg bg-white shadow p-6 border border-gray-200">
+      <section className="bg-white rounded-xl shadow-sm p-6">
         <h2 className="font-bold text-lg mb-2">📊 Library Stats</h2>
         {err && <p className="text-red-600 text-sm">{err}</p>}
 
@@ -62,7 +62,7 @@ export default function DashboardMain() {
       </section>
 
       {/* ────── existing tool grid ────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {dashboardTools.map(({ href }) => (
           <ToolCard key={href} href={href} />
         ))}
