@@ -1,4 +1,5 @@
-import amqplib from 'amqplib';
+/docker/web-app/src/lib/serviceUp.js
+const amqplib = require('amqplib');
 
 export async function publishServiceUp(): Promise<void> {
   const url = process.env.EVENT_BROKER_URL || process.env.AMQP_URL || 'amqp://guest:guest@localhost:5672/';
