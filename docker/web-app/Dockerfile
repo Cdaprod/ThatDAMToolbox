@@ -80,8 +80,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 # copy build artefacts + runtime deps
 COPY --from=builder /app/src/public   ./public
 COPY --from=builder /app/src/.next    ./.next
-COPY --from=builder /app/src/start.js            ./start.js
-COPY --from=builder /app/src/lib/serviceUp.js
+COPY --from=builder /app/src/start.js ./start.js
+COPY --from=builder /app/src/lib/serviceUp.ts
 COPY --from=deps    /app/node_modules ./node_modules
 
 USER nextjs:nodejs
