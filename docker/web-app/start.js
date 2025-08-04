@@ -1,5 +1,5 @@
 const { spawn } = require('child_process');
-const { publishServiceUp } = require('./src/lib/serviceUp.js');
+const { publishServiceUp } = require('./src/lib/serviceUp.ts');
 
 const mode = process.argv[2] === 'start' ? 'start' : 'dev';
 const child = mode === 'start'
