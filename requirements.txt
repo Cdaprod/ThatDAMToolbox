@@ -36,12 +36,12 @@ weaviate-client>=4.5.4           # remote / embedded Weaviate
 pymilvus>=2.4.4                  # Milvus / Zilliz cloud
 faiss-cpu>=1.7.4.post0           # local ANN index (CPU build)
 # faiss-gpu>=1.7.4.post0         # uncomment if you have CUDA
+aio-pika~=9.5.5
 
 # ────────────────────────────────────────────────────────────────
 #  Anything else specific to your modules goes below
 # ────────────────────────────────────────────────────────────────
 marshmallow<4.0
-
 
 # ────────────────────────────────────────────────────────────────
 #  webrtc & websocket requirements
