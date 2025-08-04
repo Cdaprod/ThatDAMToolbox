@@ -268,6 +268,16 @@ services:
     restart: "no"
     depends_on:
       - video-api
+      
+########################################################################
+# (Optional) hotspot-installer secrets
+########################################################################
+secrets:
+  dam_ephemeral_token:
+    external: false
+    # Dummy content when not actually needed
+    environment: "DUMMY_TOKEN"
+ 
 
 ########################################################################
 # container mounted volumes
@@ -275,4 +285,4 @@ services:
 volumes:
   db_wal:
     driver: local
-  rabbitmq_data:
+  rabbitmq_data: 
