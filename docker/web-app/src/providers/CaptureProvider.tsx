@@ -1,4 +1,3 @@
-// src/providers/CaptureProvider.tsx
 'use client';
 
 import React, { ReactNode, useState, useEffect } from 'react';
@@ -24,9 +23,8 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
     fps:    30,
   });
 
-  // 4) Timecode (hh:mm:ss:ff)
-  const { format } = useTimecode({ h: 0, m: 0, s: 0, f: 0 });
-  const timecode   = format();
+  // 4) Timecode: get the *state* and formatter
+  const { tc, formatTimecode } = useTimecode();
 
   // 5) Overlays
   const [overlays, setOverlays] = useState({
@@ -93,12 +91,13 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
         stop,
 
         selectedDevice,
-        setSelectedDevice,    // <<=== ADDED
+        setSelectedDevice,
         selectedCodec,
-        setSelectedCodec,     // <<=== ADDED
+        setSelectedCodec,
         deviceInfo,
 
-        timecode,
+        tc,                // expose raw timecode state object (hh:mm:ss:ff)
+        formatTimecode,    // expose formatter (function: () => string)
         overlays,
         histogramData,
         recordingTime,
