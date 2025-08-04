@@ -77,12 +77,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 --ingroup nodejs nextjs
 
-# copy build artefacts + runtime deps
-COPY --from=builder /app/src/public           ./public
-COPY --from=builder /app/src/.next            ./.next
-COPY --from=builder /app/src/start.js         ./start.js
-COPY --from=builder /app/src/lib/serviceUp.ts ./src/lib/serviceUp.ts
-COPY --from=deps    /app/node_modules         ./node_modules
+# copy your standalone next server (or build) + start.js entrypoint
+COPY --from=builder /app/src/.next       ./.next
+COPY --from=builder /app/src/start.js    ./start.js
+
+# make sure the folder exists, then copy serviceUp.js
+RUN mkdir -p ./src/lib
+COPY --from=builder /app/src/lib/serviceUp.js ./src/lib/serviceUp.js
+
+# copy node_modules, public, etc
+COPY --from=deps    /app/node_modules  ./node_modules
+COPY --from=builder /app/src/public    ./public
 
 USER nextjs:nodejs
 EXPOSE 3000
