@@ -24,7 +24,8 @@ func main() {
     // ① connect to RabbitMQ
     broker.Init()
     broker.Publish("capture.service_up", map[string]any{"ts": time.Now().Unix()})
-
+    broker.PublishSchemas()
+    
     // Create a cancellable root context
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
