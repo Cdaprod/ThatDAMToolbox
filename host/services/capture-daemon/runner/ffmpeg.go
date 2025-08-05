@@ -1,3 +1,4 @@
+// host/services/capture-daemon/runner/ffmpeg.go
 package runner
 
 import (
@@ -13,11 +14,33 @@ import (
     "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 )
 
-// … your Config & DefaultConfig unchanged …
+// Config holds the parameters for a single device capture loop.
+type Config struct {
+    Device     string        // e.g. "/dev/video0"
+    Codec      string        // e.g. "h264"
+    Resolution string        // e.g. "1920x1080"
+    FPS        int           // e.g. 30
+    OutDir     string        // e.g. "/var/media/records"
+    FFmpegPath string        // e.g. "ffmpeg"
+    RetryDelay time.Duration // e.g. 3 * time.Second
+}
+
+// DefaultConfig returns a reasonable default Config for the given device.
+func DefaultConfig(device string) Config {
+    return Config{
+        Device:     device,
+        Codec:      "h264",
+        Resolution: "1920x1080",
+        FPS:        30,
+        OutDir:     ResolveOutDir(),
+        FFmpegPath: "ffmpeg",
+        RetryDelay: 3 * time.Second,
+    }
+}
 
 func RunCaptureLoop(ctx context.Context, cfg Config) error {
-    // feature flags:
-    enableMP4 := strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "false")
+    // feature flags coming from our Docker/env settings
+    enableMP4 := strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "true")
     enableHLS := strings.EqualFold(os.Getenv("ENABLE_HLS_PREVIEW"), "true")
 
     // if neither output is enabled, nothing to do
@@ -135,7 +158,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
             }
         }
 
-        // publish "stopped" for MP4 (even if MP4 was disabled, you could still signal end-of-segment)
+        // publish "stopped"
         broker.Publish("capture.recording_stopped", map[string]any{
             "device":    cfg.Device,
             "file":      outFile,
