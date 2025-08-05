@@ -1,12 +1,56 @@
 # AGENTS.md -- ThatDAMToolbox Engineering Guide
 
+### Repository URL: [Cdaprod/ThatDAMToolbox](github.com/Cdaprod/ThatDAMToolbox)
+
 Welcome, Codex Agent (and human reviewers)!  
 You are contributing to **ThatDAMToolbox**: a modular, containerized, open-source digital asset management system for live video, edge cameras, and ML workflows.
 
 ## 🏗️ Project Structure
-- **Monorepo** with Go (services, daemons, API-gateways), Python (video modules), TypeScript/Next.js (frontend), and Docker Compose for orchestration.
-- **Service folders**: Each service is self-contained and Dockerized.  
-  Key folders: `capture-daemon/`, `api-gateway/`, `camera-proxy/`, `video-api/`, `web-app/`, `shared/`.
+
+- **data/**  
+  Caches, databases, incoming media, logs, and per-module storage (DAM, explorer, hwcapture, motion_extractor, uploader).
+
+- **docker/**  
+  Dockerfiles and Compose configs for all services and components (capture-daemon, web-app, camera-agent, nginx, RabbitMQ, hotspot-installer, displays, weaviate, etc.).
+
+- **host/**  
+  Go-based system services and middleware (api-gateway, camera-proxy, capture-daemon, proxy, schema-registry, shared libraries).
+
+- **video/**  
+  Python CLI, server and module code for video ingest, processing, proxying, and ML workflows.
+
+- **video/web/**  
+  Legacy static assets and Jinja templates for dashboard and camera monitor.
+
+- **public/**  
+  Build-time web resources (favicons, SVGs, dot graphs).
+
+- **docs/**  
+  Architecture, deployment, events, device requirements, and agent guidelines.
+
+- **scripts/**  
+  Utility scripts for builds, event watching, database sync, camera setup, systemd services.
+
+- **tests/**  
+  Integration and unit tests (Go, Python, CLI, API client, end-to-end).
+
+- **docker-compose.yaml**, **entrypoint.sh**, **Makefile**, **setup.py**, **requirements.txt**, **README.md**, **run_video.py**, **TUI & CLI entrypoints**  
+  Root-level orchestration, tooling and documentation.
+  
+### capture-daemon
+- Continuously discovers and manages camera devices  
+- Streams live video (HLS) and/or records to files  
+- Emits events (device lifecycle, recording start/stop) to a messaging system  
+
+### web-app
+- Digital asset explorer for browsing recorded clips and media  
+- Live camera monitor with integrated recorder controls  
+- Unified dashboard for device health, streams and playback  
+
+### video-api
+- Backend service for ingesting and indexing video files and metadata  
+- Generates thumbnails, time-based previews and playback URLs  
+- Exposes REST endpoints for search, retrieval and integration  
 
 ## 🧪 Testing & Linting
 
