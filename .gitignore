@@ -152,3 +152,7 @@ go.sum
 
 !/docker/weaviate/schema.json
 
+
+# ---- Node ----
+**/node_modules/
+

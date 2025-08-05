@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  Search,
   Grid,
   List,
   Upload,
@@ -21,6 +20,10 @@ import {
   Check,
   Pencil,
 } from 'lucide-react'
+import SearchBarExtension, {
+  SearchResult,
+  SearchFilters,
+} from '@/components/SearchBarExtension'
 import { useAssets } from '@/providers/AssetProvider'
 import { updateAsset, Asset as ApiAsset, FolderNode } from '@/lib/apiAssets'
 
@@ -250,21 +253,16 @@ const StatusBar: React.FC<{
 
 // Main Component: AssetExplorer
 const AssetExplorer: React.FC = () => {
-  const { view, folders, move, remove, refresh, setFilters } = useAssets()
+  const { view, folders, move, remove, refresh, setFilters, filters } = useAssets()
   const assets = view
   const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set())
   const [currentPath, setCurrentPath] = useState<string>('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [searchQuery, setSearchQuery] = useState<string>('')
   const [filterTags, setFilterTags] = useState<string[]>([])
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const [undoStack, setUndoStack] = useState<UndoOperation[]>([])
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
-
-  useEffect(() => {
-    setFilters({ text: searchQuery })
-  }, [searchQuery, setFilters])
 
   useEffect(() => {
     setFilters({ tags: filterTags })
@@ -369,25 +367,82 @@ const AssetExplorer: React.FC = () => {
     showStatus(`Previewing ${asset.name}`, 'info')
   }
 
+  const handleSearch = async (
+    query: string,
+    filters?: SearchFilters,
+  ): Promise<SearchResult[]> => {
+    setFilters({ text: query })
+    const lower = query.toLowerCase()
+    const filtered = assets.filter((asset) => {
+      const matchesQuery =
+        asset.name.toLowerCase().includes(lower) ||
+        asset.tags.some((tag) => tag.toLowerCase().includes(lower))
+      const matchesFileType = !filters?.fileType || asset.kind === filters.fileType
+      const matchesTags =
+        !filters?.tags?.length || filters.tags.some((tag) => asset.tags.includes(tag))
+      const matchesDate =
+        (!filters?.dateFrom && !filters?.dateTo) ||
+        ((!filters?.dateFrom ||
+          new Date(asset.created) >= new Date(filters.dateFrom)) &&
+          (!filters?.dateTo || new Date(asset.created) <= new Date(filters.dateTo)))
+      return matchesQuery && matchesFileType && matchesTags && matchesDate
+    })
+
+    return filtered.map((asset) => ({
+      id: asset.id,
+      title: asset.name,
+      subtitle: `${(asset.size / 1_000_000).toFixed(1)} MB • ${asset.tags.join(', ')}`,
+      type: asset.kind,
+      thumbnail: asset.thumbnail,
+      path: asset.path,
+      score: 1.0,
+      metadata: {
+        size: asset.size,
+        created: asset.created,
+        modified: asset.modified,
+        tags: asset.tags,
+      },
+    }))
+  }
+
+  const handleVectorSearch = async (
+    query: string,
+  ): Promise<SearchResult[]> => {
+    try {
+      const response = await fetch('/api/vector-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      })
+      const data = await response.json()
+      return data.results || []
+    } catch (error) {
+      console.error('Vector search failed:', error)
+      return []
+    }
+  }
+
+  const handleResultSelect = (result: SearchResult) => {
+    const asset = assets.find((a) => a.id === result.id)
+    if (asset) {
+      handlePreview(asset)
+    }
+  }
+
   // Filter assets
   const filteredAssets = assets.filter((asset) => {
     const matchesPath = currentPath === '' || asset.path === currentPath
-    const matchesSearch =
-      searchQuery === '' ||
-      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.tags.some((tag) =>
-        tag.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
     const matchesFilter =
       filterTags.length === 0 ||
       filterTags.some((tag) => asset.tags.includes(tag))
     const notDeleted = asset.status !== 'deleted'
 
-    return matchesPath && matchesSearch && matchesFilter && notDeleted
+    return matchesPath && matchesFilter && notDeleted
   })
 
   // Get unique tags
   const availableTags = [...new Set(assets.flatMap((asset) => asset.tags))]
+  const availableFileTypes = [...new Set(assets.map((asset) => asset.kind))]
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -404,17 +459,17 @@ const AssetExplorer: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search assets..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+            <SearchBarExtension
+              placeholder="Search assets, tags, metadata..."
+              onSearch={handleSearch}
+              onVectorSearch={handleVectorSearch}
+              onResultSelect={handleResultSelect}
+              availableTags={availableTags}
+              availableFileTypes={availableFileTypes}
+              className="w-96"
+              showFilters
+              showVectorSearch
+            />
 
             {/* View Mode Toggle */}
             <div className="flex bg-gray-100 rounded-lg p-1">
@@ -598,15 +653,15 @@ const AssetExplorer: React.FC = () => {
                   No assets found
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {searchQuery || filterTags.length > 0
+                  {filters.text || filterTags.length > 0
                     ? 'Try adjusting your search or filters'
                     : 'This folder is empty'}
                 </p>
-                {(searchQuery || filterTags.length > 0) && (
+                {(filters.text || filterTags.length > 0) && (
                   <div className="space-x-2">
-                    {searchQuery && (
+                    {filters.text && (
                       <button
-                        onClick={() => setSearchQuery('')}
+                        onClick={() => setFilters({ text: '' })}
                         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                       >
                         Clear search
