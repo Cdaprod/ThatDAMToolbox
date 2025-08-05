@@ -29,7 +29,7 @@ FROM alpine:3.20
 RUN apk add --no-cache ffmpeg tini curl ca-certificates
 
 # default feature flags
-ENV ENABLE_HLS_PREVIEW=false
+ENV ENABLE_HLS_PREVIEW=true
 ENV HLS_PREVIEW_DIR=/tmp/hls
 ENV ENABLE_MP4_SERVE=false
 ENV MP4_RECORDINGS_DIR=/tmp/recordings
