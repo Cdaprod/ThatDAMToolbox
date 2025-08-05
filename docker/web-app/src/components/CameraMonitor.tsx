@@ -115,7 +115,7 @@ const CameraMonitor: React.FC = () => {
     recordingTime,
   } = useCapture();
   
-  const mediaRef     = useRef<HTMLImageElement | HTMLVideoElement>(null);
+  const mediaRef     = useRef<HTMLVideoElement>(null);
   const recorderRef  = useRef<MediaRecorder| null>(null);
   const chunksRef    = useRef<Blob[]>([]);
   
@@ -180,7 +180,7 @@ const CameraMonitor: React.FC = () => {
       liveStop();
     } else {
       // start live first
-      wsStart(mediaRef.current as HTMLVideoElement);
+      wsStart(mediaRef.current!);
       liveStart();
     }
 
@@ -189,7 +189,7 @@ const CameraMonitor: React.FC = () => {
       if (localRec) {
         localStop();
       } else {
-        localStart(mediaRef.current as HTMLVideoElement);
+        localStart(mediaRef.current!);
       }
     }
   }, [
@@ -444,18 +444,20 @@ const CameraMonitor: React.FC = () => {
             {streamOK ? (
               // Live MJPEG
               <video
-                ref={mediaRef as React.RefObject<HTMLImageElement>}
-                src={`/api/v1/hwcapture/stream?device=${encodeURIComponent(
-                  selectedDevice
-                )}&width=${previewWidth}&height=${previewHeight}&fps=${previewFps}`}
+                ref={mediaRef}
+                src="/live/stream.m3u8"
                 className="camera-video-feed w-full h-full object-contain absolute top-0 left-0 z-0"
+                controls
+                autoPlay
+                muted
+                playsInline
                 onError={() => setStreamOK(false)}
-                onLoad={() => setStreamOK(true)}
+                onLoadedData={() => setStreamOK(true)}
               />
             ) : (
               // Animated-GIF fallback
               <video
-                ref={mediaRef as React.RefObject<HTMLVideoElement>}
+                ref={mediaRef}
                 src="https://media1.tenor.com/m/1VZnQCgDgFkAAAAC/no-cameras-clinton-sparks.gif"
                 crossOrigin="anonymous"
                 autoPlay

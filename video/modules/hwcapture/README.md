@@ -46,10 +46,29 @@
     }
     usingCSI = !usingCSI;
   });
-</script>
-``` 
+  </script>
+  ```
 
-Now `hwcapture.py` supports multiple cameras including your Insta360 X3 webcam. Here’s how to use it:
+## Low-latency HLS preview
+
+Start an H.264/HLS stream from any V4L2 device:
+
+```bash
+curl -X POST "http://<host>:8080/hwcapture/hls?device=/dev/video0"
+```
+
+The FastAPI backend then serves the playlist and segments under the module namespace:
+
+- `GET /hwcapture/live/stream.m3u8` – HLS playlist
+- `GET /hwcapture/live/{segment}.ts` – media segments
+
+In React you can consume it with a real `<video>` tag:
+
+```jsx
+<video src="/hwcapture/live/stream.m3u8" controls autoPlay muted playsInline />
+```
+
+  Now `hwcapture.py` supports multiple cameras including your Insta360 X3 webcam. Here’s how to use it:
 
 **Multi-camera recording:**
 

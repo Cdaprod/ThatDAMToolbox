@@ -236,6 +236,10 @@ services:
       - ./docker/web-app:/app:rw
       - /app/node_modules           # Anonymous volume, container owns it
       - /app/.next                  # Anonymous volume, container owns it
+    group_add:
+      - "video"
+    device_cgroup_rules:
+      - 'c 81:* rmw'
     depends_on:
       - video-api
     restart: unless-stopped

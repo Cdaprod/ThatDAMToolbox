@@ -1,8 +1,8 @@
 # /video/api.py
 import pkgutil, importlib, uuid, logging, json
 
-from pathlib    import Path
-from fastapi    import (
+from pathlib import Path
+from fastapi import (
     FastAPI,
     APIRouter,
     Depends,
@@ -10,29 +10,36 @@ from fastapi    import (
     HTTPException,
     Request,
 )
-from fastapi.responses          import FileResponse, HTMLResponse
-from fastapi.middleware.cors    import CORSMiddleware
-from pydantic                   import BaseModel, Field
-from typing                     import Optional, List, Dict, Any, Annotated
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any, Annotated
 
-from video.api              import modules
-from video.cli              import run_cli_from_json
-from video.web              import templates, static
+from video.api import modules
+from video.cli import run_cli_from_json
+from video.web import templates, static
 
-from video.helpers          import index_folder_as_batch, model_validator
-from video.core             import get_manifest as core_get_manifest
-from video.core.event       import get_bus
+from video.helpers import index_folder_as_batch, model_validator
+from video.core import get_manifest as core_get_manifest
+from video.core.event import get_bus
 from video.core.event.types import Event, Topic
-from video.models           import Manifest, VideoArtifact, Slice, CardResponse, VideoCard, SceneThumb
-from video.storage.base     import StorageEngine
-from video.bootstrap        import STORAGE
-from video                  import modules
+from video.models import (
+    Manifest,
+    VideoArtifact,
+    Slice,
+    CardResponse,
+    VideoCard,
+    SceneThumb,
+)
+from video.storage.base import StorageEngine
+from video.bootstrap import STORAGE
+from video import modules
 
-from video.ws               import router as ws_router
+from video.ws import router as ws_router
 
 origins = [
-    "http://localhost:3000",      # your Next dev server
-    #"https://your.production.url" # your prod domain
+    "http://localhost:3000",  # your Next dev server
+    # "https://your.production.url" # your prod domain
 ]
 
 app = FastAPI(title="Video DAM API")
@@ -55,11 +62,13 @@ app.mount("/static", static, name="static")
 app.include_router(ws_router)
 app.include_router(router)
 
+
 @app.on_event("startup")
 async def _emit_service_up() -> None:
     bus = get_bus()
     if bus:
         await bus.publish(Event(topic=Topic.VIDEO_API_SERVICE_UP))
+
 
 # ---------------------------------------------------------------------------
 # BaseModels
@@ -67,8 +76,9 @@ async def _emit_service_up() -> None:
 # In-memory job store
 _jobs: Dict[str, Dict[str, Any]] = {}
 
+
 class VideoArtifact(BaseModel):
-    width:  int
+    width: int
     height: int
 
     @model_validator(mode="after")
@@ -77,31 +87,36 @@ class VideoArtifact(BaseModel):
             raise ValueError("empty frame")
         return m
 
+
 class FolderCreateRequest(BaseModel):
-    folder: str            # absolute or relative path
-    name:   Optional[str]  # optional batch display-name
-    
+    folder: str  # absolute or relative path
+    name: Optional[str]  # optional batch display-name
+
+
 class ScanRequest(BaseModel):
     directory: str
     recursive: bool = True
+
 
 class TranscodeRequest(BaseModel):
     src: str
     dst: Optional[str] = None
     codec: str = "h264"
 
+
 class BatchCreateRequest(BaseModel):
     name: str
     paths: List[str]
 
+
 class BatchUpsertRequest(BaseModel):
-    paths : Optional[List[str]] = Field(
+    paths: Optional[List[str]] = Field(
         default=None, description="Explicit media files to ingest"
     )
     folder: Optional[str] = Field(
         default=None, description="Scan this folder recursively"
     )
-    name  : Optional[str] = None   # optional display-name
+    name: Optional[str] = None  # optional display-name
 
     @model_validator(mode="after")
     def _exactly_one_source(self):
@@ -109,11 +124,14 @@ class BatchUpsertRequest(BaseModel):
             return self
         raise ValueError("Provide *either* paths[] *or* folder, not both")
 
+
 # ── generic CLI proxy --------------------------------------------------------
 class CLIRequest(BaseModel):
     """Arbitrary CLI step; must include an 'action' key."""
+
     action: str
     params: Dict[str, Any] = {}
+
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -122,12 +140,15 @@ def _cli_json(cmd: dict[str, Any]) -> Any:
     """Run CLI helper and return parsed JSON"""
     return json.loads(run_cli_from_json(json.dumps(cmd)))
 
+
 # ---------------------------------------------------------------------------
 # Storage Engine Router
 # ---------------------------------------------------------------------------
 
+
 def get_store() -> StorageEngine:
     return STORAGE
+
 
 # Use a *different* function name so we don’t shadow `core_get_manifest`
 @router.get("/media/{sha1}", response_model=Manifest)
@@ -136,16 +157,19 @@ async def fetch_manifest(sha1: str, store: StorageEngine = Depends(get_store)): 
     if manifest is None:
         raise HTTPException(status_code=404, detail="media not found")
     return manifest
-    
+
+
 app.include_router(router)
 
 # ---------------------------------------------------------------------------
 # Root HTML page  →  http://<host>:<port>/
 # ---------------------------------------------------------------------------
 
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse("video/web/static/favicon/favicon.ico")
+
 
 @app.get("/", include_in_schema=False)
 async def home(request: Request):
@@ -155,6 +179,7 @@ async def home(request: Request):
     """
     # return templates.TemplateResponse("index.html", {"request": request})
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
 
 @app.post("/cli")
 def cli_proxy(req: CLIRequest):
@@ -166,25 +191,30 @@ def cli_proxy(req: CLIRequest):
         log.exception("CLI proxy failed")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Stats
 @app.get("/stats")
 async def stats():
     return _cli_json({"action": "stats"})
+
 
 # Recent
 @app.get("/recent")
 async def recent(limit: int = 10):
     return _cli_json({"action": "recent", "limit": limit})
 
+
 # Scan directory
 @app.post("/scan")
 async def scan(req: ScanRequest):
     return _cli_json({"action": "scan", "root": req.directory, "workers": 4})
 
+
 # Search
 @app.post("/search")
 async def search(q: str, limit: int = 50):
     return _cli_json({"action": "search", "q": q, "limit": limit})
+
 
 # ---------------------------------------------------------------------------
 # Batches
@@ -192,19 +222,18 @@ async def search(q: str, limit: int = 50):
 @app.get("/batches")
 async def list_batches():
     return _cli_json({"action": "batches", "cmd": "list"})
-    
+
+
 @app.get("/batches/{batch_name}")
 async def get_batch(batch_name: str):
-    return _cli_json({"action": "batches",
-                      "cmd": "show",
-                      "batch_name": batch_name})
+    return _cli_json({"action": "batches", "cmd": "show", "batch_name": batch_name})
+
 
 # --- single endpoint --------------------------------------------------------
 @app.post("/batches", response_model=dict)
-async def upsert_batch(req: BatchUpsertRequest,
-                       bg : BackgroundTasks):
+async def upsert_batch(req: BatchUpsertRequest, bg: BackgroundTasks):
     """
-    • `paths`  – existing behaviour (transcode + legacy scanner)  
+    • `paths`  – existing behaviour (transcode + legacy scanner)
     • `folder` – new fast Artifact pipeline
     """
     if req.folder:
@@ -227,13 +256,21 @@ async def upsert_batch(req: BatchUpsertRequest,
             # 1) optional transcode
             for src in req.paths:
                 dst = Path(src).parent / "_INCOMING" / Path(src).name
-                trans_cmd = {"action": "transcode", "src": src,
-                             "dst": str(dst), "codec": "h264"}
+                trans_cmd = {
+                    "action": "transcode",
+                    "src": src,
+                    "dst": str(dst),
+                    "codec": "h264",
+                }
                 run_cli_from_json(json.dumps(trans_cmd))
 
             # 2) create batch the old way
-            batch_cmd = {"action": "batches", "cmd": "create",
-                         "name": req.name, "paths": req.paths}
+            batch_cmd = {
+                "action": "batches",
+                "cmd": "create",
+                "name": req.name,
+                "paths": req.paths,
+            }
             result = run_cli_from_json(json.dumps(batch_cmd))
             _jobs[job_id] = {"status": "completed", "result": result}
         except Exception as e:
@@ -242,7 +279,8 @@ async def upsert_batch(req: BatchUpsertRequest,
 
     bg.add_task(_worker)
     return {"job_id": job_id, "status": "started"}
-    
+
+
 @app.get("/jobs/{job_id}")
 async def get_job(job_id: str):
     job = _jobs.get(job_id)
@@ -250,16 +288,14 @@ async def get_job(job_id: str):
         raise HTTPException(status_code=404, detail="job not found")
     return job
 
+
 @app.delete("/batches/{batch_name}")
 async def delete_batch(batch_name: str):
-    return _cli_json({"action": "batches", "cmd": "delete",
-                      "batch_name": batch_name})
+    return _cli_json({"action": "batches", "cmd": "delete", "batch_name": batch_name})
 
-@app.get("/batches/{batch_id}/cards",
-         response_model=CardResponse)
-async def batch_cards(batch_id: str,
-                      limit: int = 50,
-                      include_score: bool = False):
+
+@app.get("/batches/{batch_id}/cards", response_model=CardResponse)
+async def batch_cards(batch_id: str, limit: int = 50, include_score: bool = False):
     """
     Return an object-browser friendly structure:
     artifact + a couple of L1 thumbnails per video.
@@ -274,43 +310,49 @@ async def batch_cards(batch_id: str,
         # pull the first two scene thumbnails for each video…
         l1_slices = manifest.slices.get(art.sha1, [])
         thumbs: list[SceneThumb] = []
-        for sl in l1_slices[:2]:            # take N slices
+        for sl in l1_slices[:2]:  # take N slices
             thumb_url = f"/static/thumbs/{art.sha1}_{sl.start_time:.0f}.jpg"
             thumbs.append(SceneThumb(time=sl.start_time, url=thumb_url))
 
         score = None
         if include_score:
             # example: cosine similarity against a query vector you cached
-            score = await similarity_lookup(art.sha1)   # your helper
+            score = await similarity_lookup(art.sha1)  # your helper
 
         cards.append(VideoCard(artifact=art, scenes=thumbs, score=score))
 
     return CardResponse(batch_id=batch_id, items=cards)
+
 
 # Paths
 @app.get("/paths")
 async def list_paths():
     return _cli_json({"action": "paths", "cmd": "list"})
 
+
 @app.post("/paths")
 async def add_path(name: str, path: str):
     return _cli_json({"action": "paths", "cmd": "add", "name": name, "path": path})
 
+
 @app.delete("/paths/{name}")
 async def remove_path(name: str):
     return _cli_json({"action": "paths", "cmd": "remove", "name": name})
+
 
 # iOS sync
 @app.post("/sync_album")
 async def sync_album(album: str):
     return _cli_json({"action": "sync_album", "root": None, "album": album})
 
+
 # Backup
 @app.post("/backup")
 async def backup(source: str, destination: Optional[str] = None):
-    return _cli_json({"action": "backup",
-                      "backup_root": destination or "/backup",
-                      "dry_run": False})
+    return _cli_json(
+        {"action": "backup", "backup_root": destination or "/backup", "dry_run": False}
+    )
+
 
 # Health
 @app.get("/health")

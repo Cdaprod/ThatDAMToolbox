@@ -17,8 +17,8 @@ module.exports = {
         destination: `${API_BASE}/api/video/:path*`,
       },
       {
-        source: '/api/v1/hwcapture/stream',
-        destination: `${API_BASE}/preview`,
+        source: '/live/:path*',
+        destination: `${API_BASE}/hwcapture/live/:path*`,
       },
       {
         source: '/assets',
