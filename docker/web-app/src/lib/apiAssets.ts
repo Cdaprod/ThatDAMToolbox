@@ -82,6 +82,15 @@ export const listAssets = () => $<Asset[]>(`${API}/assets`);
 
 export const getAsset = (id: string) => $<Asset>(`${API}/assets/${id}`);
 
+export const updateAsset = (
+  id: string,
+  data: { name?: string; metadata?: Record<string, unknown> }
+) =>
+  $<Asset>(`${API}/assets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
 export const moveAssets = (
   assetIds: string[] | string,
   toPath: string,

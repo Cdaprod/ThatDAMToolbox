@@ -1,5 +1,6 @@
 // lib/videoApi.ts
-import { apiUrl } from './networkConfig';
+import { apiUrl } from './networkConfig'
+import type { Asset } from './apiAssets'
 
 /* ---------- helpers ---------- */
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -32,6 +33,7 @@ export const videoApi = {
   /* hardware capture helpers */
   listDevices: () => getJson<Device[]>('/hwcapture/devices'),
   witnessStart: (req: WitnessReq) => postJson<{}>('/hwcapture/witness_record', req),
+  vectorSearch: (q: string) => getJson<Asset[]>(`/vector-search?q=${encodeURIComponent(q)}`),
 };
 
 /* ---------- (very) skinny DTOs ---------- */

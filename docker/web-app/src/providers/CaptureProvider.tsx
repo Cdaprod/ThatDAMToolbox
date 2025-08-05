@@ -23,8 +23,9 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
     fps:    30,
   });
 
-  // 4) Timecode: get the *state* and formatter
-  const { tc, formatTimecode } = useTimecode();
+  // 4) Timecode
+  const { tc: _tc, format } = useTimecode();
+  const timecode = format();
 
   // 5) Overlays
   const [overlays, setOverlays] = useState({
@@ -96,8 +97,7 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
         setSelectedCodec,
         deviceInfo,
 
-        tc,                // expose raw timecode state object (hh:mm:ss:ff)
-        formatTimecode,    // expose formatter (function: () => string)
+        timecode,
         overlays,
         histogramData,
         recordingTime,

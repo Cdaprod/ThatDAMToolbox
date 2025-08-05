@@ -136,7 +136,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
       setFilters(prev => ({ ...prev, ...upd }));
     },
     vectorSearch,
-    move: (ids, toPath) => moveMut.mutateAsync({ assetIds: ids, toPath }),
+    move: (ids, toPath) => moveMut.mutateAsync({ ids, toPath }),
     remove: ids => deleteMut.mutateAsync(ids),
     refresh: refetchAssets,
   };
