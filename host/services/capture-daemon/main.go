@@ -20,6 +20,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 	_ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner/v4l2"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
 )
 
 const (
@@ -45,6 +46,15 @@ func main() {
 	broker.Init()
 	broker.Publish("capture.service_up", map[string]any{"ts": time.Now().Unix(), "version": version})
 	broker.PublishSchemas()
+
+	// 3a. Init WebRTC if enabled
+	if cfg.Features.WebRTC.Enabled {
+		if err := webrtc.InitAPI(); err != nil {
+			lg.WithComponent("webrtc").Error("init failed", "err", err)
+		} else {
+			lg.WithComponent("webrtc").Info("WebRTC enabled", "prefix", cfg.Features.WebRTC.PathPrefix)
+		}
+	}
 
 	// 4. Init metrics & health
 	m := metrics.New()
@@ -89,6 +99,9 @@ func main() {
 	reg := registry.NewRegistry()
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, reg)
+	if cfg.Features.WebRTC.Enabled {
+		webrtc.RegisterRoutes(mux, cfg.Features.WebRTC.PathPrefix)
+	}
 
 	// Serve HLS previews if enabled
 	if cfg.Features.HLSPreview.Enabled {
@@ -148,6 +161,11 @@ func main() {
 								lg.WithComponent("runner").Error("runner error", "device", id, "err", err)
 							}
 						}(id, c)
+						if cfg.Features.WebRTC.Enabled {
+							go func(device string, fps int, res string) {
+								_ = webrtc.StreamH264FromFFmpeg(ctxLoop, device, fps, res)
+							}(d.Path, c.FPS, c.Resolution)
+						}
 					}
 				}
 			}

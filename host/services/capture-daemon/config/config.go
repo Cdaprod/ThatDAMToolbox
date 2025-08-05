@@ -4,7 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
-    "path/filepath"
+	"path/filepath"
 
 	"strings"
 	"time"
@@ -13,12 +13,12 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Broker   BrokerConfig   `mapstructure:"broker"`
-	Capture  CaptureConfig  `mapstructure:"capture"`
-	Features FeatureConfig  `mapstructure:"features"`
-	Logging  LoggingConfig  `mapstructure:"logging"`
-	Health   HealthConfig   `mapstructure:"health"`
+	Server   ServerConfig  `mapstructure:"server"`
+	Broker   BrokerConfig  `mapstructure:"broker"`
+	Capture  CaptureConfig `mapstructure:"capture"`
+	Features FeatureConfig `mapstructure:"features"`
+	Logging  LoggingConfig `mapstructure:"logging"`
+	Health   HealthConfig  `mapstructure:"health"`
 }
 
 type ServerConfig struct {
@@ -63,6 +63,11 @@ type FeatureConfig struct {
 		Port    int    `mapstructure:"port"`
 		Path    string `mapstructure:"path"`
 	} `mapstructure:"metrics"`
+
+	WebRTC struct {
+		Enabled    bool   `mapstructure:"enabled"`
+		PathPrefix string `mapstructure:"path_prefix"`
+	} `mapstructure:"webrtc"`
 }
 
 type LoggingConfig struct {
@@ -83,7 +88,7 @@ func Load() (*Config, error) {
 	viper.AddConfigPath("/etc/capture-daemon/")
 	// expand $HOME manually:
 	if home, err := os.UserHomeDir(); err == nil {
-	    viper.AddConfigPath(filepath.Join(home, ".capture-daemon"))
+		viper.AddConfigPath(filepath.Join(home, ".capture-daemon"))
 	}
 	viper.AddConfigPath(".")
 
@@ -156,4 +161,8 @@ func setDefaults() {
 	viper.SetDefault("health.enabled", true)
 	viper.SetDefault("health.port", 9002)
 	viper.SetDefault("health.interval", "30s")
+
+	// WebRTC
+	viper.SetDefault("features.webrtc.enabled", false)
+	viper.SetDefault("features.webrtc.path_prefix", "/webrtc")
 }
