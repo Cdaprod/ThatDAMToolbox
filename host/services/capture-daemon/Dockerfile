@@ -1,5 +1,5 @@
 # ─── Stage 1: Build the capture-daemon binary ───────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Install git (needed for VCS-based modules) and ca-certs
 RUN apk add --no-cache git ca-certificates
@@ -27,6 +27,12 @@ FROM alpine:3.20
 
 # runtime deps
 RUN apk add --no-cache ffmpeg tini curl ca-certificates
+
+# default feature flags
+ENV ENABLE_HLS_PREVIEW=false
+ENV HLS_PREVIEW_DIR=/tmp/hls
+ENV ENABLE_MP4_SERVE=false
+ENV MP4_RECORDINGS_DIR=/tmp/recordings
 
 # copy the binary
 COPY --from=builder /out/capture-daemon /usr/local/bin/capture-daemon

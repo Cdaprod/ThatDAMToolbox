@@ -1,116 +1,160 @@
-// /host/services/capture-daemon/main.go
+// host/services/capture-daemon/main.go
 package main
 
 import (
-    "context"
-    "log"
-    "net/http"
-    "os"
-    "os/signal"
-    "path/filepath"
-    "strings"
-    "syscall"
-    "time"
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/api"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
-    _ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner/v4l2"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/api"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/config"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/pkg/health"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/pkg/logger"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/pkg/metrics"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/pkg/server"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/pkg/shutdown"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
+	_ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner/v4l2"
+)
+
+const (
+	version         = "1.0.0"
+	shutdownTimeout = 10 * time.Second
 )
 
 func main() {
-    log.Println("🔌 ThatDamToolbox capture-daemon starting…")
+	// ① Load config
+	cfg, err := config.Load()
+	if err != nil {
+		panic(fmt.Sprintf("config load failed: %v", err))
+	}
 
-    // 1. Initialize RabbitMQ and broadcast service‐up and schema messages.
-    broker.Init()
-    broker.Publish("capture.service_up", map[string]any{"ts": time.Now().Unix()})
-    broker.PublishSchemas()
+	// ② Init logger
+	lg, err := logger.New(cfg.Logging.Level, cfg.Logging.Format, cfg.Logging.Output)
+	if err != nil {
+		panic(fmt.Sprintf("logger init failed: %v", err))
+	}
+	lg.Info("🔌 starting capture-daemon", "version", version)
 
-    // 2. Create a cancellable root context.
-    ctx, cancel := context.WithCancel(context.Background())
-    defer cancel()
+	// ③ Init broker
+	broker.Init()
+	broker.Publish("capture.service_up", map[string]any{"ts": time.Now().Unix(), "version": version})
+	broker.PublishSchemas()
 
-    // 3. Trap SIGINT/SIGTERM and cancel context for graceful shutdown.
-    sigs := make(chan os.Signal, 1)
-    signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
-    go func() {
-        <-sigs
-        log.Println("🛑 Shutdown signal received")
-        cancel()
-    }()
+	// ④ Init metrics & health
+	m := metrics.New()
+	hc := health.New(cfg.Health.Interval)
+	hc.AddCheck("broker", func(ctx context.Context) (health.Status, string, error) {
+		if broker.IsConnected() {
+			return health.StatusHealthy, "ok", nil
+		}
+		return health.StatusUnhealthy, "disconnected", nil
+	})
 
-    // 4. Start device registry and REST API server.
-    reg := registry.NewRegistry()
-    go func() {
-        mux := http.NewServeMux()
+	// ⑤ Context & shutdown manager
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	sd := shutdown.NewManager(lg.Logger, shutdownTimeout)
 
-        // 4.1 Register built‐in /devices JSON API.
-        api.RegisterRoutes(mux, reg)
+	// ⑥ Metrics server
+	if cfg.Features.Metrics.Enabled {
+		ms := server.New(
+			fmt.Sprintf(":%d", cfg.Features.Metrics.Port),
+			m.Handler(),
+			lg.Logger,
+			map[string]time.Duration{},
+		)
+		go ms.Start()
+		sd.AddHook("metrics-server", ms.Shutdown)
+	}
 
-        // 4.2 Enable HLS preview endpoint when feature‐flagged.
-        if strings.EqualFold(os.Getenv("ENABLE_HLS_PREVIEW"), "true") {
-            hlsDir := os.Getenv("HLS_PREVIEW_DIR")
-            if hlsDir == "" {
-                hlsDir = filepath.Join(os.TempDir(), "hls")
-            }
-            mux.Handle("/preview/", http.StripPrefix("/preview/", http.FileServer(http.Dir(hlsDir))))
-            log.Printf("📺 HLS preview enabled at /preview/ (serving %s)", hlsDir)
-        }
+	// ⑦ Health server
+	if cfg.Health.Enabled {
+		hs := server.New(
+			fmt.Sprintf(":%d", cfg.Health.Port),
+			hc.Handler(),
+			lg.Logger,
+			map[string]time.Duration{},
+		)
+		go hs.Start()
+		sd.AddHook("health-server", hs.Shutdown)
+	}
 
-        // 4.3 Enable MP4 recordings endpoint when feature‐flagged.
-        if strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "true") {
-            recDir := os.Getenv("MP4_RECORDINGS_DIR")
-            if recDir == "" {
-                recDir = filepath.Join(os.TempDir(), "recordings")
-            }
-            mux.Handle("/recordings/", http.StripPrefix("/recordings/", http.FileServer(http.Dir(recDir))))
-            log.Printf("📁 MP4 serving enabled at /recordings/ (from %s)", recDir)
-        }
+	// ⑧ Main API server
+	reg := registry.NewRegistry()
+	mux := http.NewServeMux()
+	api.RegisterRoutes(mux, reg)
 
-        log.Printf("🌐 REST API listening on :9000")
-        if err := http.ListenAndServe(":9000", mux); err != nil {
-            log.Fatalf("REST API failed: %v", err)
-        }
-    }()
+	if cfg.Features.HLSPreview.Enabled {
+		h := cfg.Features.HLSPreview.Dir
+		if h == "" {
+			h = filepath.Join(os.TempDir(), "hls")
+		}
+		mux.Handle("/preview/", http.StripPrefix("/preview/", http.FileServer(http.Dir(h))))
+		lg.Info("📺 HLS preview enabled", "dir", h)
+	}
 
-    // 5. Main discovery + runner loop.
-    pollInterval := 5 * time.Second
-    for {
-        select {
-        case <-ctx.Done():
-            log.Println("✅ Context cancelled, exiting main loop")
-            reg.StopAll()
-            return
-        default:
-        }
+	if cfg.Features.MP4Serve.Enabled {
+		r := cfg.Features.MP4Serve.Dir
+		if r == "" {
+			r = filepath.Join(os.TempDir(), "recordings")
+		}
+		mux.Handle("/recordings/", http.StripPrefix("/recordings/", http.FileServer(http.Dir(r))))
+		lg.Info("📁 MP4 serving enabled", "dir", r)
+	}
 
-        // 5.1 Scan for devices and broadcast current list.
-        devices, err := scanner.ScanAll()
-        if err != nil {
-            log.Printf("⚠️  Scanner error: %v", err)
-        } else {
-            reg.Update(devices)
-            broker.Publish("capture.device_list", devices)
-        }
+	mainSrv := server.New(
+		fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+		mux,
+		lg.Logger,
+		map[string]time.Duration{
+			"read":  cfg.Server.ReadTimeout,
+			"write": cfg.Server.WriteTimeout,
+			"idle":  cfg.Server.IdleTimeout,
+		},
+	)
+	go mainSrv.Start()
+	sd.AddHook("main-server", mainSrv.Shutdown)
 
-        // 5.2 Launch FFmpeg runners for newly discovered devices.
-        for id, dev := range reg.List() {
-            if !reg.HasRunner(id) {
-                cfg := runner.DefaultConfig(dev.Path)
-                ctxLoop, cancelLoop := context.WithCancel(ctx)
-                reg.RegisterStopFunc(id, cancelLoop)
+	// ⑨ Discovery & capture loop
+	sd.AddHook("capture-loop", func(ctx context.Context) error {
+		t := time.NewTicker(cfg.Capture.PollInterval)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				reg.StopAll()
+				return nil
+			case <-t.C:
+				devs, _ := scanner.ScanAll()
+				reg.Update(devs)
+				broker.Publish("capture.device_list", devs)
+				for id, d := range reg.List() {
+					if !reg.HasRunner(id) {
+						c := runner.DefaultConfig(d.Path)
+						c.FPS = cfg.Capture.DefaultFPS
+						c.Resolution = cfg.Capture.DefaultRes
+						ctxLoop, cl := context.WithCancel(ctx)
+						reg.RegisterStopFunc(id, cl)
+						go func(id string, cfg runner.Config) {
+							if err := runner.RunCaptureLoop(ctxLoop, cfg); err != nil {
+								lg.WithComponent("runner").Error("runner error", "device", id, "err", err)
+							}
+						}(id, c)
+					}
+				}
+			}
+		}
+	})
 
-                go func(deviceID string, c runner.Config) {
-                    if err := runner.RunCaptureLoop(ctxLoop, c); err != nil {
-                        log.Printf("🚨 Runner for %s exited with error: %v", deviceID, err)
-                    }
-                }(id, cfg)
-            }
-        }
-
-        // 5.3 Wait before the next discovery iteration.
-        time.Sleep(pollInterval)
-    }
+	// 🔚 Wait for shutdown
+	sd.Wait(ctx)
+	lg.Info("✅ capture-daemon stopped")
 }
