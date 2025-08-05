@@ -17,8 +17,8 @@ import (
 
 func RunCaptureLoop(ctx context.Context, cfg Config) error {
     // feature flags:
-    enableMP4 := os.Getenv("CAPTURE_ENABLE_MP4") != "false"
-    enableHLS := os.Getenv("CAPTURE_ENABLE_HLS") == "true"
+    enableMP4 := strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "false")
+    enableHLS := strings.EqualFold(os.Getenv("ENABLE_HLS_PREVIEW"), "true")
 
     // if neither output is enabled, nothing to do
     if !enableMP4 && !enableHLS {

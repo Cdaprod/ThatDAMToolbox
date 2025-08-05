@@ -153,6 +153,12 @@ func main() {
 			}
 		}
 	})
+	
+	// 🛑 Ensure we drain the broker on shutdown
+    sd.AddHook("broker-close", func(ctx context.Context) error {
+        broker.Close()
+        return nil
+    })
 
 	// 🔚 Wait for shutdown
 	sd.Wait(ctx)

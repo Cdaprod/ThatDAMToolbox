@@ -53,6 +53,11 @@ func Close() {
 	}
 }
 
+// IsConnected reports whether the broker pump is running (used by health checks).
+func IsConnected() bool {
+    return cancelFunc != nil
+}
+
 // Envelope is what we actually serialise and send.
 type Envelope struct {
 	Topic   string      `json:"topic"`

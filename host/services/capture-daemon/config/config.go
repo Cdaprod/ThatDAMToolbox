@@ -3,6 +3,9 @@ package config
 
 import (
 	"fmt"
+	"os"
+    "path/filepath"
+
 	"strings"
 	"time"
 
@@ -78,7 +81,10 @@ func Load() (*Config, error) {
 	// look for config.{yaml,json,...} in these locations
 	viper.SetConfigName("config")
 	viper.AddConfigPath("/etc/capture-daemon/")
-	viper.AddConfigPath("$HOME/.capture-daemon")
+	// expand $HOME manually:
+	if home, err := os.UserHomeDir(); err == nil {
+	    viper.AddConfigPath(filepath.Join(home, ".capture-daemon"))
+	}
 	viper.AddConfigPath(".")
 
 	// ENV support: CAPTURE_<KEY>, with dots → underscores
