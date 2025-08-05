@@ -1,3 +1,4 @@
+// /docker/web-app/src/components/SearchBarExtension.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Search,
@@ -476,4 +477,3 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
 }
 
 export default SearchBarExtension
-
