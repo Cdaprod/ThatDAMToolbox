@@ -1,8 +1,7 @@
-// docker/web-app/src/components/overlays/HistogramMonitor.tsx
 import React, { useRef, useEffect } from 'react';
 
 interface Props {
-  source: HTMLImageElement | null;
+  source: HTMLImageElement | HTMLVideoElement | null;
   width: number;
   height: number;
   enabled: boolean;
@@ -14,42 +13,62 @@ const HistogramMonitor: React.FC<Props> = ({ source, width, height, enabled }) =
 
   useEffect(() => {
     if (!enabled || !source) return;
-    const ctxOff = offscreen.current.getContext('2d')!;
-    offscreen.current.width = source.naturalWidth;
-    offscreen.current.height = source.naturalHeight;
 
-    const ctx = canvasRef.current!.getContext('2d')!;
+    // determine actual pixel dimensions
+    const w = source instanceof HTMLVideoElement
+      ? source.videoWidth
+      : source.naturalWidth;
+    const h = source instanceof HTMLVideoElement
+      ? source.videoHeight
+      : source.naturalHeight;
+
+    // wait for metadata
+    if (w === 0 || h === 0) return;
+
+    offscreen.current.width  = w;
+    offscreen.current.height = h;
+    const ctxOff  = offscreen.current.getContext('2d')!;
+    const ctxMain = canvasRef.current!.getContext('2d')!;
     const buckets = new Uint32Array(256);
 
     const draw = () => {
       if (!enabled || !source) return;
-      // draw current frame into offscreen
-      ctxOff.drawImage(source, 0, 0);
-      const img = ctxOff.getImageData(0, 0, source.naturalWidth, source.naturalHeight).data;
+
+      // draw into offscreen at integer dims
+      ctxOff.drawImage(source, 0, 0, w, h);
+      const img = ctxOff.getImageData(0, 0, w, h).data;
       buckets.fill(0);
-      // compute luminance histogram
+
+      // build luminance histogram
       for (let i = 0; i < img.length; i += 4) {
-        const lum = Math.floor(0.299 * img[i] + 0.587 * img[i+1] + 0.114 * img[i+2]);
+        const lum = Math.floor(
+          0.299 * img[i] +
+          0.587 * img[i + 1] +
+          0.114 * img[i + 2]
+        );
         buckets[lum]++;
       }
       const max = Math.max(...buckets);
 
-      // clear & draw bars
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      // render bars into your canvas box
+      ctxMain.clearRect(0, 0, width, height);
+      ctxMain.fillStyle = 'rgba(255,255,255,0.6)';
       const barW = width / 256;
-      for (let i = 0; i < 256; i++) {
-        const h = (buckets[i] / max) * height;
-        ctx.fillRect(i * barW, height - h, barW, h);
+
+      for (let j = 0; j < 256; j++) {
+        const barH = (buckets[j] / max) * height;
+        ctxMain.fillRect(j * barW, height - barH, barW, barH);
       }
+
       requestAnimationFrame(draw);
     };
 
     draw();
-    return () => { /* optional cleanup */ };
+    // no special cleanup needed
   }, [enabled, source, width, height]);
 
   if (!enabled) return null;
+
   return (
     <canvas
       ref={canvasRef}
