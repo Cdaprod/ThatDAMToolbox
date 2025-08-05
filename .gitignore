@@ -118,6 +118,7 @@ secrets.json
 
 # ---- Misc ----
 # If you have generated or temporary files, add patterns here
+video/modules/*/module.cfg
 *clipboard*
 *.disabled
 host/releases/
