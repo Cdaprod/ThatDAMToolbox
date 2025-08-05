@@ -5,8 +5,15 @@
 Welcome, Codex Agent (and human reviewers)!  
 You are contributing to **ThatDAMToolbox**: a modular, containerized, open-source digital asset management system for live video, edge cameras, and ML workflows.
 
-## 🏗️ Project Structure
+## TOP OF MIND:
+- Always Wire, Avoid Rewrites At All Costs.
+- Layers: Host (capture-daemon), Backend (video-api), Frontend (web-app).
+- Host is device management and usable provided devices. 
+- Backend is core bootstrapped system + modular extensiblity.
+- Frontend is Dashboard + Digital Asset Management + Recorder + Modular Extensions (have backend video.modules).
+- 
 
+## 🏗️ Project Structure
 - **data/**  
   Caches, databases, incoming media, logs, and per-module storage (DAM, explorer, hwcapture, motion_extractor, uploader).
 
