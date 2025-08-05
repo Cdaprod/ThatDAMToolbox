@@ -2,18 +2,6 @@
 package runner
 
 import (
-<<<<<<< ours
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "strings"
-    "time"
-
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
-=======
 	"context"
 	"fmt"
 	"log"
@@ -24,279 +12,164 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
->>>>>>> theirs
 )
 
 // Config holds the parameters for a single device capture loop.
 type Config struct {
-    Device     string        // e.g. "/dev/video0"
-    Codec      string        // e.g. "h264"
-    Resolution string        // e.g. "1920x1080"
-    FPS        int           // e.g. 30
-    OutDir     string        // e.g. "/var/media/records"
-    FFmpegPath string        // e.g. "ffmpeg"
-    RetryDelay time.Duration // e.g. 3 * time.Second
+	Device     string        // e.g. "/dev/video0"
+	Codec      string        // e.g. "h264"
+	Resolution string        // e.g. "1920x1080"
+	FPS        int           // e.g. 30
+	OutDir     string        // e.g. "/var/media/records"
+	FFmpegPath string        // e.g. "ffmpeg"
+	RetryDelay time.Duration // e.g. 3 * time.Second
 }
 
 // DefaultConfig returns a reasonable default Config for the given device.
 func DefaultConfig(device string) Config {
-    return Config{
-        Device:     device,
-        Codec:      "h264",
-        Resolution: "1920x1080",
-        FPS:        30,
-        OutDir:     ResolveOutDir(),
-        FFmpegPath: "ffmpeg",
-        RetryDelay: 3 * time.Second,
-    }
+	return Config{
+		Device:     device,
+		Codec:      "h264",
+		Resolution: "1920x1080",
+		FPS:        30,
+		OutDir:     ResolveOutDir(),
+		FFmpegPath: "ffmpeg",
+		RetryDelay: 3 * time.Second,
+	}
 }
 
+// RunCaptureLoop continuously records video from the device using ffmpeg,
+// saves to MP4, and broadcasts status via the broker.
+// Supports configurable MP4 output and HLS preview via env flags.
 func RunCaptureLoop(ctx context.Context, cfg Config) error {
-<<<<<<< ours
-    // feature flags coming from our Docker/env settings
-    enableMP4 := strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "true")
-    enableHLS := strings.EqualFold(os.Getenv("ENABLE_HLS_PREVIEW"), "true")
+	enableMP4 := strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "true")
+	enableHLS := strings.EqualFold(os.Getenv("ENABLE_HLS_PREVIEW"), "true")
 
-    // if neither output is enabled, nothing to do
-    if !enableMP4 && !enableHLS {
-        log.Printf("[runner] both MP4 & HLS disabled; exiting for %s", cfg.Device)
-        return nil
-    }
+	if !enableMP4 && !enableHLS {
+		log.Printf("[runner] Both MP4 & HLS output disabled; exiting for %s", cfg.Device)
+		return nil
+	}
 
-    // ensure directories
-    if enableMP4 {
-        if err := os.MkdirAll(cfg.OutDir, 0o755); err != nil {
-            return fmt.Errorf("failed to create MP4 dir %q: %w", cfg.OutDir, err)
-        }
-    }
-    var hlsBase string
-    if enableHLS {
-        hlsBase = filepath.Join(os.TempDir(), "hls", filepath.Base(cfg.Device))
-        if err := os.MkdirAll(hlsBase, 0o755); err != nil {
-            log.Printf("[hls] failed to create dir %q: %v", hlsBase, err)
-            enableHLS = false
-        }
-    }
+	// Ensure MP4 output directory
+	if enableMP4 {
+		if err := os.MkdirAll(cfg.OutDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create output dir %q: %w", cfg.OutDir, err)
+		}
+	}
 
-    // start HLS in background, if enabled
-    if enableHLS {
-        go func() {
-            args := []string{
-                "-hide_banner", "-loglevel", "error",
-                "-f", "v4l2", "-framerate", fmt.Sprint(cfg.FPS),
-                "-video_size", cfg.Resolution,
-                "-i", cfg.Device,
-                "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-                "-f", "hls",
-                "-hls_time", "1",
-                "-hls_list_size", "3",
-                "-hls_flags", "delete_segments+append_list",
-                filepath.Join(hlsBase, "index.m3u8"),
-            }
-            log.Printf("[hls] starting HLS for %s at %s", cfg.Device, hlsBase)
-            cmd := exec.CommandContext(ctx, cfg.FFmpegPath, args...)
-            if err := cmd.Run(); err != nil {
-                log.Printf("[hls] ffmpeg error for HLS %s: %v", cfg.Device, err)
-            }
-        }()
-    }
+	var hlsBase string
+	if enableHLS {
+		hlsBase = filepath.Join(os.TempDir(), "hls", filepath.Base(cfg.Device))
+		if err := os.MkdirAll(hlsBase, 0o755); err != nil {
+			log.Printf("[hls] Failed to create dir %q: %v", hlsBase, err)
+			enableHLS = false
+		}
+	}
 
-    fails := 0
-    for {
-        select {
-        case <-ctx.Done():
-            log.Printf("[runner] context canceled, stopping capture for %s", cfg.Device)
-            return nil
-        default:
-        }
-
-        // Build MP4 output path
-        outFile := buildOutputFilename(cfg)
-
-        // publish "started"
-        broker.Publish("capture.recording_started", map[string]any{
-            "device":    cfg.Device,
-            "file":      outFile,
-            "timestamp": time.Now().UTC(),
-        })
-
-        // only run MP4 if enabled
-        if enableMP4 {
-            cmdCtx, cancel := context.WithCancel(ctx)
-            args := []string{
-                "-hide_banner",
-                "-loglevel", "error",
-                "-f", "v4l2",
-                "-framerate", fmt.Sprint(cfg.FPS),
-                "-video_size", cfg.Resolution,
-                "-i", cfg.Device,
-                "-c:v", cfg.Codec,
-                "-preset", "veryfast",
-                "-tune", "zerolatency",
-                outFile,
-            }
-            log.Printf("[mp4] starting capture: %s → %s", cfg.Device, outFile)
-            cmd := exec.CommandContext(cmdCtx, cfg.FFmpegPath, args...)
-            cmd.Stdout = os.Stdout
-            cmd.Stderr = os.Stderr
-
-            err := cmd.Run()
-            cancel()
-
-            if err != nil {
-                if strings.Contains(err.Error(), "Not a tty") {
-                    log.Printf("[mp4] %s not a v4l2 node, stopping", cfg.Device)
-                    return nil
-                }
-                if ctx.Err() != nil {
-                    broker.Publish("capture.recording_stopped", map[string]any{
-                        "device":    cfg.Device,
-                        "file":      outFile,
-                        "timestamp": time.Now().UTC(),
-                    })
-                    return nil
-                }
-                log.Printf("[mp4] error on %s: %v", cfg.Device, err)
-                fails++
-                if fails >= 5 {
-                    log.Printf("[mp4] giving up on %s after %d errors", cfg.Device, fails)
-                    broker.Publish("capture.recording_stopped", map[string]any{
-                        "device":    cfg.Device,
-                        "file":      outFile,
-                        "timestamp": time.Now().UTC(),
-                    })
-                    return nil
-                }
-            } else {
-                fails = 0
-            }
-        }
-
-        // publish "stopped"
-        broker.Publish("capture.recording_stopped", map[string]any{
-            "device":    cfg.Device,
-            "file":      outFile,
-            "timestamp": time.Now().UTC(),
-        })
-
-        // wait before retry
-        select {
-        case <-ctx.Done():
-            return nil
-        case <-time.After(cfg.RetryDelay):
-        }
-    }
-=======
-	// Ensure output directory exists
-	if err := os.MkdirAll(cfg.OutDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create output dir %q: %w", cfg.OutDir, err)
+	// Start HLS in background, if enabled
+	if enableHLS {
+		go func() {
+			args := []string{
+				"-hide_banner", "-loglevel", "error",
+				"-f", "v4l2", "-framerate", fmt.Sprint(cfg.FPS),
+				"-video_size", cfg.Resolution,
+				"-i", cfg.Device,
+				"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+				"-f", "hls",
+				"-hls_time", "1",
+				"-hls_list_size", "3",
+				"-hls_flags", "delete_segments+append_list",
+				filepath.Join(hlsBase, "index.m3u8"),
+			}
+			log.Printf("[hls] Starting HLS for %s at %s", cfg.Device, hlsBase)
+			cmd := exec.CommandContext(ctx, cfg.FFmpegPath, args...)
+			_ = cmd.Run() // best-effort, logs only on main loop error
+		}()
 	}
 
 	fails := 0
-
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("[ffmpeg] context canceled, stopping capture for %s", cfg.Device)
+			log.Printf("[runner] Context canceled, stopping capture for %s", cfg.Device)
 			return nil
 		default:
 		}
 
-		// Build output file path
 		outFile := buildOutputFilename(cfg)
-		log.Printf("[ffmpeg] starting capture: %s → %s", cfg.Device, outFile)
-
-		// ── notify → capture.recording_started ────────────────────────────
 		broker.Publish("capture.recording_started", map[string]any{
 			"device":    cfg.Device,
 			"file":      outFile,
 			"timestamp": time.Now().UTC(),
 		})
 
-		// Launch ffmpeg under a child context
-		cmdCtx, cancel := context.WithCancel(ctx)
-		args := []string{
-			"-hide_banner",
-			"-loglevel", "error",
-			"-f", "v4l2",
-			"-framerate", fmt.Sprint(cfg.FPS),
-			"-video_size", cfg.Resolution,
-			"-i", cfg.Device,
-			"-c:v", cfg.Codec,
-			"-preset", "veryfast",
-			"-tune", "zerolatency",
-			outFile,
-		}
-		cmd := exec.CommandContext(cmdCtx, cfg.FFmpegPath, args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		err := cmd.Run()
-		cancel()
-
-		if err != nil {
-			// If the device isn’t a real V4L2 capture node, bail out
-			if strings.Contains(err.Error(), "Not a tty") {
-				log.Printf("[ffmpeg] %s does not support v4l2 capture (Not a tty), stopping", cfg.Device)
-				return nil
+		if enableMP4 {
+			cmdCtx, cancel := context.WithCancel(ctx)
+			args := []string{
+				"-hide_banner",
+				"-loglevel", "error",
+				"-f", "v4l2",
+				"-framerate", fmt.Sprint(cfg.FPS),
+				"-video_size", cfg.Resolution,
+				"-i", cfg.Device,
+				"-c:v", cfg.Codec,
+				"-preset", "veryfast",
+				"-tune", "zerolatency",
+				outFile,
 			}
+			cmd := exec.CommandContext(cmdCtx, cfg.FFmpegPath, args...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
 
-			if ctx.Err() != nil {
-				// Normal shutdown
-				broker.Publish("capture.recording_stopped", map[string]any{
-					"device":    cfg.Device,
-					"file":      outFile,
-					"timestamp": time.Now().UTC(),
-				})
-				return nil
+			err := cmd.Run()
+			cancel()
+
+			if err != nil {
+				if strings.Contains(err.Error(), "Not a tty") {
+					log.Printf("[mp4] %s not a v4l2 node, stopping", cfg.Device)
+					return nil
+				}
+				if ctx.Err() != nil {
+					broker.Publish("capture.recording_stopped", map[string]any{
+						"device":    cfg.Device,
+						"file":      outFile,
+						"timestamp": time.Now().UTC(),
+					})
+					return nil
+				}
+				log.Printf("[mp4] error on %s: %v", cfg.Device, err)
+				fails++
+				if fails >= 5 {
+					log.Printf("[mp4] giving up on %s after %d errors", cfg.Device, fails)
+					broker.Publish("capture.recording_stopped", map[string]any{
+						"device":    cfg.Device,
+						"file":      outFile,
+						"timestamp": time.Now().UTC(),
+					})
+					return nil
+				}
+			} else {
+				fails = 0
 			}
-
-			log.Printf("[ffmpeg] error capturing %s: %v", cfg.Device, err)
-
-			// Count failures and bail out after 5
-			fails++
-			if fails >= 5 {
-				log.Printf("[ffmpeg] giving up on %s after %d errors", cfg.Device, fails)
-				broker.Publish("capture.recording_stopped", map[string]any{
-					"device":    cfg.Device,
-					"file":      outFile,
-					"timestamp": time.Now().UTC(),
-				})
-				return nil
-			}
-
-		} else {
-			// Reset on success
-			fails = 0
 		}
 
-		// ── notify → capture.recording_stopped ────────────────────────────
 		broker.Publish("capture.recording_stopped", map[string]any{
 			"device":    cfg.Device,
 			"file":      outFile,
 			"timestamp": time.Now().UTC(),
 		})
 
-		// Pause before retrying
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(cfg.RetryDelay):
 		}
 	}
->>>>>>> theirs
 }
 
 // buildOutputFilename constructs a timestamped filename under cfg.OutDir.
 func buildOutputFilename(cfg Config) string {
-<<<<<<< ours
-    ts := time.Now().UTC().Format("20060102T150405Z")
-    base := filepath.Base(cfg.Device)
-    return filepath.Join(cfg.OutDir, fmt.Sprintf("%s-%s-%s.mp4", base, cfg.Codec, ts))
-}
-=======
 	ts := time.Now().UTC().Format("20060102T150405Z")
 	base := filepath.Base(cfg.Device)
 	return filepath.Join(cfg.OutDir, fmt.Sprintf("%s-%s-%s.mp4", base, cfg.Codec, ts))
 }
->>>>>>> theirs
