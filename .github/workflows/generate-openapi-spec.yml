@@ -1,0 +1,133 @@
+name: Generate OpenAPI Specs in CI
+
+on:
+  push:
+    # regenerate when spec or code changes
+    paths:
+      - 'host/services/video-api/openapi.yaml'
+      - 'docker/web-app/**'
+      - 'host/services/capture-daemon/**'
+      - '**/*.go'
+      - '**/*.ts'
+      - '**/*.py'
+  workflow_dispatch:
+
+jobs:
+  generate-clients:
+    name: ✨ Generate API Clients
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        generator:
+          # Go client for capture-daemon
+          - id: go
+            cwd: host/services/capture-daemon
+            input: openapi.yaml
+            lang: go
+            output: api/gen
+            extra: "--additional-properties=packageName=captureapi"
+          # TypeScript client for web-app
+          - id: typescript
+            cwd: docker/web-app
+            input: ../../host/services/video-api/openapi.yaml
+            lang: typescript-axios
+            output: src/lib/api/gen
+            extra: "--additional-properties=supportsES6=true,useSingleRequestParameter=true"
+          # Python client for video-api
+          - id: python
+            cwd: host/services/video-api
+            input: openapi.yaml
+            lang: python
+            output: python_client
+            extra: ""
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Java (for OpenAPI Generator)
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Install OpenAPI Generator CLI
+        run: npm install -g @openapitools/openapi-generator-cli@6.6.0
+
+      - name: Generate ${{ matrix.generator.id }} client
+        working-directory: ${{ matrix.generator.cwd }}
+        run: |
+          openapi-generator-cli generate \
+            -i ${{ matrix.generator.input }} \
+            -g ${{ matrix.generator.lang }} \
+            -o ${{ matrix.generator.output }} \
+            ${{ matrix.generator.extra }}
+
+      - name: Commit generated client
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: chore: regen ${{ matrix.generator.id }} client
+          file_pattern: '${{ matrix.generator.cwd }}/${{ matrix.generator.output }}/*'
+
+  build-and-test:
+    name: 🛠️ Build & Test
+    needs: generate-clients
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        service:
+          - name: capture-daemon
+            lang: go
+            dir: host/services/capture-daemon
+          - name: video-api
+            lang: python
+            dir: host/services/video-api
+          - name: web-app
+            lang: node
+            dir: docker/web-app
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        if: matrix.service.lang == 'go'
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.20'
+
+      - name: Setup Python
+        if: matrix.service.lang == 'python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Setup Node
+        if: matrix.service.lang == 'node'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Build & Test ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.dir }}
+        run: |
+          case "${{ matrix.service.name }}" in
+            capture-daemon)
+              go build -o bin/capture-daemon main.go
+              go test ./...
+              ;;
+            video-api)
+              pip install -r requirements.txt
+              pytest
+              ;;
+            web-app)
+              npm ci
+              npm run build
+              npm run lint
+              npm run type-check
+              ;;
+          esac
