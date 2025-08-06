@@ -7,7 +7,7 @@ Create these files in your `/web-app` directory:
 ```
 web-app/
 ├── Dockerfile                    # Already provided above
-├── package.json                  # Already provided above  
+├── package.json                  # Already provided above
 ├── next.config.js               # Already provided above
 ├── tsconfig.json                # TypeScript config
 ├── tailwind.config.js           # Tailwind CSS config
@@ -59,23 +59,26 @@ docker build \
   --platform linux/arm64 \
   --target development \  -t cdaprod/video-web:dev \
   .
-```  
+```
 
 1. **Initialize the web-app directory:**
-   
+
    ```bash
    mkdir web-app
    cd web-app
    npm init -y
    npm install next@14.0.4 react@^18.2.0 react-dom@^18.2.0 typescript @types/node @types react @types/react-dom
    ```
+
 1. **Start development:**
-   
+
    ```bash
    # From project root
    docker-compose up web-app
    ```
+
 1. **Access the application:**
+
 - Web App: http://localhost:3000
 - API: http://localhost:8080
 
@@ -94,3 +97,9 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 NODE_ENV=development
 ```
+
+## Streaming protocol
+
+`CameraMonitor` probes `/hwcapture/features` at runtime to determine whether the
+capture-daemon exposes WebRTC. When available, it negotiates a WebRTC session;
+otherwise it falls back to the HLS preview.

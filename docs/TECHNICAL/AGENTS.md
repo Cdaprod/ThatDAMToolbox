@@ -6,14 +6,16 @@ Welcome, Codex Agent (and human reviewers)!
 You are contributing to **ThatDAMToolbox**: a modular, containerized, open-source digital asset management system for live video, edge cameras, and ML workflows.
 
 ## TOP OF MIND:
+
 - Always Wire, Avoid Rewrites At All Costs.
 - Layers: Host (capture-daemon), Backend (video-api), Frontend (web-app).
-- Host is device management and usable provided devices. 
+- Host is device management and usable provided devices.
 - Backend is core bootstrapped system + modular extensiblity.
 - Frontend is Dashboard + Digital Asset Management + Recorder + Modular Extensions (have backend video.modules).
-- 
+-
 
 ## 🏗️ Project Structure
+
 - **data/**  
   Caches, databases, incoming media, logs, and per-module storage (DAM, explorer, hwcapture, motion_extractor, uploader).
 
@@ -43,21 +45,27 @@ You are contributing to **ThatDAMToolbox**: a modular, containerized, open-sourc
 
 - **docker-compose.yaml**, **entrypoint.sh**, **Makefile**, **setup.py**, **requirements.txt**, **README.md**, **run_video.py**, **TUI & CLI entrypoints**  
   Root-level orchestration, tooling and documentation.
-  
+
 ### capture-daemon
-- Continuously discovers and manages camera devices  
-- Streams live video (HLS) and/or records to files  
-- Emits events (device lifecycle, recording start/stop) to a messaging system  
+
+- Continuously discovers and manages camera devices
+- Streams live video (HLS) and/or records to files
+- Emits events (device lifecycle, recording start/stop) to a messaging system
+- Exposes feature flags via `GET /features` (HLS preview, MP4 serving, WebRTC)
+  Downstream services should query this endpoint at startup to decide whether to use
+  HLS or WebRTC streaming.
 
 ### web-app
-- Digital asset explorer for browsing recorded clips and media  
-- Live camera monitor with integrated recorder controls  
-- Unified dashboard for device health, streams and playback  
+
+- Digital asset explorer for browsing recorded clips and media
+- Live camera monitor with integrated recorder controls
+- Unified dashboard for device health, streams and playback
 
 ### video-api
-- Backend service for ingesting and indexing video files and metadata  
-- Generates thumbnails, time-based previews and playback URLs  
-- Exposes REST endpoints for search, retrieval and integration  
+
+- Backend service for ingesting and indexing video files and metadata
+- Generates thumbnails, time-based previews and playback URLs
+- Exposes REST endpoints for search, retrieval and integration
 
 ## 🧪 Testing & Linting
 
@@ -68,15 +76,15 @@ You are contributing to **ThatDAMToolbox**: a modular, containerized, open-sourc
 
 ## ✍️ Code Style
 
-- **Go**:  
+- **Go**:
   - Use `gofmt`, `goimports`.
   - Package-level doc comments required for public APIs.
   - Avoid magic constants; use `config.go` or env vars.
   - Keep services stateless/idempotent where possible.
-- **Python**:  
+- **Python**:
   - Use Black for formatting, isort for imports.
   - CLI/REST APIs must have docstrings.
-- **TypeScript/Next.js**:  
+- **TypeScript/Next.js**:
   - Use Prettier (2-space), no semi-colons, single quotes.
   - Modular components go under `src/components/` or `src/modules/`.
   - **Never use the `/utils` directory for new logic** (deprecated).
@@ -85,7 +93,7 @@ You are contributing to **ThatDAMToolbox**: a modular, containerized, open-sourc
 
 - **New service?** Add it under a new folder with Dockerfile, `go.mod`/`requirements.txt`, and a README.
 - All services **communicate via RabbitMQ (events)**, and must gracefully reconnect.
-- If you add a REST API:  
+- If you add a REST API:
   - Prefix internal APIs with `/internal/`
   - Health checks: `/health` must return 200 OK when ready.
 - Device scanners should surface full **capabilities** in API responses, using v4l2 when possible.
@@ -127,4 +135,4 @@ You are contributing to **ThatDAMToolbox**: a modular, containerized, open-sourc
 
 ---
 
-Thank you, Codex Agent! Help keep ThatDAMToolbox robust, testable, modular, and *unhackable*.
+Thank you, Codex Agent! Help keep ThatDAMToolbox robust, testable, modular, and _unhackable_.
