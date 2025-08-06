@@ -1,5 +1,7 @@
 # /docker/camera-agent/Dockerfile
-FROM python:3.10-slim
+FROM --platform=$BUILDPLATFORM python:3.10-slim
+
+ARG TARGETPLATFORM
 
 # Avoid Python buffering so logs appear in real‐time
 ENV PYTHONUNBUFFERED=1
@@ -11,6 +13,8 @@ RUN apt-get update \
       libsm6 \
       libxext6 \
       libxrender1 \
+      libatlas3-base \
+      libjpeg62-turbo \
       avahi-utils \
  && rm -rf /var/lib/apt/lists/*
 

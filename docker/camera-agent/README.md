@@ -2,7 +2,7 @@
 
 #### Author: David Cannan
 
-A lightweight Python agent that turns any device with a camera into a remote video source for the That DAM Toolbox system. The agent automatically discovers gateways via mDNS, registers itself, and streams JPEG frames over WebSocket.
+A lightweight Python agent that turns any device with a camera into a remote video source for the That DAM Toolbox system. The agent automatically discovers gateways via mDNS, registers itself, and streams video over WebSocket or WebRTC.
 
 ⸻
 
@@ -10,7 +10,7 @@ A lightweight Python agent that turns any device with a camera into a remote vid
 
 - **Auto-discovery** – Finds That DAM Toolbox gateways advertising `_thatdam._tcp` via mDNS
 - **Self-registration** – Registers with the gateway and persists credentials locally
-- **Video streaming** – Captures frames from `/dev/video*` and streams over WebSocket
+- **Video streaming** – Captures frames from `/dev/video*` and streams over WebSocket or WebRTC
 - **Persistent config** – Saves registration info to `/data/agent.yaml` for reconnects
 - **Resilient reconnection** – Exponential backoff reconnection with clean shutdown
 - **Minimal footprint** – Runs anywhere Python + OpenCV can run
@@ -64,6 +64,7 @@ The agent captures frames at configurable resolution/FPS, encodes as JPEG with q
 |`FRAME_H`         |`360`     |Frame height in pixels                 |
 |`FPS`             |`10`      |Frames per second                      |
 |`GATEWAY_URL`     |(none)    |Static gateway override (bypasses mDNS)|
+|`STREAM_MODE`     |`ws-jpeg` |Streaming mode: `ws-jpeg` or `webrtc`  |
 
 ### Persistent Configuration
 
@@ -86,6 +87,16 @@ This allows the agent to reconnect without re-registering after restarts.
 ```bash
 cd docker/camera-agent
 docker build -t camera-agent:latest .
+```
+
+### Multi-arch build (e.g. Raspberry Pi Zero 2 W)
+
+Use Docker Buildx to target ARM platforms:
+
+```bash
+docker buildx build --platform linux/arm/v7 -t camera-agent:pi .
+# or for 64-bit
+docker buildx build --platform linux/arm64 -t camera-agent:pi .
 ```
 
 ### Run standalone
