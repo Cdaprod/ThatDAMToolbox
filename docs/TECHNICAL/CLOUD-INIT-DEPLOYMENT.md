@@ -33,7 +33,7 @@ It allows you to drop in configuration files before first boot to:
 hostname: my-pi-001
 users:
   - name: cdauser
-    gecos: "CDaprod DevOps"
+    gecos: "Cdaprod DevOps"
     ssh_authorized_keys:
       - ssh-rsa AAAA...
     sudo: ALL=(ALL) NOPASSWD:ALL
