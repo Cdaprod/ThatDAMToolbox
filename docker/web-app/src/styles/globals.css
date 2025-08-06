@@ -44,6 +44,6 @@ a {
   .bg-theme-accent     { background-color: var(--theme-accent)     !important; }
   .text-theme-primary  { color:            var(--theme-primary)    !important; }
   .text-theme-accent   { color:            var(--theme-accent)     !important; }
-  .ring-theme-primary  { --tw-ring-color: var(--theme-primary)    !important; }
-  .ring-theme-accent   { --tw-ring-color: var(--theme-accent)     !important; }
+  .ring-theme-primary  { --tw-ring-color:  var(--theme-primary)    !important; }
+  .ring-theme-accent   { --tw-ring-color:  var(--theme-accent)     !important; }
 }
