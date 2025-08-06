@@ -18,11 +18,11 @@ export function useLiveRecorder(config: {
   useEffect(() => {
     const onStarted = () => setStatus('recording');
     const onStopped = () => setStatus('idle');
-    bus.on('recording-started', onStarted);
-    bus.on('recording-stopped', onStopped);
+    bus.on('recording-start', onStarted);
+    bus.on('recording-stop', onStopped);
     return () => {
-      bus.off('recording-started', onStarted);
-      bus.off('recording-stopped', onStopped);
+      bus.off('recording-start', onStarted);
+      bus.off('recording-stop', onStopped);
     };
   }, []);
 

@@ -29,11 +29,15 @@ export default function VideoSocketProvider({ children }: { children: ReactNode 
           case 'recording_started':
             bus.emit('recording-start', msg.data);     break;
           case 'recording_stopped':
-            bus.emit('recording-stop', {});            break;
+            bus.emit('recording-stop', msg.data);      break;
           case 'battery':
             bus.emit('battery', msg.data);             break;
           case 'histogram':
             bus.emit('histogram', msg.data);           break;
+          case 'overlay_toggled':
+            bus.emit('overlay-toggled', msg.data);     break;
+          case 'recording_status':
+            bus.emit('recording-status', msg.data);    break;
           default:
             console.warn('[ws] unknown frame', msg);
         }

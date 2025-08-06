@@ -9,9 +9,11 @@ type BackendEvents = {
   /* ⇣ "hardware / capture" domain */
   'device-list'    : { path: string; width: number; height: number; fps: number }[];
   'recording-start': { file: string; timecode: string };
-  'recording-stop' : {};
+  'recording-stop' : { file?: string };
+  'recording-status': { feed: string; elapsed: number };
   'battery'        : { level: number };
   'histogram'      : { buckets: number[] };
+  'overlay-toggled': { overlay: 'focusPeaking' | 'zebras' | 'falseColor'; enabled: boolean };
   /* ⇣ "DAM / asset" domain */
   'assets-updated' : { ids: string[] };
   'batch-created'  : { id: string };

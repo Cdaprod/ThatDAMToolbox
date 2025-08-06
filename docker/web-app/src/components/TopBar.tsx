@@ -1,7 +1,7 @@
 // /docker/web-app/src/components/TopBar.tsx
 'use client';
 
-import { clsx } from 'clsx'
+import clsx from 'clsx'
 import { Menu } from 'lucide-react'
 import { useModal } from '@/providers/ModalProvider'
 
