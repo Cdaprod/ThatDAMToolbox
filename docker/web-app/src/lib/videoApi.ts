@@ -4,7 +4,7 @@ import type { Asset } from './apiAssets'
 
 /* ---------- helpers ---------- */
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), { next: { revalidate: 0 }, ...init });
+  const res = await fetch(apiUrl(path), { next: { revalidate: 0 }, ...init } as any);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }

@@ -1,0 +1,19 @@
+/* --- Design Tokens -------------------------------------------------- */
+:root {
+  /* Baseline grid (8-pt) */
+  --grid-unit   : 8px;
+  --gutter-sm   : calc(var(--grid-unit) * 2);   /* 16 */
+  --gutter-md   : calc(var(--grid-unit) * 3);   /* 24 */
+  --gutter-lg   : calc(var(--grid-unit) * 4);   /* 32 */
+
+  /* Section vertical rhythm */
+  --section-pad-y   : calc(var(--grid-unit) * 6);  /* 48 */
+  --section-pad-y-lg: calc(var(--grid-unit) * 8);  /* 64 */
+
+  /* Max-width break-points ( 🔑 ← easy to A/B ) */
+  --container-xs : 480px;
+  --container-sm : 640px;
+  --container-md : 768px;
+  --container-lg : 1024px;
+  --container-xl : 1280px;
+}

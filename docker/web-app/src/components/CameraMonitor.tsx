@@ -159,8 +159,7 @@ const CameraMonitor: React.FC = () => {
   const [previewWidth, setPreviewWidth] = useState(1280);
   const [previewHeight, setPreviewHeight] = useState(720);
   const [previewFps, setPreviewFps] = useState(30);
-  // Recording state - using server-driven timing
-  //const [isRecording, setIsRecording]                    = useState(false);
+  // Recording time is driven by the server via wsStatus/localRec
   // Timecode
   //const { tc: localTimecode, format: formatLocalTimecode } = useTimecode({h:1,m:23,s:45,f:18});
   const { format } = useTimecode();
@@ -372,16 +371,13 @@ const CameraMonitor: React.FC = () => {
         case "recording_status":
           // Use server-driven recording time
           setRecordingTime(msg.data.elapsed);
-          setIsRecording(true);
           break;
 
         case "recording_started":
-          setIsRecording(true);
           setRecordingTime(0); // Reset timer on new recording
           break;
 
         case "recording_stopped":
-          setIsRecording(false);
           break;
 
         case "battery":

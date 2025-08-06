@@ -29,16 +29,14 @@ export function useMediaRecorder({
     chunksRef.current = []
 
     // cross-browser captureStream + canvas fallback
-    async function obtainCaptureStream(el: HTMLVideoElement): Promise<MediaStream> {
+    async function obtainCaptureStream(el: HTMLVideoElement, fps: number): Promise<MediaStream> {
       // Standard API
-      if (typeof el.captureStream === 'function') {
-        return el.captureStream()
+      if (typeof (el as any).captureStream === 'function') {
+        return (el as any).captureStream(fps)
       }
       // WebKit prefix
-      // @ts-ignore
-      if (typeof el.webkitCaptureStream === 'function') {
-        // @ts-ignore
-        return el.webkitCaptureStream()
+      if (typeof (el as any).webkitCaptureStream === 'function') {
+        return (el as any).webkitCaptureStream(fps)
       }
       // Fallback: render to hidden canvas
       const canvas = document.createElement('canvas')
@@ -47,7 +45,7 @@ export function useMediaRecorder({
       const ctx = canvas.getContext('2d')
       if (!ctx) throw new Error('2D canvas not supported')
 
-      let rafId: number
+      let rafId = 0
       const drawLoop = () => {
         try {
           ctx.drawImage(el, 0, 0, canvas.width, canvas.height)
@@ -56,8 +54,7 @@ export function useMediaRecorder({
       }
       drawLoop()
 
-      // @ts-ignore
-      const stream = canvas.captureStream?.() as MediaStream
+      const stream = (canvas as any).captureStream?.(fps) as MediaStream
       if (!stream) {
         cancelAnimationFrame(rafId)
         throw new Error('captureStream fallback failed')
@@ -71,7 +68,7 @@ export function useMediaRecorder({
 
     let stream: MediaStream
     try {
-      stream = await obtainCaptureStream(videoEl)
+      stream = await obtainCaptureStream(videoEl, frameRate)
     } catch (err) {
       alert(`Unable to capture stream: ${err instanceof Error ? err.message : err}`)
       return
