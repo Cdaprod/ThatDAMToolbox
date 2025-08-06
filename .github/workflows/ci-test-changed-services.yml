@@ -10,6 +10,7 @@ on:
   pull_request:
     branches: [ "**" ]
     paths:
+      - ".github/workflows/ci-test-changed-services.yml"
       - "docker/*/**"
       - "host/services/**"
       - "**/*.go"
@@ -25,14 +26,15 @@ jobs:
       list:    ${{ steps.set.outputs.changed_services }}
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
 
       - id: set
         run: |
           BASE_SHA=$(git merge-base origin/${{ github.base_ref }} HEAD)
           MODIFIED=$(git diff --name-only $BASE_SHA HEAD -- 'docker/*' | cut -d/ -f2 | sort -u)
           [[ -z "$MODIFIED" ]] && { echo "changed=false" >> "$GITHUB_OUTPUT"; echo "changed_services=[]" >> "$GITHUB_OUTPUT"; exit 0; }
-          echo "changed=true"               >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "changed_services=$(jq -ncR '[inputs] | map(select(length>0))' <<<"$MODIFIED")" >> "$GITHUB_OUTPUT"
 
   test-services:
@@ -47,17 +49,30 @@ jobs:
 
       # ------- common tooling ------------------------------------------------
       - uses: actions/setup-go@v5
-        with: { go-version: '1.21' }
+        with:
+          go-version: '1.21'
       - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
+        with:
+          python-version: '3.11'
       - uses: actions/setup-node@v3
-        with: { node-version: '18' }
+        with:
+          node-version: '18'
       - uses: docker/setup-buildx-action@v3
-      - name: Install lint tools
+
+      - name: Install lint + misc tools
         run: |
-          sudo apt-get update && sudo apt-get install -y hadolint parallel
-          pip  install pytest
-          npm  install -g eslint
+          set -e
+          sudo apt-get update && sudo apt-get install -y parallel jq shellcheck
+
+          # ─── hadolint ────────────────────────────────────────────────────────
+          curl -sSL \
+            https://github.com/hadolint/hadolint/releases/latest/download/hadolint-$(uname -s)-$(uname -m) \
+            -o hadolint
+          chmod +x hadolint && sudo mv hadolint /usr/local/bin/
+
+          # ─── language test tooling ──────────────────────────────────────────
+          pip install --quiet pytest
+          npm install -g eslint
 
       # ------- per-service checks -------------------------------------------
       - name: Lint Dockerfile with Hadolint
@@ -72,7 +87,6 @@ jobs:
 
       # Detect language & run its unit tests
       - name: Run service unit tests
-        working-directory: ${{ github.workspace }}
         run: |
           svc="docker/${{ matrix.service }}"
           if [[ -f "$svc/requirements.txt" ]] || compgen -G "$svc/**/*.py" > /dev/null; then
@@ -86,7 +100,6 @@ jobs:
             npm ci
             npm test --if-present || exit 1
           fi
-          # Go unit tests live in host/services, not docker; run if service maps
           hostdir="host/services/${{ matrix.service }}"
           if [[ -d "$hostdir" && -f "$hostdir/go.mod" ]]; then
             echo "🧪 running go test for $hostdir"
@@ -111,13 +124,11 @@ jobs:
           COMPOSE_DOCKER_CLI_BUILD: 1
         run: |
           docker compose up -d
-          echo "🌡  waiting for services…"
           sleep 30
           docker compose ps
       - name: Basic health endpoints check
         run: |
           set -e
-          # write simple curl checks per service as needed
           curl -f http://localhost:8080/health || echo "⚠️ api health missing"
       - name: Tear down
         if: always()
