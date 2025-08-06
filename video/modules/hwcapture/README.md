@@ -6,13 +6,17 @@
 <!-- ... -->
 <div class="video-display" id="videoDisplay">
   <!-- CSI preview (default) -->
-  <img id="livePreview"
-       src="/api/v1/hwcapture/stream?device=/dev/video0&width=1280&height=720&fps=30"
-       style="width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;z-index:0;">
+  <img
+    id="livePreview"
+    src="/api/v1/hwcapture/stream?device=/dev/video0&width=1280&height=720&fps=30"
+    style="width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;z-index:0;"
+  />
   <!-- NDI preview (hidden initially) -->
-  <img id="ndiPreview"
-       src="/api/v1/hwcapture/ndi_stream?source=MyNDICam&width=1280&height=720&fps=30"
-       style="display:none;width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;z-index:0;">
+  <img
+    id="ndiPreview"
+    src="/api/v1/hwcapture/ndi_stream?source=MyNDICam&width=1280&height=720&fps=30"
+    style="display:none;width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;z-index:0;"
+  />
   <!-- overlays unchanged… -->
 </div>
 <!-- … -->
@@ -27,27 +31,27 @@
 <!-- … -->
 
 <script>
-  const liveCSI = document.getElementById('livePreview');
-  const liveNDI = document.getElementById('ndiPreview');
-  const toggleBtn = document.getElementById('sourceToggleBtn');
+  const liveCSI = document.getElementById("livePreview");
+  const liveNDI = document.getElementById("ndiPreview");
+  const toggleBtn = document.getElementById("sourceToggleBtn");
   let usingCSI = true;
 
-  toggleBtn.addEventListener('click', () => {
+  toggleBtn.addEventListener("click", () => {
     if (usingCSI) {
       // switch _to_ NDI
-      liveCSI.style.display = 'none';
-      liveNDI.style.display = 'block';
-      toggleBtn.textContent = 'Switch to CSI';
+      liveCSI.style.display = "none";
+      liveNDI.style.display = "block";
+      toggleBtn.textContent = "Switch to CSI";
     } else {
       // switch _back_ to CSI
-      liveNDI.style.display = 'none';
-      liveCSI.style.display = 'block';
-      toggleBtn.textContent = 'Switch to NDI';
+      liveNDI.style.display = "none";
+      liveCSI.style.display = "block";
+      toggleBtn.textContent = "Switch to NDI";
     }
     usingCSI = !usingCSI;
   });
-  </script>
-  ```
+</script>
+```
 
 ## Low-latency HLS preview
 
@@ -68,7 +72,15 @@ In React you can consume it with a real `<video>` tag:
 <video src="/hwcapture/live/stream.m3u8" controls autoPlay muted playsInline />
 ```
 
-  Now `hwcapture.py` supports multiple cameras including your Insta360 X3 webcam. Here’s how to use it:
+## WebRTC preview
+
+Clients can negotiate a WebRTC stream by POSTing an SDP offer to
+`/hwcapture/webrtc`. Runtime feature flags are exposed via
+`GET /hwcapture/features` which mirrors the capture-daemon capabilities.
+Set the `CAPTURE_DAEMON_URL` environment variable if the capture service is
+reachable on a non-default host or port.
+
+Now `hwcapture.py` supports multiple cameras including your Insta360 X3 webcam. Here’s how to use it:
 
 **Multi-camera recording:**
 
@@ -132,11 +144,11 @@ The Insta360 X3 in webcam mode will appear as a standard USB video device (proba
 python -m video witness_record --duration 10
 # or through REST
 curl -X POST "http://pi5.local:8080/hwcapture/witness_record?duration=10"
-``` 
+```
 
 **You'll get:**
 
 ```output
 main_raw.mp4        # original HDMI feed
 main_stab.mp4       # witness-stabilised version
-``` 
+```

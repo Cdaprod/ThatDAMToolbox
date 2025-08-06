@@ -8,28 +8,37 @@ video/ws.py
 REFACTORED: All device operations now go through hwcapture module for DRY compliance.
 """
 import asyncio
+import base64
 import json
 import logging
+import os
 import time
-import fractions
-import base64
-import numpy as np
+from typing import Any, Dict, Optional, Set
 
-from typing import Any, Dict, Set, Optional
-
-from fastapi import HTTPException, Query, APIRouter, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
-from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
-from av import VideoFrame
+import httpx
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 # ------ ALL hwcapture imports are via the public API ------
 from video.modules.hwcapture import (
-    list_video_devices, HWAccelRecorder, stream_jpeg_frames,
-    record_multiple, capture_multiple, has_hw
+    HWAccelRecorder,
+    capture_multiple,
+    has_hw,
+    record_multiple,
+    stream_jpeg_frames,
 )
 
 router = APIRouter(prefix="/ws")
 _log = logging.getLogger("video.ws")
+_SELF_URL = os.getenv("VIDEO_API_URL", "http://localhost:8080")
+
 
 def _no_signal_html(module: str, device: str) -> HTMLResponse:
     html = f"""
@@ -50,41 +59,46 @@ def _no_signal_html(module: str, device: str) -> HTMLResponse:
     """
     return HTMLResponse(html, status_code=200)
 
+
 # ──────────── WS Event Utility ──────────────
 class WSResp:
-    ERROR_UNKNOWN = {"event":"error","data":"unknown action"}
-    
+    ERROR_UNKNOWN = {"event": "error", "data": "unknown action"}
+
     @staticmethod
     def device_list(devs):
-        return {"event":"device_list","data":devs}
-    
+        return {"event": "device_list", "data": devs}
+
     @staticmethod
     def recording_started(fname):
-        return {"event":"recording_started","data":{"file":fname}}
-    
+        return {"event": "recording_started", "data": {"file": fname}}
+
     @staticmethod
     def recording_stopped(feed):
-        return {"event":"recording_stopped","data":{"feed": feed}}
-    
+        return {"event": "recording_stopped", "data": {"feed": feed}}
+
     @staticmethod
     def preview_settings_changed(settings):
-        return {"event":"preview_settings","data":settings}
-    
+        return {"event": "preview_settings", "data": settings}
+
     @staticmethod
     def overlay_toggled(name, enabled):
-        return {"event":"overlay_toggled","data":{"overlay":name,"enabled":enabled}}
-    
+        return {
+            "event": "overlay_toggled",
+            "data": {"overlay": name, "enabled": enabled},
+        }
+
     @staticmethod
     def stream_selected(feed, device):
-        return {"event":"stream_selected","data":{"feed":feed,"device":device}}
-    
+        return {"event": "stream_selected", "data": {"feed": feed, "device": device}}
+
     @staticmethod
     def frame_captured(device, data):
-        return {"event":"frame","device":device,"data":data}
-    
+        return {"event": "frame", "device": device, "data": data}
+
     @staticmethod
     def error(message):
-        return {"event":"error","data":message}
+        return {"event": "error", "data": message}
+
 
 # ──────────── WebSocket State ────────────────
 _control_clients: Set[WebSocket] = set()
@@ -93,18 +107,30 @@ _recorders: Dict[str, HWAccelRecorder] = {}
 _status_tasks: Dict[str, asyncio.Task] = {}
 _recording_lock = asyncio.Lock()
 
+
 # ──────────── Device Manager - Central abstraction ──────────────
 class DeviceManager:
     """
     Centralized device management using hwcapture module.
     Eliminates duplicate device handling code across WebSocket endpoints.
     """
-    
+
     @staticmethod
     async def get_devices():
-        """Get all available devices via hwcapture."""
-        return await asyncio.to_thread(list_video_devices)
-    
+        """Fetch device list via the hwcapture module.
+
+        Proxying through our own REST endpoint keeps all device
+        enumeration logic in one place and allows camera-proxy and
+        capture-daemon to enrich the list.
+
+        Example:
+            curl http://localhost:8080/hwcapture/devices
+        """
+        async with httpx.AsyncClient() as c:
+            r = await c.get(f"{_SELF_URL}/hwcapture/devices")
+            r.raise_for_status()
+            return r.json()
+
     @staticmethod
     async def capture_single_frame(device: str) -> Optional[bytes]:
         """
@@ -119,33 +145,22 @@ class DeviceManager:
         except Exception as e:
             _log.error(f"Frame capture failed for {device}: {e}")
             return None
-    
+
     @staticmethod
     def validate_device(device: str) -> bool:
-        """Validate device exists using hwcapture."""
-        devices = list_video_devices()
-        return any(dev['path'] == device for dev in devices)
+        """Validate device exists using hwcapture's REST endpoint."""
+        try:
+            r = httpx.get(f"{_SELF_URL}/hwcapture/devices", timeout=4.0)
+            r.raise_for_status()
+            devices = r.json()
+        except Exception as exc:
+            _log.error("device validation failed: %s", exc)
+            return False
+        return any(dev.get("path") == device for dev in devices)
+
 
 # ──────────── Frame Pool Helper (optimized) ──────────────
-class FramePool:
-    def __init__(self, width: int, height: int, pool_size: int = 5):
-        self._w, self._h = width, height
-        self._pool = asyncio.Queue(maxsize=pool_size)
-        for _ in range(pool_size):
-            buf = np.zeros((height, width, 3), dtype=np.uint8)
-            self._pool.put_nowait(buf)
-    
-    async def get(self) -> np.ndarray:
-        try:
-            return await self._pool.get()
-        except Exception:
-            return np.zeros((self._h, self._w, 3), dtype=np.uint8)
-    
-    async def put(self, buf: np.ndarray):
-        if not self._pool.full():
-            await self._pool.put(buf)
 
-_video_pool = FramePool(width=1920, height=1080, pool_size=3)
 
 # ──────────── Control WebSocket (using DeviceManager) ──────────────
 @router.websocket("/control")
@@ -153,7 +168,7 @@ async def ws_control(ws: WebSocket):
     await ws.accept()
     async with _clients_lock:
         _control_clients.add(ws)
-    
+
     try:
         while True:
             text = await ws.receive_text()
@@ -164,48 +179,52 @@ async def ws_control(ws: WebSocket):
                 continue
 
             action = cmd.get("action")
-            
+
             # --- Device list via DeviceManager ---
             if action == "list_devices":
                 devices = await DeviceManager.get_devices()
                 await ws.send_json(WSResp.device_list(devices))
-            
+
             # --- Recording control via hwcapture ---
             elif action == "start_record":
                 await _start_record(cmd, ws)
             elif action == "stop_record":
                 await _stop_record(cmd, ws)
-            
+
             # --- Stream control ---
             elif action == "select_stream":
                 device = cmd.get("device", "/dev/video0")
                 if DeviceManager.validate_device(device):
-                    await _broadcast_control(WSResp.stream_selected(cmd["feed"], device))
+                    await _broadcast_control(
+                        WSResp.stream_selected(cmd["feed"], device)
+                    )
                 else:
                     await ws.send_json(WSResp.error(f"Invalid device: {device}"))
-            
+
             elif action == "set_preview":
                 settings = {
-                    "width": cmd.get("width", 1920), 
-                    "height": cmd.get("height", 1080), 
-                    "fps": cmd.get("fps", 30)
+                    "width": cmd.get("width", 1920),
+                    "height": cmd.get("height", 1080),
+                    "fps": cmd.get("fps", 30),
                 }
                 await _broadcast_control(WSResp.preview_settings_changed(settings))
-            
+
             elif action == "toggle_overlay":
-                await _broadcast_control(WSResp.overlay_toggled(
-                    cmd.get("overlay", ""), 
-                    cmd.get("enabled", False)
-                ))
-            
+                await _broadcast_control(
+                    WSResp.overlay_toggled(
+                        cmd.get("overlay", ""), cmd.get("enabled", False)
+                    )
+                )
+
             else:
                 await ws.send_json(WSResp.ERROR_UNKNOWN)
-                
+
     except WebSocketDisconnect:
         pass
     finally:
         async with _clients_lock:
             _control_clients.discard(ws)
+
 
 # ──────────── Recording Control (using hwcapture) ──────────────
 async def _start_record(cmd: Dict[str, Any], ws: WebSocket):
@@ -213,40 +232,41 @@ async def _start_record(cmd: Dict[str, Any], ws: WebSocket):
         feed = cmd.get("feed", "main")
         if feed in _recorders:
             return await ws.send_json(WSResp.error("Recording already active"))
-        
+
         device = cmd.get("device", "/dev/video0")
         if not DeviceManager.validate_device(device):
             return await ws.send_json(WSResp.error(f"Invalid device: {device}"))
-        
+
         codec = cmd.get("codec", "h264")
         filename = cmd.get("filename", f"{feed}.mp4")
         timecode = cmd.get("timecode", None)
-        
+
         try:
             rec = HWAccelRecorder(
-                device=device, 
-                output_file=filename, 
-                metadata_timecode=timecode
+                device=device, output_file=filename, metadata_timecode=timecode
             )
             _recorders[feed] = rec
             await asyncio.to_thread(rec.start_recording_hw, codec)
             await _broadcast_control(WSResp.recording_started(filename))
-            
+
             # Status monitoring task
             async def status_loop():
                 start = time.time()
                 while feed in _recorders:
                     elapsed = time.time() - start
-                    await _broadcast_control({
-                        "event": "recording_status", 
-                        "data": {"feed": feed, "elapsed": elapsed}
-                    })
+                    await _broadcast_control(
+                        {
+                            "event": "recording_status",
+                            "data": {"feed": feed, "elapsed": elapsed},
+                        }
+                    )
                     await asyncio.sleep(1)
-            
+
             _status_tasks[feed] = asyncio.create_task(status_loop())
-            
+
         except Exception as e:
             await ws.send_json(WSResp.error(f"Recording failed: {str(e)}"))
+
 
 async def _stop_record(cmd: Dict[str, Any], ws: WebSocket):
     async with _recording_lock:
@@ -254,7 +274,7 @@ async def _stop_record(cmd: Dict[str, Any], ws: WebSocket):
         rec = _recorders.pop(feed, None)
         if not rec:
             return await ws.send_json(WSResp.error("No active recording"))
-        
+
         try:
             await asyncio.to_thread(rec.stop_recording)
             task = _status_tasks.pop(feed, None)
@@ -264,6 +284,7 @@ async def _stop_record(cmd: Dict[str, Any], ws: WebSocket):
         except Exception as e:
             await ws.send_json(WSResp.error(f"Stop failed: {str(e)}"))
 
+
 async def _broadcast_control(msg: Dict[str, Any]):
     async with _clients_lock:
         for client in set(_control_clients):
@@ -272,15 +293,16 @@ async def _broadcast_control(msg: Dict[str, Any]):
             except Exception:
                 _control_clients.discard(client)
 
+
 # ──────────── Camera/Preview WS (using DeviceManager) ──────────────
 @router.websocket("/camera")
 async def ws_camera(ws: WebSocket):
     await ws.accept()
     _log.info("Camera WS client connected")
-    
+
     try:
         await ws.send_json({"event": "camera_ws_ready"})
-        
+
         while True:
             msg = await ws.receive_text()
             try:
@@ -290,26 +312,26 @@ async def ws_camera(ws: WebSocket):
                 continue
 
             action = data.get("action")
-            
+
             if action == "list_devices":
                 devices = await DeviceManager.get_devices()
                 await ws.send_json(WSResp.device_list(devices))
-            
+
             elif action == "capture_frame":
                 device = data.get("device", "/dev/video0")
                 if not DeviceManager.validate_device(device):
                     await ws.send_json(WSResp.error(f"Invalid device: {device}"))
                     continue
-                
+
                 frame_data = await DeviceManager.capture_single_frame(device)
                 if frame_data:
                     await ws.send_json(WSResp.frame_captured(device, frame_data))
                 else:
                     await ws.send_json(WSResp.error(f"Frame capture failed: {device}"))
-            
+
             else:
                 await ws.send_json(WSResp.error(f"Unknown action: {action}"))
-                
+
     except WebSocketDisconnect:
         _log.info("Camera WS client disconnected")
     finally:
@@ -318,21 +340,23 @@ async def ws_camera(ws: WebSocket):
         except Exception:
             pass
 
+
 # ──────────── MJPEG Preview (direct hwcapture call) ──────────────
 @router.get("/preview", include_in_schema=False)
 async def preview_mjpeg(
     device: str = Query("/dev/video0", description="V4L2 device"),
-    quality: int = Query(80, description="JPEG quality (0–100)")
+    quality: int = Query(80, description="JPEG quality (0–100)"),
 ):
     # Validate device first
     if not DeviceManager.validate_device(device):
         return _no_signal_html("hwcapture", device)
-    
+
     # Use hwcapture's stream generator directly
     return StreamingResponse(
         stream_jpeg_frames(device=device, quality=quality),
-        media_type="multipart/x-mixed-replace; boundary=frame"
+        media_type="multipart/x-mixed-replace; boundary=frame",
     )
+
 
 # ──────────── Recording status ──────────────
 @router.get("/status", summary="Current recording status", response_class=JSONResponse)
@@ -342,90 +366,23 @@ async def ws_status():
             feed: {"recording": rec.recording, "file": rec.output_file}
             for feed, rec in _recorders.items()
         },
-        "hardware_available": has_hw()
+        "hardware_available": has_hw(),
     }
 
-# ──────────── WebRTC Preview (using hwcapture for device validation) ──────────
-class CameraTrack(VideoStreamTrack):
-    """WebRTC camera track with hwcapture integration."""
-    
-    def __init__(self, device: str, width: int, height: int, fps: int, pool: FramePool):
-        super().__init__()
-        
-        # Validate device via hwcapture
-        if not DeviceManager.validate_device(device):
-            raise ValueError(f"Invalid device: {device}")
-        
-        # Use OpenCV for WebRTC (real-time requirement)
-        # but validate device capabilities via hwcapture first
-        import cv2
-        self.cap = cv2.VideoCapture(device)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_FPS, fps)
-        
-        self._pool = pool
-        self._video_frame = VideoFrame(width=width, height=height, format="bgr24")
-        self.pts = 0
-        self.interval_us = int(1_000_000 / fps)
-    
-    async def recv(self) -> VideoFrame:
-        await asyncio.sleep(self.interval_us / 1_000_000)
-        buf = await self._pool.get()
-        
-        ret, frame = self.cap.read()
-        if not ret:
-            await self._pool.put(buf)
-            raise asyncio.CancelledError
-        
-        np.copyto(buf, frame)
-        self._video_frame.planes[0].update(buf)
-        self._video_frame.pts = self.pts
-        self._video_frame.time_base = fractions.Fraction(1, 1_000_000)
-        self.pts += self.interval_us
-        
-        await self._pool.put(buf)
-        return self._video_frame
-    
-    def stop(self):
-        super().stop()
-        self.cap.release()
 
+# ──────────── WebRTC Preview (proxied via capture-daemon) ───────────
 @router.post("/webrtc")
 async def offer(request: Request):
-    params = await request.json()
-    offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
-    pc = RTCPeerConnection()
-    pc_id = f"PeerConnection-{id(pc)}"
-    
-    _log.info(f"{pc_id} Created for {request.client}")
-    
-    try:
-        track = CameraTrack(
-            device="/dev/video0", 
-            width=1920, 
-            height=1080, 
-            fps=60, 
-            pool=_video_pool
+    """Forward SDP offer to capture-daemon if enabled."""
+
+    if os.getenv("ENABLE_WEBRTC_PROXY", "false").lower() != "true":
+        raise HTTPException(status_code=404, detail="WebRTC disabled")
+
+    payload = await request.json()
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{os.getenv('CAPTURE_DAEMON_URL', 'http://localhost:9000')}/webrtc/offer",
+            json=payload,
         )
-        pc.addTrack(track)
-        
-        @pc.on("connectionstatechange")
-        async def on_state():
-            _log.info(f"{pc_id} State: {pc.connectionState}")
-            if pc.connectionState in ("failed", "closed", "disconnected"):
-                await pc.close()
-                track.stop()
-        
-        await pc.setRemoteDescription(offer)
-        answer = await pc.createAnswer()
-        await pc.setLocalDescription(answer)
-        
-        return {
-            "sdp": pc.localDescription.sdp, 
-            "type": pc.localDescription.type
-        }
-        
-    except ValueError as e:
-        _log.error(f"WebRTC setup failed: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        resp.raise_for_status()
+        return resp.json()

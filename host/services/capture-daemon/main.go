@@ -99,6 +99,7 @@ func main() {
 	reg := registry.NewRegistry()
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, reg)
+	api.RegisterFeatureRoutes(mux, cfg)
 	if cfg.Features.WebRTC.Enabled {
 		webrtc.RegisterRoutes(mux, cfg.Features.WebRTC.PathPrefix)
 	}

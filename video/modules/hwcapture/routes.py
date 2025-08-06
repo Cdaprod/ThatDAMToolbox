@@ -12,22 +12,31 @@ DEL  /hwcapture/record/{job_id}     – stop recording
 """
 
 from __future__ import annotations
-import io, json, logging, subprocess, uuid, shlex, threading
+
+import io
+import json
+import logging
+import os
+import shlex
+import subprocess
+import threading
+import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Query, HTTPException
-from fastapi.responses import StreamingResponse, FileResponse
+import httpx
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import FileResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
-
-from .hwcapture import list_video_devices, HWAccelRecorder
-from .hwcapture import stream_jpeg_frames
-from .hwcapture import record as cli_record
 
 from video.config import get_module_path
 
+from .hwcapture import HWAccelRecorder
+from .hwcapture import record as cli_record
+from .hwcapture import stream_jpeg_frames
 
 router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
 _log = logging.getLogger("video.hwcapture")
+_CAPTURE_URL = os.getenv("CAPTURE_DAEMON_URL", "http://localhost:9000")
 
 
 # Use module-registered directories!
@@ -61,7 +70,36 @@ def _mjpeg_generator(cmd: list[str]):
 # ──────────── Endpoints ─────────────
 @router.get("/devices")
 async def devices():
-    return list_video_devices()
+    """Return capture-daemon's device list.
+
+    The capture-daemon exposes its own `/devices` endpoint which
+    enumerates cameras and capabilities.  We proxy that list so the
+    web app and other consumers see a single authoritative source.
+
+    Example:
+        curl http://localhost:8080/hwcapture/devices
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{_CAPTURE_URL}/devices")
+        r.raise_for_status()
+        return r.json()
+
+
+@router.get("/features")
+async def features():
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{_CAPTURE_URL}/features")
+        r.raise_for_status()
+        return r.json()
+
+
+@router.post("/webrtc")
+async def webrtc_offer(request: Request):
+    payload = await request.json()
+    async with httpx.AsyncClient() as client:
+        r = await client.post(f"{_CAPTURE_URL}/webrtc/offer", json=payload)
+        r.raise_for_status()
+        return r.json()
 
 
 @router.get("/stream", include_in_schema=False)
