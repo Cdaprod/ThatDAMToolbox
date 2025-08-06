@@ -10,6 +10,7 @@ import { useTimecode }       from '@/hooks/useTimecode'
 import { useCameraStream }   from '@/hooks/useCameraStream'
 import RecordButton          from '@/components/RecordButton'
 import { useModal }          from '@/providers/ModalProvider'
+import { deviceOptionStyle, sliderBackgroundStyle, batteryLevelStyle } from '@/styles/theme'
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(() => import('./overlays/FocusPeakingOverlay'), { ssr: false });
@@ -523,10 +524,7 @@ const CameraMonitor: React.FC = () => {
                   key={dev}
                   value={dev}
                   disabled={!devicesAvailableNow.includes(dev)}
-                  style={{
-                    color: devicesAvailableNow.includes(dev) ? '#fff' : '#888',
-                    background: devicesAvailableNow.includes(dev) ? '' : '#333',
-                  }}
+                  style={deviceOptionStyle(devicesAvailableNow.includes(dev))}
                 >
                   {dev}{!devicesAvailableNow.includes(dev) ? ' (offline)' : ''}
                 </option>
@@ -615,16 +613,14 @@ const CameraMonitor: React.FC = () => {
                 <span>Brightness</span>
                 <span>{brightness}%</span>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
+              <input
+                type="range"
+                min="0"
+                max="100"
                 value={brightness}
                 onChange={(e) => setBrightness(parseInt(e.target.value))}
                 className="w-full h-1 bg-gray-600 rounded outline-none slider-thumb"
-                style={{
-                  background: `linear-gradient(to right, #ff4500 0%, #ff4500 ${brightness}%, #666 ${brightness}%, #666 100%)`
-                }}
+                style={sliderBackgroundStyle(brightness)}
               />
             </div>
             
@@ -633,16 +629,14 @@ const CameraMonitor: React.FC = () => {
                 <span>Contrast</span>
                 <span>{contrast}%</span>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="200" 
+              <input
+                type="range"
+                min="0"
+                max="200"
                 value={contrast}
                 onChange={(e) => setContrast(parseInt(e.target.value))}
                 className="w-full h-1 bg-gray-600 rounded outline-none"
-                style={{
-                  background: `linear-gradient(to right, #ff4500 0%, #ff4500 ${contrast/2}%, #666 ${contrast/2}%, #666 100%)`
-                }}
+                style={sliderBackgroundStyle(contrast/2)}
               />
             </div>
             
@@ -651,16 +645,14 @@ const CameraMonitor: React.FC = () => {
                 <span>Saturation</span>
                 <span>{saturation}%</span>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="200" 
+              <input
+                type="range"
+                min="0"
+                max="200"
                 value={saturation}
                 onChange={(e) => setSaturation(parseInt(e.target.value))}
                 className="w-full h-1 bg-gray-600 rounded outline-none"
-                style={{
-                  background: `linear-gradient(to right, #ff4500 0%, #ff4500 ${saturation/2}%, #666 ${saturation/2}%, #666 100%)`
-                }}
+                style={sliderBackgroundStyle(saturation/2)}
               />
             </div>
           </div>
@@ -677,16 +669,14 @@ const CameraMonitor: React.FC = () => {
                 <span>Volume</span>
                 <span>{volume}%</span>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
+              <input
+                type="range"
+                min="0"
+                max="100"
                 value={volume}
                 onChange={(e) => setVolume(parseInt(e.target.value))}
                 className="w-full h-1 bg-gray-600 rounded outline-none"
-                style={{
-                  background: `linear-gradient(to right, #ff4500 0%, #ff4500 ${volume}%, #666 ${volume}%, #666 100%)`
-                }}
+                style={sliderBackgroundStyle(volume)}
               />
             </div>
           </div>
@@ -729,9 +719,9 @@ const CameraMonitor: React.FC = () => {
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <div className="w-6 h-3 border border-gray-300 rounded-sm relative">
-            <div 
+            <div
               className={`h-full rounded-sm transition-all duration-300 ${batteryLevel < 20 ? 'bg-red-500' : 'bg-green-500'}`}
-              style={{ width: `${batteryLevel}%` }}
+              style={batteryLevelStyle(batteryLevel)}
             ></div>
             <div className="w-0.5 h-1.5 bg-gray-300 absolute -right-0.5 top-0.5 rounded-r-sm"></div>
           </div>
