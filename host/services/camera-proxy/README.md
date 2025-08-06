@@ -9,6 +9,7 @@ Now here’s the deployment configuration that makes this completely transparent
 
 1. **Zero Frontend/Backend Changes**: Your existing containers run unchanged. The proxy sits in front and enhances their capabilities.
 1. **Transparent Device Discovery**: Automatically discovers cameras on the host and makes them available to containers without device mounting.
+1. **Capture-daemon integration**: set `CAPTURE_DAEMON_URL` to merge cameras published by the Go capture-daemon.
 1. **Seamless Integration**:
 - Proxies all existing API calls
 - Enhances device-related responses with real hardware info
@@ -75,6 +76,7 @@ Environment=PROXY_PORT=8000
 Environment=BACKEND_URL=http://localhost:8080
 Environment=FRONTEND_URL=http://localhost:3000
 Environment=LOG_LEVEL=info
+Environment=CAPTURE_DAEMON_URL=http://localhost:9000
 
 # Security settings
 NoNewPrivileges=true
@@ -262,6 +264,7 @@ server {
 PROXY_PORT=8000
 BACKEND_URL=http://localhost:8080
 FRONTEND_URL=http://localhost:3000
+CAPTURE_DAEMON_URL=http://localhost:9000
 
 # Logging
 LOG_LEVEL=info
