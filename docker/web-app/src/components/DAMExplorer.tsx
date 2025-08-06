@@ -28,6 +28,7 @@ import SearchBarExtension, {
 import { useAssets } from '@/providers/AssetProvider'
 import { updateAsset, Asset as ApiAsset, FolderNode } from '@/lib/apiAssets'
 import TagPopover from '@/components/TagPopover'
+import { folderIndentStyle } from '@/styles/theme'
 
 interface Asset extends ApiAsset {
   type?: 'image' | 'video' | 'document'
@@ -177,7 +178,7 @@ const FolderTree: React.FC<{
   const renderFolder = (folder: FolderNode, level = 0): React.ReactNode => {
     const isOpen = expanded.has(folder.path)
     return (
-      <div key={folder.path} style={{ marginLeft: level * 1 + 'rem' }}>
+      <div key={folder.path} style={folderIndentStyle(level)}>
         <div
           className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
             currentPath === folder.path ? 'bg-blue-50 text-blue-700' : ''

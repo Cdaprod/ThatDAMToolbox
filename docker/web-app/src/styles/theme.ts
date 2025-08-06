@@ -54,3 +54,20 @@ export const damAppMainStyle:       CSSProperties = {
   color: 'var(--text-color)',
   padding: 32,
 };
+
+export const folderIndentStyle = (level: number): CSSProperties => ({
+  marginLeft: level * 1 + 'rem',
+});
+
+export const deviceOptionStyle = (available: boolean): CSSProperties => ({
+  color: available ? '#fff' : '#888',
+  background: available ? '' : '#333',
+});
+
+export const sliderBackgroundStyle = (percent: number): CSSProperties => ({
+  background: `linear-gradient(to right, #ff4500 0%, #ff4500 ${percent}%, #666 ${percent}%, #666 100%)`,
+});
+
+export const batteryLevelStyle = (level: number): CSSProperties => ({
+  width: `${level}%`,
+});
