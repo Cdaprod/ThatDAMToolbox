@@ -28,11 +28,7 @@ import SearchBarExtension, {
 import { useAssets } from '@/providers/AssetProvider'
 import { updateAsset, Asset as ApiAsset, FolderNode } from '@/lib/apiAssets'
 import TagPopover from '@/components/TagPopover'
-<<<<<<< ours
-import { folderIndentStyle } from '@/styles/theme'
-=======
 import { folderIndentStyle, statusClasses } from '@/styles/theme'
->>>>>>> theirs
 
 interface Asset extends ApiAsset {
   type?: 'image' | 'video' | 'document'
