@@ -3,13 +3,13 @@ import { useRef, useState, useCallback } from 'react'
 
 export interface RecorderOptions {
   /** target mime-types, in priority order */
-  mimeTypes?: string[];
+  mimeTypes?: string[]
   /** outgoing bitrate */
-  videoBitsPerSecond?: number;
+  videoBitsPerSecond?: number
   /** frame-rate to request from the source */
-  frameRate?: number;
+  frameRate?: number
   /** ms between dataavailable events */
-  chunkInterval?: number;
+  chunkInterval?: number
 }
 
 export function useMediaRecorder({
@@ -18,43 +18,82 @@ export function useMediaRecorder({
   frameRate = 30,
   chunkInterval = 100,
 }: RecorderOptions = {}) {
-  // are we recording right now?
-  const [recording, setRecording] = useState(false);
-  // holds the last completed Blob
-  const [lastBlob, setLastBlob]   = useState<Blob | null>(null);
+  const [recording, setRecording] = useState(false)
+  const [lastBlob, setLastBlob] = useState<Blob | null>(null)
 
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef   = useRef<Blob[]>([]);
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
 
   const start = useCallback(async (videoEl: HTMLVideoElement) => {
     if (recorderRef.current) return
     chunksRef.current = []
 
-    const stream = (videoEl as any).captureStream()
+    // cross-browser captureStream + canvas fallback
+    async function obtainCaptureStream(el: HTMLVideoElement): Promise<MediaStream> {
+      // Standard API
+      if (typeof el.captureStream === 'function') {
+        return el.captureStream()
+      }
+      // WebKit prefix
+      // @ts-ignore
+      if (typeof el.webkitCaptureStream === 'function') {
+        // @ts-ignore
+        return el.webkitCaptureStream()
+      }
+      // Fallback: render to hidden canvas
+      const canvas = document.createElement('canvas')
+      canvas.width = el.videoWidth || el.clientWidth
+      canvas.height = el.videoHeight || el.clientHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('2D canvas not supported')
 
+      let rafId: number
+      const drawLoop = () => {
+        try {
+          ctx.drawImage(el, 0, 0, canvas.width, canvas.height)
+        } catch {}
+        rafId = requestAnimationFrame(drawLoop)
+      }
+      drawLoop()
+
+      // @ts-ignore
+      const stream = canvas.captureStream?.() as MediaStream
+      if (!stream) {
+        cancelAnimationFrame(rafId)
+        throw new Error('captureStream fallback failed')
+      }
+      // stop drawing when tracks end
+      stream.getVideoTracks().forEach(track =>
+        track.addEventListener('ended', () => cancelAnimationFrame(rafId), { once: true })
+      )
+      return stream
+    }
+
+    let stream: MediaStream
+    try {
+      stream = await obtainCaptureStream(videoEl)
+    } catch (err) {
+      alert(`Unable to capture stream: ${err instanceof Error ? err.message : err}`)
+      return
+    }
+
+    // wait until at least one video track is live
     const until = (fn: () => boolean) =>
       new Promise<void>((resolve, reject) => {
         if (fn()) return resolve()
-        const int = setInterval(() => {
-          if (fn()) {
-            clearInterval(int)
-            resolve()
-          }
-        }, 50)
-        setTimeout(() => {
-          clearInterval(int)
-          reject(new Error('timeout'))
-        }, 2000)
+        const iv = setInterval(() => fn() && (clearInterval(iv), resolve()), 50)
+        setTimeout(() => (clearInterval(iv), reject(new Error('timeout'))), 2000)
       })
 
     try {
       await until(() => stream.getVideoTracks().length > 0)
     } catch {
-      alert('No tracks yet — is the camera live?')
+      alert('No video tracks available -- is the camera live?')
       return
     }
 
-    const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || mimeTypes[0]
+    const mimeType =
+      mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || mimeTypes[0]
     const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond })
 
     rec.ondataavailable = e => {
@@ -71,7 +110,7 @@ export function useMediaRecorder({
     try {
       rec.start(chunkInterval)
     } catch {
-      alert('No tracks yet — is the camera live?')
+      alert('Unable to start recording -- no media tracks found.')
       return
     }
 
@@ -80,18 +119,16 @@ export function useMediaRecorder({
   }, [mimeTypes, videoBitsPerSecond, frameRate, chunkInterval])
 
   const stop = useCallback(() => {
-    const rec = recorderRef.current;
-    if (!rec) return;
-    rec.stop();    // triggers rec.onstop above
-  }, []);
+    const rec = recorderRef.current
+    if (!rec) return
+    rec.stop() // triggers onstop above
+  }, [])
 
-  const toggle = useCallback((videoEl?: HTMLVideoElement) => {
-    return recording
-      ? stop()
-      : videoEl
-        ? start(videoEl)
-        : undefined;
-  }, [recording, start, stop]);
+  const toggle = useCallback(
+    (videoEl?: HTMLVideoElement) =>
+      recording ? stop() : videoEl ? start(videoEl) : undefined,
+    [recording, start, stop]
+  )
 
-  return { recording, lastBlob, start, stop, toggle };
+  return { recording, lastBlob, start, stop, toggle }
 }
