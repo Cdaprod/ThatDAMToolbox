@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { monitorCanvasStyle } from '@/styles/theme';
 
 interface Props {
   source: HTMLImageElement | HTMLVideoElement | null;
@@ -81,7 +82,7 @@ const WaveformMonitor: React.FC<Props> = ({ source, width, height, enabled }) =>
       width={width}
       height={height}
       className="block mx-auto"
-      style={{ background: 'black' }}
+      style={monitorCanvasStyle}
     />
   );
 };

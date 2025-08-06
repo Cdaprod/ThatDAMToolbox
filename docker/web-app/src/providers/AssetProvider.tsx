@@ -35,6 +35,7 @@ interface Filters {
 interface AssetCtx {
   assets: Asset[];                   // raw list
   folders: FolderNode[];             // raw folder tree
+  foldersLoading: boolean;
   view: Asset[];                     // filtered or vector results
   filters: Filters;
   setFilters: (upd: Partial<Filters>) => void;
@@ -66,7 +67,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
 
-  const { data: folders = [] } = useQuery({
+  const { data: folders = [], isLoading: foldersLoading } = useQuery({
     queryKey: ['folders'],
     queryFn: listFolders,
     staleTime: 60_000,
@@ -129,6 +130,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
   const value: AssetCtx = {
     assets,
     folders,
+    foldersLoading,
     view,
     filters,
     setFilters: upd => {

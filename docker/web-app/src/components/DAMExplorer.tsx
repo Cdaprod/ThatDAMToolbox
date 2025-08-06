@@ -27,6 +27,7 @@ import SearchBarExtension, {
 } from '@/components/SearchBarExtension'
 import { useAssets } from '@/providers/AssetProvider'
 import { updateAsset, Asset as ApiAsset, FolderNode } from '@/lib/apiAssets'
+import TagPopover from '@/components/TagPopover'
 
 interface Asset extends ApiAsset {
   type?: 'image' | 'video' | 'document'
@@ -254,7 +255,7 @@ const StatusBar: React.FC<{
 
 // Main Component: AssetExplorer
 const AssetExplorer: React.FC = () => {
-  const { view, folders, move, remove, refresh, setFilters, filters } = useAssets()
+  const { view, folders, foldersLoading, move, remove, refresh, setFilters, filters } = useAssets()
   const assets = view
   const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set())
   const [currentPath, setCurrentPath] = useState<string>('')
@@ -264,6 +265,7 @@ const AssetExplorer: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const [undoStack, setUndoStack] = useState<UndoOperation[]>([])
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
+  const [tagging, setTagging] = useState(false)
 
   useEffect(() => {
     setFilters({ tags: filterTags })
@@ -520,11 +522,17 @@ const AssetExplorer: React.FC = () => {
         <aside className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4">
             <h3 className="font-semibold text-gray-900 mb-3">Folders</h3>
-            <FolderTree
-              folders={folders}
-              currentPath={currentPath}
-              onPathChange={handlePathChange}
-            />
+            {foldersLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : folders.length === 0 ? (
+              <p className="text-sm text-gray-500">(empty)</p>
+            ) : (
+              <FolderTree
+                folders={folders}
+                currentPath={currentPath}
+                onPathChange={handlePathChange}
+              />
+            )}
           </div>
 
           <div className="p-4 border-t border-gray-200">
@@ -594,12 +602,7 @@ const AssetExplorer: React.FC = () => {
                     </button>
                     <button
                       className="flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
-                      onClick={() =>
-                        showStatus(
-                          'Tag functionality would be implemented here',
-                          'info',
-                        )
-                      }
+                      onClick={() => setTagging(true)}
                     >
                       <Tag className="w-4 h-4" />
                       <span className="text-sm">Tag</span>
@@ -752,6 +755,12 @@ const AssetExplorer: React.FC = () => {
         type={statusMessage?.type}
         onDismiss={() => setStatusMessage(null)}
       />
+      {tagging && (
+        <TagPopover
+          selectedIds={[...selectedAssets]}
+          onClose={() => setTagging(false)}
+        />
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 // src/hooks/useMediaRecorder.ts
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react'
 
 export interface RecorderOptions {
   /** target mime-types, in priority order */
@@ -26,35 +26,58 @@ export function useMediaRecorder({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef   = useRef<Blob[]>([]);
 
-  const start = useCallback((videoEl: HTMLVideoElement) => {
-    if (recorderRef.current) return;     // already recording
-    chunksRef.current = [];
+  const start = useCallback(async (videoEl: HTMLVideoElement) => {
+    if (recorderRef.current) return
+    chunksRef.current = []
 
-    // 1) grab the video element’s live stream (no NaN frameRate)
-    const stream = (videoEl as any).captureStream();
+    const stream = (videoEl as any).captureStream()
 
+    const until = (fn: () => boolean) =>
+      new Promise<void>((resolve, reject) => {
+        if (fn()) return resolve()
+        const int = setInterval(() => {
+          if (fn()) {
+            clearInterval(int)
+            resolve()
+          }
+        }, 50)
+        setTimeout(() => {
+          clearInterval(int)
+          reject(new Error('timeout'))
+        }, 2000)
+      })
 
-    // 2) pick a supported mime
-    const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || mimeTypes[0];
+    try {
+      await until(() => stream.getVideoTracks().length > 0)
+    } catch {
+      alert('No tracks yet — is the camera live?')
+      return
+    }
 
-    // 3) create recorder
-    const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond });
+    const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || mimeTypes[0]
+    const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond })
 
     rec.ondataavailable = e => {
-      if (e.data.size) chunksRef.current.push(e.data);
-    };
+      if (e.data.size) chunksRef.current.push(e.data)
+    }
 
     rec.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: mimeType });
-      recorderRef.current = null;
-      setRecording(false);
-      setLastBlob(blob);
-    };
+      const blob = new Blob(chunksRef.current, { type: mimeType })
+      recorderRef.current = null
+      setRecording(false)
+      setLastBlob(blob)
+    }
 
-    rec.start(chunkInterval);
-    recorderRef.current = rec;
-    setRecording(true);
-  }, [mimeTypes, videoBitsPerSecond, frameRate, chunkInterval]);
+    try {
+      rec.start(chunkInterval)
+    } catch {
+      alert('No tracks yet — is the camera live?')
+      return
+    }
+
+    recorderRef.current = rec
+    setRecording(true)
+  }, [mimeTypes, videoBitsPerSecond, frameRate, chunkInterval])
 
   const stop = useCallback(() => {
     const rec = recorderRef.current;

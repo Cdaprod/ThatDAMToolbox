@@ -1,11 +1,12 @@
 // /docker/web-app/src/components/TopBar.tsx
 'use client';
 
-import Link from 'next/link';
-import { clsx } from 'clsx';          // you already have clsx
-import { Menu } from 'lucide-react';  // any icon you like
+import { clsx } from 'clsx'
+import { Menu } from 'lucide-react'
+import { useModal } from '@/providers/ModalProvider'
 
 export default function TopBar() {
+  const { openModal } = useModal()
   return (
     <header
       className={clsx(
@@ -16,19 +17,19 @@ export default function TopBar() {
       {/* left – brand / menu */}
       <div className="flex items-center gap-2">
         <Menu size={20} className="md:hidden" />
-        <Link href="/" className="font-semibold">
+        <a href="/" className="font-semibold">
           That DAM Toolbox
-        </Link>
+        </a>
       </div>
 
       {/* right – placeholder for future buttons */}
       <nav className="flex items-center gap-4 text-sm">
-        <Link href="/dashboard" className="hover:text-teal-400">
-          Dashboard
-        </Link>
-        <Link href="/explorer" className="hover:text-teal-400">
+        <button
+          onClick={() => openModal('dam-explorer')}
+          className="hover:text-teal-400"
+        >
           Explorer
-        </Link>
+        </button>
       </nav>
     </header>
   );

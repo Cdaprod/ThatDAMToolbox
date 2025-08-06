@@ -1,5 +1,14 @@
 'use client'
 import React, { useRef } from "react";
+import {
+  videoCardStyle,
+  videoStyle,
+  videoInfoStyle,
+  sceneThumbStyle,
+  uploadCardStyle,
+  hiddenInputStyle,
+  uploadButtonStyle,
+} from '@/styles/theme';
 
 // --- BatchCard ---
 export function BatchCard({ batch, onClick }) {
@@ -16,15 +25,15 @@ export function BatchCard({ batch, onClick }) {
 export function VideoCard({ data }) {
   const { artifact, scenes, score } = data;
   return (
-    <div className="video-card" style={{ margin: 8, border: '1px solid #333', padding: 12 }}>
+    <div className="video-card" style={videoCardStyle}>
       <video
         src={artifact?.preview ?? ""}
         width={artifact?.width ?? 240}
         height={artifact?.height ?? 120}
         controls
-        style={{ display: 'block', marginBottom: 8, maxWidth: '100%' }}
+        style={videoStyle}
       />
-      <div style={{ fontSize: 14, marginBottom: 4 }}>
+      <div style={videoInfoStyle}>
         <b>{artifact?.path}</b> <br />
         {artifact?.duration}s • {artifact?.mime}
       </div>
@@ -32,7 +41,7 @@ export function VideoCard({ data }) {
         <div>
           <small>Scenes: </small>
           {scenes.map((s, i) => (
-            <img key={i} src={s.url} alt="thumb" width={48} height={32} style={{ marginRight: 2 }} />
+            <img key={i} src={s.url} alt="thumb" width={48} height={32} style={sceneThumbStyle} />
           ))}
         </div>
       )}
@@ -49,14 +58,19 @@ export function UploadCard({ onUpload, loading }) {
     e.target.value = null; // reset
   }
   return (
-    <div style={{ marginTop: 24 }}>
-      <input type="file" multiple ref={fileRef} style={{ display: 'none' }}
+    <div style={uploadCardStyle}>
+      <input
+        type="file"
+        multiple
+        ref={fileRef}
+        style={hiddenInputStyle}
         onChange={handleFiles}
         disabled={loading}
       />
-      <button disabled={loading}
+      <button
+        disabled={loading}
         onClick={() => fileRef.current?.click()}
-        style={{ marginRight: 8 }}
+        style={uploadButtonStyle}
       >
         ⬆️ Upload
       </button>

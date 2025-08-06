@@ -157,3 +157,4 @@ go.sum
 # ---- Node ----
 **/node_modules/
 
+!/docker/web-app/public/demo/bars720p30.mp4

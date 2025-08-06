@@ -7,6 +7,9 @@ import { useLiveRecorder }   from '@/hooks/useLiveRecorder';
 import { useMediaRecorder }  from '@/hooks/useMediaRecorder';
 import { useCapture }        from '@/providers/CaptureContext';
 import { useTimecode }       from '@/hooks/useTimecode'
+import { useCameraStream }   from '@/hooks/useCameraStream'
+import RecordButton          from '@/components/RecordButton'
+import { useModal }          from '@/providers/ModalProvider'
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(() => import('./overlays/FocusPeakingOverlay'), { ssr: false });
@@ -118,6 +121,7 @@ const CameraMonitor: React.FC = () => {
   const mediaRef     = useRef<HTMLVideoElement>(null);
   const recorderRef  = useRef<MediaRecorder| null>(null);
   const chunksRef    = useRef<Blob[]>([]);
+  const lastClipRef  = useRef<string | null>(null)
   
   /* State management */
   const [devices, setDevices]                         = useState<string[]>([]);
@@ -141,7 +145,8 @@ const CameraMonitor: React.FC = () => {
   //const [falseColorActive, setFalseColorActive]       = useState(false);
   // Other Indicators
   const [batteryLevel, setBatteryLevel]               = useState(85);
-  const [streamOK, setStreamOK]                       = useState(true);
+  const { src: streamSrc, fallback: isFallback }      = useCameraStream()
+  const { openModal } = useModal()
   // Histogram data
   //const [histogramData, setHistogramData]             = useState([20, 45, 65, 80, 70, 55, 40, 25]);
   const [showScopes, setShowScopes]   = useState(true);
@@ -441,42 +446,24 @@ const CameraMonitor: React.FC = () => {
 
           {/* 1) The preview wrapper */}
           <div className="relative w-full h-full">
-            {streamOK ? (
-              // Live MJPEG
-              <video
-                ref={mediaRef}
-                src="/live/stream.m3u8"
-                className="camera-video-feed w-full h-full object-contain absolute top-0 left-0 z-0"
-                controls
-                autoPlay
-                muted
-                playsInline
-                onError={() => setStreamOK(false)}
-                onLoadedData={() => setStreamOK(true)}
-              />
-            ) : (
-              // Animated-GIF fallback
-              <video
-                ref={mediaRef}
-                src="https://media1.tenor.com/m/1VZnQCgDgFkAAAAC/no-cameras-clinton-sparks.gif"
-                crossOrigin="anonymous"
-                autoPlay
-                loop
-                muted
-                className="camera-video-feed w-full h-full object-cover absolute top-0 left-0 z-0"
-                onLoadedData={() => setStreamOK(true)}
-              />
-            )}
+            <video
+              ref={mediaRef}
+              src={streamSrc}
+              className="camera-video-feed w-full h-full object-contain absolute top-0 left-0 z-0"
+              controls
+              autoPlay
+              muted
+              playsInline
+              loop={isFallback}
+            />
 
-            {/* Fullscreen toggle (only when live) */}
-            {streamOK && (
-              <button
-                className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1 rounded hover:bg-black/90 transition-opacity duration-200 opacity-70 hover:opacity-100 z-10"
-                onClick={handleFullscreenToggle}
-              >
-                ⛶ Fullscreen
-              </button>
-            )}
+            {/* Fullscreen toggle */}
+            <button
+              className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1 rounded hover:bg-black/90 transition-opacity duration-200 opacity-70 hover:opacity-100 z-10"
+              onClick={handleFullscreenToggle}
+            >
+              ⛶ Fullscreen
+            </button>
 
             {/* GPU-accelerated overlays */}
             <FocusPeakingOverlay
@@ -564,28 +551,21 @@ const CameraMonitor: React.FC = () => {
               Record
             </div>
           
+            <RecordButton
+              onStart={() => {
+                handleRecordToggle()
+              }}
+              onStop={() => {
+                handleRecordToggle()
+                lastClipRef.current = 'latest'
+              }}
+            />
+
             <button
-              onClick={handleRecordToggle}
-              className={`
-                w-full p-2 mb-1 bg-gradient-to-br border rounded text-white text-xs
-                cursor-pointer transition-all duration-200 hover:-translate-y-0.5
-                ${
-                  // if live WS is recording, or fallback local is recording
-                  wsStatus === 'recording' || localRec
-                    ? 'from-red-600 to-red-800 border-red-600 record-pulse'
-                    : 'from-gray-600 to-gray-700 border-gray-500 hover:from-gray-500 hover:to-gray-600'
-                }
-              `}
+              onClick={() => openModal('dam-explorer')}
+              className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5"
             >
-              {wsStatus === 'recording' || localRec ? '⏸ STOP REC' : '● RECORD'}
-            </button>
-          
-            {/* optional playback buttons, unchanged */}
-            <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
               ▶ PLAY
-            </button>
-            <button className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5">
-              ⏹ STOP
             </button>
           </div>
           

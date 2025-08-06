@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 import { BatchCard, VideoCard, UploadCard } from './Cards';
+import { damAppContainerStyle, damAppMainStyle } from '@/styles/theme';
 
 // ────── Config + EventBus as Contexts ──────
 const ConfigContext = createContext(null);
@@ -125,7 +126,7 @@ export default function DAMApp() {
   return (
     <ConfigContext.Provider value={config}>
       <EventBusContext.Provider value={bus}>
-        <div className="dam-app" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)' }}>
+        <div className="dam-app" style={damAppContainerStyle}>
           {/* Sidebar */}
           <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
             <button className="burger" onClick={toggleSidebar}>☰</button>
@@ -148,7 +149,7 @@ export default function DAMApp() {
           </aside>
 
           {/* Main Content */}
-          <main style={{ flex: 1, color: 'var(--text-color)', padding: 32 }}>
+          <main style={damAppMainStyle}>
             <h1>Video DAM</h1>
             {selectedBatch && <h3>Batch: {selectedBatch}</h3>}
             {loading && <div>Loading…</div>}
