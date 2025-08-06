@@ -28,7 +28,11 @@ import SearchBarExtension, {
 import { useAssets } from '@/providers/AssetProvider'
 import { updateAsset, Asset as ApiAsset, FolderNode } from '@/lib/apiAssets'
 import TagPopover from '@/components/TagPopover'
+<<<<<<< ours
 import { folderIndentStyle } from '@/styles/theme'
+=======
+import { folderIndentStyle, statusClasses } from '@/styles/theme'
+>>>>>>> theirs
 
 interface Asset extends ApiAsset {
   type?: 'image' | 'video' | 'document'
@@ -224,22 +228,9 @@ const StatusBar: React.FC<{
 }> = ({ message, type = 'info', onDismiss }) => {
   if (!message) return null
 
-  const getStatusStyle = (type: StatusMessage['type']) => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-100 text-green-800 border-green-300'
-      case 'error':
-        return 'bg-red-100 text-red-800 border-red-300'
-      case 'warning':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300'
-      default:
-        return 'bg-blue-100 text-blue-800 border-blue-300'
-    }
-  }
-
   return (
     <div
-      className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg border shadow-lg ${getStatusStyle(type)} z-50`}
+      className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg border shadow-lg ${statusClasses[type]} z-50`}
     >
       <div className="flex items-center space-x-2">
         <AlertCircle className="w-4 h-4" />
