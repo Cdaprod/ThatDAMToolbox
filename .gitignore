@@ -120,7 +120,7 @@ secrets.json
 # If you have generated or temporary files, add patterns here
 video/modules/*/module.cfg
 *clipboard*
-*.disabled
+*disabled*
 host/releases/
 go.sum
 /sqlite
@@ -158,3 +158,22 @@ go.sum
 **/node_modules/
 
 !/docker/web-app/public/demo/bars720p30.mp4
+
+# ------------------------------------------------------------------
+# Generated at run-time by Python modules – we never want these
+# committed.  They only ever show up inside the `video/` tree.
+# ------------------------------------------------------------------
+/video/**/module.cfg          # ignore every module.cfg under video/
+
+# ------------------------------------------------------------------
+# BUT keep the hand-written demo configs that live in the data area
+# (e.g. /data/modules/dam/module.cfg).  By _not_ matching `data/`
+# we automatically keep them, but if you already had a broader rule
+# earlier (like `**/module.cfg`) you can whitelist them explicitly:
+# ------------------------------------------------------------------
+!data/**/module.cfg
+
+# Ignore accidental brace-named files from code snippets
+{*,*}
+
+/public/design-token-styles/**
