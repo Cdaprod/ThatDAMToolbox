@@ -661,6 +661,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go proxy.startPeriodicDiscovery(ctx)
+	startOverlay(ctx)
 
 	// Setup routes
 	handler := proxy.setupRoutes()
