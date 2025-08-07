@@ -5,6 +5,7 @@ import configparser
 import os
 import logging
 import tempfile
+from dataclasses import dataclass
 
 log = logging.getLogger("video.config")
 
@@ -12,6 +13,22 @@ log = logging.getLogger("video.config")
 _cfg_path = Path(os.getenv("VIDEO_CFG", str(Path.home() / "video" / "video.cfg")))
 _cfg = configparser.ConfigParser()
 _cfg.read(_cfg_path)
+
+
+@dataclass
+class VideoConfig:
+    """Structured configuration values for the video service."""
+
+    incoming_dir: Path
+    data_dir: Path
+    media_root: Path
+    processed_dir: Path
+    preview_root: Path
+    db_path: Path
+    log_dir: Path
+    tmp_dir: Path
+    web_uploads: Path
+    modules_base: Path
 
 # ─── Core Getters ────────────────────────────────────────────────────────────
 def get(section: str, key: str, default: str | None = None) -> str | None:
@@ -191,6 +208,25 @@ WEB_UPLOADS.mkdir(parents=True, exist_ok=True)
 MODULES_BASE = DATA_DIR / "thatdamtoolbox" / "modules"
 MODULES_BASE.mkdir(parents=True, exist_ok=True)
 
+# Consolidated dataclass instance for consumers
+CONFIG = VideoConfig(
+    incoming_dir=INCOMING_DIR,
+    data_dir=DATA_DIR,
+    media_root=MEDIA_ROOT,
+    processed_dir=PROCESSED_DIR,
+    preview_root=PREVIEW_ROOT,
+    db_path=DB_PATH,
+    log_dir=LOG_DIR,
+    tmp_dir=TMP_DIR,
+    web_uploads=WEB_UPLOADS,
+    modules_base=MODULES_BASE,
+)
+
+
+def get_config() -> VideoConfig:
+    """Return loaded configuration dataclass."""
+    return CONFIG
+
 # ─── All Scan Roots ─────────────────────────────────────────────────────────
 def get_all_roots() -> list[Path]:
     """
@@ -264,86 +300,4 @@ def ensure_dirs(*, verbose: bool = False) -> None:
     _DIRS_CREATED = True
 
 
-# ─── Module‐specific path registry ─────────────────────────────────────────────
-_MODULE_PATH_REGISTRY: dict[str, dict[str, Path]] = {}
-
-def register_module_paths(module_name: str, defaults: dict[str, Path]) -> None:
-    """
-    Let a module declare its own folders.  Writes a `module.cfg` beside
-    the module’s package, under [module:<module_name>].
-
-    Example:
-      video/modules/motion_extractor/module.cfg
-      [module:motion_extractor]
-      frames = /data/web_frames
-      outputs = /data/motion_outputs
-    """
-    import importlib.util
-    # 1) Find the module’s directory
-    spec = importlib.util.find_spec(f"video.modules.{module_name}")
-    if not spec or not spec.origin:
-        raise ImportError(f"Cannot locate video.modules.{module_name!r}")
-    module_dir = Path(spec.origin).parent
-
-    # 2) Load (or create) module-specific config
-    module_cfg_path = module_dir / "module.cfg"
-    module_cfg = configparser.ConfigParser()
-    if module_cfg_path.exists():
-        module_cfg.read(module_cfg_path)
-
-    section = f"module:{module_name}"
-    if not module_cfg.has_section(section):
-        module_cfg.add_section(section)
-
-    # 3) Resolve each key, attempt to create directories (but don’t fail if unwritable)
-    resolved: dict[str, Path] = {}
-    for key, fallback in defaults.items():
-        if module_cfg.has_option(section, key):
-            p = Path(module_cfg.get(section, key)).expanduser()
-        else:
-            p = fallback
-            module_cfg.set(section, key, str(p))
-
-        # try to create it, but swallow permission errors
-        try:
-            p.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            log.warning(
-                "Could not create module path %s:%s at %s – %s",
-                module_name, key, p, e
-            )
-        # register it anyway (even if we couldn’t make it on disk)
-        resolved[key] = p
-
-    # 4) Write back only this module’s config file
-    try:
-        with open(module_cfg_path, "w") as f:
-            module_cfg.write(f)
-        log.info(
-            "Wrote module config for %r to %s",
-            module_name,
-            module_cfg_path
-        )
-    except Exception as e:
-        log.warning(
-            "Failed to write module config for %r at %s: %s",
-            module_name,
-            module_cfg_path,
-            e
-        )
-
-    # 5) Populate the in-memory registry for get_module_path()
-    _MODULE_PATH_REGISTRY[module_name] = resolved
-
-def get_module_path(module_name: str, key: str) -> Path:
-    """
-    Retrieve the Path for a module’s registered key.
-    Raises KeyError if module or key was never registered.
-    """
-    try:
-        return _MODULE_PATH_REGISTRY[module_name][key]
-    except KeyError:
-        raise KeyError(f"No path registered for module={module_name!r}, key={key!r}")
-
-# ─── End of module path registry ─────────────────────────────────────────────
   

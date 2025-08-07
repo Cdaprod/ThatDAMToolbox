@@ -116,7 +116,6 @@ class Scanner:
             h = logging.StreamHandler()
             h.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
             self.logger.addHandler(h)
-            self.logger.setLevel(logging.INFO)
         
     def is_media_file(self, path: Path) -> bool:
         """Check if file is a supported media type"""

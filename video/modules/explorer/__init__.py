@@ -11,7 +11,8 @@ from __future__ import annotations
 from importlib import import_module
 import logging
 
-from video.config import register_module_paths, DATA_DIR
+from video.config import DATA_DIR
+from video.paths import register_module_paths
 
 log = logging.getLogger("video.explorer")
 

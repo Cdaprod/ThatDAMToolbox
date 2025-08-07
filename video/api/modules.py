@@ -1,11 +1,11 @@
 # /video/api/modules.py
 from fastapi.staticfiles import StaticFiles
 from fastapi import HTTPException
-from video.config import _MODULE_PATH_REGISTRY
+from video.paths import MODULE_PATH_REGISTRY
 
 def setup_module_static_mounts(app):
     """Auto-mount each module's configured static directories"""
-    for module_name, paths in _MODULE_PATH_REGISTRY.items():
+    for module_name, paths in MODULE_PATH_REGISTRY.items():
         for key, filesystem_path in paths.items():
             mount_path = f"/modules/{module_name}/{key}"
             
@@ -21,7 +21,7 @@ def setup_module_static_mounts(app):
             async def _list_module_assets(module=module_name, key=key):
                 """Dynamically generated: list files in this module/key"""
                 import os
-                base = _MODULE_PATH_REGISTRY[module][key]
+                base = MODULE_PATH_REGISTRY[module][key]
                 try:
                     files = sorted(os.listdir(base))
                 except FileNotFoundError:
