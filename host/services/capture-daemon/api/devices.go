@@ -50,4 +50,22 @@ func RegisterRoutes(mux *http.ServeMux, reg *registry.Registry) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(dev)
 	})
+
+	// Allow remote proxies to register their devices
+	mux.HandleFunc("/register", func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		var payload struct {
+			ProxyID string            `json:"proxy_id"`
+			Devices []registry.Device `json:"devices"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		reg.Update(payload.Devices)
+		w.WriteHeader(http.StatusNoContent)
+	})
 }
