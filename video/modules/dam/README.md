@@ -1,30 +1,33 @@
-# Video DAM System FastAPI Structure
+# DAM Module
 
-**Purpose:** searchable metadata, embeddings, FAISS index.
+Adds vector embeddings and FAISS search to the toolbox.
 
-## Directory Structure
-```
-video/modules/dam/
-├── __init__.py
-├── services.py
-├── routes.py
-├── commands.py
-└── models/
-    ├── __init__.py
-    ├── faiss_store.py
-    ├── hierarchy.py
-    ├── embeddings.py
-    └── storage.py
+## Usage
+
+### Build FAISS index
+
+```bash
+python -m video dam index /path/to/batch
 ```
 
-This structure provides:
+### API examples
 
-1. **Modular Architecture**: Clean separation of concerns with dedicated modules
-2. **Four-Level Hierarchy**: Implements L0-L3 vector levels as described
-3. **Async Processing**: Background tasks for expensive operations
-4. **CLI Commands**: Full @register decorator system for management
-5. **RESTful API**: Complete endpoints for video ingestion and search
-6. **Error Handling**: Comprehensive error handling and logging
-7. **Extensible Design**: Easy to add new embedding models or storage backends
+```bash
+# search by text
+curl -X POST -H 'Content-Type: application/json' \
+     -d '{"query": "sunset"}' http://localhost:8080/dam/search
 
-The system is designed to be production-ready with proper async patterns, background processing, and comprehensive API coverage for your video DAM requirements.
+# list indexed videos
+curl http://localhost:8080/dam/videos
+```
+
+### CLI verbs
+
+See `commands.py` for `index`, `search` and `wipe` helpers.
+
+Optional dependencies such as `faiss-cpu` can be installed with:
+
+```bash
+pip install -r video/modules/dam/requirements.txt
+```
+
