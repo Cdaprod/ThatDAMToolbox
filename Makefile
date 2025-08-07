@@ -6,6 +6,20 @@
 # =============================================================================
 
 HOST_SERVICES_DIR := host/services
+
+# ───────── Dynamic Compose layer discovery ─────────
+BASE_COMPOSE      := docker/compose/docker-compose.base.yaml
+ALL_ROLE_FILES    := $(shell find docker/compose -maxdepth 1 -name 'docker-compose.*.y*ml' ! -name '*base*' | sort)
+
+# Role selector: make compose-up ROLE=backend
+ROLE ?=
+ifeq ($(ROLE),)
+  COMPOSE_FILES   := $(BASE_COMPOSE) $(ALL_ROLE_FILES)
+else
+  COMPOSE_FILES   := $(BASE_COMPOSE) $(shell find docker/compose -name 'docker-compose.$(ROLE).y*ml')
+endif
+
+DOCKER_COMPOSE    = docker compose $(foreach f,$(COMPOSE_FILES),-f $(f))
 GO_BUILD_FLAGS    := -ldflags="-w -s" -a -installsuffix cgo
 CGO_ENABLED       := 0
 
@@ -62,11 +76,12 @@ SHORT_SHA  := $(shell git rev-parse --short HEAD)
 # DOCKER TARGETS
 # =============================================================================
 
-.PHONY: docker-build docker-up docker-down docker-logs docker-restart docker-status
+.PHONY: docker-build docker-up docker-down docker-logs docker-restart docker-status \
+        compose-up compose-down compose-logs compose-restart compose-status
 
 docker-build: ## Build Docker images (conditionally tag with TAG_IMAGE=true)
 	@echo "📦 Building $(DOCKER_IMAGE):latest with VERSION=$(VERSION) and SHA=$(SHORT_SHA)"
-	docker compose build \
+        $(DOCKER_COMPOSE) build \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg GIT_SHA=$(SHORT_SHA)
 
@@ -76,18 +91,24 @@ ifneq ($(TAG_IMAGE),)
 endif
 
 docker-up: ## Start Docker services
-	docker compose up -d
+        $(DOCKER_COMPOSE) up -d
 
 docker-down: ## Stop Docker services
-	docker compose down
+        $(DOCKER_COMPOSE) down
 
 docker-logs: ## Follow Docker logs
-	docker compose logs -f
+        $(DOCKER_COMPOSE) logs -f
 
 docker-restart: docker-down docker-up ## Restart Docker services
 
 docker-status: ## Show Docker service status
-	docker compose ps
+        $(DOCKER_COMPOSE) ps
+
+compose-up: docker-up
+compose-down: docker-down
+compose-logs: docker-logs
+compose-restart: docker-restart
+compose-status: docker-status
 
 # =============================================================================
 # GO HOST SERVICES
@@ -167,8 +188,8 @@ status: ## Show service status
 	-sudo systemctl status api-gateway --no-pager -l
 	-sudo systemctl status camera-proxy --no-pager -l
 	-sudo systemctl status capture-daemon --no-pager -l
-	@echo -e "\n=== Docker Services Status ==="
-	docker compose ps
+        @echo -e "\n=== Docker Services Status ==="
+        $(DOCKER_COMPOSE) ps
 
 logs: ## Show all logs
 	@echo "=== Host Services Logs ==="
@@ -227,7 +248,7 @@ dev-capture: build-capture-daemon ## Run capture daemon in development mode
 	./capture-daemon /dev/video0
 
 dev-docker: ## Run Docker services in development mode
-	docker compose -f docker-compose.yaml up
+        $(DOCKER_COMPOSE) up
 
 dev-all: ## Start everything in development mode
 	@echo "Starting development environment..."
@@ -281,8 +302,8 @@ clean-go: ## Clean Go build artifacts
 	rm -f $(HOST_SERVICES_DIR)/capture-daemon/capture-daemon
 
 clean-docker: ## Clean Docker resources
-	docker compose down --rmi all --volumes --remove-orphans 2>/dev/null || true
-	docker system prune -f
+        $(DOCKER_COMPOSE) down --rmi all --volumes --remove-orphans 2>/dev/null || true
+        docker system prune -f
 
 uninstall-all: ## Uninstall everything
 	@echo "Uninstalling all services..."
@@ -319,27 +340,27 @@ download-report: ## Download GitHub Actions build-report artifact
 # ---- Config ----
 INFRA_COMPOSE=docker/compose/infra.yaml
 INFRA_PROFILE=infra
-DOCKER_COMPOSE=docker compose -f $(INFRA_COMPOSE)
+INFRA_DOCKER_COMPOSE=docker compose -f $(INFRA_COMPOSE)
 
 # ---- Build All Infra Layer Services ----
 infra-build:
-	$(DOCKER_COMPOSE) build
+        $(INFRA_DOCKER_COMPOSE) build
 
 # ---- Deploy Infra Layer (up in detached mode) ----
 infra-up:
-	$(DOCKER_COMPOSE) up -d --wait --pull always --remove-orphans --profile $(INFRA_PROFILE)
+        $(INFRA_DOCKER_COMPOSE) up -d --wait --pull always --remove-orphans --profile $(INFRA_PROFILE)
 
 # ---- Wait for All Services to be Healthy ----
 infra-wait:
-	@echo "⏳ Waiting for all infra services to be healthy..."
-	@$(DOCKER_COMPOSE) ps
-	@timeout 90s bash -c 'until $(DOCKER_COMPOSE) ps | grep -q "healthy"; do sleep 3; $(DOCKER_COMPOSE) ps; done'
-	@echo "✅ All infra services healthy!"
+        @echo "⏳ Waiting for all infra services to be healthy..."
+        @$(INFRA_DOCKER_COMPOSE) ps
+        @timeout 90s bash -c 'until $(INFRA_DOCKER_COMPOSE) ps | grep -q "healthy"; do sleep 3; $(INFRA_DOCKER_COMPOSE) ps; done'
+        @echo "✅ All infra services healthy!"
 
 # ---- Bootstrap Weaviate (Schema, etc) ----
 infra-bootstrap-weaviate:
-	@echo "🚀 Bootstrapping Weaviate schema..."
-	$(DOCKER_COMPOSE) run --rm weaviate-schema-bootstrap
+        @echo "🚀 Bootstrapping Weaviate schema..."
+        $(INFRA_DOCKER_COMPOSE) run --rm weaviate-schema-bootstrap
 
 # ---- One-Stop Infra Layer Bringup (build, up, wait, bootstrap) ----
 infra-up-all: infra-build infra-up infra-wait infra-bootstrap-weaviate
@@ -347,11 +368,11 @@ infra-up-all: infra-build infra-up infra-wait infra-bootstrap-weaviate
 
 # ---- Teardown/Cleanup ----
 infra-down:
-	$(DOCKER_COMPOSE) down --remove-orphans --volumes
+        $(INFRA_DOCKER_COMPOSE) down --remove-orphans --volumes
 
 # ---- Logs ----
 infra-logs:
-	$(DOCKER_COMPOSE) logs -f
+        $(INFRA_DOCKER_COMPOSE) logs -f
 
 .PHONY: infra-build infra-up infra-wait infra-bootstrap-weaviate infra-up-all infra-down infra-logs
 
