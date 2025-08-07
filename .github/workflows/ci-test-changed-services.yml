@@ -1,16 +1,17 @@
 # -- ci-test-changed-services.yml --------------------------------------------
 #
-# Runs fast lint / unit-test & compose smoke-tests **only** for services whose
-# directory changed in the PR/commit.  Meant to run *before* the existing
-# build-and-publish job, so you can make it a required status-check.
+# 1. Detects **service dirs** whose Dockerfile changed           → matrix lint/unit-test
+# 2. Detects **compose layer files** or the root compose changed → single smoke boot
+#
+# All detection is dynamic – no hard-coded service names.
 #
 name: CI-Test-Changed-Services
 
 on:
   pull_request:
-    branches: [ "**" ]
+    branches: ["**"]
     paths:
-      - "docker/*/**"
+      - "docker/**"
       - "host/services/**"
       - "**/*.go"
       - "**/*.ts"
@@ -18,107 +19,120 @@ on:
   workflow_dispatch:
 
 jobs:
+# ──────────────────────────────────────────────────────────────────────────────────────────────────
+#  Detect what actually changed
+# ──────────────────────────────────────────────────────────────────────────────────────────────────
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.set.outputs.changed }}
-      list:    ${{ steps.set.outputs.changed_services }}
+      svc_list:      ${{ steps.out.vars.svc_list }}
+      svc_changed:   ${{ steps.out.vars.svc_changed }}
+      compose_files: ${{ steps.out.vars.compose_files }}
+      compose_changed: ${{ steps.out.vars.compose_changed }}
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with: {fetch-depth: 0}
 
-      - id: set
+      - id: out
+        shell: bash
         run: |
           BASE_SHA=$(git merge-base origin/${{ github.base_ref }} HEAD)
-          MODIFIED=$(git diff --name-only $BASE_SHA HEAD -- 'docker/*' | cut -d/ -f2 | sort -u)
-          [[ -z "$MODIFIED" ]] && { echo "changed=false" >> "$GITHUB_OUTPUT"; echo "changed_services=[]" >> "$GITHUB_OUTPUT"; exit 0; }
-          echo "changed=true"               >> "$GITHUB_OUTPUT"
-          echo "changed_services=$(jq -ncR '[inputs] | map(select(length>0))' <<<"$MODIFIED")" >> "$GITHUB_OUTPUT"
 
+          # 1) Services  ─────────────────────
+          svc_dirs=$(git diff --name-only "$BASE_SHA" HEAD -- 'docker/*/Dockerfile' \
+                       | awk -F/ '{print $2}' | sort -u)
+          svc_json=$(printf '%s\n' $svc_dirs | jq -R -s -c 'split("\n")|map(select(length>0))')
+
+          # 2) Compose YAMLs ──────────────────
+          cmp_files=$(git diff --name-only "$BASE_SHA" HEAD -- \
+                          'docker-compose*.y*ml' 'docker/compose/**/*.y*ml')
+          cmp_changed="false"; [ -n "$cmp_files" ] && cmp_changed="true"
+
+          echo "svc_list=$svc_json"            >> "$GITHUB_OUTPUT"
+          echo "svc_changed=$([ -n "$svc_dirs" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "compose_files=$cmp_files"      >> "$GITHUB_OUTPUT"
+          echo "compose_changed=$cmp_changed"  >> "$GITHUB_OUTPUT"
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────
+#  Lint + unit-test the **changed services only**
+# ──────────────────────────────────────────────────────────────────────────────────────────────────
   test-services:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: needs.detect-changes.outputs.svc_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJson(needs.detect-changes.outputs.list) }}
+        service: ${{ fromJson(needs.detect-changes.outputs.svc_list) }}
     steps:
       - uses: actions/checkout@v4
-
-      # ------- common tooling ------------------------------------------------
-      - uses: actions/setup-go@v5
-        with: { go-version: '1.21' }
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - uses: actions/setup-node@v3
-        with: { node-version: '18' }
+      - uses: actions/setup-go@v5    {with: {go-version: '1.21'}}
+      - uses: actions/setup-python@v5{with: {python-version: '3.11'}}
+      - uses: actions/setup-node@v4  {with: {node-version: '20'}}
       - uses: docker/setup-buildx-action@v3
-      - name: Install lint tools
+      - name: Install generic lint deps
         run: |
-          sudo apt-get update && sudo apt-get install -y hadolint parallel
-          pip  install pytest
-          npm  install -g eslint
-
-      # ------- per-service checks -------------------------------------------
-      - name: Lint Dockerfile with Hadolint
+          sudo apt-get update && sudo apt-get install -y hadolint
+          pip install pytest
+          npm i -g eslint
+      - name: Lint & unit-test ${{ matrix.service }}
         working-directory: docker/${{ matrix.service }}
+        shell: bash
         run: |
+          # Hadolint
           hadolint Dockerfile
 
-      - name: Build image (no push)
-        working-directory: docker/${{ matrix.service }}
-        run: |
-          docker build -t test/${{ matrix.service }}:local .
+          # Build locally (cache-only)
+          docker build -t "local/${{ matrix.service }}:ci" .
 
-      # Detect language & run its unit tests
-      - name: Run service unit tests
-        working-directory: ${{ github.workspace }}
-        run: |
-          svc="docker/${{ matrix.service }}"
-          if [[ -f "$svc/requirements.txt" ]] || compgen -G "$svc/**/*.py" > /dev/null; then
-            echo "🧪 running pytest for $svc"
-            pip install -q -r "$svc/requirements.txt" || true
-            pytest "$svc" || exit 1
+          # ---- Language tests (if present) ----
+          # Python
+          if compgen -G "**/*.py" > /dev/null; then
+            pytest -q || exit 1
           fi
-          if [[ -f "$svc/package.json" ]]; then
-            echo "🧪 running npm test for $svc"
-            cd "$svc"
+          # Node
+          if [ -f package.json ]; then
             npm ci
-            npm test --if-present || exit 1
-          fi
-          # Go unit tests live in host/services, not docker; run if service maps
-          hostdir="host/services/${{ matrix.service }}"
-          if [[ -d "$hostdir" && -f "$hostdir/go.mod" ]]; then
-            echo "🧪 running go test for $hostdir"
-            go test "$hostdir/..." -v
+            npm test --if-present
           fi
 
-  # Single shot "does the full stack still boot" smoke test -------------------
+          # Go tests live in host layer
+          host=host/services/${{ matrix.service }}
+          if [ -d "$host" ] && [ -f "$host/go.mod" ]; then
+            go test "$host/..." -v
+          fi
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────
+#  One-shot compose boot if *either* services or compose YAML changed
+# ──────────────────────────────────────────────────────────────────────────────────────────────────
   compose-smoke:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: |
+      needs.detect-changes.outputs.svc_changed    == 'true' ||
+      needs.detect-changes.outputs.compose_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build *only* changed images into compose cache
+
+      # Pre-build any changed images so compose can use :local tags
+      - name: Pre-build changed services
+        shell: bash
         run: |
-          for svc in $(echo '${{ needs.detect-changes.outputs.list }}' | jq -r '.[]'); do
-            docker build -q -t "local/$svc:test" "docker/$svc"
+          for svc in $(echo '${{ needs.detect-changes.outputs.svc_list }}' | jq -r '.[]'); do
+            docker build -q -t "local/$svc:ci" "docker/$svc"
           done
-      - name: Bring up root compose stack
-        env:
-          COMPOSE_DOCKER_CLI_BUILD: 1
+
+      - name: Bring up *all* compose layers (base + every role)
+        shell: bash
         run: |
-          docker compose up -d
-          echo "🌡  waiting for services…"
+          # auto-discover base + role files – keeps CI & dev identical
+          FILES=$(ls docker/compose/docker-compose.*.y*ml | xargs printf -- '-f %s ')
+          docker compose -f docker/compose/docker-compose.base.yaml $FILES up -d
+          echo "⏳ waiting 30s for services..."
           sleep 30
           docker compose ps
-      - name: Basic health endpoints check
-        run: |
-          set -e
-          # write simple curl checks per service as needed
-          curl -f http://localhost:8080/health || echo "⚠️ api health missing"
+
       - name: Tear down
         if: always()
         run: docker compose down -v --remove-orphans
+

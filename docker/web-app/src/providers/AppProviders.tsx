@@ -40,7 +40,7 @@ export default function AppProviders({ children }: { children: ReactNode }) {
           </CaptureProvider>
         </VideoSocketProvider>
       </ThemeProvider>
-      <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />
+      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )
 }
