@@ -1,11 +1,16 @@
+# FFmpeg Console Module
 
+Exposes a thin wrapper around `ffmpeg` so commands can be executed from the web UI or CLI.
+
+Routes:
+
+- `POST /ffmpeg/run` – execute an ffmpeg command and stream logs
+
+CLI verb:
+
+```bash
+python -m video ffmpeg "-i in.mp4 out.gif"
 ```
-video/
-└── modules/
-    └── ffmpeg_console/
-        ├── __init__.py
-        ├── commands.py
-        ├── ffmpeg_console.py   # (contains the actual logic)
-        ├── routes.py
-        └── requirements.txt
-``` 
+
+Extra dependencies are listed in `requirements.txt` and must be installed separately.
+
