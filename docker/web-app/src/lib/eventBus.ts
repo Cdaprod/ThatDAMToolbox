@@ -24,6 +24,9 @@ type BackendEvents = {
 type UiEvents = {
   'toast'          : { msg: string; type?: 'info'|'success'|'error' };
   'route-change'   : { to: string };
+  'action-sheet'   : { ids: string[]; actions: import('@/types/actions').Action[] };
+  'preview'        : { id: string };
+  'tag-open'       : { ids: string[] };
 };
 
 export type AppEvents = BackendEvents & UiEvents;
