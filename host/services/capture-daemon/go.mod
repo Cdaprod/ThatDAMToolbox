@@ -11,4 +11,3 @@ require (
     github.com/pion/webrtc/v3                               v3.2.0
 )
 
-replace github.com/Cdaprod/ThatDamToolbox/host/services/shared => ../shared

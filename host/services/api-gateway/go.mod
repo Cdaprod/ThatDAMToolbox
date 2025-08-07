@@ -7,4 +7,3 @@ require (
 	github.com/gorilla/websocket v1.5.0
 )
 
-replace github.com/Cdaprod/ThatDamToolbox/host/services/shared => ../shared
