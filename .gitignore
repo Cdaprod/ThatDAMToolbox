@@ -152,3 +152,5 @@ go.sum
 
 !/docker/weaviate/schema.json
 
+/public/design-token-styles/**
+/docs/GIT-APPLY/**
