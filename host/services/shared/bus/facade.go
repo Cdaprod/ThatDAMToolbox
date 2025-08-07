@@ -37,7 +37,10 @@ func SetAdapter(fn func(Config) (Bus, error)) { adapterCtor = fn }
 func Connect(ctx context.Context, cfg Config) (Bus, error) {
 	once.Do(func() {
 		if cfg.URL == "" {
-			cfg.URL = os.Getenv("AMQP_URL")
+			cfg.URL = os.Getenv("EVENT_BROKER_URL")
+			if cfg.URL == "" {
+				cfg.URL = os.Getenv("AMQP_URL")
+			}
 		}
 		if cfg.Exchange == "" {
 			cfg.Exchange = os.Getenv("AMQP_EXCHANGE")
