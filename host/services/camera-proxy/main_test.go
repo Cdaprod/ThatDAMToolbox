@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/pion/webrtc/v3"
 )
 
 // TestDiscoverDevicesIncludesDaemon ensures capture-daemon devices are merged.
@@ -27,5 +31,62 @@ func TestDiscoverDevicesIncludesDaemon(t *testing.T) {
 	}
 	if _, ok := proxy.devices["daemon:/dev/video1"]; !ok {
 		t.Fatalf("expected daemon device to be merged")
+	}
+}
+
+// TestRegisterWithDaemon posts local devices to /register.
+func TestRegisterWithDaemon(t *testing.T) {
+	var posted bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/register" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		posted = true
+		var payload struct {
+			ProxyID string       `json:"proxy_id"`
+			Devices []DeviceInfo `json:"devices"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&payload)
+		if payload.ProxyID == "" || len(payload.Devices) != 1 {
+			t.Fatalf("bad payload: %+v", payload)
+		}
+	}))
+	defer srv.Close()
+
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp.daemonURL = srv.URL
+	dp.devices["/dev/video0"] = &DeviceInfo{Path: "/dev/video0", Name: "cam", IsAvailable: true}
+	if err := dp.registerWithDaemon(context.Background()); err != nil {
+		t.Fatalf("registerWithDaemon: %v", err)
+	}
+	if !posted {
+		t.Fatalf("expected POST to /register")
+	}
+}
+
+// TestNegotiateWithDaemon verifies SDP exchange with mock server.
+func TestNegotiateWithDaemon(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/webrtc/offer" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		var req struct {
+			SDP webrtc.SessionDescription `json:"sdp"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		pc, _ := webrtc.NewPeerConnection(webrtc.Configuration{})
+		defer pc.Close()
+		_ = pc.SetRemoteDescription(req.SDP)
+		ans, _ := pc.CreateAnswer(nil)
+		_ = pc.SetLocalDescription(ans)
+		_ = json.NewEncoder(w).Encode(map[string]any{"sdp": ans})
+	}))
+	defer srv.Close()
+
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp.daemonURL = srv.URL
+	pc, _ := webrtc.NewPeerConnection(webrtc.Configuration{})
+	if err := dp.negotiateWithDaemon(pc); err != nil {
+		t.Fatalf("negotiateWithDaemon: %v", err)
 	}
 }
