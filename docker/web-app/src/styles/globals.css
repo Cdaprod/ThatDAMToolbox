@@ -49,3 +49,6 @@ a {
   .ring-theme-primary  { --tw-ring-color:  var(--theme-primary)    !important; }
   .ring-theme-accent   { --tw-ring-color:  var(--theme-accent)     !important; }
 }
+
+.is-selected { @apply ring-2 ring-theme-accent bg-theme-accent/10; }
+.is-active   { @apply bg-gray-200; }
