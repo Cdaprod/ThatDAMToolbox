@@ -20,6 +20,8 @@ docker compose -f host/services/camera-proxy/docker-compose.camera-proxy.yaml --
 - `CAPTURE_DAEMON_URL` – optional capture-daemon address (default `http://localhost:9000`)
 - `CAPTURE_DAEMON_TOKEN` – bearer token for capture-daemon requests
 - `TLS_CERT_FILE`/`TLS_KEY_FILE` – serve HTTPS using these credentials
+- `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC (optional)
+- `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
 
 Health check endpoint: `GET /healthz` returns `200 OK` when ready.
 

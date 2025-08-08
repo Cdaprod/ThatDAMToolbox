@@ -1,13 +1,13 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"os/exec"
-	"strings"
-	"testing"
+        "context"
+        "encoding/json"
+        "net/http"
+        "net/http/httptest"
+        "os/exec"
+        "strings"
+        "testing"
 
 	"github.com/pion/webrtc/v3"
 )
@@ -150,4 +150,36 @@ func TestHandleDeviceStreamFallback(t *testing.T) {
 	if ct := rr.Header().Get("Content-Type"); !strings.HasPrefix(ct, "multipart/x-mixed-replace") {
 		t.Fatalf("unexpected content type: %s", ct)
 	}
+}
+
+// TestIceServers parses ICE_SERVERS env variable.
+func TestIceServers(t *testing.T) {
+        t.Setenv("ICE_SERVERS", "stun:stun.example.org, turn:turn.example.org")
+        servers := iceServers()
+        if len(servers) != 2 || servers[1].URLs[0] != "turn:turn.example.org" {
+                t.Fatalf("unexpected servers: %+v", servers)
+        }
+}
+
+// TestHWAccelArgs ensures FFMPEG_HWACCEL is inserted into ffmpeg command.
+func TestHWAccelArgs(t *testing.T) {
+        dp, _ := NewDeviceProxy("http://b", "http://f")
+        t.Setenv("FFMPEG_HWACCEL", "cuda -hwaccel_device 0")
+        called := false
+        orig := ffmpegCmd
+        ffmpegCmd = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+                called = true
+                if args[0] != "cuda" {
+                        t.Fatalf("missing hw accel args: %v", args)
+                }
+                return exec.CommandContext(ctx, "sh", "-c", "echo data")
+        }
+        defer func() { ffmpegCmd = orig }()
+        track, _ := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264}, "v", "p")
+        if err := dp.streamFromFFmpeg(context.Background(), "/dev/video0", track); err != nil {
+                t.Fatalf("streamFromFFmpeg: %v", err)
+        }
+        if !called {
+                t.Fatalf("ffmpegCmd not called")
+        }
 }

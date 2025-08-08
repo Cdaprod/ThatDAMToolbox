@@ -125,6 +125,8 @@ services:
      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
      CAPTURE_OUTDIR: "/records"
      AUTH_TOKEN: "devtoken"
+     ICE_SERVERS: "stun:stun.l.google.com:19302"       # Optional STUN/TURN list
+     FFMPEG_HWACCEL: ""                                # e.g. "cuda -hwaccel_device 0"
     volumes:
       - /dev:/dev
       - /lib/modules:/lib/modules:ro
@@ -160,6 +162,8 @@ services:
       OVERLAY_HUB_URL: "http://overlay-hub:8090"
       CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
       CAPTURE_DAEMON_TOKEN: "devtoken"
+      ICE_SERVERS: "stun:stun.l.google.com:19302"       # Optional STUN/TURN list
+      FFMPEG_HWACCEL: ""                                # e.g. "cuda -hwaccel_device 0"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
       interval: 10s

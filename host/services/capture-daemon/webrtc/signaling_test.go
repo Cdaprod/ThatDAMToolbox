@@ -1,13 +1,13 @@
 package webrtc
 
 import (
-	"bytes"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
+        "bytes"
+        "encoding/json"
+        "net/http"
+        "net/http/httptest"
+        "testing"
 
-	"github.com/pion/webrtc/v3"
+        "github.com/pion/webrtc/v3"
 )
 
 // TestOfferCreatesSessions ensures each offer gets its own track.
@@ -51,4 +51,16 @@ func TestOfferCreatesSessions(t *testing.T) {
 	if sessions[0].Track == sessions[1].Track {
 		t.Fatalf("tracks should be independent")
 	}
+}
+
+// TestIceServersFromEnv ensures ICE servers are parsed from environment.
+func TestIceServersFromEnv(t *testing.T) {
+        t.Setenv("ICE_SERVERS", "stun:stun.example.com, turn:turn.example.com")
+        servers := iceServers()
+        if len(servers) != 2 {
+                t.Fatalf("expected 2 servers, got %d", len(servers))
+        }
+        if servers[0].URLs[0] != "stun:stun.example.com" {
+                t.Fatalf("unexpected first server: %v", servers[0].URLs)
+        }
 }

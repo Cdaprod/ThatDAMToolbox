@@ -41,6 +41,11 @@ For OBS or any HLS client, add a media source pointing to:
 http://localhost:9000/preview/<device>/index.m3u8
 ```
 
+Additional runtime options:
+
+- `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC negotiation.
+- `FFMPEG_HWACCEL` – extra ffmpeg args to enable hardware acceleration.
+
 ## Security
 
 Set `AUTH_TOKEN` to require a bearer token on API requests. To serve HTTPS, provide `TLS_CERT_FILE` and `TLS_KEY_FILE` with the certificate and key paths.

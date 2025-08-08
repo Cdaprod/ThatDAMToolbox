@@ -1,11 +1,13 @@
 package webrtc
 
 import (
-	"encoding/json"
-	"net/http"
-	"sync"
+        "encoding/json"
+        "net/http"
+        "os"
+        "strings"
+        "sync"
 
-	"github.com/pion/webrtc/v3"
+        "github.com/pion/webrtc/v3"
 )
 
 type Session struct {
@@ -14,13 +16,32 @@ type Session struct {
 }
 
 var (
-	mu       sync.Mutex
-	sessions = make(map[*webrtc.PeerConnection]*Session)
+        mu       sync.Mutex
+        sessions = make(map[*webrtc.PeerConnection]*Session)
 )
+
+// iceServers returns ICE servers from the ICE_SERVERS environment variable
+// as a comma-separated list of STUN/TURN URLs.
+func iceServers() []webrtc.ICEServer {
+        val := os.Getenv("ICE_SERVERS")
+        if val == "" {
+                return nil
+        }
+        parts := strings.Split(val, ",")
+        servers := make([]webrtc.ICEServer, 0, len(parts))
+        for _, p := range parts {
+                p = strings.TrimSpace(p)
+                if p == "" {
+                        continue
+                }
+                servers = append(servers, webrtc.ICEServer{URLs: []string{p}})
+        }
+        return servers
+}
 
 // NewSession creates a PeerConnection and track for a client.
 func NewSession() (*Session, error) {
-	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+        pc, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers()})
 	if err != nil {
 		return nil, err
 	}
