@@ -28,6 +28,7 @@ services:
         target: dam_token                       # → /run/secrets/dam_token
     restart: "no"                               # it exits after writing configs
 
+
   ########################################################################
   # 1. public front-door (owns :80 / :443 on the Pi)
   ########################################################################
@@ -40,9 +41,9 @@ services:
     # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
-      api-gateway: { condition: service_started }
-      video-web:   { condition: service_started }
-      video-api:   { condition: service_healthy }
+      - api-gateway
+      - video-web
+      - video-api
 
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
@@ -69,7 +70,8 @@ services:
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
-      
+
+
   ########################################################################
   # 2. infrastructure services
   ########################################################################
@@ -129,77 +131,79 @@ services:
       - overlay-hub
 
 
-########################################################################
-# 3b. camera proxy
-########################################################################
-camera-proxy:
-  build:
-    context: .
-    dockerfile: host/services/camera-proxy/Dockerfile
-  image: cdaprod/camera-proxy:latest
-  container_name: thatdamtoolbox-camera-proxy
-  networks: [damnet]
-  ports: ["8000:8000"]
-  devices:
-    - /dev/video0:/dev/video0
-  group_add:
-    - video
-  environment:
-    EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
-    OVERLAY_HUB_URL: "http://overlay-hub:8090"
-  healthcheck:
-    test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
-    interval: 10s
-    timeout: 3s
-    retries: 5
-  depends_on:
-    - rabbitmq
-    - overlay-hub
-  restart: unless-stopped
+  ########################################################################
+  # 3b. camera proxy
+  ########################################################################
+  camera-proxy:
+    build:
+      context: .
+      dockerfile: host/services/camera-proxy/Dockerfile
+    image: cdaprod/camera-proxy:latest
+    container_name: thatdamtoolbox-camera-proxy
+    networks: [damnet]
+    ports: ["8000:8000"]
+    devices:
+      - /dev/video0:/dev/video0
+    group_add:
+      - video
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      OVERLAY_HUB_URL: "http://overlay-hub:8090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - rabbitmq
+      - overlay-hub
+    restart: unless-stopped
 
-########################################################################
-# 3c. overlay hub
-########################################################################
-overlay-hub:
-  build:
-    context: host/services/overlay-hub
-    dockerfile: Dockerfile
-  image: cdaprod/overlay-hub:latest
-  container_name: thatdamtoolbox-overlay-hub
-  networks: [damnet]
-  ports: ["8090:8090"]
-  environment:
-    JWKS_URL: "http://api-gateway:8080/.well-known/jwks.json"
-  healthcheck:
-    test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
-    interval: 10s
-    timeout: 3s
-    retries: 5
-  depends_on:
-    - api-gateway
-  restart: unless-stopped
 
-########################################################################
-# 3d. api gateway
-########################################################################
-api-gateway:
-  build:
-    context: .
-    dockerfile: host/services/api-gateway/Dockerfile
-  image: cdaprod/api-gateway:latest
-  container_name: thatdamtoolbox-api-gateway
-  networks: [damnet]
-  ports: ["8080:8080"]
-  environment:
-    EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
-  healthcheck:
-    test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
-    interval: 10s
-    timeout: 5s
-    retries: 5
-  depends_on:
-    - rabbitmq
-  restart: unless-stopped
+  ########################################################################
+  # 3c. overlay hub
+  ########################################################################
+  overlay-hub:
+    build:
+      context: host/services/overlay-hub
+      dockerfile: Dockerfile
+    image: cdaprod/overlay-hub:latest
+    container_name: thatdamtoolbox-overlay-hub
+    networks: [damnet]
+    ports: ["8090:8090"]
+    environment:
+      JWKS_URL: "http://api-gateway:8080/.well-known/jwks.json"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+
+
+  ########################################################################
+  # 3d. api gateway
+  ########################################################################
+  api-gateway:
+    build:
+      context: .
+      dockerfile: host/services/api-gateway/Dockerfile
+    image: cdaprod/api-gateway:latest
+    container_name: thatdamtoolbox-api-gateway
+    networks: [damnet]
+    ports: ["8080:8080"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
 
 
   ########################################################################
@@ -294,6 +298,7 @@ api-gateway:
       timeout: 5s
       retries: 3
 
+
   ########################################################################
   # 5. Next.js dev server (exposed only for dev)
   ########################################################################
@@ -355,7 +360,8 @@ api-gateway:
     restart: "no"
     depends_on:
       - video-api
-      
+
+
 ########################################################################
 # (Optional) hotspot-installer secrets
 ########################################################################
