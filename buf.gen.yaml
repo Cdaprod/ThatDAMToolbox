@@ -1,0 +1,4 @@
+version: v1
+generation:
+  go:
+    out: sdk/go

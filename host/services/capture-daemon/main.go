@@ -70,6 +70,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sd := shutdown.NewManager(lg.Logger, shutdownTimeout)
+	startOverlay(ctx)
 
 	// 6. Metrics server
 	if cfg.Features.Metrics.Enabled {

@@ -1,0 +1,14 @@
+syntax = "proto3";
+package overlay;
+
+// OpenChannel requests a media/control channel.
+message OpenChannel {
+  string agent_id = 1;
+  string target_id = 2;
+  string protocol = 3; // quic or webrtc
+}
+
+// ChannelResponse acknowledges channel creation.
+message ChannelResponse {
+  bool ok = 1;
+}

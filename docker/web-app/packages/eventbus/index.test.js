@@ -1,4 +1,5 @@
-const mock = {connect: async () => new MockConn()};
+let received;
+const mock = {connect: async url => {received = url; return new MockConn();}};
 require.cache[require.resolve('amqplib')] = {exports: mock};
 const bus = require('./index');
 
@@ -14,8 +15,11 @@ class MockChannel {
 class MockConn { createChannel(){ return Promise.resolve(new MockChannel()); } close(){ return Promise.resolve(); } }
 
 (async () => {
+  process.env.EVENT_BROKER_URL = 'amqp://test/';
   await bus.connect();
+  if (received !== 'amqp://test/') throw new Error('url mismatch');
   await bus.publish('foo', {a:1});
   await bus.close();
+  delete process.env.EVENT_BROKER_URL;
   console.log('ok');
 })();
