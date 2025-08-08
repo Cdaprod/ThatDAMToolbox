@@ -40,8 +40,9 @@ services:
     # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
-      - video-api
-      - video-web
+      api-gateway: { condition: service_started }
+      video-web:   { condition: service_started }
+      video-api:   { condition: service_healthy }
 
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
@@ -51,12 +52,19 @@ services:
       # host-net → talk to services via 127.0.0.1
       API_HOST: "127.0.0.1"
       API_PORT: "8080"
+      API_GW_HOST: "127.0.0.1"
+      API_GW_PORT: "8081"
       WEB_HOST: "127.0.0.1"
       WEB_PORT: "3000"
 
     volumes:
       # allow you to override nginx.tmpl without rebuilding
       - ./docker/nginx/nginx.tmpl:/etc/nginx/nginx.tmpl:ro
+      - ./docker/nginx/proxy_defaults.conf:/etc/nginx/proxy_defaults.conf:ro
+      - ./docker/nginx/proxy_ws.conf:/etc/nginx/proxy_ws.conf:ro
+      - ./docker/nginx/proxy_nobuf.conf:/etc/nginx/proxy_nobuf.conf:ro
+      - ./docker/nginx/dev.crt:/etc/nginx/dev.crt:ro
+      - ./docker/nginx/dev.key:/etc/nginx/dev.key:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
     logging:
       driver: json-file

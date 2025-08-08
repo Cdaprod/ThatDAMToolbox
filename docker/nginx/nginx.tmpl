@@ -35,23 +35,36 @@ http {
     ##   – If the gateway runs with `network_mode: host` these resolve to 127.0.0.1
     ##   – If the gateway runs on a user bridge they resolve to Docker DNS names.
     ##
-    upstream video_api { server ${API_HOST}:${API_PORT}; }
-    upstream video_web { server ${WEB_HOST}:${WEB_PORT}; }
+    upstream video_api   { server ${API_HOST}:${API_PORT}; }
+    upstream api_gateway { server ${API_GW_HOST}:${API_GW_PORT}; }
+    upstream video_web   { server ${WEB_HOST}:${WEB_PORT}; }
 
     server {
         listen 80 default_server;
+        listen 443 ssl default_server;
         server_name _;   # catch-all
+
+        ssl_certificate     /etc/nginx/dev.crt;
+        ssl_certificate_key /etc/nginx/dev.key;
 
         # ------------------ health ------------------------------------------
         location = /health {
             proxy_pass http://video_api/health;
             proxy_set_header Host $host;
         }
+        location = /gw/health {
+            include proxy_defaults.conf;
+            proxy_pass http://api_gateway/health;
+        }
 
         # ------------------ REST / websocket / streams ----------------------
-        location /api/    { include proxy_defaults.conf; proxy_pass http://video_api; }
-        location /ws/     { include proxy_ws.conf;       proxy_pass http://video_api; }
-        location /stream/ { include proxy_nobuf.conf;    proxy_pass http://video_api; }
+        location /api/       { include proxy_defaults.conf; proxy_pass http://video_api; }
+        location /ws/        { include proxy_ws.conf;       proxy_pass http://video_api; }
+        location /stream/    { include proxy_nobuf.conf;    proxy_pass http://video_api; }
+
+        # ------------------ Go API gateway -------------------------------
+        location /gw/        { include proxy_defaults.conf; proxy_pass http://api_gateway; }
+        location /gw/ws/     { include proxy_ws.conf;       proxy_pass http://api_gateway; }
 
         # ------------------ Production (static) frontend ------------------
         # (Uncomment this block once you have built your Next.js app to /usr/share/nginx/html)

@@ -115,6 +115,8 @@ secrets.json
 *.pem
 *.key
 *.crt
+!docker/nginx/dev.key
+!docker/nginx/dev.crt
 
 # ---- Misc ----
 # If you have generated or temporary files, add patterns here
