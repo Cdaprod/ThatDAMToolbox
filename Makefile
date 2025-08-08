@@ -340,6 +340,7 @@ download-report: ## Download GitHub Actions build-report artifact
 # ---- Config ----
 INFRA_COMPOSE=docker/compose/infra.yaml
 INFRA_PROFILE=infra
+
 INFRA_DOCKER_COMPOSE=$(DOCKER_COMPOSE) -f $(INFRA_COMPOSE)
 
 # ---- Build All Infra Layer Services ----

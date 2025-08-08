@@ -1,17 +1,20 @@
-# -- ci-test-changed-services.yml --------------------------------------------
-#
-# 1. Detects **service dirs** whose Dockerfile changed           → matrix lint/unit-test
-# 2. Detects **compose layer files** or the root compose changed → single smoke boot
-#
-# All detection is dynamic – no hard-coded service names.
-#
 name: CI-Test-Changed-Services
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   pull_request:
     branches: ["**"]
     paths:
       - "docker/**"
+      - "!docker/compose/**"        # exclude compose dir from per-service matrix lint/test
+      - "docker/compose/**"         # still trigger workflow so smoke can run when compose changes
+      - "docker-compose.y*ml"       # root compose file(s)
       - "host/services/**"
       - "**/*.go"
       - "**/*.ts"
@@ -19,120 +22,190 @@ on:
   workflow_dispatch:
 
 jobs:
-# ──────────────────────────────────────────────────────────────────────────────────────────────────
-#  Detect what actually changed
-# ──────────────────────────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────────
+  # Detect what changed: (1) service names; (2) compose layer files
+  # ──────────────────────────────────────────────────────────────────────────
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      svc_list:      ${{ steps.out.vars.svc_list }}
-      svc_changed:   ${{ steps.out.vars.svc_changed }}
-      compose_files: ${{ steps.out.vars.compose_files }}
-      compose_changed: ${{ steps.out.vars.compose_changed }}
+      changed:          ${{ steps.set.outputs.changed }}            # "true"/"false"
+      list:             ${{ steps.set.outputs.changed_services }}   # JSON array of service names
+      compose_changed:  ${{ steps.set.outputs.compose_changed }}    # "true"/"false"
+      compose_files:    ${{ steps.set.outputs.compose_files }}      # JSON array of compose files
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
+        with: { fetch-depth: 0 }
 
-      - id: out
+      - name: Ensure jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - id: set
         shell: bash
         run: |
+          set -euo pipefail
           BASE_SHA=$(git merge-base origin/${{ github.base_ref }} HEAD)
 
-          # 1) Services  ─────────────────────
-          svc_dirs=$(git diff --name-only "$BASE_SHA" HEAD -- 'docker/*/Dockerfile' \
-                       | awk -F/ '{print $2}' | sort -u)
-          svc_json=$(printf '%s\n' $svc_dirs | jq -R -s -c 'split("\n")|map(select(length>0))')
+          # 1) Changed service names (only when Dockerfile changed OR host/services/* changed)
+          MODIFIED_SERVICES=$(
+            git diff --name-only "$BASE_SHA" HEAD -- \
+              'docker/*/Dockerfile' \
+              'host/services/**' \
+            | awk -F/ '
+                $1=="docker" && $3=="Dockerfile"{print $2}
+                $1=="host" && $2=="services"{print $3}
+              ' \
+            | sort -u
+          )
 
-          # 2) Compose YAMLs ──────────────────
-          cmp_files=$(git diff --name-only "$BASE_SHA" HEAD -- \
-                          'docker-compose*.y*ml' 'docker/compose/**/*.y*ml')
-          cmp_changed="false"; [ -n "$cmp_files" ] && cmp_changed="true"
+          if [ -z "$MODIFIED_SERVICES" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "changed_services=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            jq -nc --arg m "$MODIFIED_SERVICES" '$m | split("\n") | map(select(length>0))' \
+              | { read json; echo "changed_services=$json" >> "$GITHUB_OUTPUT"; }
+          fi
 
-          echo "svc_list=$svc_json"            >> "$GITHUB_OUTPUT"
-          echo "svc_changed=$([ -n "$svc_dirs" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "compose_files=$cmp_files"      >> "$GITHUB_OUTPUT"
-          echo "compose_changed=$cmp_changed"  >> "$GITHUB_OUTPUT"
+          # 2) Compose files (root and layered)
+          COMPOSE_FILES=$(
+            git diff --name-only "$BASE_SHA" HEAD -- \
+              'docker-compose.y*ml' \
+              'docker/compose/**/*.y*ml'
+          )
+          if [ -z "$COMPOSE_FILES" ]; then
+            echo "compose_changed=false" >> "$GITHUB_OUTPUT"
+            echo "compose_files=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "compose_changed=true" >> "$GITHUB_OUTPUT"
+            jq -nc --arg m "$COMPOSE_FILES" '$m | split("\n") | map(select(length>0))' \
+              | { read json; echo "compose_files=$json" >> "$GITHUB_OUTPUT"; }
+          fi
 
-# ──────────────────────────────────────────────────────────────────────────────────────────────────
-#  Lint + unit-test the **changed services only**
-# ──────────────────────────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────────
+  # Lint + unit-test the CHANGED services only (matrix)
+  # ──────────────────────────────────────────────────────────────────────────
   test-services:
     needs: detect-changes
-    if: needs.detect-changes.outputs.svc_changed == 'true'
+    if: needs.detect-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJson(needs.detect-changes.outputs.svc_list) }}
+        service: ${{ fromJson(needs.detect-changes.outputs.list) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5    {with: {go-version: '1.21'}}
-      - uses: actions/setup-python@v5{with: {python-version: '3.11'}}
-      - uses: actions/setup-node@v4  {with: {node-version: '20'}}
+
+      # Common toolchains
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.22.x' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
       - uses: docker/setup-buildx-action@v3
+
       - name: Install generic lint deps
         run: |
           sudo apt-get update && sudo apt-get install -y hadolint
-          pip install pytest
+          pip install -q pytest
           npm i -g eslint
+
       - name: Lint & unit-test ${{ matrix.service }}
-        working-directory: docker/${{ matrix.service }}
         shell: bash
         run: |
-          # Hadolint
-          hadolint Dockerfile
+          set -euo pipefail
+          SVC="${{ matrix.service }}"
+          DOCKER_DIR="docker/$SVC"
+          HOST_DIR="host/services/$SVC"
 
-          # Build locally (cache-only)
-          docker build -t "local/${{ matrix.service }}:ci" .
+          echo "→ Service: $SVC"
 
-          # ---- Language tests (if present) ----
-          # Python
-          if compgen -G "**/*.py" > /dev/null; then
-            pytest -q || exit 1
+          # Dockerfile lint/build (guarded)
+          if [ -d "$DOCKER_DIR" ]; then
+            pushd "$DOCKER_DIR" >/dev/null
+            if [ -f Dockerfile ]; then
+              echo "• hadolint Dockerfile"
+              hadolint Dockerfile
+              echo "• docker build"
+              docker build -t "local/$SVC:ci" .
+            else
+              echo "ℹ️  $DOCKER_DIR has no Dockerfile; skipping hadolint/build"
+            fi
+
+            # Python tests (service-local)
+            if compgen -G "*.py" >/dev/null || compgen -G "**/*.py" >/dev/null; then
+              echo "• pytest"
+              pytest -q
+            fi
+
+            # Node tests (service-local)
+            if [ -f package.json ]; then
+              echo "• npm test"
+              npm ci
+              npm test --if-present
+            fi
+            popd >/dev/null
+          else
+            echo "ℹ️  No docker dir for $SVC; skipping container lint/build"
           fi
-          # Node
-          if [ -f package.json ]; then
-            npm ci
-            npm test --if-present
+
+          # Go tests (host layer) — bounded to avoid OOM on GH runners
+          if [ -d "$HOST_DIR" ] && [ -f "$HOST_DIR/go.mod" ]; then
+            echo "• go test $HOST_DIR/..."
+            ( cd "$HOST_DIR" && go test ./... -v -count=1 -shuffle=on -p=2 -parallel=2 )
           fi
 
-          # Go tests live in host layer
-          host=host/services/${{ matrix.service }}
-          if [ -d "$host" ] && [ -f "$host/go.mod" ]; then
-            go test "$host/..." -v
-          fi
-
-# ──────────────────────────────────────────────────────────────────────────────────────────────────
-#  One-shot compose boot if *either* services or compose YAML changed
-# ──────────────────────────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────────
+  # One-shot compose boot if services OR compose YAML changed
+  # ──────────────────────────────────────────────────────────────────────────
   compose-smoke:
     needs: detect-changes
     if: |
-      needs.detect-changes.outputs.svc_changed    == 'true' ||
+      needs.detect-changes.outputs.changed == 'true' ||
       needs.detect-changes.outputs.compose_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      # Pre-build any changed images so compose can use :local tags
-      - name: Pre-build changed services
+      - name: Pre-build changed services (if any)
         shell: bash
         run: |
-          for svc in $(echo '${{ needs.detect-changes.outputs.svc_list }}' | jq -r '.[]'); do
-            docker build -q -t "local/$svc:ci" "docker/$svc"
+          set -euo pipefail
+          for svc in $(echo '${{ needs.detect-changes.outputs.list }}' | jq -r '.[]'); do
+            if [ -d "docker/$svc" ]; then
+              echo "• prebuilding docker/$svc"
+              docker build -q -t "local/$svc:ci" "docker/$svc"
+            fi
           done
 
-      - name: Bring up *all* compose layers (base + every role)
+      - name: Bring up compose stack
         shell: bash
+        env:
+          COMPOSE_DOCKER_CLI_BUILD: 1
         run: |
-          # auto-discover base + role files – keeps CI & dev identical
-          FILES=$(ls docker/compose/docker-compose.*.y*ml | xargs printf -- '-f %s ')
-          docker compose -f docker/compose/docker-compose.base.yaml $FILES up -d
+          set -euo pipefail
+          ROOT=""
+          if [ -f docker-compose.yaml ]; then ROOT="-f docker-compose.yaml"; fi
+          if [ -z "$ROOT" ] && [ -f docker-compose.yml ]; then ROOT="-f docker-compose.yml"; fi
+
+          LAYERS=""
+          if ls docker/compose/docker-compose.*.y*ml >/dev/null 2>&1; then
+            LAYERS=$(ls docker/compose/docker-compose.*.y*ml | xargs printf -- '-f %s ')
+          fi
+
+          echo "Using compose files: $ROOT $LAYERS"
+          docker compose $ROOT $LAYERS up -d
+
           echo "⏳ waiting 30s for services..."
           sleep 30
           docker compose ps
 
+      - name: Basic health checks (best-effort)
+        shell: bash
+        run: |
+          set -e
+          curl -fsS http://localhost:8080/health || echo "⚠️ api health endpoint missing/failed"
+
       - name: Tear down
         if: always()
         run: docker compose down -v --remove-orphans
-

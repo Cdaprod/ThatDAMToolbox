@@ -138,8 +138,8 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
       setFilters(prev => ({ ...prev, ...upd }));
     },
     vectorSearch,
-    move: (ids, toPath) => moveMut.mutateAsync({ ids, toPath }),
-    remove: ids => deleteMut.mutateAsync(ids),
+    move: (ids, toPath) => moveMut.mutateAsync({ ids, toPath }).then(() => {}),
+    remove: ids => deleteMut.mutateAsync(ids).then(() => {}),
     refresh: refetchAssets,
   };
   
@@ -158,9 +158,9 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
 
   // whenever the backend tells us "recording has stopped," create a new DAM asset
   React.useEffect(() => {
-    const handleStop = (data: { file: string }) => {
+    const handleStop = (data: { file?: string }) => {
       const payload = {
-        filename:      data.file,
+        filename:      data.file ?? 'unknown',
         device:        selectedDevice,
         codec:         selectedCodec,
         resolution:    `${deviceInfo.width}x${deviceInfo.height}`,
@@ -173,7 +173,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
       };
 
       createAsset(payload)
-        .then(() => qc.invalidateQueries(['assets']))
+        .then(() => qc.invalidateQueries({ queryKey: ['assets'] }))
         .catch(err => console.error('Failed to create asset:', err));
     };
 

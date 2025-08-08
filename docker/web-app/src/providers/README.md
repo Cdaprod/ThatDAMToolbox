@@ -104,3 +104,16 @@ Why Use a Provider Stack?
 ---
 
 Let me know if you want a more "enterprise-y" version, or one that’s more step-by-step for contributors!
+
+## Asset action registries
+
+Tools expose the verbs they support via a `useAssetActions` hook:
+
+```
+import { useAssetActions } from '@/tools/dam-explorer/actions'
+const actions = useAssetActions(asset)
+```
+
+`SelectableItem` consumes these actions and the global `ActionSheet`
+renders them on long‑press. This keeps per‑tool logic isolated while
+sharing a consistent interaction model.

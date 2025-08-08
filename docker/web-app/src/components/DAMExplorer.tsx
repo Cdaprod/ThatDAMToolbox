@@ -10,16 +10,12 @@ import {
   Image,
   Video,
   FileText,
-  MoreVertical,
   ChevronRight,
   ChevronDown,
-  Eye,
   Move,
   RefreshCw,
   Undo2,
   AlertCircle,
-  Check,
-  Pencil,
 } from 'lucide-react'
 import SearchBarExtension, {
   SearchResult,
@@ -29,6 +25,10 @@ import { useAssets } from '@/providers/AssetProvider'
 import { updateAsset, Asset as ApiAsset, FolderNode } from '@/lib/apiAssets'
 import TagPopover from '@/components/TagPopover'
 import { folderIndentStyle, statusClasses } from '@/styles/theme'
+import SelectableItem from '@/components/primitives/SelectableItem'
+import { useAssetActions } from '@/tools/dam-explorer/actions'
+import { useSelection } from '@/state/selection'
+import { bus } from '@/lib/eventBus'
 
 interface Asset extends ApiAsset {
   type?: 'image' | 'video' | 'document'
@@ -53,13 +53,8 @@ interface UndoOperation {
 }
 
 // Component: AssetThumbnail
-const AssetThumbnail: React.FC<{
-  asset: Asset
-  selected: boolean
-  onSelect: (id: string) => void
-  onPreview: (asset: Asset) => void
-  onRename: (asset: Asset) => void
-}> = ({ asset, selected, onSelect, onPreview, onRename }) => {
+const AssetThumbnail: React.FC<{ asset: Asset }> = ({ asset }) => {
+  const actions = useAssetActions(asset)
   const getIcon = (type: Asset['type'] | Asset['kind']) => {
     switch (type) {
       case 'image':
@@ -87,13 +82,7 @@ const AssetThumbnail: React.FC<{
   const sizeMb = (asset.size / 1_000_000).toFixed(1)
 
   return (
-    <div
-      className={`relative group cursor-pointer border-2 rounded-lg p-3 transition-all duration-200 hover:shadow-lg ${
-        selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
-      }`}
-      onClick={() => onSelect(asset.id)}
-      onDoubleClick={() => onPreview(asset)}
-    >
+    <SelectableItem id={asset.id} actions={actions} className="relative group cursor-pointer border-2 rounded-lg p-3 transition-all duration-200 hover:shadow-lg border-gray-200 bg-white">
       {/* Thumbnail or Icon */}
       <div className="aspect-square mb-2 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
         {asset.thumbnail ? (
@@ -124,40 +113,8 @@ const AssetThumbnail: React.FC<{
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="flex space-x-1">
-          <button
-            className="p-1 bg-white rounded shadow hover:bg-gray-50"
-            onClick={(e) => {
-              e.stopPropagation()
-              onPreview(asset)
-            }}
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            className="p-1 bg-white rounded shadow hover:bg-gray-50"
-            onClick={(e) => {
-              e.stopPropagation()
-              onRename(asset)
-            }}
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button className="p-1 bg-white rounded shadow hover:bg-gray-50">
-            <MoreVertical className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Selection Indicator */}
-      {selected && (
-        <div className="absolute top-2 left-2 bg-blue-500 text-white rounded-full p-1">
-          <Check className="w-3 h-3" />
-        </div>
-      )}
-    </div>
+      {/* Quick Actions removed in favour of ActionSheet */}
+    </SelectableItem>
   )
 }
 
@@ -245,7 +202,7 @@ const StatusBar: React.FC<{
 const AssetExplorer: React.FC = () => {
   const { view, folders, foldersLoading, move, remove, refresh, setFilters, filters } = useAssets()
   const assets = view
-  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set())
+  const { ids: selectedAssets, clear: clearSelection } = useSelection()
   const [currentPath, setCurrentPath] = useState<string>('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [filterTags, setFilterTags] = useState<string[]>([])
@@ -267,21 +224,9 @@ const AssetExplorer: React.FC = () => {
     setTimeout(() => setStatusMessage(null), 3000)
   }
 
-  const handleAssetSelect = (assetId: string) => {
-    setSelectedAssets((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(assetId)) {
-        newSet.delete(assetId)
-      } else {
-        newSet.add(assetId)
-      }
-      return newSet
-    })
-  }
-
   const handlePathChange = (newPath: string) => {
     setCurrentPath(newPath)
-    setSelectedAssets(new Set())
+    clearSelection()
   }
 
   const handleAssetMove = async (assetIds: string[], targetPath: string) => {
@@ -330,10 +275,10 @@ const AssetExplorer: React.FC = () => {
       return
     setIsProcessing(true)
     try {
-      await remove(assetIds)
-      showStatus(`Deleted ${assetIds.length} asset(s)`, 'warning')
-      setSelectedAssets(new Set())
-      refresh()
+        await remove(assetIds)
+        showStatus(`Deleted ${assetIds.length} asset(s)`, 'warning')
+        clearSelection()
+        refresh()
     } catch {
       showStatus('Failed to delete assets', 'error')
     } finally {
@@ -419,6 +364,20 @@ const AssetExplorer: React.FC = () => {
       handlePreview(asset)
     }
   }
+
+  useEffect(() => {
+    const onPreview = ({ id }: { id: string }) => {
+      const asset = assets.find((a) => a.id === id)
+      if (asset) handlePreview(asset)
+    }
+    const onTag = () => setTagging(true)
+    bus.on('preview', onPreview)
+    bus.on('tag-open', onTag)
+    return () => {
+      bus.off('preview', onPreview)
+      bus.off('tag-open', onTag)
+    }
+  }, [assets])
 
   // Filter assets
   const filteredAssets = assets.filter((asset) => {
@@ -624,15 +583,8 @@ const AssetExplorer: React.FC = () => {
               }`}
             >
               {filteredAssets.map((asset) => (
-                <AssetThumbnail
-                  key={asset.id}
-                  asset={asset}
-                  selected={selectedAssets.has(asset.id)}
-                  onSelect={handleAssetSelect}
-                  onPreview={handlePreview}
-                  onRename={handleRename}
-                />
-              ))}
+              <AssetThumbnail key={asset.id} asset={asset} />
+            ))}
             </div>
 
             {/* Empty state */}

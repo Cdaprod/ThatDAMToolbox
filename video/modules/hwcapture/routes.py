@@ -28,7 +28,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
-from video.config import get_module_path
+from video.paths import get_module_path
 
 from .hwcapture import HWAccelRecorder
 from .hwcapture import record as cli_record

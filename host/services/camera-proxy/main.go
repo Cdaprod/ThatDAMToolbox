@@ -1,7 +1,25 @@
-// /host/services/camera-proxy/main.go
+// Package main starts the camera-proxy service.
+//
+// The proxy discovers local camera devices and relays them to a capture-daemon
+// using WebRTC. If negotiation with the daemon fails the proxy falls back to
+// serving an MJPEG stream directly.
+//
+// Environment variables:
+//
+//	PROXY_PORT          – listening port (default 8000)
+//	BACKEND_URL         – backend address to proxy (default http://localhost:8080)
+//	FRONTEND_URL        – frontend address to proxy (default http://localhost:3000)
+//	CAPTURE_DAEMON_URL  – optional capture-daemon address
+//
+// Example:
+//
+//	PROXY_PORT=8000 BACKEND_URL=http://localhost:8080 \
+//	FRONTEND_URL=http://localhost:3000 CAPTURE_DAEMON_URL=http://localhost:9000 \
+//	./camera-proxy
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +36,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 // DeviceInfo represents camera device information
@@ -247,6 +267,127 @@ func (dp *DeviceProxy) scanUSBCameras() {
 	}
 }
 
+// registerWithDaemon posts local device metadata to the capture-daemon.
+func (dp *DeviceProxy) registerWithDaemon(ctx context.Context) error {
+	if dp.daemonURL == "" {
+		return nil
+	}
+
+	hostname, _ := os.Hostname()
+	dp.mutex.RLock()
+	var devs []*DeviceInfo
+	for _, d := range dp.devices {
+		if !strings.HasPrefix(d.Path, "daemon:") {
+			devs = append(devs, d)
+		}
+	}
+	dp.mutex.RUnlock()
+
+	payload := map[string]any{
+		"proxy_id": hostname,
+		"devices":  devs,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, dp.daemonURL+"/register", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
+// negotiateWithDaemon performs the SDP offer/answer exchange.
+func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
+	offer, err := pc.CreateOffer(nil)
+	if err != nil {
+		return err
+	}
+	if err := pc.SetLocalDescription(offer); err != nil {
+		return err
+	}
+	body, err := json.Marshal(map[string]any{"sdp": offer})
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(dp.daemonURL+"/webrtc/offer", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var ans struct {
+		SDP webrtc.SessionDescription `json:"sdp"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&ans); err != nil {
+		return err
+	}
+	return pc.SetRemoteDescription(ans.SDP)
+}
+
+// streamFromFFmpeg launches ffmpeg and forwards H264 samples to track.
+func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample) error {
+	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-f", "v4l2",
+		"-i", device,
+		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+		"-f", "h264", "pipe:1",
+	)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	buf := make([]byte, 1<<20)
+	frameDur := time.Second / 15
+	for {
+		n, err := stdout.Read(buf)
+		if err != nil {
+			if err == io.EOF || ctx.Err() != nil {
+				return nil
+			}
+			return err
+		}
+		data := make([]byte, n)
+		copy(data, buf[:n])
+		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur})
+	}
+}
+
+// streamWebRTC starts a WebRTC relay to the capture-daemon.
+func (dp *DeviceProxy) streamWebRTC(ctx context.Context, device string) error {
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	if err != nil {
+		return err
+	}
+	track, err := webrtc.NewTrackLocalStaticSample(
+		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264},
+		"video", "camera-proxy",
+	)
+	if err != nil {
+		return err
+	}
+	if _, err = pc.AddTrack(track); err != nil {
+		return err
+	}
+	if err := dp.negotiateWithDaemon(pc); err != nil {
+		return err
+	}
+	go func() {
+		_ = dp.streamFromFFmpeg(ctx, device, track)
+		pc.Close()
+	}()
+	return nil
+}
+
 // createReverseProxy creates a reverse proxy to the backend service
 func (dp *DeviceProxy) createReverseProxy(target *url.URL) *httputil.ReverseProxy {
 	proxy := httputil.NewSingleHostReverseProxy(target)
@@ -314,7 +455,14 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Create FFmpeg stream for the local device
+	// Try WebRTC relay first
+	if err := dp.streamWebRTC(r.Context(), devicePath); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "webrtc"})
+		return
+	}
+
+	// Fallback to MJPEG stream
 	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "close")
@@ -323,7 +471,7 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		"-f", "v4l2",
 		"-i", devicePath,
 		"-vf", "scale=640:480",
-		"-r", "15", // 15 FPS
+		"-r", "15",
 		"-f", "mjpeg",
 		"-q:v", "5",
 		"pipe:1",
@@ -454,9 +602,10 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	// Initial discovery
 	if err := dp.discoverDevices(); err != nil {
 		log.Printf("Initial device discovery failed: %v", err)
+	} else {
+		_ = dp.registerWithDaemon(ctx)
 	}
 
 	for {
@@ -466,6 +615,8 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 		case <-ticker.C:
 			if err := dp.discoverDevices(); err != nil {
 				log.Printf("Device discovery failed: %v", err)
+			} else {
+				_ = dp.registerWithDaemon(ctx)
 			}
 		}
 	}

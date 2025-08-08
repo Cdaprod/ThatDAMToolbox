@@ -1,9 +1,10 @@
+# syntax=docker/dockerfile:1
+
 # ─── Stage 1: Build the capture-daemon binary ───────────────────────────────
 FROM golang:1.24-alpine AS builder
+ARG TARGETOS TARGETARCH VERSION
 
-# Install git (needed for VCS-based modules) and ca-certs
 RUN apk add --no-cache git ca-certificates
-
 WORKDIR /build
 
 # 1) Copy only go.mod (we don’t keep go.sum)
@@ -20,10 +21,12 @@ RUN go mod tidy \
  && go mod vendor
 
 # 4) Compile using vendored deps
-RUN go build -mod=vendor -o /out/capture-daemon ./main.go
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -o /out/capture-daemon ./main.go
 
 # ─── Stage 2: Runtime image ─────────────────────────────────────────────────
 FROM alpine:3.20
+ARG VERSION
+LABEL org.opencontainers.image.version=$VERSION
 
 # runtime deps
 RUN apk add --no-cache ffmpeg tini curl ca-certificates
@@ -72,4 +75,6 @@ ENV CAPTURE_HEALTH_INTERVAL="30s"
 # copy the binary
 COPY --from=builder /out/capture-daemon /usr/local/bin/capture-daemon
 
+EXPOSE 9000
 ENTRYPOINT ["/sbin/tini", "-s", "--", "/usr/local/bin/capture-daemon"]
+

@@ -9,9 +9,11 @@ type BackendEvents = {
   /* ⇣ "hardware / capture" domain */
   'device-list'    : { path: string; width: number; height: number; fps: number }[];
   'recording-start': { file: string; timecode: string };
-  'recording-stop' : {};
+  'recording-stop' : { file?: string };
+  'recording-status': { feed: string; elapsed: number };
   'battery'        : { level: number };
   'histogram'      : { buckets: number[] };
+  'overlay-toggled': { overlay: 'focusPeaking' | 'zebras' | 'falseColor'; enabled: boolean };
   /* ⇣ "DAM / asset" domain */
   'assets-updated' : { ids: string[] };
   'batch-created'  : { id: string };
@@ -22,6 +24,9 @@ type BackendEvents = {
 type UiEvents = {
   'toast'          : { msg: string; type?: 'info'|'success'|'error' };
   'route-change'   : { to: string };
+  'action-sheet'   : { ids: string[]; actions: import('@/types/actions').Action[] };
+  'preview'        : { id: string };
+  'tag-open'       : { ids: string[] };
 };
 
 export type AppEvents = BackendEvents & UiEvents;

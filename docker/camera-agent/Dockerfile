@@ -1,10 +1,11 @@
 # /docker/camera-agent/Dockerfile
-FROM python:3.10-slim
+FROM --platform=$BUILDPLATFORM python:3.10-slim
+ARG TARGETPLATFORM
 
 # Avoid Python buffering so logs appear in real‐time
 ENV PYTHONUNBUFFERED=1
 
-# Install OS packages required by OpenCV
+# Install OS packages required by OpenCV and WebRTC
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       libglib2.0-0 \
@@ -12,6 +13,12 @@ RUN apt-get update \
       libxext6 \
       libxrender1 \
       avahi-utils \
+      libatlas3-base \
+      libjpeg62-turbo \
+      libavdevice58 \
+      libavfilter7 \
+      libopus0 \
+      libvpx7 \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

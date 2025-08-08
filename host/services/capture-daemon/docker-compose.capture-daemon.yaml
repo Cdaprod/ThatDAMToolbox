@@ -1,0 +1,7 @@
+services:
+  capture-daemon:
+    image: ${REGISTRY:-localhost}/capture-daemon:${VERSION:-dev}
+    profiles: ["capture-daemon"]
+    ports:
+      - "${CAPTURE_DAEMON_PORT:-9000}:9000"
+
