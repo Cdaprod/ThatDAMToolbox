@@ -5,6 +5,15 @@ name: thatdamtoolbox
 
 
 ########################################################################
+# Optionally Included Infra-Grade Services
+########################################################################
+include:
+  - path: ./docker/compose/docker-compose.postgres.yaml
+  - path: ./docker/compose/docker-compose.weaviate.yaml
+  - path: ./docker/compose/docker-compose.minio.yaml
+
+
+########################################################################
 # Network Bridge "damnet"
 ########################################################################
 networks:
@@ -44,7 +53,6 @@ services:
       - api-gateway
       - video-web
       - video-api
-
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
     # ports: ["80:80"]
