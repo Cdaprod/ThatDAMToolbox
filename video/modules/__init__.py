@@ -15,7 +15,8 @@ See docstring above...
 
 import os, importlib, logging
 from pathlib import Path
-from video.config import DATA_DIR, register_module_paths
+from video.config import DATA_DIR
+from video.paths import register_module_paths
 
 log = logging.getLogger("video.modules")
 _this_dir = os.path.dirname(__file__)

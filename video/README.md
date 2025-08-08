@@ -9,7 +9,6 @@ Modular digital‑asset management for ingesting, processing and serving video a
 python -m video scan /path/to/media
 
 # API – start the FastAPI server
-uvicorn video.api.api:app --reload
 ```
 
 ## Layout

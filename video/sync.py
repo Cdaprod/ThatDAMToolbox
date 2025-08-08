@@ -29,7 +29,6 @@ class PhotoSync:
             handler = logging.StreamHandler()
             handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
             self.logger.addHandler(handler)
-            self.logger.setLevel(logging.INFO)
     
     def sha1_of_data(self, data: bytes) -> str:
         """Compute SHA1 of binary data"""
