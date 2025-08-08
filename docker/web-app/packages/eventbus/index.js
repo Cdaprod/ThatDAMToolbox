@@ -7,7 +7,10 @@ const amqplib = require('amqplib');
 
 let connection; let channel; let exchange = 'events';
 
-async function connect(url = process.env.AMQP_URL || 'amqp://localhost/', ex = process.env.AMQP_EXCHANGE || 'events') {
+async function connect(
+  url = process.env.EVENT_BROKER_URL || process.env.AMQP_URL || 'amqp://localhost/',
+  ex = process.env.AMQP_EXCHANGE || 'events'
+) {
   if (!connection) {
     exchange = ex;
     connection = await amqplib.connect(url);

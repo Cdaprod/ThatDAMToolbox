@@ -102,7 +102,8 @@ services:
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     environment:
-     AMQP_URL: "amqp://video:video@rabbitmq:5672/"
+     EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+     OVERLAY_HUB_URL: "http://overlay-hub:8090"
      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
      CAPTURE_OUTDIR: "/records"
     volumes:
@@ -117,6 +118,80 @@ services:
     restart: unless-stopped
     depends_on:
       - rabbitmq
+      - overlay-hub
+
+
+########################################################################
+# 3b. camera proxy
+########################################################################
+camera-proxy:
+  build:
+    context: .
+    dockerfile: host/services/camera-proxy/Dockerfile
+  image: cdaprod/camera-proxy:latest
+  container_name: thatdamtoolbox-camera-proxy
+  networks: [damnet]
+  ports: ["8000:8000"]
+  devices:
+    - /dev/video0:/dev/video0
+  group_add:
+    - video
+  environment:
+    EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+    OVERLAY_HUB_URL: "http://overlay-hub:8090"
+  healthcheck:
+    test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+  depends_on:
+    - rabbitmq
+    - overlay-hub
+  restart: unless-stopped
+
+########################################################################
+# 3c. overlay hub
+########################################################################
+overlay-hub:
+  build:
+    context: host/services/overlay-hub
+    dockerfile: Dockerfile
+  image: cdaprod/overlay-hub:latest
+  container_name: thatdamtoolbox-overlay-hub
+  networks: [damnet]
+  ports: ["8090:8090"]
+  environment:
+    JWKS_URL: "http://api-gateway:8080/.well-known/jwks.json"
+  healthcheck:
+    test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+  depends_on:
+    - api-gateway
+  restart: unless-stopped
+
+########################################################################
+# 3d. api gateway
+########################################################################
+api-gateway:
+  build:
+    context: .
+    dockerfile: host/services/api-gateway/Dockerfile
+  image: cdaprod/api-gateway:latest
+  container_name: thatdamtoolbox-api-gateway
+  networks: [damnet]
+  ports: ["8080:8080"]
+  environment:
+    EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+  healthcheck:
+    test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+  depends_on:
+    - rabbitmq
+  restart: unless-stopped
 
 
   ########################################################################

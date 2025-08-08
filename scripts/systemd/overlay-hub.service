@@ -1,0 +1,10 @@
+[Unit]
+Description=Overlay Hub
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/overlay-hub
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

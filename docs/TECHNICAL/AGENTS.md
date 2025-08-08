@@ -111,6 +111,7 @@ This file equips you with everything required to ship safe, idempotent, idiomati
 ### rabbitmq (docker/rabbitmq/*)
 
 - System event broker
+- All services read the connection string from `EVENT_BROKER_URL` (falling back to `AMQP_URL`)
 
 ### nginx (docker/nginx/*)
 
@@ -324,6 +325,23 @@ go run host/services/capture-daemon/cmd/main.go scan-once
 
 For sample social posts or in-code banners, use:  
 `#ThatDAMToolbox #devopsdad #hacktheplanet #opensource #Cdaprod`
+
+-----
+
+## Overlay Network Quickstart
+
+```bash
+# launch overlay stack
+docker compose up -d overlay-hub api-gateway capture-daemon camera-proxy
+
+# issue agent token
+curl -s -X POST http://localhost:8080/agents/issue -d '{"agent_id":"cam1"}'
+
+# register and send heartbeat
+TOKEN=<paste token>
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:8090/v1/register
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:8090/v1/heartbeat
+```
 
 -----
 

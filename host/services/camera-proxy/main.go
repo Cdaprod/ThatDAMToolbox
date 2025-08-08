@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -50,13 +51,12 @@ type DeviceInfo struct {
 
 // DeviceProxy manages camera device virtualization and proxying
 type DeviceProxy struct {
-	devices       map[string]*DeviceInfo
-	mutex         sync.RWMutex
-	backendURL    *url.URL
-	frontendURL   *url.URL
-	upgrader      websocket.Upgrader
-	deviceStreams map[string]*exec.Cmd
-	daemonURL     string
+	devices     map[string]*DeviceInfo
+	mutex       sync.RWMutex
+	backendURL  *url.URL
+	frontendURL *url.URL
+	upgrader    websocket.Upgrader
+	daemonURL   string
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -71,14 +71,25 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		return nil, fmt.Errorf("invalid frontend URL: %v", err)
 	}
 
+	allow := strings.Split(getEnv("ALLOWED_ORIGINS", ""), ",")
 	return &DeviceProxy{
-		devices:       make(map[string]*DeviceInfo),
-		backendURL:    backendURL,
-		frontendURL:   frontendURL,
-		deviceStreams: make(map[string]*exec.Cmd),
-		daemonURL:     getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
+		devices:     make(map[string]*DeviceInfo),
+		backendURL:  backendURL,
+		frontendURL: frontendURL,
+		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
+			CheckOrigin: func(r *http.Request) bool {
+				if len(allow) == 1 && allow[0] == "" {
+					return true
+				}
+				origin := r.Header.Get("Origin")
+				for _, a := range allow {
+					if strings.TrimSpace(a) == origin {
+						return true
+					}
+				}
+				return false
+			},
 		},
 	}, nil
 }
@@ -97,7 +108,7 @@ func (dp *DeviceProxy) discoverDevices() error {
 	if err != nil {
 		return fmt.Errorf("failed to scan devices: %v", err)
 	}
-
+	sort.Strings(matches)
 	for _, devicePath := range matches {
 		if info, err := dp.getDeviceInfo(devicePath); err == nil {
 			dp.devices[devicePath] = info
@@ -110,8 +121,7 @@ func (dp *DeviceProxy) discoverDevices() error {
 
 	// ─── Merge devices from capture-daemon ─────────────
 	if dp.daemonURL != "" {
-		client := &http.Client{Timeout: 4 * time.Second}
-		resp, err := client.Get(dp.daemonURL + "/devices")
+		resp, err := httpClient.Get(dp.daemonURL + "/devices")
 		if err == nil && resp.StatusCode == http.StatusOK {
 			defer resp.Body.Close()
 			var daemonDevs []map[string]interface{}
@@ -139,6 +149,8 @@ func (dp *DeviceProxy) discoverDevices() error {
 
 	return nil
 }
+
+var httpClient = &http.Client{Timeout: 5 * time.Second}
 
 // getDeviceInfo retrieves detailed information about a camera device
 func (dp *DeviceProxy) getDeviceInfo(devicePath string) (*DeviceInfo, error) {
@@ -296,10 +308,11 @@ func (dp *DeviceProxy) registerWithDaemon(ctx context.Context) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
+	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
 	return nil
 }
@@ -317,7 +330,15 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(dp.daemonURL+"/webrtc/offer", "application/json", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, dp.daemonURL+"/webrtc/offer", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -337,6 +358,7 @@ func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, trac
 		"-f", "v4l2",
 		"-i", device,
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+		"-g", "30", "-keyint_min", "30", "-sc_threshold", "0",
 		"-f", "h264", "pipe:1",
 	)
 	stdout, err := cmd.StdoutPipe()
@@ -391,16 +413,15 @@ func (dp *DeviceProxy) streamWebRTC(ctx context.Context, device string) error {
 // createReverseProxy creates a reverse proxy to the backend service
 func (dp *DeviceProxy) createReverseProxy(target *url.URL) *httputil.ReverseProxy {
 	proxy := httputil.NewSingleHostReverseProxy(target)
-
-	// Customize the director to modify requests
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
+		origHost := req.Host
 		originalDirector(req)
-		req.Host = target.Host
-		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Forwarded-Host", origHost)
+		req.Header.Set("X-Forwarded-Proto", getEnv("FORWARDED_PROTO", "http"))
+		req.Header.Set("X-Forwarded-For", req.RemoteAddr)
 		req.Header.Set("X-Device-Proxy", "true")
 	}
-
 	return proxy
 }
 
@@ -463,7 +484,8 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 	}
 
 	// Fallback to MJPEG stream
-	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+	const boundary = "frame"
+	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary="+boundary)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "close")
 
@@ -509,10 +531,13 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 			break
 		}
 
-		fmt.Fprintf(w, "\r\n--frame\r\n")
-		fmt.Fprintf(w, "Content-Type: image/jpeg\r\n")
-		fmt.Fprintf(w, "Content-Length: %d\r\n\r\n", n)
-		w.Write(buffer[:n])
+		io.WriteString(w, "--"+boundary+"\r\n")
+		io.WriteString(w, "Content-Type: image/jpeg\r\n")
+		io.WriteString(w, fmt.Sprintf("Content-Length: %d\r\n\r\n", n))
+		if _, err := w.Write(buffer[:n]); err != nil {
+			break
+		}
+		io.WriteString(w, "\r\n")
 		flusher.Flush()
 
 		select {
@@ -626,6 +651,12 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
+	// Health endpoint
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "ok")
+	})
+
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)
 
@@ -661,6 +692,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go proxy.startPeriodicDiscovery(ctx)
+	startOverlay(ctx)
 
 	// Setup routes
 	handler := proxy.setupRoutes()
