@@ -1,3 +1,4 @@
+// /docker/web-app/src/components/primitives/Stack.tsx
 'use client';
 import clsx from 'clsx';
 

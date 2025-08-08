@@ -23,7 +23,8 @@ from fastapi import (
 )
 
 from video.core.ingest import ingest_files
-from video.config      import get_module_path, WEB_UPLOADS as _FALLBACK_WU
+from video.paths       import get_module_path
+from video.config      import WEB_UPLOADS as _FALLBACK_WU
 
 log    = logging.getLogger("video.uploader")
 router = APIRouter(prefix="/api/v1/upload", tags=["upload"])

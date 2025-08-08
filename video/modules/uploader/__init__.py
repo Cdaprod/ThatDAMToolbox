@@ -13,7 +13,8 @@ from __future__ import annotations
 from importlib import import_module
 import logging
 
-from video.config import WEB_UPLOADS, register_module_paths
+from video.config import WEB_UPLOADS
+from video.paths import register_module_paths
 
 log = logging.getLogger("video.uploader")
 

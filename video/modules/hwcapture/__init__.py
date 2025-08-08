@@ -11,7 +11,8 @@ Adds:
            POST /hwcapture/record/stop
 """
     
-from video.config import register_module_paths, DATA_DIR
+from video.config import DATA_DIR
+from video.paths import register_module_paths
 
 # Declare all subdirs your module uses here:
 MODULE_PATH_DEFAULTS = {
