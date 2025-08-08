@@ -1,13 +1,14 @@
 package webrtc
 
 import (
-        "bytes"
-        "encoding/json"
-        "net/http"
-        "net/http/httptest"
-        "testing"
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
 
-        "github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3"
 )
 
 // TestOfferCreatesSessions ensures each offer gets its own track.
@@ -51,16 +52,44 @@ func TestOfferCreatesSessions(t *testing.T) {
 	if sessions[0].Track == sessions[1].Track {
 		t.Fatalf("tracks should be independent")
 	}
+
+	for _, s := range Sessions() {
+		s.PC.Close()
+		removeSession(s.PC)
+	}
 }
 
 // TestIceServersFromEnv ensures ICE servers are parsed from environment.
 func TestIceServersFromEnv(t *testing.T) {
-        t.Setenv("ICE_SERVERS", "stun:stun.example.com, turn:turn.example.com")
-        servers := iceServers()
-        if len(servers) != 2 {
-                t.Fatalf("expected 2 servers, got %d", len(servers))
-        }
-        if servers[0].URLs[0] != "stun:stun.example.com" {
-                t.Fatalf("unexpected first server: %v", servers[0].URLs)
-        }
+	t.Setenv("ICE_SERVERS", "stun:stun.example.com, turn:turn.example.com")
+	servers := iceServers()
+	if len(servers) != 2 {
+		t.Fatalf("expected 2 servers, got %d", len(servers))
+	}
+	if servers[0].URLs[0] != "stun:stun.example.com" {
+		t.Fatalf("unexpected first server: %v", servers[0].URLs)
+	}
+}
+
+// TestSessionConcurrency ensures map access is safe when sessions are created in parallel.
+func TestSessionConcurrency(t *testing.T) {
+	const n = 10
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sess, err := NewSession()
+			if err != nil {
+				t.Errorf("new session: %v", err)
+				return
+			}
+			sess.PC.Close()
+			removeSession(sess.PC)
+		}()
+	}
+	wg.Wait()
+	if len(Sessions()) != 0 {
+		t.Fatalf("expected 0 sessions after cleanup, got %d", len(Sessions()))
+	}
 }

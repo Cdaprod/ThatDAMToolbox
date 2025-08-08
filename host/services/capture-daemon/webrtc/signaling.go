@@ -1,13 +1,13 @@
 package webrtc
 
 import (
-        "encoding/json"
-        "net/http"
-        "os"
-        "strings"
-        "sync"
+	"encoding/json"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
 
-        "github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3"
 )
 
 type Session struct {
@@ -16,32 +16,39 @@ type Session struct {
 }
 
 var (
-        mu       sync.Mutex
-        sessions = make(map[*webrtc.PeerConnection]*Session)
+	mu       sync.RWMutex
+	sessions = make(map[*webrtc.PeerConnection]*Session)
 )
+
+// removeSession deletes a session from the global map.
+func removeSession(pc *webrtc.PeerConnection) {
+	mu.Lock()
+	delete(sessions, pc)
+	mu.Unlock()
+}
 
 // iceServers returns ICE servers from the ICE_SERVERS environment variable
 // as a comma-separated list of STUN/TURN URLs.
 func iceServers() []webrtc.ICEServer {
-        val := os.Getenv("ICE_SERVERS")
-        if val == "" {
-                return nil
-        }
-        parts := strings.Split(val, ",")
-        servers := make([]webrtc.ICEServer, 0, len(parts))
-        for _, p := range parts {
-                p = strings.TrimSpace(p)
-                if p == "" {
-                        continue
-                }
-                servers = append(servers, webrtc.ICEServer{URLs: []string{p}})
-        }
-        return servers
+	val := os.Getenv("ICE_SERVERS")
+	if val == "" {
+		return nil
+	}
+	parts := strings.Split(val, ",")
+	servers := make([]webrtc.ICEServer, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		servers = append(servers, webrtc.ICEServer{URLs: []string{p}})
+	}
+	return servers
 }
 
 // NewSession creates a PeerConnection and track for a client.
 func NewSession() (*Session, error) {
-        pc, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers()})
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers()})
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +65,14 @@ func NewSession() (*Session, error) {
 		return nil, err
 	}
 	s := &Session{PC: pc, Track: track}
+	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+		switch state {
+		case webrtc.PeerConnectionStateClosed,
+			webrtc.PeerConnectionStateFailed,
+			webrtc.PeerConnectionStateDisconnected:
+			removeSession(pc)
+		}
+	})
 	mu.Lock()
 	sessions[pc] = s
 	mu.Unlock()
@@ -66,8 +81,8 @@ func NewSession() (*Session, error) {
 
 // Sessions returns all active sessions.
 func Sessions() []*Session {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 	out := make([]*Session, 0, len(sessions))
 	for _, s := range sessions {
 		out = append(out, s)
