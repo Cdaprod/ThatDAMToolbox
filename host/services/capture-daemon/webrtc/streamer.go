@@ -3,6 +3,7 @@ package webrtc
 import (
 	"context"
 	"fmt"
+	"github.com/pion/webrtc/v3"
 	"io"
 	"os/exec"
 	"time"
@@ -10,8 +11,8 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
-// StreamH264FromFFmpeg launches ffmpeg and forwards raw H264 samples to the WebRTC track.
-func StreamH264FromFFmpeg(ctx context.Context, device string, fps int, res string) error {
+// StreamH264FromFFmpeg launches ffmpeg and forwards raw H264 samples to the provided track.
+func StreamH264FromFFmpeg(ctx context.Context, device string, fps int, res string, track *webrtc.TrackLocalStaticSample) error {
 	cmd := exec.CommandContext(ctx, "ffmpeg",
 		"-f", "v4l2", "-framerate", fmt.Sprint(fps),
 		"-video_size", res,

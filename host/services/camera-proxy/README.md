@@ -21,3 +21,21 @@ docker compose -f host/services/camera-proxy/docker-compose.camera-proxy.yaml --
 
 Health check endpoint: `GET /healthz` returns `200 OK` when ready.
 
+
+## Streaming
+
+The `/stream?device=` endpoint relays camera feeds:
+
+```bash
+curl 'http://localhost:8000/stream?device=/dev/video0'
+```
+
+Devices discovered from a capture-daemon use `daemon:` prefixes. These redirect to its HLS preview:
+
+```bash
+curl -i 'http://localhost:8000/stream?device=daemon:cam1'
+# -> Location: http://localhost:9000/preview/cam1/index.m3u8
+```
+
+If WebRTC negotiation with the daemon fails, the proxy serves an MJPEG stream directly so browsers and tools can still view the feed.
+

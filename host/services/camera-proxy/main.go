@@ -41,6 +41,8 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
+var ffmpegCmd = exec.CommandContext
+
 // DeviceInfo represents camera device information
 type DeviceInfo struct {
 	Path         string                 `json:"path"`
@@ -354,7 +356,7 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 
 // streamFromFFmpeg launches ffmpeg and forwards H264 samples to track.
 func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample) error {
-	cmd := exec.CommandContext(ctx, "ffmpeg",
+	cmd := ffmpegCmd(ctx, "ffmpeg",
 		"-f", "v4l2",
 		"-i", device,
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
@@ -489,7 +491,7 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "close")
 
-	cmd := exec.Command("ffmpeg",
+	cmd := ffmpegCmd(r.Context(), "ffmpeg",
 		"-f", "v4l2",
 		"-i", devicePath,
 		"-vf", "scale=640:480",

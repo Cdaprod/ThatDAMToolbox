@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/pion/webrtc/v3"
@@ -102,5 +104,42 @@ func TestHealthz(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+// TestHandleDeviceStreamRedirect verifies daemon devices redirect to HLS.
+func TestHandleDeviceStreamRedirect(t *testing.T) {
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp.devices["daemon:cam1"] = &DeviceInfo{Path: "daemon:cam1", IsAvailable: true}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/stream?device=daemon:cam1", nil)
+	dp.handleDeviceStream(rr, req)
+	if rr.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("expected 307, got %d", rr.Code)
+	}
+	expected := dp.daemonURL + "/preview/cam1/index.m3u8"
+	if loc := rr.Header().Get("Location"); loc != expected {
+		t.Fatalf("redirect to %s, got %s", expected, loc)
+	}
+}
+
+// TestHandleDeviceStreamFallback ensures MJPEG fallback when WebRTC fails.
+func TestHandleDeviceStreamFallback(t *testing.T) {
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp.daemonURL = "http://invalid"
+	dp.devices["/dev/video0"] = &DeviceInfo{Path: "/dev/video0", IsAvailable: true}
+	orig := ffmpegCmd
+	ffmpegCmd = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "sh", "-c", "echo frame")
+	}
+	defer func() { ffmpegCmd = orig }()
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/stream?device=%2Fdev%2Fvideo0", nil)
+	dp.handleDeviceStream(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.HasPrefix(ct, "multipart/x-mixed-replace") {
+		t.Fatalf("unexpected content type: %s", ct)
 	}
 }
