@@ -1,3 +1,5 @@
+# ci-host-go-binaries.yml (drop-in)
+
 name: CI Host Go Binaries & Release
 
 on:
@@ -26,9 +28,19 @@ jobs:
   build-go-host:
     name: Build & Test Go Host Binaries
     runs-on: ubuntu-latest
-    env: { GO_VERSION: '1.22.x' }
+
+    # Cap Go’s own parallelism (build & test) to reduce memory spikes
+    env:
+      GO_VERSION: "1.22.x"
+      GOFLAGS: "-trimpath -buildvcs=true -p=2"    # build concurrency cap
+      GOMAXPROCS: "2"                              # runtime goroutine scheduler cap
+      CGO_ENABLED: "0"
+      # Only run -race on main and tags; PRs skip race to avoid OOM
+      ENABLE_RACE: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && '1' || '0' }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -44,35 +56,41 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-
 
+      - name: Print runner resources (debug)
+        run: |
+          uname -a
+          free -h
+          df -h
+
       - name: Clean Go artifacts
         run: make clean-go
 
-      - name: Build all Go host binaries
+      - name: Build all Go host binaries (hardened)
         run: |
-          export CGO_ENABLED=0
-          export GOFLAGS="-trimpath -buildvcs=true"
           make build-all
-
-      - name: List built binaries
-        run: |
           find host/services/ -type f -perm /u=x -maxdepth 3 -print -exec file {} \;
 
-      - name: Run Go unit tests (-race, -shuffle)
+      - name: Run Go unit tests (sequential per module, capped -p and -parallel)
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
+          RACE_FLAG=""
+          if [ "${ENABLE_RACE}" = "1" ]; then
+            RACE_FLAG="-race"
+          fi
+
+          # Test modules one-by-one to keep memory bounded
           for dir in host/services/shared host/services/api-gateway host/services/capture-daemon; do
             if [ -f "$dir/go.mod" ]; then
-              echo "🧪 $dir"
-              (cd "$dir" && go test ./... -v -race -shuffle=on -count=1)
+              echo "🧪 testing $dir"
+              ( cd "$dir" && \
+                go test ./... ${RACE_FLAG} -v -count=1 -shuffle=on -p=2 -parallel=2 )
             fi
           done
 
-      - name: Verify go.mod is tidy (per module if needed)
+      - name: Verify go.mod is tidy
         run: |
-          # If you have multiple modules, loop them. Otherwise root is fine.
-          if [ -f go.mod ]; then
-            go mod tidy
-          fi
+          go mod tidy
           git diff --exit-code go.mod go.sum || (echo "go.mod/go.sum are not tidy!" && exit 1)
 
       - name: Upload host Go binaries
