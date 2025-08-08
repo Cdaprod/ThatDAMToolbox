@@ -22,54 +22,54 @@
 package main
 
 import (
-        "bytes"
-        "context"
-        "encoding/json"
-        "fmt"
-        "io"
-        "log"
-        "net/http"
-        "net/http/httputil"
-        "net/url"
-        "os"
-        "os/exec"
-        "path/filepath"
-        "sort"
-        "strings"
-        "sync"
-        "time"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+	"time"
 
-        "github.com/gorilla/websocket"
-        "github.com/pion/webrtc/v3"
-        "github.com/pion/webrtc/v3/pkg/media"
+	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 var ffmpegCmd = exec.CommandContext
 
 // hwAccelArgs returns additional ffmpeg arguments from FFMPEG_HWACCEL.
 func hwAccelArgs() []string {
-        if v := os.Getenv("FFMPEG_HWACCEL"); v != "" {
-                return strings.Fields(v)
-        }
-        return nil
+	if v := os.Getenv("FFMPEG_HWACCEL"); v != "" {
+		return strings.Fields(v)
+	}
+	return nil
 }
 
 // iceServers parses ICE_SERVERS as a comma-separated list of URLs.
 func iceServers() []webrtc.ICEServer {
-        v := os.Getenv("ICE_SERVERS")
-        if v == "" {
-                return nil
-        }
-        parts := strings.Split(v, ",")
-        out := make([]webrtc.ICEServer, 0, len(parts))
-        for _, p := range parts {
-                p = strings.TrimSpace(p)
-                if p == "" {
-                        continue
-                }
-                out = append(out, webrtc.ICEServer{URLs: []string{p}})
-        }
-        return out
+	v := os.Getenv("ICE_SERVERS")
+	if v == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make([]webrtc.ICEServer, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		out = append(out, webrtc.ICEServer{URLs: []string{p}})
+	}
+	return out
 }
 
 // DeviceInfo represents camera device information
@@ -399,11 +399,11 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 
 // streamFromFFmpeg launches ffmpeg and forwards H264 samples to track.
 func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample) error {
-        args := append(hwAccelArgs(), "-f", "v4l2", "-i", device,
-                "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-                "-g", "30", "-keyint_min", "30", "-sc_threshold", "0",
-                "-f", "h264", "pipe:1")
-        cmd := ffmpegCmd(ctx, "ffmpeg", args...)
+	args := append(hwAccelArgs(), "-f", "v4l2", "-i", device,
+		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+		"-g", "30", "-keyint_min", "30", "-sc_threshold", "0",
+		"-f", "h264", "pipe:1")
+	cmd := ffmpegCmd(ctx, "ffmpeg", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -429,7 +429,7 @@ func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, trac
 
 // streamWebRTC starts a WebRTC relay to the capture-daemon.
 func (dp *DeviceProxy) streamWebRTC(ctx context.Context, device string) error {
-        pc, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers()})
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers()})
 	if err != nil {
 		return err
 	}
@@ -532,9 +532,9 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "close")
 
-        args := append(hwAccelArgs(), "-f", "v4l2", "-i", devicePath,
-                "-vf", "scale=640:480", "-r", "15", "-f", "mjpeg", "-q:v", "5", "pipe:1")
-        cmd := ffmpegCmd(r.Context(), "ffmpeg", args...)
+	args := append(hwAccelArgs(), "-f", "v4l2", "-i", devicePath,
+		"-vf", "scale=640:480", "-r", "15", "-f", "mjpeg", "-q:v", "5", "pipe:1")
+	cmd := ffmpegCmd(r.Context(), "ffmpeg", args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
