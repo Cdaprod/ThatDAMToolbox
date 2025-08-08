@@ -9,6 +9,7 @@ import { ThemeProvider }   from '@/context/ThemeContext'
 import VideoSocketProvider from './VideoSocketProvider'
 import AssetProvider       from './AssetProvider'
 import ModalProvider       from './ModalProvider'
+import ActionSheet         from '@/components/modals/ActionSheet'
 
 const qc = new QueryClient()
 
@@ -35,6 +36,7 @@ export default function AppProviders({ children }: { children: ReactNode }) {
             <AssetProvider>
               <ModalProvider>
                 {children}
+                <ActionSheet />
               </ModalProvider>
             </AssetProvider>
           </CaptureProvider>

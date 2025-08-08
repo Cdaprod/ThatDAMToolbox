@@ -9,4 +9,3 @@ uvicorn video.api.app:create_app --factory --reload
 ```
 
 `modules.py` contains the auto‑loader that imports any `video.modules.*` package.
-
