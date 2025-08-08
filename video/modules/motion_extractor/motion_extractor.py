@@ -107,7 +107,6 @@ class MotionExtractor:
             )
             handler.setFormatter(formatter)
             logger.addHandler(handler)
-            logger.setLevel(logging.INFO)
         return logger
     
     def _reset_state(self):

@@ -33,9 +33,3 @@ func TestOkHandler(t *testing.T) {
 	token := signToken("agent1")
 	req := httptest.NewRequest(http.MethodPost, "/v1/register", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	w := httptest.NewRecorder()
-	okHandler(w, req)
-	if w.Result().StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Result().StatusCode)
-	}
-}

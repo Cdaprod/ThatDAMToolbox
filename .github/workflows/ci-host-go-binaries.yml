@@ -1,4 +1,4 @@
-# .github/workflows/ci-host-go-binaries.yml
+# ci-host-go-binaries.yml (drop-in)
 
 name: CI Host Go Binaries & Release
 
@@ -29,37 +29,64 @@ jobs:
     name: Build & Test Go Host Binaries
     runs-on: ubuntu-latest
 
+    # Cap Go’s own parallelism (build & test) to reduce memory spikes
     env:
-      GO_VERSION: '1.21'
+      GO_VERSION: "1.22.x"
+      GOFLAGS: "-trimpath -buildvcs=true -p=2"    # build concurrency cap
+      GOMAXPROCS: "2"                              # runtime goroutine scheduler cap
+      CGO_ENABLED: "0"
+      # Only run -race on main and tags; PRs skip race to avoid OOM
+      ENABLE_RACE: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && '1' || '0' }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
 
-      - name: Print Go environment
-        run: go env
+      - name: Cache Go build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Print runner resources (debug)
+        run: |
+          uname -a
+          free -h
+          df -h
 
       - name: Clean Go artifacts
         run: make clean-go
 
-      - name: Build all Go host binaries
-        run: make build-all
-
-      - name: List built binaries
+      - name: Build all Go host binaries (hardened)
         run: |
-          find host/services/ -type f -perm /u=x,g=x,o=x -print -exec file {} \;
+          make build-all
+          find host/services/ -type f -perm /u=x -maxdepth 3 -print -exec file {} \;
 
-      - name: Run Go unit tests
+      - name: Run Go unit tests (sequential per module, capped -p and -parallel)
+        shell: bash
         run: |
-          set -e
-          cd host/services/shared && go test ./... -v
-          cd ../api-gateway && go test ./... -v
-          cd ../../capture-daemon && go test ./... -v
+          set -euo pipefail
+          RACE_FLAG=""
+          if [ "${ENABLE_RACE}" = "1" ]; then
+            RACE_FLAG="-race"
+          fi
+
+          # Test modules one-by-one to keep memory bounded
+          for dir in host/services/shared host/services/api-gateway host/services/capture-daemon; do
+            if [ -f "$dir/go.mod" ]; then
+              echo "🧪 testing $dir"
+              ( cd "$dir" && \
+                go test ./... ${RACE_FLAG} -v -count=1 -shuffle=on -p=2 -parallel=2 )
+            fi
+          done
 
       - name: Verify go.mod is tidy
         run: |
@@ -86,7 +113,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-go-host
     if: startsWith(github.ref, 'refs/tags/')
-
     steps:
       - name: Download host Go binaries artifact
         uses: actions/download-artifact@v4
