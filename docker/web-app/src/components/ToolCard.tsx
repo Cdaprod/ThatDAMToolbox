@@ -3,25 +3,25 @@
 import Link from 'next/link';
 import { dashboardTools } from './dashboardTools';
 import clsx from 'clsx';
-import { sizeClasses, iconClasses, titleClasses } from '@/styles/theme';
+import { sizeClasses, iconClasses, titleClasses } from '../styles/theme';
 
 interface ToolCardProps {
-  href: string;
+  toolId: string;
   size?: 'small' | 'medium' | 'large';
   isRelated?: boolean;
   onFocus?: (toolId: string) => void;
 }
 
 export default function ToolCard({
-  href,
+  toolId,
   size = 'medium',
   isRelated = false,
   onFocus,
 }: ToolCardProps) {
-  const tool = dashboardTools.find((t) => t.href === href);
+  const tool = dashboardTools[toolId];
   if (!tool) return null;
 
-  const { id, title, icon: Icon, color } = tool;
+  const { id, href, title, icon: Icon, color } = tool;
 
   // Sizing and style classes
 

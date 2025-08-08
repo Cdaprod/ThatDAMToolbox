@@ -1,18 +1,33 @@
 // /docker/web-app/src/components/Cards.tsx
 'use client'
 import React, { useRef } from "react";
-import {
-  videoCardStyle,
-  videoStyle,
-  videoInfoStyle,
-  sceneThumbStyle,
-  uploadCardStyle,
-  hiddenInputStyle,
-  uploadButtonStyle,
-} from '@/styles/theme';
+
+// --- types ---
+export interface BatchCardProps {
+  batch: { id?: string; batch?: string; count?: number; items?: unknown[] };
+  onClick?: () => void;
+}
+export interface VideoCardProps {
+  data: {
+    artifact?: {
+      preview?: string;
+      width?: number;
+      height?: number;
+      path?: string;
+      duration?: number;
+      mime?: string;
+    };
+    scenes?: { url: string }[];
+    score?: number;
+  };
+}
+export interface UploadCardProps {
+  onUpload: (files: File[]) => void;
+  loading?: boolean;
+}
 
 // --- BatchCard ---
-export function BatchCard({ batch, onClick }) {
+export function BatchCard({ batch, onClick }: BatchCardProps) {
   const name = batch.batch ?? batch.id ?? "";
   const count = batch.count ?? (batch.items?.length ?? "");
   return (
@@ -23,26 +38,26 @@ export function BatchCard({ batch, onClick }) {
 }
 
 // --- VideoCard ---
-export function VideoCard({ data }) {
+export function VideoCard({ data }: VideoCardProps) {
   const { artifact, scenes, score } = data;
   return (
-    <div className="video-card" style={videoCardStyle}>
+    <div className="video-card m-2 border border-gray-800 p-3">
       <video
         src={artifact?.preview ?? ""}
         width={artifact?.width ?? 240}
         height={artifact?.height ?? 120}
         controls
-        style={videoStyle}
+        className="block mb-2 max-w-full"
       />
-      <div style={videoInfoStyle}>
+      <div className="text-sm mb-1">
         <b>{artifact?.path}</b> <br />
         {artifact?.duration}s • {artifact?.mime}
       </div>
-      {scenes?.length > 0 && (
+      {scenes && scenes.length > 0 && (
         <div>
           <small>Scenes: </small>
           {scenes.map((s, i) => (
-            <img key={i} src={s.url} alt="thumb" width={48} height={32} style={sceneThumbStyle} />
+            <img key={i} src={s.url} alt="thumb" width={48} height={32} className="mr-1 inline-block" />
           ))}
         </div>
       )}
@@ -52,26 +67,27 @@ export function VideoCard({ data }) {
 }
 
 // --- UploadCard ---
-export function UploadCard({ onUpload, loading }) {
-  const fileRef = useRef();
-  function handleFiles(e) {
-    onUpload([...e.target.files]);
-    e.target.value = null; // reset
+export function UploadCard({ onUpload, loading }: UploadCardProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    onUpload(files);
+    e.target.value = '';
   }
   return (
-    <div style={uploadCardStyle}>
+    <div className="mt-6">
       <input
         type="file"
         multiple
         ref={fileRef}
-        style={hiddenInputStyle}
+        className="hidden"
         onChange={handleFiles}
         disabled={loading}
       />
       <button
         disabled={loading}
         onClick={() => fileRef.current?.click()}
-        style={uploadButtonStyle}
+        className="mr-2"
       >
         ⬆️ Upload
       </button>

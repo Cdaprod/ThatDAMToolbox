@@ -23,9 +23,9 @@ export default function Sidebar() {
       </button>
 
       <nav className="flex flex-col gap-1 px-2">
-        {dashboardTools.map(({ href, title, icon: Icon }) => (
+        {Object.values(dashboardTools).map(({ href, title, icon: Icon, id }) => (
           <Link
-            key={href}
+            key={id}
             href={href}
             className="flex items-center gap-3 p-2 rounded-md hover:bg-white/40"
           >
