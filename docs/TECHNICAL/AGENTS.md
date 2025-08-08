@@ -111,6 +111,7 @@ This file equips you with everything required to ship safe, idempotent, idiomati
 ### rabbitmq (docker/rabbitmq/*)
 
 - System event broker
+- All services read the connection string from `EVENT_BROKER_URL` (falling back to `AMQP_URL`)
 
 ### nginx (docker/nginx/*)
 

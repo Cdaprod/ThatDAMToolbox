@@ -5,6 +5,7 @@ Async RabbitMQ backend that matches the interface expected by
 `lifecycle_hooks` (start → publish → close).
 It uses aio-pika, so keep that in your `requirements.txt`.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,7 +31,7 @@ class RabbitMQBus:
 
     # ------------------------------------------------------------------ #
     async def start(self) -> None:
-        if self._conn:                                           # already open
+        if self._conn:  # already open
             return
         self._conn = await aio_pika.connect_robust(
             self._url,
@@ -43,7 +44,7 @@ class RabbitMQBus:
 
     # ------------------------------------------------------------------ #
     async def publish(self, evt: Event) -> None:
-        if self._chan is None:                # pragma: no cover
+        if self._chan is None:  # pragma: no cover
             raise RuntimeError("RabbitMQBus.start() not called")
         await self._chan.default_exchange.publish(
             aio_pika.Message(
@@ -68,8 +69,8 @@ def get_rabbitmq_bus() -> RabbitMQBus:
     """Create / return the singleton RabbitMQBus."""
     global _BUS_SINGLETON
     if _BUS_SINGLETON is None:
-        amqp_url = os.getenv("EVENT_BROKER_URL")
+        amqp_url = os.getenv("EVENT_BROKER_URL") or os.getenv("AMQP_URL")
         if not amqp_url:
-            raise RuntimeError("EVENT_BROKER_URL is not set")
+            raise RuntimeError("EVENT_BROKER_URL/AMQP_URL is not set")
         _BUS_SINGLETON = RabbitMQBus(amqp_url)
     return _BUS_SINGLETON

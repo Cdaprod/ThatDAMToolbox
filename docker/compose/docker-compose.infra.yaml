@@ -126,3 +126,13 @@ services:
 # (No changes here to your main video-api stack – it remains in the
 # root compose file and can be started alone or with –f infra.yaml)
 # ──────────────────────────────────────────────────────────────
+  overlay-hub:
+    build:
+      context: ../../host/services/overlay-hub
+    ports: ["8090:8090"]
+    networks: [damnet]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

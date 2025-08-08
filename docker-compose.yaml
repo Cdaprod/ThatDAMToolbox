@@ -102,7 +102,7 @@ services:
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     environment:
-     AMQP_URL: "amqp://video:video@rabbitmq:5672/"
+     EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
      CAPTURE_OUTDIR: "/records"
     volumes:
