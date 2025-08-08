@@ -4,4 +4,13 @@ services:
     profiles: ["camera-proxy"]
     ports:
       - "${CAMERA_PROXY_PORT:-8000}:8000"
+    devices:
+      - /dev/video0:/dev/video0
+    group_add:
+      - video
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 

@@ -328,6 +328,23 @@ For sample social posts or in-code banners, use:
 
 -----
 
+## Overlay Network Quickstart
+
+```bash
+# launch overlay stack
+docker compose up -d overlay-hub api-gateway capture-daemon camera-proxy
+
+# issue agent token
+curl -s -X POST http://localhost:8080/agents/issue -d '{"agent_id":"cam1"}'
+
+# register and send heartbeat
+TOKEN=<paste token>
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:8090/v1/register
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:8090/v1/heartbeat
+```
+
+-----
+
 ## 9 · Contact
 
 For help tag issues with `[agent-help]` or ping @Cdaprod on GitHub.  

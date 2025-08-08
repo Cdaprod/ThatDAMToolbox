@@ -94,9 +94,9 @@ func (h *HealthChecker) Handler() http.HandlerFunc {
 		}
 
 		resp := map[string]interface{}{
-			"status":  overall,
-			"checks":  result,
-			"now":     now,
+			"status": overall,
+			"checks": result,
+			"now":    now,
 		}
 
 		w.Header().Set("Content-Type", "application/json")

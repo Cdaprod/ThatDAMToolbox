@@ -28,6 +28,16 @@ const (
 	shutdownTimeout = 10 * time.Second
 )
 
+// normalizeBrokerEnv maps legacy AMQP variables to the new capture-daemon ones.
+func normalizeBrokerEnv() {
+	if os.Getenv("AMQP_URL") == "" && os.Getenv("CAPTURE_BROKER_URL") != "" {
+		_ = os.Setenv("AMQP_URL", os.Getenv("CAPTURE_BROKER_URL"))
+	}
+	if os.Getenv("BROKER_EXCHANGE") == "" && os.Getenv("CAPTURE_BROKER_EXCHANGE") != "" {
+		_ = os.Setenv("BROKER_EXCHANGE", os.Getenv("CAPTURE_BROKER_EXCHANGE"))
+	}
+}
+
 func main() {
 	// 1. Load config (from env/file)
 	cfg, err := config.Load()
@@ -43,6 +53,7 @@ func main() {
 	lg.Info("🔌 starting capture-daemon", "version", version)
 
 	// 3. Init broker
+	normalizeBrokerEnv()
 	broker.Init()
 	broker.Publish("capture.service_up", map[string]any{"ts": time.Now().Unix(), "version": version})
 	broker.PublishSchemas()

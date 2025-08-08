@@ -90,3 +90,17 @@ func TestNegotiateWithDaemon(t *testing.T) {
 		t.Fatalf("negotiateWithDaemon: %v", err)
 	}
 }
+
+// TestHealthz ensures the health endpoint returns 200.
+func TestHealthz(t *testing.T) {
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	srv := httptest.NewServer(dp.setupRoutes())
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatalf("healthz request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+}
