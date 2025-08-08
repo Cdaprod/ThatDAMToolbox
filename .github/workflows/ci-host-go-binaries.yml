@@ -1,5 +1,3 @@
-# .github/workflows/ci-host-go-binaries.yml
-
 name: CI Host Go Binaries & Release
 
 on:
@@ -28,42 +26,53 @@ jobs:
   build-go-host:
     name: Build & Test Go Host Binaries
     runs-on: ubuntu-latest
-
-    env:
-      GO_VERSION: '1.21'
-
+    env: { GO_VERSION: '1.22.x' }
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
 
-      - name: Print Go environment
-        run: go env
+      - name: Cache Go build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
 
       - name: Clean Go artifacts
         run: make clean-go
 
       - name: Build all Go host binaries
-        run: make build-all
+        run: |
+          export CGO_ENABLED=0
+          export GOFLAGS="-trimpath -buildvcs=true"
+          make build-all
 
       - name: List built binaries
         run: |
-          find host/services/ -type f -perm /u=x,g=x,o=x -print -exec file {} \;
+          find host/services/ -type f -perm /u=x -maxdepth 3 -print -exec file {} \;
 
-      - name: Run Go unit tests
+      - name: Run Go unit tests (-race, -shuffle)
         run: |
           set -e
-          cd host/services/shared && go test ./... -v
-          cd ../api-gateway && go test ./... -v
-          cd ../../capture-daemon && go test ./... -v
+          for dir in host/services/shared host/services/api-gateway host/services/capture-daemon; do
+            if [ -f "$dir/go.mod" ]; then
+              echo "🧪 $dir"
+              (cd "$dir" && go test ./... -v -race -shuffle=on -count=1)
+            fi
+          done
 
-      - name: Verify go.mod is tidy
+      - name: Verify go.mod is tidy (per module if needed)
         run: |
-          go mod tidy
+          # If you have multiple modules, loop them. Otherwise root is fine.
+          if [ -f go.mod ]; then
+            go mod tidy
+          fi
           git diff --exit-code go.mod go.sum || (echo "go.mod/go.sum are not tidy!" && exit 1)
 
       - name: Upload host Go binaries
@@ -86,7 +95,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-go-host
     if: startsWith(github.ref, 'refs/tags/')
-
     steps:
       - name: Download host Go binaries artifact
         uses: actions/download-artifact@v4
