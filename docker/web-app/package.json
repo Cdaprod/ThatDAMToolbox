@@ -14,7 +14,7 @@
     "docker:build": "docker build -t thatdamtoolbox-web-app:dev .",
     "docker:run": "docker run --rm -p 3000:3000 thatdamtoolbox-web-app:dev",
     "docker:sh": "docker run -it --rm thatdamtoolbox-web-app:dev sh",
-    "test": "tsc src/state/selection.ts src/state/selection.test.ts --outDir .tmp-test --module commonjs --target es2019 --noEmit false && node --test .tmp-test/selection.test.js"
+    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test"
   },
   "dependencies": {
     "next": "14.0.4",

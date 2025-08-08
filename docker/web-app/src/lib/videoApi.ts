@@ -30,6 +30,10 @@ export const videoApi = {
   motionExtract: (payload: MotionExtractPayload) =>
     postJson<MotionJob>('/motion/extract', payload),
 
+  /* ffmpeg console */
+  ffmpegRun: (payload: { command: string; output?: string }) =>
+    postJson<{ output: string }>('/ffmpeg/run', payload),
+
   /* hardware capture helpers */
   listDevices: () => getJson<Device[]>('/hwcapture/devices'),
   witnessStart: (req: WitnessReq) => postJson<{}>('/hwcapture/witness_record', req),
