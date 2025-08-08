@@ -6,10 +6,13 @@
 //
 // Environment variables:
 //
-//	PROXY_PORT          – listening port (default 8000)
-//	BACKEND_URL         – backend address to proxy (default http://localhost:8080)
-//	FRONTEND_URL        – frontend address to proxy (default http://localhost:3000)
-//	CAPTURE_DAEMON_URL  – optional capture-daemon address
+//	PROXY_PORT           - listening port (default 8000)
+//	BACKEND_URL          - backend address to proxy (default http://localhost:8080)
+//	FRONTEND_URL         - frontend address to proxy (default http://localhost:3000)
+//	CAPTURE_DAEMON_URL   - optional capture-daemon address
+//	CAPTURE_DAEMON_TOKEN - bearer token for capture-daemon requests
+//	TLS_CERT_FILE        - serve HTTPS using this certificate
+//	TLS_KEY_FILE         - key for TLS_CERT_FILE
 //
 // Example:
 //
@@ -59,6 +62,7 @@ type DeviceProxy struct {
 	frontendURL *url.URL
 	upgrader    websocket.Upgrader
 	daemonURL   string
+	daemonToken string
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -79,6 +83,7 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		backendURL:  backendURL,
 		frontendURL: frontendURL,
 		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
+		daemonToken: getEnv("CAPTURE_DAEMON_TOKEN", ""),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				if len(allow) == 1 && allow[0] == "" {
@@ -123,26 +128,32 @@ func (dp *DeviceProxy) discoverDevices() error {
 
 	// ─── Merge devices from capture-daemon ─────────────
 	if dp.daemonURL != "" {
-		resp, err := httpClient.Get(dp.daemonURL + "/devices")
-		if err == nil && resp.StatusCode == http.StatusOK {
-			defer resp.Body.Close()
-			var daemonDevs []map[string]interface{}
-			if json.NewDecoder(resp.Body).Decode(&daemonDevs) == nil {
-				for _, d := range daemonDevs {
-					id, _ := d["id"].(string)
-					name, _ := d["name"].(string)
-					if id == "" {
-						continue
-					}
-					key := "daemon:" + id
-					dp.devices[key] = &DeviceInfo{
-						Path:        key,
-						Name:        name,
-						IsAvailable: true,
-						Capabilities: map[string]interface{}{
-							"source":  "capture-daemon",
-							"rawPath": id,
-						},
+		req, err := http.NewRequest(http.MethodGet, dp.daemonURL+"/devices", nil)
+		if err == nil {
+			if dp.daemonToken != "" {
+				req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+			}
+			resp, err := httpClient.Do(req)
+			if err == nil && resp.StatusCode == http.StatusOK {
+				defer resp.Body.Close()
+				var daemonDevs []map[string]interface{}
+				if json.NewDecoder(resp.Body).Decode(&daemonDevs) == nil {
+					for _, d := range daemonDevs {
+						id, _ := d["id"].(string)
+						name, _ := d["name"].(string)
+						if id == "" {
+							continue
+						}
+						key := "daemon:" + id
+						dp.devices[key] = &DeviceInfo{
+							Path:        key,
+							Name:        name,
+							IsAvailable: true,
+							Capabilities: map[string]interface{}{
+								"source":  "capture-daemon",
+								"rawPath": id,
+							},
+						}
 					}
 				}
 			}
@@ -310,6 +321,9 @@ func (dp *DeviceProxy) registerWithDaemon(ctx context.Context) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if dp.daemonToken != "" {
+		req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
@@ -337,6 +351,9 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if dp.daemonToken != "" {
+		req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req = req.WithContext(ctx)
@@ -708,7 +725,11 @@ func main() {
 		Addr:    ":" + proxyPort,
 		Handler: handler,
 	}
-
+	cert := getEnv("TLS_CERT_FILE", "")
+	key := getEnv("TLS_KEY_FILE", "")
+	if cert != "" && key != "" {
+		log.Fatal(server.ListenAndServeTLS(cert, key))
+	}
 	log.Fatal(server.ListenAndServe())
 }
 

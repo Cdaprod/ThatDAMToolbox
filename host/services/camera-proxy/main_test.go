@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -16,14 +15,17 @@ import (
 // TestDiscoverDevicesIncludesDaemon ensures capture-daemon devices are merged.
 func TestDiscoverDevicesIncludesDaemon(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer secret" {
+			t.Fatalf("missing auth header")
+		}
 		if r.URL.Path == "/devices" {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`[{"id":"/dev/video1","name":"cam"}]`))
 		}
 	}))
 	defer srv.Close()
-
-	os.Setenv("CAPTURE_DAEMON_URL", srv.URL)
+	t.Setenv("CAPTURE_DAEMON_URL", srv.URL)
+	t.Setenv("CAPTURE_DAEMON_TOKEN", "secret")
 	proxy, err := NewDeviceProxy("http://backend", "http://frontend")
 	if err != nil {
 		t.Fatalf("NewDeviceProxy: %v", err)
@@ -40,6 +42,9 @@ func TestDiscoverDevicesIncludesDaemon(t *testing.T) {
 func TestRegisterWithDaemon(t *testing.T) {
 	var posted bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer secret" {
+			t.Fatalf("missing auth header")
+		}
 		if r.URL.Path != "/register" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
@@ -54,9 +59,9 @@ func TestRegisterWithDaemon(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-
 	dp, _ := NewDeviceProxy("http://b", "http://f")
 	dp.daemonURL = srv.URL
+	dp.daemonToken = "secret"
 	dp.devices["/dev/video0"] = &DeviceInfo{Path: "/dev/video0", Name: "cam", IsAvailable: true}
 	if err := dp.registerWithDaemon(context.Background()); err != nil {
 		t.Fatalf("registerWithDaemon: %v", err)
@@ -69,6 +74,9 @@ func TestRegisterWithDaemon(t *testing.T) {
 // TestNegotiateWithDaemon verifies SDP exchange with mock server.
 func TestNegotiateWithDaemon(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer secret" {
+			t.Fatalf("missing auth header")
+		}
 		if r.URL.Path != "/webrtc/offer" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
@@ -84,9 +92,9 @@ func TestNegotiateWithDaemon(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"sdp": ans})
 	}))
 	defer srv.Close()
-
 	dp, _ := NewDeviceProxy("http://b", "http://f")
 	dp.daemonURL = srv.URL
+	dp.daemonToken = "secret"
 	pc, _ := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err := dp.negotiateWithDaemon(pc); err != nil {
 		t.Fatalf("negotiateWithDaemon: %v", err)

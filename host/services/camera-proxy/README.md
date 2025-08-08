@@ -18,6 +18,8 @@ docker compose -f host/services/camera-proxy/docker-compose.camera-proxy.yaml --
 
 - `ALLOWED_ORIGINS` – comma-separated list of allowed WebSocket origins (default: allow all)
 - `CAPTURE_DAEMON_URL` – optional capture-daemon address (default `http://localhost:9000`)
+- `CAPTURE_DAEMON_TOKEN` – bearer token for capture-daemon requests
+- `TLS_CERT_FILE`/`TLS_KEY_FILE` – serve HTTPS using these credentials
 
 Health check endpoint: `GET /healthz` returns `200 OK` when ready.
 

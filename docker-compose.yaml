@@ -124,6 +124,7 @@ services:
      OVERLAY_HUB_URL: "http://overlay-hub:8090"
      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
      CAPTURE_OUTDIR: "/records"
+     AUTH_TOKEN: "devtoken"
     volumes:
       - /dev:/dev
       - /lib/modules:/lib/modules:ro
@@ -157,6 +158,8 @@ services:
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       OVERLAY_HUB_URL: "http://overlay-hub:8090"
+      CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
+      CAPTURE_DAEMON_TOKEN: "devtoken"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
       interval: 10s
