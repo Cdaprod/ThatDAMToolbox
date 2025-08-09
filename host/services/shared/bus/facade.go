@@ -15,8 +15,9 @@ type Config struct {
 }
 
 // Bus exposes a minimal publish/subscribe API.
+// Messages are JSON-encoded before publishing.
 type Bus interface {
-	Publish(topic string, v any) error
+	Publish(topic string, b []byte) error
 	Subscribe(topic string, fn func([]byte)) error
 	Close() error
 }
