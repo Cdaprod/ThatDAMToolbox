@@ -692,7 +692,7 @@ GET /jobs/{job_id}/status
 #### 📋 Planned
 
 - [ ] **Audio-Waveform Sync** - Multi-cam align ent
-- [ ] **Speech-to-Text + Captions * - Advanced transcription
+- [ ] **Speech-to-Text + Captions** - Advanced transcription
 - [ ] **Batch Media → Blender Integration** - Dire t scene injection
 - [ ] **Dialogue/Music Separation** - AI-powere  audio processing
 - [ ] **End-to-End Media Lifecycle** - Comp ete workflow automation
