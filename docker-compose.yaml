@@ -120,15 +120,15 @@ services:
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     environment:
-     EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
-     OVERLAY_HUB_URL: "http://overlay-hub:8090"
-     REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
-     CAPTURE_OUTDIR: "/records"
-     AUTH_TOKEN: "devtoken"
-     ICE_SERVERS: "stun:stun.l.google.com:19302"       # Optional STUN/TURN list
-     FFMPEG_HWACCEL: ""                                # e.g. "cuda -hwaccel_device 0"
+      OVERLAY_HUB_URL: "http://overlay-hub:8090"
+      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
+      CAPTURE_OUTDIR: "/records"
+      AUTH_TOKEN: "devtoken"
+      ICE_SERVERS: "stun:stun.l.google.com:19302"       # Optional STUN/TURN list
+      FFMPEG_HWACCEL: ""                                # e.g. "cuda -hwaccel_device 0"
     volumes:
       - /dev:/dev
       - /lib/modules:/lib/modules:ro
