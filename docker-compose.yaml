@@ -107,7 +107,7 @@ services:
 
 
   ########################################################################
-  # 3. capture daemon (needs /dev + v4l2, so bridge is fine)
+  # 3a. Golang- capture daemon (needs /dev + v4l2, so bridge is fine)
   ########################################################################
   capture-daemon:
     build:
@@ -145,7 +145,7 @@ services:
 
 
   ########################################################################
-  # 3b. camera proxy
+  # 3b. Golang - camera proxy
   ########################################################################
   camera-proxy:
     build:
@@ -180,7 +180,7 @@ services:
 
 
   ########################################################################
-  # 3c. overlay hub
+  # 3c. Golang - overlay hub
   ########################################################################
   overlay-hub:
     build:
@@ -203,7 +203,7 @@ services:
 
 
   ########################################################################
-  # 3d. api gateway
+  # 3d. Golang - host api gateway
   ########################################################################
   api-gateway:
     build:
@@ -226,9 +226,26 @@ services:
       - rabbitmq
     restart: unless-stopped
 
+  ########################################################################
+  # 3e. Golang - host media api (video-api v2)
+  ########################################################################
+  media-api:
+    profiles: ["media-api"]
+    build:
+      context: .
+      dockerfile: host/services/media-api/Dockerfile
+    image: cdaprod/media-api:dev
+    container_name: thatdamtoolbox-media-api
+    networks: [damnet]
+    ports: ["8081:8080"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+    depends_on:
+      - rabbitmq
+
 
   ########################################################################
-  # 4. FastAPI back-end (mapped => reachable on host :8080)
+  # 4a. FastAPI back-end (mapped => reachable on host :8080)
   ########################################################################
   video-api:
     build:
@@ -322,23 +339,31 @@ services:
       retries: 3
 
 
-  media-api:
-    profiles: ["media-api"]
-    build:
-      context: .
-      dockerfile: host/services/media-api/Dockerfile
-    image: cdaprod/media-api:dev
-    container_name: thatdamtoolbox-media-api
+  ########################################################################
+  # 4b. optional CLI job
+  ########################################################################
+  video-cli:
+    image: cdaprod/video:dev
+    container_name: thatdamtoolbox-video-cli-ephemeral
     networks: [damnet]
-    ports: ["8081:8080"]
-    environment:
-      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+    profiles: [hydrate-backend, cli]
+    entrypoint: ["python", "-m", "video"]
+    # one-off scan job
+    command: ["scan", "--root", "/data/_INCOMING", "--workers", "1"]
+    # same mounts as video-api
+    volumes:
+      - /mnt/b/Video/thatdamtoolbox:/data:rw
+      - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
+      - db_wal:/var/lib/thatdamtoolbox/db:rw
+    # do not restart this service automatically
+    restart: "no"
     depends_on:
-      - rabbitmq
+      - video-api
+
 
 
   ########################################################################
-  # 5. Next.js dev server (exposed only for dev)
+  # 5a. Next.js Web App Server (exposed only for dev)
   ########################################################################
   video-web:
     build:
@@ -379,6 +404,10 @@ services:
       timeout: 5s
       retries: 3
 
+
+  ########################################################################
+  # 5b. Next.js Web Site Server (exposed only for dev)
+  ########################################################################
   web-site:
     build:
       context: ./docker/web-site
@@ -409,28 +438,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-
-
-  ########################################################################
-  # 6. optional CLI job
-  ########################################################################
-  video-cli:
-    image: cdaprod/video:dev
-    container_name: thatdamtoolbox-video-cli-ephemeral
-    networks: [damnet]
-    profiles: [hydrate-backend, cli]
-    entrypoint: ["python", "-m", "video"]
-    # one-off scan job
-    command: ["scan", "--root", "/data/_INCOMING", "--workers", "1"]
-    # same mounts as video-api
-    volumes:
-      - /mnt/b/Video/thatdamtoolbox:/data:rw
-      - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
-      - db_wal:/var/lib/thatdamtoolbox/db:rw
-    # do not restart this service automatically
-    restart: "no"
-    depends_on:
-      - video-api
 
 
 ########################################################################

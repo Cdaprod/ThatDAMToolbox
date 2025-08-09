@@ -183,3 +183,5 @@ host/releases/
 /public/design-token-styles/**
 !/public/favicon/android-chrome-512x512.png
 
+!/docker/compose/v2-canary/.canary.env
+
