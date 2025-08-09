@@ -1,266 +1,259 @@
-# **That DAM Toolbox -- Engineering & Agent Guide**
+# **That DAM Toolbox – Engineering & Agent Guide**
 
 *Last updated: 2025-08-06 · Maintainer: **David Cannan (@Cdaprod)***
 
-### Repository URL: [Cdaprod/ThatDAMToolbox](github.com/Cdaprod/ThatDAMToolbox)
+### Repository URL: [Cdaprod/ThatDAMToolbox](https://github.com/Cdaprod/ThatDAMToolbox)
 
 Welcome, **Codex Agents** (and human teammates)!  
-This file equips you with everything required to ship safe, idempotent, idiomatic code inside the **That DAM Toolbox** monorepo.
+This document explains the key principles and details you’ll need to develop and maintain the **That DAM Toolbox** monorepo.
 
 -----
 
 ## 0 · Quick TL;DR for Busy Agents
 
-```text
 🟢  Work in-place • Be idempotent • Respect service boundaries
 🟠  Tests + docs with every PR   • Prefer extending over rewriting
 🔴  Never add utils/ folders, global state, or AWS/Boto3 deps
-```
 
 ## TOP OF MIND:
-
-- Always Wire, Avoid Rewrites At All Costs.
-- Layers: Host (capture-daemon), Backend (video-api), Frontend (web-app).
-- Host is device management and usable provided devices.
-
-- Backend is core bootstrapped system + modular extensiblity.
-- Frontend is Dashboard + Digital Asset Management + Recorder + Modular Extensions (have backend video.modules).
--
+	•	Avoid rewrites; wire new features into existing services.
+	•	Architecture layers:
+	•	Host: Go services for device discovery, streaming, and proxying (capture-daemon, camera-proxy).
+	•	Backend: Python-based video-api and media modules.
+	•	Frontend: Next.js web-app for asset management and live monitoring.
+	•	Use the overlay network (overlay-hub) for low-latency agent connectivity and registration.
+	•	All messaging uses RabbitMQ with the unified EVENT_BROKER_URL (fallback to AMQP_URL).
 
 ## 🏗️ Project Structure
-
-- **data/**  
-  Caches, databases, incoming media, logs, and per-module storage (DAM, explorer, hwcapture, motion_extractor, uploader).
-- **docker/**  
-  Dockerfiles and Compose configs for all services and components (capture-daemon, web-app, camera-agent, nginx, RabbitMQ, hotspot-installer, displays, weaviate, etc.).
-- **host/**  
-  Go-based system services and middleware (api-gateway, camera-proxy, capture-daemon, proxy, schema-registry, shared libraries).
-- **video/**  
-  Python CLI, server and module code for video ingest, processing, proxying, and ML workflows.
-- **video/web/**  
-  Legacy static assets and Jinja templates for dashboard and camera monitor.
-- **public/**  
-  Build-time web resources (favicons, SVGs, dot graphs).
-- **docs/**  
-  Architecture, deployment, events, device requirements, and agent guidelines.
-- **scripts/**  
-  Utility scripts for builds, event watching, database sync, camera setup, systemd services.
-- **tests/**  
-  Integration and unit tests (Go, Python, CLI, API client, end-to-end).
-
-- **docker-compose.yaml**, **entrypoint.sh**, **Makefile**, **setup.py**, **requirements.txt**, **README.md**, **run_video.py**, **TUI & CLI entrypoints**  
-  Root-level orchestration, tooling and documentation.
+	•	data/ – Persistent caches, databases, incoming media, logs, and per-module storage.
+	•	docker/ – Dockerfiles and Compose configs for all services and components: capture-daemon, camera-agent, web-app, nginx, RabbitMQ, hotspot-installer, overlay-hub, displays, weaviate, etc.
+	•	host/ – Go services and shared middleware:
+	•	api-gateway – central HTTP gateway and JWKS issuer.
+	•	camera-proxy – live device virtualization and streaming with fallback to WebRTC or MJPEG.
+	•	capture-daemon – device scanner and recorder.
+	•	overlay-hub – register/heartbeat server and (future) QUIC relay.
+	•	shared – common middleware, event bus, overlay client.
+	•	video/ – Python CLI, FastAPI server, and pluggable modules for ingest, indexing, and ML workflows.
+	•	video/web/ – Legacy web templates and static assets.
+	•	public/ – Build-time assets like favicons, SVGs, and diagrams.
+	•	docs/ – Architectural guides, deployment docs, event definitions, device requirements, and this guide.
+	•	scripts/ – Build utilities, event watch scripts, DB sync, camera setup, systemd unit templates.
+	•	tests/ – Go/Python/TS integration and unit tests for core services.
+	•	Root-level orchestration: docker-compose.yaml, entrypoint.sh, Makefile, setup.py, requirements.txt, README.md, run_video.py, CLI/TUI entrypoints.
 
 ### capture-daemon
-
-- Continuously discovers and manages camera devices
-- Streams live video (HLS) and/or records to files
-- Emits events (device lifecycle, recording start/stop) to a messaging system
-- Exposes feature flags via `GET /features` (HLS preview, MP4 serving, WebRTC)
-  Downstream services should query this endpoint at startup to decide whether to use
-  HLS or WebRTC streaming.
+	•	Discovers and manages camera devices via v4l2.
+	•	Streams live video (HLS) and/or records to files.
+	•	Emits capture.* events for device lifecycle and recording events.
+	•	Provides feature flags via GET /features (e.g. HLS, MP4, WebRTC).
+	•	Exposed in development at host/services/capture-daemon/ (production under docker/host/services/capture-daemon/).
 
 ### web-app
-
-- Digital asset explorer for browsing recorded clips and media
-- Live camera monitor with integrated recorder controls
-- Unified dashboard for device health, streams and playback
+	•	Next.js TypeScript application; PWA dashboard for DAM browsing and camera monitor.
+	•	Supports drag‑and‑drop ingest, live preview, batch processing, and modular extensions.
+	•	Compiles to static assets (docker/web-app/build) served via nginx.
 
 ### video-api
+	•	FastAPI service for ingesting and indexing media files.
+	•	Generates thumbnails, previews, and playback URLs.
+	•	Exposes REST endpoints (/scan, /search, /motion/extract, etc.).
+	•	Located at video/ in development; future production images build under docker/video/.
 
-- Backend service for ingesting and indexing video files and metadata
-- Generates thumbnails, time-based previews and playback URLs
-- Exposes REST endpoints for search, retrieval and integration
-=======
------
+### api-gateway
+	•	Unified entry point for backend services and JWT issuing.
+	•	Hosts JWKS at /.well-known/jwks.json and token endpoints (POST /agents/issue).
+	•	Proxies API requests and enforces security middleware.
+	•	Currently built but not yet integrated in root Compose; see /host/services/api-gateway.
 
-## Service Descriptions
+### rabbitmq
+	•	Central event broker; all services read connection from EVENT_BROKER_URL.
+	•	Default credentials: video:video on vhost /.
 
-### capture-daemon (host/services/capture-daemon/*)
+### nginx
+	•	Edge HTTP server; proxies requests to video-api, api-gateway, and web-app.
+	•	Configured in docker/nginx/ with templates and TLS certificates.
 
-- Continuously discovers and manages camera devices.
-- Streams live video (HLS) and/or records to files.
-- Emits events (device lifecycle, recording start/stop) to a messaging system.
-- In development its located at `$REPO/host/services/capture-daemon`… will be relocated to `docker/host/services/capture-daemon` in production.
-- Can receive and route additional video devices like from the "camera-agent" service.
-- Written in golang.
+### camera-agent
+	•	Lightweight Python service to turn any device into a networked camera.
+	•	Autodiscovers gateways via mDNS or GATEWAY_URL, registers itself, then streams JPEG frames over WebSocket.
+	•	Useful on Raspberry Pi Zero 2 W to produce /dev/videoN streams for capture-daemon.
 
-### web-app (docker/web-app/*)
+### overlay-hub
+	•	New service that registers agents and receives heartbeats via /v1/register and /v1/heartbeat.
+	•	Holds a registry of active agents; future versions will relay QUIC channels.
+	•	Agents (capture-daemon or camera-proxy) must set OVERLAY_HUB_URL to point to this hub.
+	•	An agent must request a JWT token from api-gateway before registration.
 
-- The frontend nextjs ts application that is designed to be a PWA dashboard (Digital Asset Management Explorer + Camera Monitor/Recorder).
-- Digital asset explorer for browsing recorded clips and media.
-- Live camera monitor with integrated recorder controls.
-- Unified dashboard for device health, streams and playback.
-- Written in typescript.
+### tft & touch display
+	•	Optional hardware: small displays for monitoring or control; see docker/tft-display and docker/touch-display.
 
-### video-api (video/*)
+### hotspot-installer
+	•	An Ansible-based image to configure a Raspberry Pi as a self-contained Wi‑Fi access point.
 
-- Backend service for ingesting and indexing video files and metadata.
-- Generates thumbnails, time-based previews and playback URLs.
-- Exposes REST endpoints for search, retrieval and integration.
-- In dev its located at `$REPO/video/*` but will be in `docker/video/*` for production.
-- Written in python.
+### weaviate
+	•	Vector database for AI-powered semantic search.
+	•	Used when video modules require vector embeddings (if enabled).
 
-### api-gateway (host/services/api-gateway/*)
+### minio
+	•	S3-compatible object store for storage and archival.
 
-- Central api gateway for services in this architecture.
-- OpenAPI specs from other services to ensure alignment and type safety between them.
-- Has yet to be "deployed" from repos root `/docker-compose.yaml`
-- Written in golang.
+⸻
 
-### rabbitmq (docker/rabbitmq/*)
+1 · Prime Directives (CI Rules)
 
-- System event broker
-- All services read the connection string from `EVENT_BROKER_URL` (falling back to `AMQP_URL`)
+#	Directive	Rationale
+1	Idempotence everywhere (commands, DB migrations, API calls).	CI reruns, k8s restarts, fat fingers.
+2	Self-contained services: Dockerfile, dependencies, config & README live beside code.	docker compose up service must Just Work™.
+3	Monorepo > micro-repos: share code only via clearly named modules (host/shared, video/core, web-app/src/lib).	Avoid hidden coupling.
+4	Idiomatic over clever: follow go fmt, Black, Prettier, ESLint.	Future-you > today's hack.
+5	APIs / Events only: services talk via REST, WebSocket, RabbitMQ; no file cross-imports.	Hot‑swap & polyglot freedom.
+6	Minimal, meaningful tests: one "happy path" + one edge case; prefer integration tests.	Catch regressions cheaply.
 
-### nginx (docker/nginx/*)
+Commit / PR Checklist
+	•	Change is self-contained & idempotent.
+	•	No unnecessary files or dependencies added.
+	•	Tests added or updated.
+	•	Docs / OpenAPI / Events updated.
+	•	Conventional commit message (feat, fix, …).
 
-- Front facing gateway
+⸻
 
-### camera-agent (docker/camera-agent/*)
+2 · Repository Cheat Sheet
 
-- An idiomatic, idempotent, self contained and independent service that produces a connected camera `/dev/videoN` stream from an isolated, yet discoverable and usable on local network.
-- Can run on a raspberry pi zero w 2 and produces the video/audio stream on network (and to capture-daemon if capture-daemon is up, and just solo if its not).
-- Can run independently on multiple devices, basically a better method of an IP Camera like URL Camera with browser preview.
-- This helper image turns a plain Raspberry Pi (or any Debian-based host) into a self-contained "ThatDAMToolbox capture device relay".
+Layer	Path(s)	Language	Purpose
+Host	host/services/*	Go	Device discovery, API gateway, overlay hub.
+Backend	video/, video/modules/*	Python	FastAPI ingest, ML workers.
+Frontend	docker/web-app/src/*	TypeScript	Next.js PWA dashboard & DAM UI.
+Infrastructure	docker/compose/*.yaml, root docker-compose.yaml	YAML	Compose profiles (prod, touch-display, overlay).
+Shared assets	data/, public/, docs/	misc	Volumes, diagrams, markdown specs.
 
-### tft & touch display (docker/*-display/*)
 
-- May be utilized in prod depending on hardware decisions I make in production.
-- Such as: "tft-display/", "touch-display"
+⸻
 
-### hotspot-installer (docker/hotspot-installer/*)
+3 · How to Add or Modify a Service (10‑minute recipe)
+	1.	Scaffold under the correct layer directory:
 
-- This helper image turns a plain Raspberry Pi (or any Debian-based host) into a self-contained "ThatDAMToolbox access point".
+mkdir -p host/services/new-service && cd "$_"
+cp ../_template/Dockerfile .
 
-### weaviate (docker/weaviate/*)
 
-- Vector database and long standing persistent service when deployed in prod
+	2.	Compose stub → docker/compose/new-service.yaml with health check.
+	3.	Define APIs/events first; update docs/TECHNICAL/EVENTS.md and OpenAPI if REST.
+	4.	Write minimal tests under tests/, using temp directories and mocks.
+	5.	Run locally: docker compose --profile new-service up --build.
+	6.	Submit PR using the checklist above.
 
-### minio (docker/minio/*)
+⸻
 
-- Object store and long standing persistent service when deployed in prod
+4 · Event Bus Quick Reference
 
------
-——
+Topic prefix	Publisher	Typical fields
+capture.*	capture-daemon	device, file, ts
+video.*	video-api	job_id, video_path, ts
+webapp.*	web-app	action, user, ts
+overlay.*	overlay-hub	agent_id, status, ts
 
-## 1 · Prime Directives (Rules the CI Bot Actually Enforces)
+Schema evolution: Always add new optional fields; never delete or repurpose existing ones. See docs/TECHNICAL/EVENTS.md for full specs.
 
-|#|Directive                                                                                                                                    |Rationale                                   |
-|-|———————————————————————————————————————————————|———————————————|
-|1|Idempotence everywhere — commands, DB migrations, API calls.                                                                                 |CI re-runs, k8s restarts, humans fat-finger.|
-|2|Self-contained services — Dockerfile, deps, config & README live beside code.                                                                |`docker compose up svc` must Just Work™.    |
-|3|Monorepo > micro-repos — share code only via clearly named shared modules: • Go → `host/shared` • Py → `video/core` • TS → `web-app/src/lib`.|Eliminates hidden coupling.                 |
-|4|Idiomatic over clever — follow language standards (go fmt, Black, Prettier, ESLint).                                                         |Future-you > today’s hack.                  |
-|5|APIs / Events only — services talk via REST, WebSocket, RabbitMQ; no cross-importing files.                                                  |Hot-swap & polyglot freedom.                |
-|6|Minimal, meaningful tests — 1 “happy path” + 1 edge case; prefer integration over deep mocks.                                                |Catch regressions cheaply.                  |
+⸻
 
-### Commit / PR Checklist (copy-paste into description)
+5 · Current "Top of Mind" Streams
 
-- [x] Change is self-contained & idempotent
-- [ ] No unnecessary files / deps
-- [ ] Tests added or updated
-- [ ] Docs / OpenAPI / Events updated
-- [ ] Conventional commit message  [feat], [fix], …)
+Stream	Owner	Status
+Route-path refactor in video-api	open	see issue #142
+Responsive frontend cleanup	web-app	src/app/page.tsx WIP
+API-gateway rollout (incl. JWKS, agents)	host layer	prototype compiling
+Overlay transport channel implementation	overlay-hub	planned; heartbeats working
 
-——
 
-## 2 ·  epository Cheat-Sheet ▶︎ where  hings live
+⸻
 
-|Layer         |Path(s)  x                                         |Language  |Purpose                                      |
-|--------------|---------------------------------------------------|----------|---------------------------------------------|
-|Host          |`host/services/*`                                  |Go        |Device discovery, API-gateway, proxy.        |
-|Backend       |`video/`, `video/modules/*`                        |Python    |FastAPI ingest, ML workers.                  |
-|Frontend      |`docker/web-app/src/*`                             |TypeScript|Next.js PWA dashboard & DAM UI.              |
-|Infrastructure|`docker/compose/*.yaml`, root `docker-compose.yaml`|YAML      |Compose profiles (prod, touch-display, etc.).|
-|Shared assets |`data/`, `public/`, `docs/`                        |misc      |Volumes, diagrams, markdown specs.           |
+🧪 Testing & Linting
+	•	Go: run go test ./... and go vet ./... before PRs.
+	•	Python: run pytest under video/ and module directories.
+	•	Node/TS: run yarn lint and yarn type-check in web-app.
+	•	Docker Compose: docker compose up --build must start all services.
+	•	New services must include a /health endpoint for health checks in CI.
 
------
+⸻
 
-## 3 · How to Add / Modify a Service (10-minute recipe)
+✍️ Code Style
+	•	Go: Use gofmt and goimports. Package-level doc comments required. Avoid magic constants--put them in config.go or read from env.
+	•	Python: Use black and isort. Every REST handler and CLI must have a docstring.
+	•	TypeScript/Next.js: Use Prettier with 2‑space indent, no semicolons, single quotes. Place new components under src/components/ or src/modules/. Do not use utils/ for new logic.
 
-1. **Scaffold under correct layer directory:**
-   
-   ```bash
-   mkdir -p host/services/foo && cd $_
-   cp ../_template/Dockerfile .
-   ```
-1. **Compose stub** → `docker/compose/foo.yaml` with health-check.
-1. **Define APIs / events first;** update `docs/TECHNICAL/EVENTS.md` & OpenAPI if REST.
-1. **Write minimal test** under `tests/`; use tmp dirs, never prod data.
-1. **Run locally:** `docker compose --profile foo up --build`.
-1. **Submit PR** using checklist above.
+⸻
 
------
+🧩 Service Conventions
+	•	New service? Add under its own folder with a Dockerfile, go.mod or requirements.txt, and a README.md explaining purpose and environment variables.
+	•	All services use RabbitMQ via EVENT_BROKER_URL; if unset, fallback to AMQP_URL.
+	•	When adding a REST API:
+	•	Prefix internal APIs with /internal/.
+	•	Provide a /health endpoint returning 200 OK when ready.
+	•	Device scanners should surface full capabilities in API responses, using v4l2 and/or USB.
 
-## 4 · Event Bus Quick Reference (RabbitMQ topic events)
+⸻
+
+🚦 Git & PR Rules
+	•	Branch names: use kebab-case with scope (e.g. capture/scanner-v4l2).
+	•	Commits: follow Conventional Commits ([feat], [fix], [chore], etc.).
+	•	PR base: always main.
+	•	Link related issues in the PR description using Fixes #123.
+
+⸻
+
+🏗️ Build & Compose
+	•	New services must be added to docker-compose.yaml with health checks.
+	•	Use Compose profiles to opt‑in services (e.g. "overlay-hub", "camera-proxy").
+	•	Shared networks: use damnet. For host-mode (nginx), avoid port clashes by using profiles or overrides.
+
+⸻
+
+🚫 Do Not
+	•	Don't import AWS or boto3; all storage/services are local or via other providers (e.g., MinIO).
+	•	Don't hardcode device capabilities; query capture-daemon or device API.
+	•	Don't put new code under utils/; refactor to modules.
+	•	Don't push generated code or .env files to source control.
+
+⸻
+
+🤖 Agent Responsibilities
+	•	On startup, if no cameras are found, emit a capture.ready event after connecting to the broker so UI can indicate waiting state.
+	•	Write clear logs for startup, shutdown, device detection, registration and errors.
+	•	When modifying camera scan, API, or event logic, update and regenerate OpenAPI and Swagger docs.
+
+⸻
+
+📝 Docs & Comments
+	•	Update this AGENTS.md and the affected service's README.md whenever new configuration variables, endpoints, or events are introduced.
+	•	Document all public endpoints and events in Markdown and code comments.
+
+⸻
+
+7 · FAQ for Agents
 
 |Topic prefix|Publisher          |Typical fields        |
 |------------|-------------------|----------------------|
 |`capture.*` |capture-daemon (Go)|device, file, ts      |
 |`video.*`   |video-api (Py)     |job_id, video_path, ts|
 |`webapp.*`  |web-app (Next.js)  |action, user, ts      |
+Where do I put shared constants used by Go and Python?
+Expose them via HTTP (GET /internal/config) or publish on RabbitMQ rather than cross‑import.
 
-**Schema evolution:** add only new optional fields; never delete or repurpose.
+Can I generate TypeScript client code from OpenAPI?
+Yes – run the generator via yarn run generate-api, output to web-app/src/lib/api, and commit.
 
------
-
-## 5 · Current "Top of Mind" Streams (If You Want to Help)
+Need a helper in two Python modules--duplicate or share?
+Create it in video/core/<helper>.py, add unit tests, and import; never copy-paste.
 
 |Stream                          |Owner     |Status                                 |
 |--------------------------------|----------|---------------------------------------|
 |Route-path refactor in video-api|open      |see issue #142                         |
 |Responsive frontend cleanup     |web-app   |`src/app/page.tsx` WIP                 |
 |API-gateway rollout             |host layer|prototype compiling, not in compose yet|
+⸻
 
------
------
-
-## 🧪 Testing & Linting
-
-- **Go**: Run `go test ./...` and `go vet ./...` before PRs.
-- **Python**: Run `pytest` for `video-api` and modules.
-- **Node/TS**: Run `yarn lint` and `yarn type-check` in `web-app`.
-- All services must **start cleanly via Docker Compose**: `docker compose up --build` (CI will fail if not).
-
------
-
-## ✍️ Code Style
-
-- **Go**:
-  - Use `gofmt`, `goimports`.
-  - Package-level doc comments required for public APIs.
-  - Avoid magic constants; use `config.go` or env vars.
-  - Keep services stateless/idempotent where possible.
-- **Python**:
-  - Use Black for formatting, isort for imports.
-  - CLI/REST APIs must have docstrings.
-- **TypeScript/Next.js**:
-  - Use Prettier (2-space), no semi-colons, single quotes.
-  - Modular components go under `src/components/` or `src/modules/`.
-  - **Never use the `/utils` directory for new logic** (deprecated).
-
------
-
-## 🧩 Service Conventions
-
-- **New service?** Add it under a new folder with Dockerfile, `go.mod`/`requirements.txt`, and a README.
-- All services **communicate via RabbitMQ (events)**, and must gracefully reconnect.
-- If you add a REST API:
-  - Prefix internal APIs with `/internal/`
-  - Health checks: `/health` must return 200 OK when ready.
-- Device scanners should surface full **capabilities** in API responses, using v4l2 when possible.
-
------
-
-## 🚦 Git & PR Rules
-
-- **Branch names**: kebab-case, scoped by feature/service (e.g. `capture/scanner-v4l2`)
-- **Commits**: Conventional commits, e.g. `[feat]`, `[fix]`, `[chore]`.
-- **PR base**: `main` branch only.
-- Link related issues in PR description.
-
------
+8 · Handy One-Liners
 
 ## 🏗️ Build & Compose
 
@@ -312,47 +305,51 @@ A: Create `video/core/<helper>.py`, add unit test, update imports. Never copy-pa
 # Find inline React styles that still need refactor
 rg 'style=\{[^}]+' docker/web-app/src | head
 
-# Run fast tests
+# Run fast tests (Py)
 pytest -q -m "not slow"
 
 # Hot-plug camera once (Go)
 go run host/services/capture-daemon/cmd/main.go scan-once
-```
 
------
-
-## 🏷️ Tags & Hashtags
-
-For sample social posts or in-code banners, use:  
-`#ThatDAMToolbox #devopsdad #hacktheplanet #opensource #Cdaprod`
-
------
-
-## Overlay Network Quickstart
-
-```bash
-# launch overlay stack
-docker compose up -d overlay-hub api-gateway capture-daemon camera-proxy
-
-# issue agent token
+# Issue overlay agent token (once JWKS/token API is live)
 curl -s -X POST http://localhost:8080/agents/issue -d '{"agent_id":"cam1"}'
 
-# register and send heartbeat
-TOKEN=<paste token>
+
+⸻
+
+🏷️ Tags & Hashtags
+
+Use these for social posts or in-code banners:
+#ThatDAMToolbox #devopsdad #hacktheplanet #opensource #Cdaprod
+
+⸻
+
+Overlay Network Quickstart
+
+The overlay network allows agents (capture-daemon, camera-proxy) to register and send heartbeats to the overlay hub, enabling NAT traversal and future QUIC streaming.
+
+# Start overlay services locally
+docker compose up -d overlay-hub api-gateway capture-daemon camera-proxy
+
+# Issue a short-lived token for an agent (requires api-gateway in your stack)
+curl -s -X POST http://localhost:8080/agents/issue -d '{"agent_id":"cam1"}'
+
+# Use that token to register and send heartbeats
+TOKEN=<paste_token>
 curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:8090/v1/register
 curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:8090/v1/heartbeat
-```
 
------
+For production, configure OVERLAY_HUB_URL on agents and ensure api-gateway publishes JWKS keys at /.well-known/jwks.json.
 
-## 9 · Contact
+⸻
 
-For help tag issues with `[agent-help]` or ping @Cdaprod on GitHub.  
-Social hashtags: `#ThatDAMToolbox` · `#DevOpsDad`.
+9 · Contact
 
-**General Principle:** Favor simplicity, resilience, and clarity.  
-If in doubt, make it easier for the next person to reason about & run a service in isolation.
+For help tag issues with [agent-help] or ping @Cdaprod on GitHub.
+Social tags: #ThatDAMToolbox · #DevOpsDad.
 
------
+General Principle: Keep things simple, resilient, and clear.  Always think about how the next person will run your service in isolation.
 
-Thank you, Codex Agent! Help keep ThatDAMToolbox robust, testable, modular, and _unhackable_.
+⸻
+
+Thank you, Codex Agent! Together we'll keep That DAM Toolbox robust, testable, modular, and unhackable.

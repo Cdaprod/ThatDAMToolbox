@@ -672,18 +672,23 @@ GET /jobs/{job_id}/status
 - [x] **Stock Video Curation** - Rating and licensing workflows
 - [x] **AI Batch Metadata Packaging** - XML/CSV sidecar generation
 - [x] **Bulk Stock Platform Publishing** - Automated distribution
+- [x] **Abstract Base Models & Artifact Factory** - Domain modeling framework
+- [x] **Vanilla Frontend Browser API** - Card-based web interface
+- [x] **Next.js Frontend** - Production Ready Web Browser App
+- [x] **Network Media Sync** - SMB/NAS/cloud integration
+- [x] **Deep Media Probe** - Advanced codec and EXIF analysis 
+- [x] **Websocket + WebRTC** - Frontend implmentation
+- [x] **Realtime Overlays** - False Color, Zebras, Focus Peaking
+- [x] **Monitor Multiple Cameras** - Indexes devices & hot plug/swap persistent
+- [x] **Web App Video Results** - Mjpeg preview of feeds in browser api endpoint 
 
 #### 🚧 In Progress
 
-- [ ] **Abstract Base Models & Artifact Factory** - Domain modeling framework
-- [ ] **Vanilla Frontend Browser API** - Card-based web interface
-- [ ] **Next.js Frontend** - Production Ready Web Browser App
-- [ ] **Network Media Sync** - SMB/NAS/cloud integration
-- [ ] **Deep Media Probe** - Advanced codec and EXIF analysis 
-- [ ] **Websocket + WebRTC** - Frontend implmentation
-- [ ] **Realtime Overlays** - False Color, Zebras, Focus Peaking
-- [ ] **Monitor Multiple Cameras** - Indexes devices & hot plug/swap persistent
-- [ ] **Web App Video Results** - Mjpeg preview of feeds in browser api endpoint 
+- [ ] **Frontend Web Site** - Decoupled from any "apps"
+- [ ] **Refactor FastAPI to Golang** - See [media-app](/host/services/media-app)
+- [ ] **Platform as a Service implementation** - Users, JWT, Systems, Etc
+- [ ] 
+
 #### 📋 Planned
 
 - [ ] **Audio-Waveform Sync** - Multi-cam align ent
