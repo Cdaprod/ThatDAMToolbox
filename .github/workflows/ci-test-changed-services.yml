@@ -95,7 +95,11 @@ jobs:
 
       - name: Install generic lint deps
         run: |
-          sudo apt-get update && sudo apt-get install -y hadolint
+          set -e
+          sudo apt-get update
+          HADOLINT_VERSION="v2.12.0"
+          curl -sSL "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o hadolint
+          sudo install -m 0755 hadolint /usr/local/bin/hadolint
           pip install pytest
           npm i -g eslint
 
