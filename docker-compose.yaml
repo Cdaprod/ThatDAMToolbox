@@ -354,6 +354,35 @@ services:
       timeout: 5s
       retries: 3
 
+  web-site:
+    build:
+      context: ./docker/web-site
+      dockerfile: Dockerfile
+      target: development
+    image: cdaprod/web-site:dev
+    container_name: thatdamtoolbox-web-site
+    platform: linux/arm64
+    ports:
+      - "3001:3000"
+    networks: [damnet]
+    environment:
+      NODE_ENV: development
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+    volumes:
+      - ./docker/web-site:/app:rw
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 
   ########################################################################
   # 6. optional CLI job
