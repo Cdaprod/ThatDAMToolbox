@@ -5,6 +5,8 @@ export const gridStyle: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
 };
 
+export const cardBaseClasses = 'bg-surface rounded-lg shadow-sm border border-color-border';
+
 export const sizeClasses: Record<'small' | 'medium' | 'large', string> = {
   small:  'p-2 sm:p-4 min-h-[100px] sm:min-h-[120px]',
   medium: 'p-3 sm:p-6 min-h-[120px] sm:min-h-[160px]',

@@ -201,9 +201,9 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
   return (
     <div ref={searchRef} className={`relative ${className}`}>
       <div className="relative">
-        <div className="flex items-center bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center bg-surface border border-color-border rounded-lg shadow-sm hover:shadow-md transition-shadow">
           <div className="pl-4">
-            <Search className="w-5 h-5 text-gray-400" />
+            <Search className="w-5 h-5 text-color-muted" />
           </div>
           <input
             ref={inputRef}
@@ -221,8 +221,8 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
                 onClick={() => setShowFilterPanel(!showFilterPanel)}
                 className={`p-2 rounded-md transition-colors ${
                   showFilterPanel || hasActiveFilters
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    ? 'bg-color-primary-bg text-theme-primary'
+                    : 'text-color-muted hover:text-theme-primary hover:bg-surface'
                 }`}
                 title="Filters"
               >
@@ -234,8 +234,8 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
                 onClick={() => setShowVectorPanel(!showVectorPanel)}
                 className={`p-2 rounded-md transition-colors ${
                   showVectorPanel
-                    ? 'bg-purple-100 text-purple-600'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    ? 'bg-color-accent-bg text-theme-primary'
+                    : 'text-color-muted hover:text-theme-primary hover:bg-surface'
                 }`}
                 title="AI Search"
               >
@@ -244,7 +244,7 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
             )}
             {(isSearching || loading) && (
               <div className="p-2">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                <Loader2 className="w-4 h-4 animate-spin text-theme-primary" />
               </div>
             )}
           </div>
@@ -257,13 +257,13 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
               return (
                 <span
                   key={key}
-                  className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md"
+                  className="inline-flex items-center px-2 py-1 bg-color-primary-bg text-theme-primary text-xs rounded-md"
                 >
                   <span className="capitalize mr-1">{key}:</span>
                   <span className="font-medium">{displayValue}</span>
                   <button
                     onClick={() => updateFilter(key, Array.isArray(value) ? [] : '')}
-                    className="ml-1 hover:text-blue-600"
+                    className="ml-1 hover:text-theme-primary"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -272,7 +272,7 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
             })}
             <button
               onClick={clearFilters}
-              className="text-xs text-gray-500 hover:text-gray-700 underline"
+              className="text-xs text-color-muted hover:text-theme-primary underline"
             >
               Clear all
             </button>
@@ -280,10 +280,10 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
         )}
       </div>
       {showFilterPanel && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-color-border rounded-lg shadow-lg z-50 p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium">
                 <Calendar className="w-4 h-4 inline mr-1" />
                 Date Range
               </label>
@@ -291,26 +291,26 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
                 type="date"
                 value={filters.dateFrom || ''}
                 onChange={e => updateFilter('dateFrom', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full text-sm focus:ring-2 focus:ring-theme-primary"
                 placeholder="From"
               />
               <input
                 type="date"
                 value={filters.dateTo || ''}
                 onChange={e => updateFilter('dateTo', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full text-sm focus:ring-2 focus:ring-theme-primary"
                 placeholder="To"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium">
                 <FileType className="w-4 h-4 inline mr-1" />
                 File Type
               </label>
               <select
                 value={filters.fileType || ''}
                 onChange={e => updateFilter('fileType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full text-sm focus:ring-2 focus:ring-theme-primary"
               >
                 <option value="">All Types</option>
                 {availableFileTypes.map(type => (
@@ -321,14 +321,14 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium">
                 <Clock className="w-4 h-4 inline mr-1" />
                 Duration
               </label>
               <select
                 value={filters.duration || ''}
                 onChange={e => updateFilter('duration', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full text-sm focus:ring-2 focus:ring-theme-primary"
               >
                 <option value="">Any Duration</option>
                 <option value="0-30">0–30 seconds</option>
@@ -340,7 +340,7 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
           </div>
           {availableTags.length > 0 && (
             <div className="mt-4 space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium">
                 <Tag className="w-4 h-4 inline mr-1" />
                 Tags
               </label>
@@ -357,23 +357,23 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
                           : currentTags.filter(t => t !== tag)
                         updateFilter('tags', newTags)
                       }}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-color-border text-theme-primary focus:ring-theme-primary"
                     />
-                    <span className="text-gray-700">{tag}</span>
+                    <span>{tag}</span>
                   </label>
                 ))}
               </div>
             </div>
           )}
           {customFilters && (
-            <div className="mt-4 pt-4 border-t border-gray-200">{customFilters}</div>
+            <div className="mt-4 pt-4 border-t border-color-border">{customFilters}</div>
           )}
         </div>
       )}
       {showVectorSearch && showVectorPanel && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-color-border rounded-lg shadow-lg z-50 p-4">
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium">
               <Sparkles className="w-4 h-4 inline mr-1" />
               Describe what you're looking for
             </label>
@@ -382,12 +382,12 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
               onChange={e => setVectorQuery(e.target.value)}
               rows={3}
               placeholder="e.g., 'sunset over ocean', 'business meeting', 'happy children playing'"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
+              className="input w-full text-sm focus:ring-2 focus:ring-theme-primary resize-none"
             />
             <button
               onClick={handleVectorSearch}
               disabled={!vectorQuery.trim() || isSearching}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-theme-primary text-white rounded-md hover:bg-theme-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSearching ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -402,7 +402,7 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
       {showResults && (
         <div
           ref={resultsRef}
-          className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-40 max-h-96 overflow-y-auto"
+          className="absolute top-full left-0 right-0 mt-2 bg-surface border border-color-border rounded-lg shadow-lg z-40 max-h-96 overflow-y-auto"
         >
           {results.length > 0 ? (
             <div className="py-2">
@@ -410,10 +410,10 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
                 <div
                   key={result.id}
                   onClick={() => handleResultSelect(result)}
-                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${
+                  className={`px-4 py-3 cursor-pointer border-b border-color-border last:border-b-0 transition-colors ${
                     index === selectedIndex
-                      ? 'bg-blue-50 border-blue-200'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-color-primary-bg border-theme-primary'
+                      : 'hover:bg-surface'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
@@ -428,28 +428,28 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                        <h4 className="text-sm font-medium truncate">
                           {result.title}
                         </h4>
                         {result.score && (
-                          <span className="text-xs text-gray-500 ml-2">
+                          <span className="text-xs text-color-muted ml-2">
                             {(result.score * 100).toFixed(0)}%
                           </span>
                         )}
                       </div>
                       {result.subtitle && (
-                        <p className="text-sm text-gray-600 truncate mt-1">
+                        <p className="text-sm text-color-muted truncate mt-1">
                           {result.subtitle}
                         </p>
                       )}
                       <div className="flex items-center space-x-2 mt-1">
                         {result.type && (
-                          <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+                          <span className="inline-block px-2 py-1 text-xs bg-surface text-color-muted rounded">
                             {result.type}
                           </span>
                         )}
                         {result.path && (
-                          <span className="text-xs text-gray-500 truncate">
+                          <span className="text-xs text-color-muted truncate">
                             {result.path}
                           </span>
                         )}
@@ -460,11 +460,11 @@ const SearchBarExtension: React.FC<SearchBarProps> = ({
               ))}
             </div>
           ) : (
-            <div className="px-4 py-8 text-center text-gray-500">
-              <Search className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <div className="px-4 py-8 text-center text-color-muted">
+              <Search className="w-8 h-8 mx-auto mb-2 text-color-muted" />
               <p className="text-sm">No results found</p>
               {query && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-color-muted mt-1">
                   Try adjusting your search terms or filters
                 </p>
               )}

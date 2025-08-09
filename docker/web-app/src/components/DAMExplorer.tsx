@@ -82,9 +82,13 @@ const AssetThumbnail: React.FC<{ asset: Asset }> = ({ asset }) => {
   const sizeMb = (asset.size / 1_000_000).toFixed(1)
 
   return (
-    <SelectableItem id={asset.id} actions={actions} className="relative group cursor-pointer border-2 rounded-lg p-3 transition-all duration-200 hover:shadow-lg border-gray-200 bg-white">
+    <SelectableItem
+      id={asset.id}
+      actions={actions}
+      className="relative group cursor-pointer p-3 transition-all duration-200 hover:shadow-md border-color-border bg-surface rounded-lg border"
+    >
       {/* Thumbnail or Icon */}
-      <div className="aspect-square mb-2 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+      <div className="aspect-square mb-2 bg-surface rounded-md flex items-center justify-center overflow-hidden">
         {asset.thumbnail ? (
           <img
             src={asset.thumbnail}
@@ -92,7 +96,7 @@ const AssetThumbnail: React.FC<{ asset: Asset }> = ({ asset }) => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="text-gray-400">
+          <div className="text-color-muted">
             {getIcon(asset.type ?? asset.kind)}
           </div>
         )}
@@ -103,7 +107,7 @@ const AssetThumbnail: React.FC<{ asset: Asset }> = ({ asset }) => {
         <h4 className="font-medium text-sm truncate" title={asset.name}>
           {asset.name}
         </h4>
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center justify-between text-xs text-color-muted">
           <span>{sizeMb} MB</span>
           <span
             className={`px-2 py-1 rounded-full text-xs ${getStatusColor(asset.status)}`}
@@ -137,8 +141,8 @@ const FolderTree: React.FC<{
     return (
       <div key={folder.path} style={folderIndentStyle(level)}>
         <div
-          className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
-            currentPath === folder.path ? 'bg-blue-50 text-blue-700' : ''
+          className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-surface ${
+            currentPath === folder.path ? 'bg-color-primary-bg text-theme-primary' : ''
           }`}
           onClick={() => onPathChange(folder.path)}
         >
@@ -147,7 +151,7 @@ const FolderTree: React.FC<{
               e.stopPropagation()
               toggle(folder.path)
             }}
-            className="p-1 hover:bg-gray-200 rounded"
+            className="p-1 hover:bg-surface rounded"
           >
             {folder.children.length > 0 ? (
               isOpen ? (
@@ -159,7 +163,7 @@ const FolderTree: React.FC<{
               <div className="w-4 h-4" />
             )}
           </button>
-          <Folder className="w-4 h-4 text-gray-600" />
+          <Folder className="w-4 h-4 text-color-muted" />
           <span className="text-sm">{folder.name}</span>
         </div>
         {isOpen &&
