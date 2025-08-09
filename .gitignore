@@ -9,7 +9,7 @@ __pycache__/
 *.pyd
 
 # ---- Golang ----
-vendor
+**vendor**
 
 # ---- Notebooks ----
 *.ipynb_checkpoints/
