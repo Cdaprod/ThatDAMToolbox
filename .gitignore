@@ -124,7 +124,7 @@ video/modules/*/module.cfg
 *clipboard*
 *disabled*
 host/releases/
-go.sum
+#go.sum
 /sqlite
 
 # GitVersion cache
