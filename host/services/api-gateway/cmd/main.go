@@ -4,14 +4,11 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -149,38 +146,9 @@ func handleVideoStream(w http.ResponseWriter, r *http.Request, mediaPath string)
 		return
 	}
 
-	size := stat.Size()
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Accept-Ranges", "bytes")
-
-	if rng := r.Header.Get("Range"); rng != "" {
-		handleRangeRequest(w, r, f, size)
-		return
-	}
-
-	// No Range header → full content
-	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	http.ServeContent(w, r, stat.Name(), stat.ModTime(), f)
-}
-
-// handleRangeRequest serves a single byte-range (no multipart)
-func handleRangeRequest(w http.ResponseWriter, r *http.Request, f *os.File, size int64) {
-	ranges, err := http.ParseRange(r.Header.Get("Range"), size)
-	if err != nil || len(ranges) == 0 {
-		// Fallback: serve full
-		http.ServeContent(w, r, f.Name(), time.Now(), f)
-		return
-	}
-	ra := ranges[0]
-	start, length := ra.Start, ra.Length
-	end := start + length - 1
-
-	w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, size))
-	w.Header().Set("Content-Length", strconv.FormatInt(length, 10))
-	w.WriteHeader(http.StatusPartialContent)
-
-	f.Seek(start, io.SeekStart)
-	io.CopyN(w, f, length)
 }
 
 // WebSocketUpgradeMiddleware upgrades /ws/ to a simple echo server

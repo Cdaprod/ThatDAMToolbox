@@ -23,7 +23,7 @@ import (
 func Dial(ctx context.Context, addr string) (quic.Connection, error) {
 	tlsConf := &tls.Config{InsecureSkipVerify: true, NextProtos: []string{"overlay-quic"}}
 	cfg := &quic.Config{HandshakeIdleTimeout: 5 * time.Second}
-	return quic.DialAddrContext(ctx, addr, tlsConf, cfg)
+	return quic.DialAddr(ctx, addr, tlsConf, cfg)
 }
 
 // OpenStream dials addr and opens a bidirectional stream.
