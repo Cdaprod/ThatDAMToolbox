@@ -6,18 +6,11 @@
 package backend
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
+	"context"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"strings"
 	"time"
-
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware"
 )
 
 // AuthenticationMiddleware validates JWT tokens and sets user context

@@ -5,6 +5,7 @@
 package frontend
 
 import (
+	"compress/gzip"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -89,7 +90,8 @@ func CompressionMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Vary", "Accept-Encoding")
 
-		gzw := &gzipResponseWriter{ResponseWriter: w}
+		gz := gzip.NewWriter(w)
+		gzw := &gzipResponseWriter{ResponseWriter: w, Writer: gz}
 		defer gzw.Close()
 
 		next.ServeHTTP(gzw, r)
@@ -141,6 +143,19 @@ func (r *cacheRecorder) Write(data []byte) (int, error) {
 func (r *cacheRecorder) WriteHeader(code int) {
 	r.statusCode = code
 	r.ResponseWriter.WriteHeader(code)
+}
+
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	Writer *gzip.Writer
+}
+
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func (w *gzipResponseWriter) Close() error {
+	return w.Writer.Close()
 }
 
 // Helper functions

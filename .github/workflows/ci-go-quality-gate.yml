@@ -27,7 +27,7 @@ jobs:
     name: Lint • Vet • Vulnerabilities • Test (bounded) • Coverage
     runs-on: ubuntu-latest
     env:
-      GO_VERSION: "1.22.x"
+      GO_VERSION: "1.23.x"
       GOFLAGS: "-trimpath -buildvcs=true -p=2"
       GOMAXPROCS: "2"
       # Only run -race on main and tags
@@ -41,12 +41,14 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: true
+          cache-dependency-path: |
+            host/services/**/go.sum
 
       # Build cache only (module cache handled by setup-go cache=true)
       - uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-gobuild-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-gobuild-${{ hashFiles('host/services/**/go.sum') }}
           restore-keys: ${{ runner.os }}-gobuild-
 
       - name: Ensure Go bin on PATH

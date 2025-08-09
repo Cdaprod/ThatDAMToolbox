@@ -25,7 +25,7 @@ jobs:
     name: Build & Test Go Host Binaries
     runs-on: ubuntu-latest
     env:
-      GO_VERSION: "1.22.x"
+      GO_VERSION: "1.23.x"
       GOFLAGS: "-trimpath -buildvcs=true -p=2"
       GOMAXPROCS: "2"
       CGO_ENABLED: "0"
