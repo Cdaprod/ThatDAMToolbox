@@ -121,6 +121,8 @@ services:
     pid: host
     environment:
      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
      OVERLAY_HUB_URL: "http://overlay-hub:8090"
      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
      CAPTURE_OUTDIR: "/records"
@@ -159,6 +161,8 @@ services:
       - video
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       OVERLAY_HUB_URL: "http://overlay-hub:8090"
       CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
       CAPTURE_DAEMON_TOKEN: "devtoken"
@@ -211,6 +215,8 @@ services:
     ports: ["8080:8080"]
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
       interval: 10s
@@ -286,6 +292,8 @@ services:
       # WEAVIATE_URL:   "http://localhost:8081"        # For Weaviate backend:
       # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
     # --- Storage mounts ------------------------
     volumes:
@@ -350,6 +358,8 @@ services:
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
     volumes:
       - ./docker/web-app:/app:rw
       - /app/node_modules           # Anonymous volume, container owns it
@@ -363,6 +373,37 @@ services:
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  web-site:
+    build:
+      context: ./docker/web-site
+      dockerfile: Dockerfile
+      target: development
+    image: cdaprod/web-site:dev
+    container_name: thatdamtoolbox-web-site
+    platform: linux/arm64
+    ports:
+      - "3001:3000"
+    networks: [damnet]
+    environment:
+      NODE_ENV: development
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+    volumes:
+      - ./docker/web-site:/app:rw
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.25
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
       interval: 30s
