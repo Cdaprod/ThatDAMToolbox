@@ -128,7 +128,7 @@ services:
 # ──────────────────────────────────────────────────────────────
   overlay-hub:
     build:
-      context: ../../host/services/overlay-hub
+      context: ./host/services/overlay-hub
     ports: ["8090:8090"]
     networks: [damnet]
     healthcheck:

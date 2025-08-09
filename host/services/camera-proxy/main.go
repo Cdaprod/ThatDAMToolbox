@@ -6,10 +6,13 @@
 //
 // Environment variables:
 //
-//	PROXY_PORT          – listening port (default 8000)
-//	BACKEND_URL         – backend address to proxy (default http://localhost:8080)
-//	FRONTEND_URL        – frontend address to proxy (default http://localhost:3000)
-//	CAPTURE_DAEMON_URL  – optional capture-daemon address
+//	PROXY_PORT           - listening port (default 8000)
+//	BACKEND_URL          - backend address to proxy (default http://localhost:8080)
+//	FRONTEND_URL         - frontend address to proxy (default http://localhost:3000)
+//	CAPTURE_DAEMON_URL   - optional capture-daemon address
+//	CAPTURE_DAEMON_TOKEN - bearer token for capture-daemon requests
+//	TLS_CERT_FILE        - serve HTTPS using this certificate
+//	TLS_KEY_FILE         - key for TLS_CERT_FILE
 //
 // Example:
 //
@@ -41,6 +44,34 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
+var ffmpegCmd = exec.CommandContext
+
+// hwAccelArgs returns additional ffmpeg arguments from FFMPEG_HWACCEL.
+func hwAccelArgs() []string {
+	if v := os.Getenv("FFMPEG_HWACCEL"); v != "" {
+		return strings.Fields(v)
+	}
+	return nil
+}
+
+// iceServers parses ICE_SERVERS as a comma-separated list of URLs.
+func iceServers() []webrtc.ICEServer {
+	v := os.Getenv("ICE_SERVERS")
+	if v == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make([]webrtc.ICEServer, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		out = append(out, webrtc.ICEServer{URLs: []string{p}})
+	}
+	return out
+}
+
 // DeviceInfo represents camera device information
 type DeviceInfo struct {
 	Path         string                 `json:"path"`
@@ -57,6 +88,7 @@ type DeviceProxy struct {
 	frontendURL *url.URL
 	upgrader    websocket.Upgrader
 	daemonURL   string
+	daemonToken string
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -77,6 +109,7 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		backendURL:  backendURL,
 		frontendURL: frontendURL,
 		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
+		daemonToken: getEnv("CAPTURE_DAEMON_TOKEN", ""),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				if len(allow) == 1 && allow[0] == "" {
@@ -121,26 +154,32 @@ func (dp *DeviceProxy) discoverDevices() error {
 
 	// ─── Merge devices from capture-daemon ─────────────
 	if dp.daemonURL != "" {
-		resp, err := httpClient.Get(dp.daemonURL + "/devices")
-		if err == nil && resp.StatusCode == http.StatusOK {
-			defer resp.Body.Close()
-			var daemonDevs []map[string]interface{}
-			if json.NewDecoder(resp.Body).Decode(&daemonDevs) == nil {
-				for _, d := range daemonDevs {
-					id, _ := d["id"].(string)
-					name, _ := d["name"].(string)
-					if id == "" {
-						continue
-					}
-					key := "daemon:" + id
-					dp.devices[key] = &DeviceInfo{
-						Path:        key,
-						Name:        name,
-						IsAvailable: true,
-						Capabilities: map[string]interface{}{
-							"source":  "capture-daemon",
-							"rawPath": id,
-						},
+		req, err := http.NewRequest(http.MethodGet, dp.daemonURL+"/devices", nil)
+		if err == nil {
+			if dp.daemonToken != "" {
+				req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+			}
+			resp, err := httpClient.Do(req)
+			if err == nil && resp.StatusCode == http.StatusOK {
+				defer resp.Body.Close()
+				var daemonDevs []map[string]interface{}
+				if json.NewDecoder(resp.Body).Decode(&daemonDevs) == nil {
+					for _, d := range daemonDevs {
+						id, _ := d["id"].(string)
+						name, _ := d["name"].(string)
+						if id == "" {
+							continue
+						}
+						key := "daemon:" + id
+						dp.devices[key] = &DeviceInfo{
+							Path:        key,
+							Name:        name,
+							IsAvailable: true,
+							Capabilities: map[string]interface{}{
+								"source":  "capture-daemon",
+								"rawPath": id,
+							},
+						}
 					}
 				}
 			}
@@ -308,6 +347,9 @@ func (dp *DeviceProxy) registerWithDaemon(ctx context.Context) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if dp.daemonToken != "" {
+		req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
@@ -335,6 +377,9 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if dp.daemonToken != "" {
+		req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req = req.WithContext(ctx)
@@ -354,13 +399,11 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 
 // streamFromFFmpeg launches ffmpeg and forwards H264 samples to track.
 func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample) error {
-	cmd := exec.CommandContext(ctx, "ffmpeg",
-		"-f", "v4l2",
-		"-i", device,
+	args := append(hwAccelArgs(), "-f", "v4l2", "-i", device,
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
 		"-g", "30", "-keyint_min", "30", "-sc_threshold", "0",
-		"-f", "h264", "pipe:1",
-	)
+		"-f", "h264", "pipe:1")
+	cmd := ffmpegCmd(ctx, "ffmpeg", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -386,7 +429,7 @@ func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, trac
 
 // streamWebRTC starts a WebRTC relay to the capture-daemon.
 func (dp *DeviceProxy) streamWebRTC(ctx context.Context, device string) error {
-	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers()})
 	if err != nil {
 		return err
 	}
@@ -489,15 +532,9 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "close")
 
-	cmd := exec.Command("ffmpeg",
-		"-f", "v4l2",
-		"-i", devicePath,
-		"-vf", "scale=640:480",
-		"-r", "15",
-		"-f", "mjpeg",
-		"-q:v", "5",
-		"pipe:1",
-	)
+	args := append(hwAccelArgs(), "-f", "v4l2", "-i", devicePath,
+		"-vf", "scale=640:480", "-r", "15", "-f", "mjpeg", "-q:v", "5", "pipe:1")
+	cmd := ffmpegCmd(r.Context(), "ffmpeg", args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -706,7 +743,11 @@ func main() {
 		Addr:    ":" + proxyPort,
 		Handler: handler,
 	}
-
+	cert := getEnv("TLS_CERT_FILE", "")
+	key := getEnv("TLS_KEY_FILE", "")
+	if cert != "" && key != "" {
+		log.Fatal(server.ListenAndServeTLS(cert, key))
+	}
 	log.Fatal(server.ListenAndServe())
 }
 

@@ -62,18 +62,13 @@ jobs:
             exit 1
           fi
 
-      - name: staticcheck
-        uses: dominikh/staticcheck-action@v1.4.0
-        with:
-          version: "latest"
-          install-go: false
-
-      - name: Per-module vet • errcheck • govulncheck • tests
+      - name: Per-module staticcheck • vet • errcheck • govulncheck • tests
         shell: bash
         run: |
           set -euo pipefail
 
           # Tools needed for checks
+          go install honnef.co/go/tools/cmd/staticcheck@latest
           go install github.com/kisielk/errcheck@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
@@ -89,6 +84,9 @@ jobs:
             echo "🔎 Module: $MODDIR"
 
             pushd "$MODDIR" >/dev/null
+
+            echo "• staticcheck"
+            staticcheck ./...
 
             echo "• go vet"
             go vet ./...
