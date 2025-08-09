@@ -1,4 +1,4 @@
-![](video/web/static/favicon/android-chrome-512x512.png)
+![](/public/favicon/android-chrome-512x512.png)
 
 # Media Indexer & DAM Toolbox
 

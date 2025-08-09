@@ -180,3 +180,5 @@ host/releases/
 {*,*}
 
 /public/design-token-styles/**
+!/public/favicon/android-chrome-512x512.png
+
