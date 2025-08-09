@@ -7,9 +7,7 @@ on:
     paths:
       - "host/services/**"
       - "Makefile"
-      - "go.mod"
-      - "go.sum"
-      - "go.work"
+      - "**/go.*"
       - "scripts/systemd/*.service"
       - ".github/workflows/ci-host-go-binaries.yml"
   pull_request:
@@ -17,9 +15,7 @@ on:
     paths:
       - "host/services/**"
       - "Makefile"
-      - "go.mod"
-      - "go.sum"
-      - "go.work"
+      - "**/go.*"
       - "scripts/systemd/*.service"
       - ".github/workflows/ci-host-go-binaries.yml"
   workflow_dispatch: {}
