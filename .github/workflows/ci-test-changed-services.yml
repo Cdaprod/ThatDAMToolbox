@@ -9,6 +9,7 @@ on:
       - "docker/compose/**"         # but still trigger the workflow so smoke can run
       - "docker-compose.y*ml"
       - "host/services/**"
+      - "**/go.*"
       - "**/*.go"
       - "**/*.ts"
       - "**/*.py"

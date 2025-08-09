@@ -7,6 +7,7 @@ on:
       - 'host/services/video-api/openapi.yaml'
       - 'docker/web-app/**'
       - 'host/services/capture-daemon/**'
+      - "**/go.*"
       - '**/*.go'
       - '**/*.ts'
       - '**/*.py'
