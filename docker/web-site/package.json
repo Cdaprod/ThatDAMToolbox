@@ -1,0 +1,9 @@
+{
+  "name": "web-site",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "test": "node --test src/lib/sendMail.test.js"
+  }
+}

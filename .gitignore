@@ -148,6 +148,7 @@ host/releases/
 !/video/web/static/favicon/android-chrome-192x192.png
 
 !/docker/web-app/package.json
+!/docker/web-site/package.json
 
 !/docker/web-app/tsconfig.json
 !/docker/web-app/tsconfig.test.json
