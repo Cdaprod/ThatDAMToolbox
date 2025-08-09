@@ -5,7 +5,18 @@ export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setSubmitted(true)
+    const form = e.currentTarget
+    const body = {
+      name: (form.elements.namedItem('name') as HTMLInputElement).value,
+      email: (form.elements.namedItem('email') as HTMLInputElement).value,
+      message: (form.elements.namedItem('message') as HTMLTextAreaElement).value
+    }
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    if (res.ok) setSubmitted(true)
   }
   return (
     <main className='p-8'>
