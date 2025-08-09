@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 from dataclasses import dataclass
 
-import pkgutil     # <--- ADD THIS
-import importlib   # <--- ADD THIS
+import pkgutil
+import importlib
 
 # ─── command registry decorator ────────────────────────────────────────────
 COMMAND_REGISTRY: dict[str, dict] = {}

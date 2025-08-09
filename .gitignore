@@ -124,7 +124,7 @@ video/modules/*/module.cfg
 *clipboard*
 *disabled*
 host/releases/
-go.sum
+#go.sum
 /sqlite
 
 # GitVersion cache
@@ -148,6 +148,7 @@ go.sum
 !/video/web/static/favicon/android-chrome-192x192.png
 
 !/docker/web-app/package.json
+!/docker/web-site/package.json
 
 !/docker/web-app/tsconfig.json
 !/docker/web-app/tsconfig.test.json
@@ -180,3 +181,5 @@ go.sum
 {*,*}
 
 /public/design-token-styles/**
+!/public/favicon/android-chrome-512x512.png
+

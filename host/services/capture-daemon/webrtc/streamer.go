@@ -4,21 +4,22 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"strings"
 	"time"
 
+	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
-// StreamH264FromFFmpeg launches ffmpeg and forwards raw H264 samples to the WebRTC track.
-func StreamH264FromFFmpeg(ctx context.Context, device string, fps int, res string) error {
-	cmd := exec.CommandContext(ctx, "ffmpeg",
-		"-f", "v4l2", "-framerate", fmt.Sprint(fps),
-		"-video_size", res,
-		"-i", device,
+// StreamH264FromFFmpeg launches ffmpeg and forwards raw H264 samples to the provided track.
+func StreamH264FromFFmpeg(ctx context.Context, device string, fps int, res string, track *webrtc.TrackLocalStaticSample) error {
+	args := append(hwAccelArgs(), "-f", "v4l2", "-framerate", fmt.Sprint(fps),
+		"-video_size", res, "-i", device,
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-		"-f", "h264", "pipe:1",
-	)
+		"-f", "h264", "pipe:1")
+	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -43,4 +44,12 @@ func StreamH264FromFFmpeg(ctx context.Context, device string, fps int, res strin
 			_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur})
 		}
 	}
+}
+
+// hwAccelArgs returns ffmpeg arguments from FFMPEG_HWACCEL.
+func hwAccelArgs() []string {
+	if v := os.Getenv("FFMPEG_HWACCEL"); v != "" {
+		return strings.Fields(v)
+	}
+	return nil
 }

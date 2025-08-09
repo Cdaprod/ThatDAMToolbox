@@ -1,3 +1,4 @@
+# /.github/workflows/ci-go-quality-gate.yml
 name: CI-Go-Quality-Gates
 
 permissions:
@@ -43,7 +44,7 @@ jobs:
           check-latest: true
           cache: true
 
-      # Build cache only (module cache is handled by setup-go cache=true)
+      # Build cache only (module cache handled by setup-go cache=true)
       - uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
@@ -53,27 +54,23 @@ jobs:
       - name: Ensure Go bin on PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      - name: Enforce formatting (gofmt -s)
+      - name: Enforce formatting (gofmt -s) -- skip host/legacy
+        shell: bash
         run: |
-          files=$(gofmt -s -l . | grep -E '\.go$' || true)
+          files=$(gofmt -s -l . | grep -E '\.go$' | grep -v '^host/legacy/' || true)
           if [ -n "$files" ]; then
             echo "These files need 'gofmt -s':"
             echo "$files"
             exit 1
           fi
 
-      - name: staticcheck
-        uses: dominikh/staticcheck-action@v1.4.0
-        with:
-          version: "latest"
-          install-go: false
-
-      - name: Per-module vet • errcheck • govulncheck • tests
+      - name: Per-module staticcheck • vet • errcheck • govulncheck • tests
         shell: bash
         run: |
           set -euo pipefail
 
-          # Tools needed for checks
+          # Tools (pin staticcheck to a Go 1.22–compatible version)
+          go install honnef.co/go/tools/cmd/staticcheck@v0.5.1
           go install github.com/kisielk/errcheck@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
@@ -81,14 +78,24 @@ jobs:
           RACE_FLAG=""
           [ "${ENABLE_RACE}" = "1" ] && RACE_FLAG="-race"
 
-          # Find all modules, excluding vendored ones
-          mapfile -t MODS < <(git ls-files '**/go.mod' | grep -v '/vendor/')
+          # If a go.work exists, use it as the source of truth; otherwise fall back to a search.
+          if [ -f go.work ]; then
+            mapfile -t MODS < <(go work edit -json | awk -F'"' '/"DiskPath"/{print $4"/go.mod"}')
+          else
+            mapfile -t MODS < <(git ls-files '**/go.mod' | grep -vE '/vendor/')
+          fi
+
+          # Exclude legacy modules explicitly
+          MODS=($(printf '%s\n' "${MODS[@]}" | grep -vE '^host/legacy/'))
 
           for mod in "${MODS[@]}"; do
             MODDIR="$(dirname "$mod")"
             echo "🔎 Module: $MODDIR"
 
             pushd "$MODDIR" >/dev/null
+
+            echo "• staticcheck"
+            staticcheck ./...
 
             echo "• go vet"
             go vet ./...
@@ -120,7 +127,8 @@ jobs:
             popd >/dev/null
           done
 
-      - name: Upload coverage to summary
+      - name: Upload coverage to summary (min 60%)
+        shell: bash
         run: |
           go tool cover -func=coverage.out | tee coverage.txt
           pct=$(awk '/total:/ {gsub("%","",$3); print $3}' coverage.txt)

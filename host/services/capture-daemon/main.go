@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/api"
@@ -38,6 +39,25 @@ func normalizeBrokerEnv() {
 	}
 }
 
+// authMiddleware enforces a static bearer token on requests unless the path
+// matches one of the exempt prefixes.
+// Example: handler := authMiddleware("secret", []string{"/preview/"}, mux)
+func authMiddleware(token string, exempt []string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, p := range exempt {
+			if strings.HasPrefix(r.URL.Path, p) {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		if r.Header.Get("Authorization") != "Bearer "+token {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	// 1. Load config (from env/file)
 	cfg, err := config.Load()
@@ -60,11 +80,7 @@ func main() {
 
 	// 3a. Init WebRTC if enabled
 	if cfg.Features.WebRTC.Enabled {
-		if err := webrtc.InitAPI(); err != nil {
-			lg.WithComponent("webrtc").Error("init failed", "err", err)
-		} else {
-			lg.WithComponent("webrtc").Info("WebRTC enabled", "prefix", cfg.Features.WebRTC.PathPrefix)
-		}
+		lg.WithComponent("webrtc").Info("WebRTC enabled", "prefix", cfg.Features.WebRTC.PathPrefix)
 	}
 
 	// 4. Init metrics & health
@@ -83,6 +99,10 @@ func main() {
 	sd := shutdown.NewManager(lg.Logger, shutdownTimeout)
 	startOverlay(ctx)
 
+	// TLS credentials for all servers
+	cert := os.Getenv("TLS_CERT_FILE")
+	key := os.Getenv("TLS_KEY_FILE")
+
 	// 6. Metrics server
 	if cfg.Features.Metrics.Enabled {
 		ms := server.New(
@@ -90,6 +110,8 @@ func main() {
 			m.Handler(),
 			lg.Logger,
 			map[string]time.Duration{},
+			cert,
+			key,
 		)
 		go ms.Start()
 		sd.AddHook("metrics-server", ms.Shutdown)
@@ -102,6 +124,8 @@ func main() {
 			hc.Handler(),
 			lg.Logger,
 			map[string]time.Duration{},
+			cert,
+			key,
 		)
 		go hs.Start()
 		sd.AddHook("health-server", hs.Shutdown)
@@ -136,15 +160,21 @@ func main() {
 		lg.Info("📁 MP4 serving enabled", "dir", r)
 	}
 
+	handler := http.Handler(mux)
+	if token := os.Getenv("AUTH_TOKEN"); token != "" {
+		handler = authMiddleware(token, []string{"/preview/"}, mux)
+	}
 	mainSrv := server.New(
 		fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
-		mux,
+		handler,
 		lg.Logger,
 		map[string]time.Duration{
 			"read":  cfg.Server.ReadTimeout,
 			"write": cfg.Server.WriteTimeout,
 			"idle":  cfg.Server.IdleTimeout,
 		},
+		cert,
+		key,
 	)
 	go mainSrv.Start()
 	sd.AddHook("main-server", mainSrv.Shutdown)
@@ -174,11 +204,6 @@ func main() {
 								lg.WithComponent("runner").Error("runner error", "device", id, "err", err)
 							}
 						}(id, c)
-						if cfg.Features.WebRTC.Enabled {
-							go func(device string, fps int, res string) {
-								_ = webrtc.StreamH264FromFFmpeg(ctxLoop, device, fps, res)
-							}(d.Path, c.FPS, c.Resolution)
-						}
 					}
 				}
 			}

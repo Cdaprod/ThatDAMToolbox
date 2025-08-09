@@ -10,12 +10,14 @@ import (
 )
 
 type Server struct {
-	srv    *http.Server
-	logger *slog.Logger
+	srv      *http.Server
+	logger   *slog.Logger
+	certFile string
+	keyFile  string
 }
 
-// New constructs a HTTP server with timeouts.
-func New(addr string, handler http.Handler, logger *slog.Logger, timeouts map[string]time.Duration) *Server {
+// New constructs a HTTP server with timeouts and optional TLS credentials.
+func New(addr string, handler http.Handler, logger *slog.Logger, timeouts map[string]time.Duration, certFile, keyFile string) *Server {
 	s := &http.Server{
 		Addr:         addr,
 		Handler:      handler,
@@ -23,13 +25,20 @@ func New(addr string, handler http.Handler, logger *slog.Logger, timeouts map[st
 		WriteTimeout: timeouts["write"],
 		IdleTimeout:  timeouts["idle"],
 	}
-	return &Server{srv: s, logger: logger}
+	return &Server{srv: s, logger: logger, certFile: certFile, keyFile: keyFile}
 }
 
-// Start begins ListenAndServe (non‐blocking if you call it in a goroutine).
+// Start begins serving HTTP or HTTPS depending on credentials provided.
+// Call in a goroutine if non-blocking behavior is desired.
 func (s *Server) Start() {
 	s.logger.Info("🚀 starting server", "addr", s.srv.Addr)
-	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	var err error
+	if s.certFile != "" && s.keyFile != "" {
+		err = s.srv.ListenAndServeTLS(s.certFile, s.keyFile)
+	} else {
+		err = s.srv.ListenAndServe()
+	}
+	if err != nil && err != http.ErrServerClosed {
 		s.logger.Error("❌ server failed", "error", err)
 	}
 }
