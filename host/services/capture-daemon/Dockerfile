@@ -1,30 +1,37 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.5
 
 # ─── Stage 1: Build the capture-daemon binary ───────────────────────────────
 ARG GO_VERSION=1.23
 FROM golang:${GO_VERSION}-alpine AS builder
-ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
 ARG TARGETOS TARGETARCH VERSION
+ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
+WORKDIR /src
 
-RUN apk add --no-cache git ca-certificates
-WORKDIR /build
+# 1) Copy only manifests (cache-friendly)
+COPY host/services/shared/go.mod            host/services/shared/go.mod
+COPY host/services/shared/go.sum            host/services/shared/go.sum
+COPY host/services/capture-daemon/go.mod    host/services/capture-daemon/go.mod
+COPY host/services/capture-daemon/go.sum    host/services/capture-daemon/go.sum
 
-# 1) Copy only go.mod (we don’t keep go.sum)
-COPY go.work go.work.sum ./
-COPY host/services/capture-daemon/go.mod host/services/capture-daemon/go.mod
-COPY host/services/shared/go.mod         host/services/shared/go.mod
+# 2) Create a minimal workspace (ONLY what we’ll copy: capture-daemon + shared)
+#    Avoid copying repo-root go.work which references missing modules.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    sh -ceu '\
+      go work init ./host/services/capture-daemon; \
+      go work use  ./host/services/shared; \
+      go work sync \
+    '
 
-# 2) Copy all source
-COPY host/services/capture-daemon/       host/services/capture-daemon/
+# 3) Copy sources
 COPY host/services/shared/               host/services/shared/
+COPY host/services/capture-daemon/       host/services/capture-daemon/
 
-# 3) Generate go.sum, download modules & vendor them
-WORKDIR /build/host/services/capture-daemon
-RUN go mod tidy \
- && go mod vendor
-
-# 4) Compile using vendored deps
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -o /out/capture-daemon ./main.go
+# 4) Build (module root has main.go)
+WORKDIR /src/host/services/capture-daemon
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/capture-daemon ./main.go
 
 # ─── Stage 2: Runtime image ─────────────────────────────────────────────────
 FROM alpine:3.20
@@ -34,50 +41,42 @@ LABEL org.opencontainers.image.version=$VERSION
 # runtime deps
 RUN apk add --no-cache ffmpeg tini curl ca-certificates
 
-# default feature flags
 # ── CONFIGURATION DEFAULTS ───────────────────────────────────────────────────
 # Broker
-ENV CAPTURE_BROKER_URL="amqp://video:video@rabbitmq:5672/"
-ENV CAPTURE_BROKER_EXCHANGE="capture"
-ENV CAPTURE_BROKER_CONNECT_TIMEOUT="10s"
-ENV CAPTURE_BROKER_RECONNECT_DELAY="5s"
-ENV CAPTURE_BROKER_MAX_RETRIES="5"
-
+ENV CAPTURE_BROKER_URL="amqp://video:video@rabbitmq:5672/" \
+    CAPTURE_BROKER_EXCHANGE="capture" \
+    CAPTURE_BROKER_CONNECT_TIMEOUT="10s" \
+    CAPTURE_BROKER_RECONNECT_DELAY="5s" \
+    CAPTURE_BROKER_MAX_RETRIES="5" \
 # Capture
-ENV CAPTURE_CAPTURE_OUTPUT_DIR="/tmp/recordings"
-ENV CAPTURE_CAPTURE_POLL_INTERVAL="5s"
-ENV CAPTURE_CAPTURE_FFMPEG_PATH="ffmpeg"
-ENV CAPTURE_CAPTURE_DEFAULT_FPS="30"
-ENV CAPTURE_CAPTURE_DEFAULT_RESOLUTION="1920x1080"
-ENV CAPTURE_CAPTURE_MAX_CONCURRENT="10"
-
+    CAPTURE_CAPTURE_OUTPUT_DIR="/tmp/recordings" \
+    CAPTURE_CAPTURE_POLL_INTERVAL="5s" \
+    CAPTURE_CAPTURE_FFMPEG_PATH="ffmpeg" \
+    CAPTURE_CAPTURE_DEFAULT_FPS="30" \
+    CAPTURE_CAPTURE_DEFAULT_RESOLUTION="1920x1080" \
+    CAPTURE_CAPTURE_MAX_CONCURRENT="10" \
 # Features: HLS preview
-ENV CAPTURE_FEATURES_HLS_PREVIEW_ENABLED="true"
-ENV CAPTURE_FEATURES_HLS_PREVIEW_DIR="/tmp/hls"
-ENV CAPTURE_FEATURES_HLS_PREVIEW_TTL="1h"
-
+    CAPTURE_FEATURES_HLS_PREVIEW_ENABLED="true" \
+    CAPTURE_FEATURES_HLS_PREVIEW_DIR="/tmp/hls" \
+    CAPTURE_FEATURES_HLS_PREVIEW_TTL="1h" \
 # Features: MP4 serving
-ENV CAPTURE_FEATURES_MP4_SERVE_ENABLED="false"
-ENV CAPTURE_FEATURES_MP4_SERVE_DIR="/tmp/recordings"
-
+    CAPTURE_FEATURES_MP4_SERVE_ENABLED="false" \
+    CAPTURE_FEATURES_MP4_SERVE_DIR="/tmp/recordings" \
 # Features: Metrics
-ENV CAPTURE_FEATURES_METRICS_ENABLED="true"
-ENV CAPTURE_FEATURES_METRICS_PORT="9001"
-ENV CAPTURE_FEATURES_METRICS_PATH="/metrics"
-
+    CAPTURE_FEATURES_METRICS_ENABLED="true" \
+    CAPTURE_FEATURES_METRICS_PORT="9001" \
+    CAPTURE_FEATURES_METRICS_PATH="/metrics" \
 # Logging
-ENV CAPTURE_LOGGING_LEVEL="info"
-ENV CAPTURE_LOGGING_FORMAT="json"
-ENV CAPTURE_LOGGING_OUTPUT="stdout"
-
+    CAPTURE_LOGGING_LEVEL="info" \
+    CAPTURE_LOGGING_FORMAT="json" \
+    CAPTURE_LOGGING_OUTPUT="stdout" \
 # Health checks
-ENV CAPTURE_HEALTH_ENABLED="true"
-ENV CAPTURE_HEALTH_PORT="9002"
-ENV CAPTURE_HEALTH_INTERVAL="30s"
+    CAPTURE_HEALTH_ENABLED="true" \
+    CAPTURE_HEALTH_PORT="9002" \
+    CAPTURE_HEALTH_INTERVAL="30s"
 
 # copy the binary
 COPY --from=builder /out/capture-daemon /usr/local/bin/capture-daemon
 
 EXPOSE 9000
-ENTRYPOINT ["/sbin/tini", "-s", "--", "/usr/local/bin/capture-daemon"]
-
+ENTRYPOINT ["/sbin/tini","-s","--","/usr/local/bin/capture-daemon"]
