@@ -16,6 +16,7 @@
     "src/components/ToolCard.tsx",
     "src/components/dashboardTools.tsx",
     "src/components/Cards.tsx",
+    "src/providers/AssetProvider.tsx",
     "src/hooks/useIntelligentLayout.ts"
   ]
 }
