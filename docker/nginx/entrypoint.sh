@@ -8,6 +8,8 @@ set -e
 
 # write snippet files directly into /etc/nginx
 cat >/etc/nginx/proxy_defaults.conf <<'EOF'
+# only create snippets if they don't already exist
+[ -f /etc/nginx/proxy_defaults.conf ] || cat >/etc/nginx/proxy_defaults.conf <<'EOF'
 proxy_http_version 1.1;
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection $http_connection;
@@ -15,14 +17,14 @@ proxy_set_header Host $host;
 proxy_cache_bypass $http_upgrade;
 EOF
 
-cat >/etc/nginx/proxy_ws.conf <<'EOF'
+[ -f /etc/nginx/proxy_ws.conf ] || cat >/etc/nginx/proxy_ws.conf <<'EOF'
 proxy_http_version 1.1;
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection "Upgrade";
 proxy_set_header Host $host;
 EOF
 
-cat >/etc/nginx/proxy_nobuf.conf <<'EOF'
+[ -f /etc/nginx/proxy_nobuf.conf ] || cat >/etc/nginx/proxy_nobuf.conf <<'EOF'
 proxy_pass_request_headers on;
 proxy_buffering off;
 proxy_cache off;
