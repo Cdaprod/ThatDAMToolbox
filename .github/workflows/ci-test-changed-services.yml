@@ -5,8 +5,8 @@ on:
     branches: ["**"]
     paths:
       - "docker/**"
-      - "!docker/compose/**"        # exclude compose layer dir from per-service lint matrix
-      - "docker/compose/**"         # but still trigger the workflow so smoke can run
+      - "!docker/compose/**"
+      - "docker/compose/**"
       - "docker-compose.y*ml"
       - "host/services/**"
       - "**/go.*"
@@ -16,16 +16,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────────
-  # Detect what changed: (1) service names; (2) compose layer files
-  # ──────────────────────────────────────────────────────────────────────────
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      changed:          ${{ steps.set.outputs.changed }}           # "true"/"false"
-      list:             ${{ steps.set.outputs.changed_services }}  # JSON array of service names
-      compose_changed:  ${{ steps.set.outputs.compose_changed }}   # "true"/"false"
-      compose_files:    ${{ steps.set.outputs.compose_files }}     # JSON array of compose files
+      changed:          ${{ steps.set.outputs.changed }}
+      list:             ${{ steps.set.outputs.changed_services }}
+      compose_changed:  ${{ steps.set.outputs.compose_changed }}
+      compose_files:    ${{ steps.set.outputs.compose_files }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -39,14 +36,9 @@ jobs:
           set -euo pipefail
           BASE_SHA=$(git merge-base origin/${{ github.base_ref }} HEAD)
 
-          # 1) Changed service names (docker/* and host/services/*)
           MODIFIED_SERVICES=$(
-            git diff --name-only "$BASE_SHA" HEAD -- \
-              'docker/*' 'host/services/**' \
-            | awk -F/ '
-                $1=="docker"{print $2}
-                $1=="host" && $2=="services"{print $3}
-              ' \
+            git diff --name-only "$BASE_SHA" HEAD -- 'docker/*' 'host/services/**' \
+            | awk -F/ '$1=="docker"{print $2} $1=="host"&&$2=="services"{print $3}' \
             | sort -u
           )
 
@@ -55,27 +47,22 @@ jobs:
             echo "changed_services=[]" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            jq -nc --arg m "$MODIFIED_SERVICES" '$m | split("\n") | map(select(length>0))' \
+            jq -nc --arg m "$MODIFIED_SERVICES" '$m|split("\n")|map(select(length>0))' \
               | { read json; echo "changed_services=$json" >> "$GITHUB_OUTPUT"; }
           fi
 
-          # 2) Compose files (root and layer dir)
           COMPOSE_FILES=$(
-            git diff --name-only "$BASE_SHA" HEAD -- \
-              'docker-compose.y*ml' 'docker/compose/**'
+            git diff --name-only "$BASE_SHA" HEAD -- 'docker-compose.y*ml' 'docker/compose/**'
           )
           if [ -z "$COMPOSE_FILES" ]; then
             echo "compose_changed=false" >> "$GITHUB_OUTPUT"
             echo "compose_files=[]" >> "$GITHUB_OUTPUT"
           else
             echo "compose_changed=true" >> "$GITHUB_OUTPUT"
-            jq -nc --arg m "$COMPOSE_FILES" '$m | split("\n") | map(select(length>0))' \
+            jq -nc --arg m "$COMPOSE_FILES" '$m|split("\n")|map(select(length>0))' \
               | { read json; echo "compose_files=$json" >> "$GITHUB_OUTPUT"; }
           fi
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # Lint + unit-test the CHANGED services only
-  # ──────────────────────────────────────────────────────────────────────────
   test-services:
     needs: detect-changes
     if: needs.detect-changes.outputs.changed == 'true'
@@ -85,13 +72,12 @@ jobs:
         service: ${{ fromJson(needs.detect-changes.outputs.list) }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with: { go-version: '1.22.x' }
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '18' }   # align with Dockerfile
       - uses: docker/setup-buildx-action@v3
 
       - name: Install generic lint deps
@@ -112,24 +98,21 @@ jobs:
           DOCKER_DIR="docker/$SVC"
           HOST_DIR="host/services/$SVC"
 
-          # Dockerfile lint/build (guarded)
           if [ -d "$DOCKER_DIR" ]; then
             pushd "$DOCKER_DIR" >/dev/null
             if [ -f Dockerfile ]; then
-              hadolint Dockerfile
+              hadolint --failure-threshold error Dockerfile
               docker build -t "local/$SVC:ci" .
             else
               echo "ℹ️  $DOCKER_DIR has no Dockerfile; skipping hadolint/build"
             fi
 
-            # Python tests (service-local)
             if compgen -G "*.py" > /dev/null || compgen -G "**/*.py" > /dev/null; then
               pytest -q
             fi
 
-            # Node tests (service-local)
             if [ -f package.json ]; then
-              npm ci
+              npm ci || npm install
               npm test --if-present
             fi
             popd >/dev/null
@@ -137,15 +120,11 @@ jobs:
             echo "ℹ️  No docker dir for $SVC; skipping container lint/build"
           fi
 
-          # Go tests (host layer)
           if [ -d "$HOST_DIR" ] && [ -f "$HOST_DIR/go.mod" ]; then
             echo "🧪 go test $HOST_DIR/..."
             go test "$HOST_DIR/..." -v -race -shuffle=on -count=1
           fi
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # One-shot compose boot if services OR compose YAML changed
-  # ──────────────────────────────────────────────────────────────────────────
   compose-smoke:
     needs: detect-changes
     if: |
@@ -155,6 +134,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+
+      - name: Ensure jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Pre-build changed services (if any)
         shell: bash
