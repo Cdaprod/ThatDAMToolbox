@@ -81,7 +81,7 @@ SHORT_SHA  := $(shell git rev-parse --short HEAD)
 
 docker-build: ## Build Docker images (conditionally tag with TAG_IMAGE=true)
 	@echo "📦 Building $(DOCKER_IMAGE):latest with VERSION=$(VERSION) and SHA=$(SHORT_SHA)"
-        $(DOCKER_COMPOSE) build \
+	$(DOCKER_COMPOSE) build \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg GIT_SHA=$(SHORT_SHA)
 
