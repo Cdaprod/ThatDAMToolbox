@@ -145,10 +145,9 @@ services:
 
 
   ########################################################################
-  # 3b. Golang - camera proxy
+  # 3b. Golang - camera proxy  (device-agnostic + hot-plug)
   ########################################################################
   camera-proxy:
-    profiles: ["camera"]                      # ← opt-in; won't start unless profile enabled
     build:
       context: .
       dockerfile: host/services/camera-proxy/Dockerfile
@@ -156,13 +155,20 @@ services:
     container_name: thatdamtoolbox-camera-proxy
     networks: [damnet]
     ports: ["8000:8000"]
-    # Require an explicit host device path when enabling the profile.
-    # Example: VIDEO_DEV=/dev/video2 docker compose --profile camera up -d camera-proxy
-    devices:
-      - ${VIDEO_DEV:?set VIDEO_DEV to a host v4l2 device}:${VIDEO_DEV}
-    group_add: ["video"]
+    # Device-agnostic, hot-plug capable:
+    # - Mount the whole /dev so new /dev/video* nodes appear without restart
+    # - Open cgroup rules for V4L2 (+DRM if you later use HW accel)
+    # - No fixed `devices:` mapping, so it's idempotent on hosts with 0 cameras
+    volumes:
+      - /dev:/dev:rw,rshared
     device_cgroup_rules:
-      - "c 81:* rmw"                          # allow /dev/video* ioctl access
+      - "c 81:* rmw"     # video4linux (/dev/video*)
+      - "c 226:* rmw"    # DRM (/dev/dri/*) -- safe to keep for future HW accel
+    # Optional: drop this if you don't care about container user groups
+    group_add:
+      - video
+    # If your Docker host blocks some ioctls, flip this on as a last resort:
+    # privileged: true
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
@@ -170,8 +176,9 @@ services:
       OVERLAY_HUB_URL: "http://overlay-hub:8090"
       CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
       CAPTURE_DAEMON_TOKEN: "devtoken"
-      ICE_SERVERS: "stun:stun.l.google.com:19302"    # Optional STUN/TURN list
-      FFMPEG_HWACCEL: ""                             # e.g. "cuda -hwaccel_device 0"
+      ICE_SERVERS: "stun:stun.l.google.com:19302"
+      FFMPEG_HWACCEL: ""  # e.g. "cuda -hwaccel_device 0" when using NV encoders
+    # Health is OK even with 0 devices; your app serves /healthz regardless.
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
       interval: 10s
@@ -181,7 +188,6 @@ services:
       - rabbitmq
       - overlay-hub
     restart: unless-stopped
-
 
   ########################################################################
   # 3c. Golang - overlay hub
