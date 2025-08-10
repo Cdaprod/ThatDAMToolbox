@@ -24,16 +24,16 @@ COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
 # SC2015 fix: no "A && B || C" fallthroughs; use explicit branching
 RUN set -euo pipefail; \
-  if [ -f yarn.lock ]; then
+  if [ -f yarn.lock ]; then \
     echo "🧶 Installing with yarn…"; yarn install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then
+  elif [ -f package-lock.json ]; then \
     echo "📦 Installing with npm ci…"; \
-    if ! npm ci; then
+    if ! npm ci; then \
       echo "⚠️ npm ci failed – falling back to npm install"; npm install; \
     fi; \
-  elif [ -f pnpm-lock.yaml ]; then
+  elif [ -f pnpm-lock.yaml ]; then \
     echo "📦 Installing with pnpm…"; corepack enable pnpm; pnpm install --frozen-lockfile; \
-  else
+  else \
     echo "⚠️ No lockfile found – running npm install"; npm install; \
   fi
 
