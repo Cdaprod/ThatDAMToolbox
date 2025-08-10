@@ -65,6 +65,11 @@ func main() {
 		panic(fmt.Sprintf("config load failed: %v", err))
 	}
 
+	// Register any statically configured network streams
+	if len(cfg.Capture.NetworkSources) > 0 {
+		scanner.Register(scanner.NewNetworkScanner(cfg.Capture.NetworkSources))
+	}
+
 	// 2. Init logger
 	lg, err := logger.New(cfg.Logging.Level, cfg.Logging.Format, cfg.Logging.Output)
 	if err != nil {
