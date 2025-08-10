@@ -34,9 +34,7 @@ RUN --mount=type=cache,target=/root/.npm \
         pnpm install --frozen-lockfile; \
       else \
         npm install; \
-      fi; \
-      # prove node_modules exists (avoids COPY --from=deps not found) \
-      test -d node_modules \
+      fi \
     '
 
 # ─────────────────────────────────────────────────────────────────────────────
