@@ -44,6 +44,15 @@ const formatDuration = (seconds: number) => {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 };
 
+/**
+ * Merge previously seen device IDs with a new list.
+ * Safely handles non-array inputs.
+ */
+export function mergeDeviceIds(prev: unknown, now: string[]): string[] {
+  const prevList = Array.isArray(prev) ? prev : [];
+  return Array.from(new Set([...prevList, ...now]));
+}
+
 // --- 1) TYPES & ENUMS ---
 type Codec = "h264" | "hevc";
 type Feed = "main" | "aux";
@@ -273,18 +282,16 @@ const CameraMonitor: React.FC = () => {
       try {
         const msg = JSON.parse(ev.data) as InboundMsg | DeviceListEvt;
         if (msg.event === "device_list") {
-          const nowList = msg.data.map((d) => d.path);
+          const nowList = Array.isArray(msg.data)
+            ? msg.data.map((d) => d.path)
+            : [];
 
           setDevicesAvailableNow(nowList);
 
-          // Merge with all previously seen devices
-          setAllDevicesSeen((prev) => {
-            const merged = Array.from(new Set([...prev, ...nowList]));
-            // Persist to localStorage
-            window.localStorage.setItem(
-              "cameraDevices",
-              JSON.stringify(merged),
-            );
+          // Merge with all previously seen devices, guarding against non-arrays
+          setAllDevicesSeen(prev => {
+            const merged = mergeDeviceIds(prev, nowList);
+            window.localStorage.setItem('cameraDevices', JSON.stringify(merged));
             return merged;
           });
 
