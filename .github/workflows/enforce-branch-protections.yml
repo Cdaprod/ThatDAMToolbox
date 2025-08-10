@@ -1,8 +1,7 @@
 # /.github/workflows/enforce-branch-protections.yml
-name: Enforce Branch Protection (self-healing)
+name: Enforce Branch Protections (self-healing)
 
 on:
-  # Run on demand to (re)apply protection
   workflow_dispatch:
     inputs:
       branches:
@@ -13,22 +12,21 @@ on:
         description: "Comma-separated required check names"
         type: string
         default: "CI-Test-Changed-Services,build-and-publish"
-  # Periodic self-heal
   schedule:
     - cron: "11 4 * * 1"  # Mondays @ 04:11 UTC
 
+# Valid permission scopes only
 permissions:
   contents: write
-  administration: write
+  pull-requests: write
 
 jobs:
   converge:
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}      # gh uses this automatically
     steps:
       - name: Ensure jq + gh present
         run: |
+          set -e
           if ! command -v jq >/dev/null 2>&1; then
             sudo apt-get update -y && sudo apt-get install -y jq
           fi
@@ -36,21 +34,26 @@ jobs:
 
       - name: Converge protection (PUT /branches/{branch}/protection)
         shell: bash
+        env:
+          GH_PRIMARY: ${{ secrets.ADMIN_TOKEN }}
+          GH_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+
+          # Prefer ADMIN_TOKEN if provided; else fallback to GITHUB_TOKEN
+          export GH_TOKEN="${GH_PRIMARY:-$GH_FALLBACK}"
 
           REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
           IFS=' ' read -r -a BRANCHES <<< "${{ inputs.branches }}"
           IFS=',' read -r -a CHECK_NAMES <<< "${{ inputs.checks }}"
 
-          # build checks array: [{ "context": "foo" }, ...]
           CHECKS_JSON="$(printf '%s\n' "${CHECK_NAMES[@]}" \
             | awk 'NF{gsub(/^[[:space:]]+|[[:space:]]+$/,""); print}' \
             | jq -R 'select(length>0)' | jq -s 'map({context:.})')"
 
           echo "Repo: $REPO"
           echo "Branches: ${BRANCHES[*]}"
-          echo "Required checks: $(echo "$CHECKS_JSON" | jq -c .)"
+          echo "Checks: $(echo "$CHECKS_JSON" | jq -c .)"
 
           for BR in "${BRANCHES[@]}"; do
             echo "── Protecting $REPO@$BR"
@@ -84,30 +87,37 @@ jobs:
                      "/repos/$REPO/branches/$BR/protection" \
                      --input - \
             && echo "   ✅ Protection applied."
-
           done
 
-      - name: Require signed commits (POST /required_signatures) -- oneliner
+      - name: Require signed commits (POST /required_signatures)
         shell: bash
+        env:
+          GH_PRIMARY: ${{ secrets.ADMIN_TOKEN }}
+          GH_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          export GH_TOKEN="${GH_PRIMARY:-$GH_FALLBACK}"
           REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
           for BR in ${{ inputs.branches }}; do
             echo "✍️  Require signed commits → $REPO@$BR"
+            # 201/204 are success; ignore if already enabled
             gh api --method POST -H "Accept: application/vnd.github+json" \
-              "/repos/$REPO/branches/$BR/protection/required_signatures" \
-              >/dev/null || true
+              "/repos/$REPO/branches/$BR/protection/required_signatures" >/dev/null || true
             gh api "/repos/$REPO/branches/$BR/protection/required_signatures" \
               | jq -r --arg br "$BR" '"   " + $br + ": signed_commits=" + ( .enabled|tostring )'
           done
 
       - name: Show effective protection
         shell: bash
+        env:
+          GH_PRIMARY: ${{ secrets.ADMIN_TOKEN }}
+          GH_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          export GH_TOKEN="${GH_PRIMARY:-$GH_FALLBACK}"
           REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
           for BR in ${{ inputs.branches }}; do
             echo "🔎 $REPO@$BR"
             gh api "/repos/$REPO/branches/$BR/protection" \
-              | jq '{branch:"'"$BR"'", admins:.enforce_admins.enabled, linear:.required_linear_history.enabled, pr_reviews: .required_pull_request_reviews.required_approving_review_count, convos:.required_conversation_resolution.enabled, checks:(.required_status_checks.checks|map(.context)), signed_commits:"(see previous step)"}'
+              | jq '{branch:"'"$BR"'", admins:.enforce_admins.enabled, linear:.required_linear_history.enabled, pr_reviews: .required_pull_request_reviews.required_approving_review_count, convos:.required_conversation_resolution.enabled, checks:(.required_status_checks.checks|map(.context))}'
           done

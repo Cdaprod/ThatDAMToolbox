@@ -1,13 +1,41 @@
-# /host/services/media-api/Dockerfile
-# Build media-api service
+# syntax=docker/dockerfile:1.5
+
 ARG GO_VERSION=1.23
-FROM golang:${GO_VERSION} AS build
+FROM golang:${GO_VERSION}-alpine AS builder
+ARG TARGETOS TARGETARCH VERSION
 ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
-WORKDIR /app
-COPY . .
-RUN go build -o media-api ./cmd/media-api
+WORKDIR /src
 
-FROM gcr.io/distroless/base-debian12
-COPY --from=build /app/media-api /media-api
-ENTRYPOINT ["/media-api", "serve", "--addr", ":8080"]
+# ── manifests first
+COPY host/services/shared/go.mod        host/services/shared/go.mod
+COPY host/services/shared/go.sum        host/services/shared/go.sum
+COPY host/services/media-api/go.mod     host/services/media-api/go.mod
+COPY host/services/media-api/go.sum     host/services/media-api/go.sum
 
+# ── minimal workspace (service + shared)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    sh -ceu '\
+      go work init ./host/services/media-api; \
+      go work use  ./host/services/shared; \
+      go work sync \
+    '
+
+# ── sources
+COPY host/services/shared/          host/services/shared/
+COPY host/services/media-api/       host/services/media-api/
+
+# ── build (expects ./cmd)
+WORKDIR /src/host/services/media-api
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/media-api ./cmd
+
+# ── runtime
+FROM alpine:3.20
+ARG VERSION
+LABEL org.opencontainers.image.version=$VERSION
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /out/media-api /usr/local/bin/media-api
+EXPOSE 8081
+ENTRYPOINT ["/usr/local/bin/media-api"]
