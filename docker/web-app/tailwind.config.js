@@ -21,6 +21,7 @@ module.exports = {
         'md': 'var(--container-md)',
         'lg': 'var(--container-lg)',
         'xl': 'var(--container-xl)',
+        'search-bar': 'var(--search-bar-max-width)',
       },
       spacing: {
         'section': 'var(--section-pad-y)',

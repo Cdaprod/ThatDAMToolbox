@@ -16,6 +16,7 @@
   --container-md : 768px;
   --container-lg : 1024px;
   --container-xl : 1280px;
+  --search-bar-max-width : var(--container-md);
 
   /* Colors */
   --color-background: #f7f9fc;
