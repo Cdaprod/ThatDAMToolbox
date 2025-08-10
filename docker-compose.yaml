@@ -345,6 +345,7 @@ services:
     restart: unless-stopped
     depends_on:
       - capture-daemon
+      - rabbitmq
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
