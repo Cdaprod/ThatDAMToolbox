@@ -7,9 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from video.bootstrap import bootstrap
 from video.web import static
 from video.ws import router as ws_router
-from video.api import modules
-from video.api.modules import setup_module_static_mounts
-from video.api.routes import routers
+from video.api import modules                 # ← keep this
+from video.api.routes import routers          # first-party routers you already have
 from video.core.event import get_bus
 from video.core.event.types import Event, Topic
 
@@ -32,14 +31,14 @@ def create_app() -> FastAPI:
     app.mount("/static", static, name="static")
     app.include_router(ws_router)
 
-    # first-party routes
+    # first-party routes (explicit list in video.api.routes)
     for r in routers:
         app.include_router(r)
 
-    # plug-in routers + static mounts
-    for r in modules.routers:
-        app.include_router(r)
-    setup_module_static_mounts(app)
+    # toggle-aware modules wiring:
+    # VERSION=1 → only static mounts
+    # VERSION=2 → routers + static mounts
+    modules.init_modules(app)
 
     @app.on_event("startup")
     async def _emit_service_up() -> None:  # pragma: no cover - network I/O
