@@ -12,3 +12,6 @@ Tools are rendered in primary/secondary/tertiary sections based on activity and 
 | /dashboard/motion               | Motion Tool        |
 | /dashboard/live                 | Live Monitor       |
 | /dashboard/witness              | Witness Tool       |
+| /dashboard/explorer/layered     | Layered Explorer   |
+
+The layered explorer is experimental and does not replace the existing file explorer.

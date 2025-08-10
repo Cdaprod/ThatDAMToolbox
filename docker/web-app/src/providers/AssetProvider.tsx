@@ -8,19 +8,11 @@ import React, {
   useState,
   useMemo,
 } from 'react';
-import { bus }            from '@/lib/eventBus';
-import { createAsset }    from '@/lib/apiAssets';
+import { bus } from '../lib/eventBus';
+import { createAsset, listAssets, listFolders, moveAssets, deleteAssets, Asset, FolderNode } from '../lib/apiAssets';
 import { useCapture }     from './CaptureContext'; // to get timecode, overlays, etc
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  listAssets,
-  listFolders,
-  moveAssets,
-  deleteAssets,
-  Asset,
-  FolderNode,
-} from '@/lib/apiAssets';
-import { videoApi } from '@/lib/videoApi'; // assumes you add a vectorSearch endpoint here
+import { videoApi } from '../lib/videoApi'; // assumes you add a vectorSearch endpoint here
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Filters {
@@ -46,7 +38,7 @@ interface AssetCtx {
 }
 
 // ─── Context & Hook ────────────────────────────────────────────────────
-const AssetCtx = createContext<AssetCtx | null>(null);
+export const AssetCtx = createContext<AssetCtx | null>(null);
 export const useAssets = () => {
   const ctx = useContext(AssetCtx);
   if (!ctx) throw new Error('useAssets must be inside <AssetProvider>');

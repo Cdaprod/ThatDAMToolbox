@@ -97,4 +97,15 @@ export const dashboardTools: Record<string, DashboardTool> = {
     lastUsed: '2024-01-17T11:20:00Z',
     status: 'idle',
   },
+  'explorer-layered': {
+    id: 'explorer-layered',
+    href: '/dashboard/explorer/layered',
+    title: 'Layered Explorer (2.5D)',
+    icon: Eye,
+    color: dashboardColorClasses['explorer'],
+    context: 'archive',
+    relatedTools: ['dam-explorer', 'explorer'],
+    lastUsed: new Date().toISOString(),
+    status: 'active',
+  },
 };

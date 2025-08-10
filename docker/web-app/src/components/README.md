@@ -20,3 +20,20 @@ Attach `SelectableItem` to wrap children with selection and gesture handling.
   <img src={asset.thumbnail} />
 </SelectableItem>
 ```
+
+## Layered Explorer (experimental)
+
+Renders the asset tree in 2.5D using WebGL.
+
+Install deps:
+
+```
+npm install three @react-three/fiber @react-three/drei
+```
+
+Usage:
+
+```tsx
+import LayeredExplorer from '@/components/LayeredFS/LayeredExplorer';
+<LayeredExplorer />
+```
