@@ -14,6 +14,27 @@ docker run -p 8000:8000 camera-proxy
 docker compose -f host/services/camera-proxy/docker-compose.camera-proxy.yaml --profile camera-proxy up
 ```
 
+## Remote deployment
+
+Build for older ARM boards by targeting `linux/arm/v6` and setting `GOARM=6`:
+
+```bash
+docker build --platform linux/arm/v6 \
+  --build-arg GOARM=6 \
+  -t camera-proxy -f host/services/camera-proxy/Dockerfile .
+```
+
+When running remotely, point the proxy at the host running the rest of the stack via:
+
+```bash
+HOST=192.168.1.100
+docker run -p 8000:8000 \
+  -e EVENT_BROKER_URL=http://$HOST:8080 \
+  -e OVERLAY_HUB_URL=http://$HOST:8081 \
+  -e CAPTURE_DAEMON_URL=http://$HOST:9000 \
+  camera-proxy
+```
+
 ## Configuration
 
 - `ALLOWED_ORIGINS` – comma-separated list of allowed WebSocket origins (default: allow all)
