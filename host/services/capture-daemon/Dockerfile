@@ -31,7 +31,8 @@ COPY host/services/capture-daemon/       host/services/capture-daemon/
 WORKDIR /src/host/services/capture-daemon
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/capture-daemon ./main.go
+    GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -v -o /out/capture-daemon .
 
 # ─── Stage 2: Runtime image ─────────────────────────────────────────────────
 FROM alpine:3.20
