@@ -67,7 +67,7 @@ services:
     volumes:
       # allow you to override nginx.tmpl without rebuilding
       - ./docker/nginx/nginx.tmpl:/etc/nginx/nginx.tmpl:ro
-      - ./docker/nginx/proxy_defaults.conf:/etc/nginx/proxy_defaults.conf:ro
+      - ./docker/nginx/proxy_defaults.conf:/etc/nginx/proxy_defaults.conf:rw
       - ./docker/nginx/proxy_ws.conf:/etc/nginx/proxy_ws.conf:ro
       - ./docker/nginx/proxy_nobuf.conf:/etc/nginx/proxy_nobuf.conf:ro
       - ./docker/nginx/dev.crt:/etc/nginx/dev.crt:ro
@@ -206,6 +206,15 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "waiting for JWKS at http://api-gateway:8080/.well-known/jwks.json"
+        until wget -qO- http://api-gateway:8080/.well-known/jwks.json >/dev/null 2>&1; do
+          sleep 2
+        done
+        exec /app/overlay-hub
     depends_on:
       - api-gateway
     restart: unless-stopped
@@ -437,6 +446,7 @@ services:
       - ./docker/web-site:/app:rw
       - /app/node_modules
       - /app/.next
+    entrypoint: ["/bin/sh","-c","chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
     depends_on:
       - rabbitmq
     restart: unless-stopped

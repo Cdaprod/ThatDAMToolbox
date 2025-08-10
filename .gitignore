@@ -136,28 +136,26 @@ host/releases/
 # ---- Uncomment to ignore these if needed ----
 # /scripts/cli.py
 # /scripts/processor.disabled
+
+# ------------------------------------------------------------------
+# Legacy Favicon Version (see further in ignore below)
+# ------------------------------------------------------------------
 !/video/web/static/favicon/photo.png
-
 !/video/web/static/favicon/thatdamtoolbox-icon.png
-
 !/video/web/static/favicon/favicon-32x32.png
-
 !/video/web/static/favicon/favicon-16x16.png
-
 !/video/web/static/favicon/apple-touch-icon.png
-
 !/video/web/static/favicon/android-chrome-512x512.png
-
 !/video/web/static/favicon/android-chrome-192x192.png
 
+# ------------------------------------------------------------------
+# JSON normaly ignored so specified here if tracked
+# ------------------------------------------------------------------
 !/docker/web-app/package.json
 !/docker/web-site/package.json
-
 !/docker/web-app/tsconfig.json
 !/docker/web-app/tsconfig.test.json
-
 !/docker/rabbitmq/definitions.json
-
 !/docker/weaviate/schema.json
 
 
@@ -184,7 +182,24 @@ host/releases/
 {*,*}
 
 /public/design-token-styles/**
+/public/service-dashboards/**
+
+# ------------------------------------------------------------------
+# Latest Iteration of Logo
+# ------------------------------------------------------------------
 !/public/favicon/android-chrome-512x512.png
 
+# ------------------------------------------------------------------
+# Canary deployment in dev via compose (docker/compose/v2-canary)
+# ------------------------------------------------------------------
 !/docker/compose/v2-canary/.canary.env
+
+# ------------------------------------------------------------------
+# (DEV-ONLY) DO NOT HAVE IN PRODUCTION ENVIRONMENTS (DEVONLY)
+# ServiceDashboard.html for in dev observability on the fly
+# served from docker/web-app => docker/nginx 
+# ------------------------------------------------------------------
+!/docker/web-app/build/ServiceDashboard.html
+!/docker/web-app/build/*
+
 
