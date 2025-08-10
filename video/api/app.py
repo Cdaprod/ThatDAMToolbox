@@ -41,9 +41,17 @@ def create_app() -> FastAPI:
     modules.init_modules(app)
 
     @app.on_event("startup")
-    async def _emit_service_up() -> None:  # pragma: no cover - network I/O
+    async def _emit_service_up() -> None:
         bus = get_bus()
-        if bus:
+        if not bus:
+            return
+        try:
+            # ensure the bus is actually connected before publishing
+            await bus.start()
+            await bus.wait_ready(timeout=5)
             await bus.publish(Event(topic=Topic.VIDEO_API_SERVICE_UP))
-
+        except Exception as e:
+            # log, but do NOT fail the app
+            log.warning("Startup event skipped (bus not ready): %s", e)
+            
     return app
