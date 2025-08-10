@@ -1,6 +1,8 @@
 # /host/services/media-api/Dockerfile
 # Build media-api service
-FROM golang:1.22 AS build
+ARG GO_VERSION=1.23
+FROM golang:${GO_VERSION} AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
 WORKDIR /app
 COPY . .
 RUN go build -o media-api ./cmd/media-api

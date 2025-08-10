@@ -1,14 +1,16 @@
 # syntax=docker/dockerfile:1
 
 # ─── Stage 1: Build the capture-daemon binary ───────────────────────────────
-FROM golang:1.22-alpine AS builder
+ARG GO_VERSION=1.23
+FROM golang:${GO_VERSION}-alpine AS builder
+ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
 ARG TARGETOS TARGETARCH VERSION
 
 RUN apk add --no-cache git ca-certificates
 WORKDIR /build
 
 # 1) Copy only go.mod (we don’t keep go.sum)
-COPY go.work ./
+COPY go.work go.work.sum ./
 COPY host/services/capture-daemon/go.mod host/services/capture-daemon/go.mod
 COPY host/services/shared/go.mod         host/services/shared/go.mod
 
@@ -22,7 +24,7 @@ RUN go mod tidy \
  && go mod vendor
 
 # 4) Compile using vendored deps
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -o /out/capture-daemon ./main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -o /out/capture-daemon ./main.go
 
 # ─── Stage 2: Runtime image ─────────────────────────────────────────────────
 FROM alpine:3.20
