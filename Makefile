@@ -111,25 +111,79 @@ compose-restart: docker-restart
 compose-status: docker-status
 
 # =============================================================================
-# GO HOST SERVICES
+# GO HOST SERVICES (workspace-driven, keeps named binaries for 3 core services)
 # =============================================================================
 
-.PHONY: build-all build-gateway build-proxy build-capture-daemon install-all
+# Discover workspace modules from go.work (Go ≥ 1.20 preferred)
+GO_BIN            ?= go
+WORK_JSON         := $(shell $(GO_BIN) work edit -json 2>/dev/null)
+ifeq ($(strip $(WORK_JSON)),)
+  # Fallback parser: handles both single-line `use ./mod` and block `use ( ./a ./b )`
+  WORK_MODULES    := $(shell awk 'BEGIN{inuse=0} \
+    /^use[[:space:]]*\(/ {inuse=1; next} \
+    /^\)/ {inuse=0} \
+    inuse==1 && $$1 ~ /^\.\// {print $$1} \
+    /^use[[:space:]]+\.\// {sub(/^use[[:space:]]+/,""); print} \
+  ' go.work)
+else
+  WORK_MODULES    := $(shell printf '%s\n' '$(WORK_JSON)' | sed -n 's/.*"DiskPath":"\([^"]*\)".*/\1/p')
+endif
+WORK_MODULES      := $(sort $(filter-out ,$(WORK_MODULES)))
 
-# Build all Go services
-build-all: build-gateway build-proxy build-capture-daemon
+# Core services that produce named binaries (install step depends on these paths)
+CORE_GATEWAY_DIR         := $(HOST_SERVICES_DIR)/api-gateway
+CORE_PROXY_DIR           := $(HOST_SERVICES_DIR)/camera-proxy
+CORE_CAPTURE_DAEMON_DIR  := $(HOST_SERVICES_DIR)/capture-daemon
+
+# Any other workspace modules get a generic build ./...
+OTHER_MODULES := $(filter-out \
+  $(CORE_GATEWAY_DIR) \
+  $(CORE_PROXY_DIR) \
+  $(CORE_CAPTURE_DAEMON_DIR), \
+  $(WORK_MODULES))
+
+.PHONY: build-all build-gateway build-proxy build-capture-daemon install-all \
+        setup-system install-binaries install-services enable-services \
+        go-list go-tidy go-build-rest
+
+# Build all Go services:
+# 1) Build named binaries for the three core services (as before)
+# 2) Build remaining workspace modules generically (cache warm / ensure compile)
+build-all: build-gateway build-proxy build-capture-daemon go-build-rest
 
 build-gateway: ## Build API Gateway
-	cd $(HOST_SERVICES_DIR)/api-gateway && \
-	CGO_ENABLED=$(CGO_ENABLED) go build $(GO_BUILD_FLAGS) -o api-gateway ./cmd
+	@echo "🔨 $(CORE_GATEWAY_DIR)"
+	cd $(CORE_GATEWAY_DIR) && \
+	CGO_ENABLED=$(CGO_ENABLED) $(GO_BIN) build $(GO_BUILD_FLAGS) -o api-gateway ./cmd
 
 build-proxy: ## Build Camera Proxy
-	cd $(HOST_SERVICES_DIR)/camera-proxy && \
-	CGO_ENABLED=$(CGO_ENABLED) go build $(GO_BUILD_FLAGS) -o camera-proxy .
+	@echo "🔨 $(CORE_PROXY_DIR)"
+	cd $(CORE_PROXY_DIR) && \
+	CGO_ENABLED=$(CGO_ENABLED) $(GO_BIN) build $(GO_BUILD_FLAGS) -o camera-proxy .
 
 build-capture-daemon: ## Build the capture daemon
-	cd $(HOST_SERVICES_DIR)/capture-daemon && \
-	CGO_ENABLED=$(CGO_ENABLED) go build $(GO_BUILD_FLAGS) -o capture-daemon .
+	@echo "🔨 $(CORE_CAPTURE_DAEMON_DIR)"
+	cd $(CORE_CAPTURE_DAEMON_DIR) && \
+	CGO_ENABLED=$(CGO_ENABLED) $(GO_BIN) build $(GO_BUILD_FLAGS) -o capture-daemon .
+
+go-build-rest: ## Build remaining workspace modules (generic ./...)
+	@set -e; \
+	for m in $(OTHER_MODULES); do \
+	  echo "🔧 build $$m"; \
+	  $(GO_BIN) -C "$$m" build ./...; \
+	done
+
+# Workspace helpers
+go-list: ## List modules from go.work
+	@printf 'Workspace modules:\n'; \
+	for m in $(WORK_MODULES); do printf '  • %s\n' "$$m"; done
+
+go-tidy: ## go mod tidy for all modules in go.work
+	@set -e; \
+	for m in $(WORK_MODULES); do \
+	  echo "→ tidy $$m"; \
+	  $(GO_BIN) -C "$$m" mod tidy; \
+	done
 
 # Install all services
 install-all: build-all setup-system install-binaries install-services enable-services ## Install everything
@@ -145,9 +199,9 @@ setup-system: ## Create users and directories
 
 install-binaries: ## Install all binaries
 	@echo "Installing binaries..."
-	sudo install -m755 $(HOST_SERVICES_DIR)/api-gateway/api-gateway $(BIN_DIR)/
-	sudo install -m755 $(HOST_SERVICES_DIR)/camera-proxy/camera-proxy $(BIN_DIR)/
-	sudo install -m755 $(HOST_SERVICES_DIR)/capture-daemon/capture-daemon $(BIN_DIR)/
+	sudo install -m755 $(CORE_GATEWAY_DIR)/api-gateway $(BIN_DIR)/
+	sudo install -m755 $(CORE_PROXY_DIR)/camera-proxy $(BIN_DIR)/
+	sudo install -m755 $(CORE_CAPTURE_DAEMON_DIR)/capture-daemon $(BIN_DIR)/
 
 install-services: ## Install systemd services
 	@echo "Installing systemd services..."
@@ -157,23 +211,6 @@ install-services: ## Install systemd services
 enable-services: ## Enable all services
 	@echo "Enabling services..."
 	-sudo systemctl enable api-gateway camera-proxy capture-daemon
-
-# extract all the "use" paths from go.work (ignoring the "go" line)
-WORKMODS := $(shell sed -n 's/^\s*use\s*//;t;d' go.work)
-
-.PHONY: tidy
-tidy:
-	@echo "→ tidying workspace modules:"
-	@for mod in $(WORKMODS); do \
-	  echo "  • $$mod"; \
-	  (cd $$mod && go mod tidy) || exit 1; \
-	done
-
-go-tidy-all:
-	@grep -E '^\s*\./' go.work | awk '{print $$1}' | while read dir; do \
-		echo "Tidying $$dir"; \
-		go mod tidy -C $$dir; \
-	done
 
 # =============================================================================
 # SERVICE MANAGEMENT
