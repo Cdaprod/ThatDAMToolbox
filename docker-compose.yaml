@@ -148,6 +148,7 @@ services:
   # 3b. Golang - camera proxy
   ########################################################################
   camera-proxy:
+    profiles: ["camera"]                      # ← opt-in; won't start unless profile enabled
     build:
       context: .
       dockerfile: host/services/camera-proxy/Dockerfile
@@ -155,10 +156,13 @@ services:
     container_name: thatdamtoolbox-camera-proxy
     networks: [damnet]
     ports: ["8000:8000"]
+    # Require an explicit host device path when enabling the profile.
+    # Example: VIDEO_DEV=/dev/video2 docker compose --profile camera up -d camera-proxy
     devices:
-      - /dev/video0:/dev/video0
-    group_add:
-      - video
+      - ${VIDEO_DEV:?set VIDEO_DEV to a host v4l2 device}:${VIDEO_DEV}
+    group_add: ["video"]
+    device_cgroup_rules:
+      - "c 81:* rmw"                          # allow /dev/video* ioctl access
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
@@ -166,8 +170,8 @@ services:
       OVERLAY_HUB_URL: "http://overlay-hub:8090"
       CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
       CAPTURE_DAEMON_TOKEN: "devtoken"
-      ICE_SERVERS: "stun:stun.l.google.com:19302"       # Optional STUN/TURN list
-      FFMPEG_HWACCEL: ""                                # e.g. "cuda -hwaccel_device 0"
+      ICE_SERVERS: "stun:stun.l.google.com:19302"    # Optional STUN/TURN list
+      FFMPEG_HWACCEL: ""                             # e.g. "cuda -hwaccel_device 0"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
       interval: 10s
