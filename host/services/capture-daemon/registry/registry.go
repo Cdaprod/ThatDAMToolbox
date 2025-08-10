@@ -16,7 +16,7 @@ import (
 // Device is an alias to scanner.Device so callers don’t need to import both
 type Device = scanner.Device
 
-// Registry tracks devices and their cancellation callbacks.
+// Registry tracks devices (local or network) and their cancellation callbacks.
 type Registry struct {
 	mu        sync.Mutex
 	devices   map[string]Device

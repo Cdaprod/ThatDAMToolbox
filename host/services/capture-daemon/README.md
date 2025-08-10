@@ -15,6 +15,24 @@ docker compose -f host/services/capture-daemon/docker-compose.capture-daemon.yam
 ```
 
 
+## Network sources
+
+Configure remote streams so they appear alongside `/dev/video*` devices:
+
+```yaml
+capture:
+  network_sources:
+    lobbycam: rtsp://192.168.1.10/stream
+    parking: webrtc://example/stream
+```
+
+These IDs can be previewed like any physical device:
+
+```
+http://localhost:9000/preview/lobbycam/index.m3u8
+```
+
+
 ## WebRTC and HLS preview
 
 Enable streaming features in the config or environment:
