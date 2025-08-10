@@ -40,6 +40,7 @@ http {
     upstream video_web   { server ${WEB_HOST}:${WEB_PORT}; }
 
     server {
+        set $fa "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22";
         listen 80  default_server;
         listen 443 ssl default_server;
         server_name _;   # catch-all
@@ -102,7 +103,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://127.0.0.1:15672/;
             proxy_set_header Host $host;
@@ -116,7 +117,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://video_api/;
             proxy_set_header Host $host;
@@ -130,7 +131,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://api_gateway/;
             proxy_set_header Host $host;
@@ -144,7 +145,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://127.0.0.1:8081/;
             proxy_set_header Host $host;
@@ -158,7 +159,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://127.0.0.1:8000/;
             proxy_set_header Host $host;
@@ -172,7 +173,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://127.0.0.1:8090/;
             proxy_set_header Host $host;
@@ -186,7 +187,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://video_web/;
             proxy_set_header Host $host;
@@ -200,7 +201,7 @@ http {
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
             add_header X-Frame-Options "SAMEORIGIN" always;
-            add_header Content-Security-Policy "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22" always;
+            add_header Content-Security-Policy $fa always;
 
             proxy_pass http://127.0.0.1:3001/;
             proxy_set_header Host $host;
