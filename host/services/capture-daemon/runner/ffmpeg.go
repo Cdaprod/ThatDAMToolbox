@@ -38,6 +38,24 @@ func DefaultConfig(device string) Config {
 	}
 }
 
+// isV4L2 reports whether the device path is a local video node.
+func isV4L2(path string) bool {
+	return strings.HasPrefix(path, "/dev/")
+}
+
+// buildInputArgs returns ffmpeg input arguments for the device.
+func buildInputArgs(cfg Config) []string {
+	if isV4L2(cfg.Device) {
+		return []string{
+			"-f", "v4l2",
+			"-framerate", fmt.Sprint(cfg.FPS),
+			"-video_size", cfg.Resolution,
+			"-i", cfg.Device,
+		}
+	}
+	return []string{"-i", cfg.Device}
+}
+
 // RunCaptureLoop continuously records video from the device using ffmpeg,
 // saves to MP4, and broadcasts status via the broker.
 // Supports configurable MP4 output and HLS preview via env flags.
@@ -69,18 +87,15 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 	// Start HLS in background, if enabled
 	if enableHLS {
 		go func() {
-			args := []string{
-				"-hide_banner", "-loglevel", "error",
-				"-f", "v4l2", "-framerate", fmt.Sprint(cfg.FPS),
-				"-video_size", cfg.Resolution,
-				"-i", cfg.Device,
+			args := append([]string{"-hide_banner", "-loglevel", "error"}, buildInputArgs(cfg)...)
+			args = append(args,
 				"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
 				"-f", "hls",
 				"-hls_time", "1",
 				"-hls_list_size", "3",
 				"-hls_flags", "delete_segments+append_list",
 				filepath.Join(hlsBase, "index.m3u8"),
-			}
+			)
 			log.Printf("[hls] Starting HLS for %s at %s", cfg.Device, hlsBase)
 			cmd := exec.CommandContext(ctx, cfg.FFmpegPath, args...)
 			_ = cmd.Run() // best-effort, logs only on main loop error
@@ -105,18 +120,13 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 
 		if enableMP4 {
 			cmdCtx, cancel := context.WithCancel(ctx)
-			args := []string{
-				"-hide_banner",
-				"-loglevel", "error",
-				"-f", "v4l2",
-				"-framerate", fmt.Sprint(cfg.FPS),
-				"-video_size", cfg.Resolution,
-				"-i", cfg.Device,
+			args := append([]string{"-hide_banner", "-loglevel", "error"}, buildInputArgs(cfg)...)
+			args = append(args,
 				"-c:v", cfg.Codec,
 				"-preset", "veryfast",
 				"-tune", "zerolatency",
 				outFile,
-			}
+			)
 			cmd := exec.CommandContext(cmdCtx, cfg.FFmpegPath, args...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr

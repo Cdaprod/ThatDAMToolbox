@@ -2,6 +2,13 @@
 
 Transparent proxy exposing host cameras to containerized services.
 
+## Capture sources
+
+[capture-daemon](../capture-daemon/README.md) can ingest streams from both
+local devices and network broadcasts, while camera-proxy only exposes hardware
+attached to the host. For remote network feeds, refer to the capture-daemon's
+[network broadcast section](../capture-daemon/README.md#network-broadcast).
+
 ## Build
 ```bash
 docker build -t camera-proxy -f host/services/camera-proxy/Dockerfile .
