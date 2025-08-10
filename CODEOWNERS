@@ -1,0 +1,7 @@
+# Everything defaults to you
+*                    @Cdaprod
+
+# Tweak as you scale or add teams
+/docker/**           @Cdaprod
+/host/services/**    @Cdaprod
+/app/**              @Cdaprod
