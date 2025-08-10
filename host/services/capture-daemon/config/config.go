@@ -38,12 +38,13 @@ type BrokerConfig struct {
 }
 
 type CaptureConfig struct {
-	OutputDir     string        `mapstructure:"output_dir"`
-	PollInterval  time.Duration `mapstructure:"poll_interval"`
-	FFmpegPath    string        `mapstructure:"ffmpeg_path"`
-	DefaultFPS    int           `mapstructure:"default_fps"`
-	DefaultRes    string        `mapstructure:"default_resolution"`
-	MaxConcurrent int           `mapstructure:"max_concurrent"`
+	OutputDir      string            `mapstructure:"output_dir"`
+	PollInterval   time.Duration     `mapstructure:"poll_interval"`
+	FFmpegPath     string            `mapstructure:"ffmpeg_path"`
+	DefaultFPS     int               `mapstructure:"default_fps"`
+	DefaultRes     string            `mapstructure:"default_resolution"`
+	MaxConcurrent  int               `mapstructure:"max_concurrent"`
+	NetworkSources map[string]string `mapstructure:"network_sources"`
 }
 
 type FeatureConfig struct {
@@ -137,6 +138,7 @@ func setDefaults() {
 	viper.SetDefault("capture.default_fps", 30)
 	viper.SetDefault("capture.default_resolution", "1920x1080")
 	viper.SetDefault("capture.max_concurrent", 5)
+	viper.SetDefault("capture.network_sources", map[string]string{})
 
 	// features.hls_preview
 	viper.SetDefault("features.hls_preview.enabled", false)

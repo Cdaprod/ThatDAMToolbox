@@ -6,8 +6,8 @@ import "time"
 // Device represents everything we know about a discovered capture device.
 type Device struct {
 	ID           string                 `json:"id"`             // was UID
-	Kind         string                 `json:"kind,omitempty"` // "v4l2", "usb", "ip", etc.
-	Path         string                 `json:"path,omitempty"` // e.g. "/dev/video0"
+	Kind         string                 `json:"kind,omitempty"` // "v4l2", "usb", "network", etc.
+	Path         string                 `json:"path,omitempty"` // e.g. "/dev/video0" or "rtsp://..."
 	Name         string                 `json:"name"`           // human-readable
 	Capabilities map[string]interface{} `json:"capabilities"`   // whatever the scanner filled in
 	Status       string                 `json:"status,omitempty"`
