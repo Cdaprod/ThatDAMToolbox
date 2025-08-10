@@ -1,31 +1,22 @@
 """
-Async RabbitMQ backend that matches the interface expected by lifecycle hooks
-(start → publish → close) -- now resilient:
-- waits for a ready channel
-- auto-reconnects
-- optional durable topic exchange (ENV EVENT_EXCHANGE, default: "events")
-- no message bounce if no bindings yet (mandatory=False)
+Resilient RabbitMQ connector:
+- robust connect/reconnect
+- durable topic exchange (EVENT_EXCHANGE, default "events"; set "" to use default exchange)
+- mandatory=False to avoid Basic.Return when no bindings exist
+- return-listener installed (silently drops returns)
+- loud import + start logs so you can confirm it’s the version running
 """
-
 from __future__ import annotations
 
-import asyncio
-import json
-import logging
-import os
+import asyncio, json, logging, os
 from typing import Optional
-
-import aio_pika
-import aiormq
-
-from .types import Event  # must provide .to_dict()
+import aio_pika, aiormq
+from .types import Event
 
 _log = logging.getLogger("event.rabbitmq")
-
+_log.info("🔔 importing RabbitMQ connector v2 (resilient)")
 
 class RabbitMQBus:
-    """Async wrapper around aio-pika with resilient channel + exchange handling."""
-
     def __init__(self, amqp_url: str, exchange_name: Optional[str] = "events") -> None:
         self._url = amqp_url
         self._exchange_name = (exchange_name or "").strip()
@@ -35,12 +26,9 @@ class RabbitMQBus:
         self._ready_evt = asyncio.Event()
         self._lock = asyncio.Lock()
 
-    # ------------------------------------------------------------------ #
     async def start(self) -> None:
-        """Connect and open channel (idempotent). Declare exchange if configured."""
         async with self._lock:
             if self._conn and not self._conn.is_closed and self._chan and not self._chan.is_closed:
-                # ensure exchange exists if needed
                 if self._exchange_name and not self._exchange:
                     self._exchange = await self._chan.declare_exchange(
                         self._exchange_name, aio_pika.ExchangeType.TOPIC, durable=True
@@ -50,22 +38,23 @@ class RabbitMQBus:
 
             self._ready_evt.clear()
             self._conn = await aio_pika.connect_robust(
-                self._url,
-                timeout=5.0,
+                self._url, timeout=5.0,
                 client_properties={"connection_name": "video-eventbus"},
             )
             self._chan = await self._conn.channel(publisher_confirms=False)
             await self._chan.set_qos(prefetch_count=32)
 
-            # Declare (or get) a durable topic exchange if a name is provided
+            # Drop any broker returns on the floor (defensive; mandatory=False already)
+            self._chan.set_return_listener(lambda *a, **kw: _log.debug("↩️  AMQP return dropped: %r %r", a, kw))
+
             if self._exchange_name:
                 self._exchange = await self._chan.declare_exchange(
                     self._exchange_name, aio_pika.ExchangeType.TOPIC, durable=True
                 )
-                _log.info("RabbitMQ bus connected → %s (exchange=%s)", self._url, self._exchange_name)
+                _log.info("RabbitMQ connected → %s (exchange=%s)", self._url, self._exchange_name)
             else:
                 self._exchange = None
-                _log.info("RabbitMQ bus connected → %s (default-exchange)", self._url)
+                _log.info("RabbitMQ connected → %s (default-exchange)", self._url)
 
             self._ready_evt.set()
 
@@ -83,7 +72,7 @@ class RabbitMQBus:
         if not self._chan or self._chan.is_closed:
             self._chan = await self._conn.channel(publisher_confirms=False)
             await self._chan.set_qos(prefetch_count=32)
-            # re-acquire exchange on a fresh channel
+            self._chan.set_return_listener(lambda *a, **kw: _log.debug("↩️  AMQP return dropped: %r %r", a, kw))
             if self._exchange_name:
                 self._exchange = await self._chan.declare_exchange(
                     self._exchange_name, aio_pika.ExchangeType.TOPIC, durable=True
@@ -93,21 +82,11 @@ class RabbitMQBus:
         self._ready_evt.set()
         return self._chan
 
-    # ------------------------------------------------------------------ #
     async def publish(self, evt: Event) -> None:
-        """
-        Resilient publish:
-        - ensures channel/exchange is ready
-        - retries on transient channel/connection errors
-        - mandatory=False so unroutable messages are dropped instead of Basic.Return
-        """
         body = json.dumps(evt.to_dict()).encode()
         rk = str(evt.topic)
 
-        attempt = 0
-        max_attempts = 5
-        backoff = 0.25
-
+        attempt, max_attempts, backoff = 0, 5, 0.25
         while True:
             attempt += 1
             try:
@@ -116,22 +95,18 @@ class RabbitMQBus:
                 await exchange.publish(
                     aio_pika.Message(body=body, content_type="application/json"),
                     routing_key=rk,
-                    mandatory=False,  # don’t bounce if there are no bindings yet
+                    mandatory=False,  # ← prevents Basic.Return
                 )
                 return
-            except (
-                aiormq.exceptions.ChannelInvalidStateError,
-                aiormq.exceptions.ConnectionClosed,
-                aio_pika.exceptions.AMQPException,
-            ) as e:
+            except (aiormq.exceptions.ChannelInvalidStateError,
+                    aiormq.exceptions.ConnectionClosed,
+                    aio_pika.exceptions.AMQPException) as e:
                 if attempt >= max_attempts:
                     _log.warning("EventBus publish failed after %d attempts: %s", attempt, e)
                     raise
                 _log.info("EventBus publish retry %d/%d (%.2fs): %s", attempt, max_attempts, backoff, e)
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 2.0)
+                await asyncio.sleep(backoff); backoff = min(backoff * 2, 2.0)
 
-    # ------------------------------------------------------------------ #
     async def close(self) -> None:
         self._ready_evt.clear()
         try:
@@ -145,25 +120,16 @@ class RabbitMQBus:
             self._conn = None
         _log.info("RabbitMQ bus closed")
 
-
-# ---------------------------------------------------------------------- #
+# Singleton
 _BUS_SINGLETON: Optional[RabbitMQBus] = None
 
-
 def get_rabbitmq_bus() -> RabbitMQBus:
-    """
-    Create / return the singleton RabbitMQBus.
-
-    Env:
-      EVENT_BROKER_URL or AMQP_URL  → amqp://user:pass@host:5672/vhost
-      EVENT_EXCHANGE                → topic exchange name (default: "events")
-                                      set to empty to use default exchange
-    """
+    amqp_url = os.getenv("EVENT_BROKER_URL") or os.getenv("AMQP_URL")
+    if not amqp_url:
+        raise RuntimeError("EVENT_BROKER_URL/AMQP_URL is not set")
+    exchange_name = os.getenv("EVENT_EXCHANGE", "events")
     global _BUS_SINGLETON
     if _BUS_SINGLETON is None:
-        amqp_url = os.getenv("EVENT_BROKER_URL") or os.getenv("AMQP_URL")
-        if not amqp_url:
-            raise RuntimeError("EVENT_BROKER_URL/AMQP_URL is not set")
-        exchange_name = os.getenv("EVENT_EXCHANGE", "events")
         _BUS_SINGLETON = RabbitMQBus(amqp_url, exchange_name=exchange_name)
+        _log.info("RabbitMQBus singleton created (exchange=%r)", exchange_name)
     return _BUS_SINGLETON
