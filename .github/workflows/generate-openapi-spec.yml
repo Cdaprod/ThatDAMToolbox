@@ -2,128 +2,144 @@ name: Generate OpenAPI Specs in CI
 
 on:
   push:
-    # regenerate when spec or code changes
     paths:
-      - 'host/services/video-api/openapi.yaml'
+      - 'host/services/capture-daemon/openapi.yaml'
+      - 'video/**'
       - 'docker/web-app/**'
       - 'host/services/capture-daemon/**'
-      - "**/go.*"
+      - '**/go.*'
       - '**/*.go'
       - '**/*.ts'
       - '**/*.py'
   workflow_dispatch:
 
+# ✅ allow committing generated code back to the repo
+permissions:
+  contents: write
+
 jobs:
   generate-clients:
     name: ✨ Generate API Clients
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+    defaults: { run: { shell: bash } }
     strategy:
       matrix:
         generator:
-          # Go client for capture-daemon
           - id: go
             cwd: host/services/capture-daemon
-            input: openapi.yaml
             lang: go
             output: api/gen
-            extra: "--additional-properties=packageName=captureapi"
-          # TypeScript client for web-app
+            extra: "--additional-properties=packageName=captureapi --global-property=apiTests=false,modelTests=false,apiDocs=false,modelDocs=false"
+            candidates: "host/services/capture-daemon/openapi.yaml|capture-daemon/openapi.yaml"
           - id: typescript
             cwd: docker/web-app
-            input: ../../host/services/video-api/openapi.yaml
             lang: typescript-axios
             output: src/lib/api/gen
-            extra: "--additional-properties=supportsES6=true,useSingleRequestParameter=true"
-          # Python client for video-api
+            extra: "--additional-properties=supportsES6=true,useSingleRequestParameter=true --global-property=apiTests=false,modelTests=false,apiDocs=false,modelDocs=false"
+            candidates: "video/api/openapi.yaml|video/openapi.yaml|host/services/video-api/openapi.yaml"
           - id: python
-            cwd: host/services/video-api
-            input: openapi.yaml
+            cwd: video
             lang: python
             output: python_client
-            extra: ""
+            extra: "--global-property=apiTests=false,modelTests=false,apiDocs=false,modelDocs=false"
+            candidates: "video/api/openapi.yaml|video/openapi.yaml|host/services/video-api/openapi.yaml"
+
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true  # ✅ needed for auto-commit with GITHUB_TOKEN
 
-      - name: Set up Java (for OpenAPI Generator)
-        uses: actions/setup-java@v3
+      - name: Set up Java (OpenAPI Generator)
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '11'
 
+      - name: Set up Node (for CLI install)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
       - name: Install OpenAPI Generator CLI
         run: npm install -g @openapitools/openapi-generator-cli@6.6.0
+
+      - name: Resolve OpenAPI spec path
+        id: resolve
+        run: |
+          IFS='|' read -r -a CANDS <<< "${{ matrix.generator.candidates }}"
+          SPEC=""
+          for p in "${CANDS[@]}"; do
+            if [ -f "$p" ]; then SPEC="$p"; break; fi
+          done
+          if [ -z "$SPEC" ]; then
+            echo "❌ No OpenAPI spec found: ${{ matrix.generator.candidates }}"
+            exit 1
+          fi
+          echo "spec=$SPEC" >> "$GITHUB_OUTPUT"
+          echo "Resolved spec: $SPEC"
 
       - name: Generate ${{ matrix.generator.id }} client
         working-directory: ${{ matrix.generator.cwd }}
         run: |
+          # clean to avoid stale files / churn
+          rm -rf "${{ matrix.generator.output }}" .openapi-generator .openapi-generator-ignore
           openapi-generator-cli generate \
-            -i ${{ matrix.generator.input }} \
-            -g ${{ matrix.generator.lang }} \
-            -o ${{ matrix.generator.output }} \
+            -i "${{ steps.resolve.outputs.spec }}" \
+            -g "${{ matrix.generator.lang }}" \
+            -o "${{ matrix.generator.output }}" \
             ${{ matrix.generator.extra }}
 
       - name: Commit generated client
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: chore: regen ${{ matrix.generator.id }} client
-          file_pattern: '${{ matrix.generator.cwd }}/${{ matrix.generator.output }}/*'
+          commit_message: "chore: regen ${{ matrix.generator.id }} client"
+          file_pattern: |
+            ${{ matrix.generator.cwd }}/${{ matrix.generator.output }}/**
 
   build-and-test:
     name: 🛠️ Build & Test
     needs: generate-clients
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+    defaults: { run: { shell: bash } }
     strategy:
       matrix:
         service:
-          - name: capture-daemon
-            lang: go
-            dir: host/services/capture-daemon
-          - name: video-api
-            lang: python
-            dir: host/services/video-api
-          - name: web-app
-            lang: node
-            dir: docker/web-app
+          - { name: capture-daemon, lang: go,     dir: host/services/capture-daemon }
+          - { name: video,          lang: python, dir: video }
+          - { name: web-app,        lang: node,   dir: docker/web-app }
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Go
         if: matrix.service.lang == 'go'
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.20'
+        uses: actions/setup-go@v5
+        with: { go-version: '1.22.x' }
 
       - name: Setup Python
         if: matrix.service.lang == 'python'
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+        uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
 
       - name: Setup Node
         if: matrix.service.lang == 'node'
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+        uses: actions/setup-node@v4
+        with: { node-version: '18' }
 
       - name: Build & Test ${{ matrix.service.name }}
         working-directory: ${{ matrix.service.dir }}
         run: |
           case "${{ matrix.service.name }}" in
             capture-daemon)
-              go build -o bin/capture-daemon main.go
-              go test ./...
+              go build -o bin/capture-daemon ./...
+              go test ./... -v -race -count=1
               ;;
-            video-api)
+            video)
+              python -m pip install --upgrade pip wheel
               pip install -r requirements.txt
-              pytest
+              pytest -q
               ;;
             web-app)
               npm ci
