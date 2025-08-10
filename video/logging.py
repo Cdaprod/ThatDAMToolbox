@@ -10,8 +10,14 @@ import logging
 import os
 from typing import Optional
 
-
 _CONFIGURED = False
+
+
+class _HealthCheckFilter(logging.Filter):
+    """Filter out access logs for /health endpoint."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "/health" not in msg
 
 
 def configure_logging(level: Optional[int | str] = None) -> None:
@@ -37,4 +43,9 @@ def configure_logging(level: Optional[int | str] = None) -> None:
         level=level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    # Silence /health requests from uvicorn.access
+    uvicorn_access = logging.getLogger("uvicorn.access")
+    uvicorn_access.addFilter(_HealthCheckFilter())
+
     _CONFIGURED = True
