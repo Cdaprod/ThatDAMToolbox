@@ -325,8 +325,8 @@ services:
       # VIDEO_STORAGE:  "sqlite"                      # Default (no env needed)
       # VIDEO_STORAGE:  "faiss"                       # Use Faiss vector index
       # VIDEO_STORAGE:  "weaviate"                    # Use Weaviate backend
-      # WEAVIATE_URL:   "http://localhost:8081"        # For Weaviate backend:
-      # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
+      WEAVIATE_URL:   "http://localhost:8082"         # For Weaviate backend:
+      MINIO_ENDPOINT: "http://localhost:9000"         # Optional if your code needs it
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"

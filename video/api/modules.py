@@ -133,4 +133,16 @@ def init_modules(app: FastAPI) -> None:
     setup_module_static_mounts(app)
     log.info("video.api.modules initialized (VERSION=%s, routers=%d)", VIDEO_API_MODULES_VERSION, len(routers))
 
+try:
+    _v = VIDEO_API_MODULES_VERSION.strip()
+except Exception:
+    _v = "?"
+log.info("modules.py: VERSION=%s, discovered_routers=%d", _v, len(routers))
+for r in routers:
+    # show prefixes to prove inclusion
+    try:
+        log.info("modules.py: router tags=%s prefix=%s", getattr(r, "tags", None), getattr(r, "prefix", None))
+    except Exception:
+        pass
+
 __all__ = ["routers", "setup_module_static_mounts", "init_modules"]
