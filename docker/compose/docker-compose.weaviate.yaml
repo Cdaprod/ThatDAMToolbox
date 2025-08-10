@@ -4,7 +4,7 @@
 services:
   weaviate:
     image: semitechnologies/weaviate:latest
-    container_name: weaviate_server
+    container_name: thatdamtoolbox-weaviate
     command: ["--host","0.0.0.0","--port","8080","--scheme","http"]
     ports: ["8081:8080","50051:50051"]
     environment:

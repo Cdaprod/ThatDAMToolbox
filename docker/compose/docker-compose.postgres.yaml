@@ -4,7 +4,7 @@
 services:
   postgres:
     image: postgres:15
-    container_name: weaviate_pg
+    container_name: thatdamtoolbox-weaviate_pg
     environment:
       POSTGRES_USER:      weaviate
       POSTGRES_PASSWORD:  weaviate
