@@ -2,7 +2,8 @@
 'use client';
 
 import ToolCard from '@/components/ToolCard';
-import { dashboardTools, useIntelligentLayout } from '@/components/dashboardTools';
+import { dashboardTools } from '@/components/dashboardTools';
+import { useIntelligentLayout } from '@/hooks/useIntelligentLayout';
 import { gridStyle } from '@/styles/theme';
 
 export default function HomePage() {
