@@ -28,7 +28,11 @@ from typing import List
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from video.config import VIDEO_API_MODULES_VERSION
+try:
+    from video.config import VIDEO_API_MODULES_VERSION
+except Exception:
+    VIDEO_API_MODULES_VERSION = os.getenv("VIDEO_API_MODULES_VERSION", "2")
+    
 from video.paths import MODULE_PATH_REGISTRY
 
 log = logging.getLogger("video.api.modules")

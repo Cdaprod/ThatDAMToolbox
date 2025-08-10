@@ -14,6 +14,8 @@ _cfg_path = Path(os.getenv("VIDEO_CFG", str(Path.home() / "video" / "video.cfg")
 _cfg = configparser.ConfigParser()
 _cfg.read(_cfg_path)
 
+# Default to v2 (autodiscovery + static mounts)
+VIDEO_API_MODULES_VERSION = os.getenv("VIDEO_API_MODULES_VERSION", "2")
 
 @dataclass
 class VideoConfig:
