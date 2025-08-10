@@ -1,10 +1,12 @@
 # /docker/capture-daemon/Dockerfile
 # ---------- build stage ----------
-FROM golang:1.22-alpine AS build
+ARG GO_VERSION=1.23
+FROM golang:${GO_VERSION}-alpine AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
 WORKDIR /src
 COPY go.mod ./
 COPY . .           # <-- make sure the whole daemon source is here
-RUN CGO_ENABLED=0 go build -o capture-daemon ./main.go
+RUN go build -o capture-daemon ./main.go
 
 # ---------- runtime stage ----------
 FROM alpine:3.20 AS runtime

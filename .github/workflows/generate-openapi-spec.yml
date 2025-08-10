@@ -116,7 +116,7 @@ jobs:
       - name: Setup Go
         if: matrix.service.lang == 'go'
         uses: actions/setup-go@v5
-        with: { go-version: '1.22.x' }
+        with: { go-version: '1.23.x' }
 
       - name: Setup Python
         if: matrix.service.lang == 'python'

@@ -1,24 +1,35 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.22-alpine AS build
+ARG GO_VERSION=1.23
+FROM golang:${GO_VERSION}-alpine AS builder
+ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
 ARG TARGETOS TARGETARCH VERSION
 WORKDIR /src
-COPY go.work ./
+
+# bring in workspace and manifests first for caching
+COPY go.work go.work.sum ./
 COPY host/services/shared/go.mod host/services/shared/go.mod
 COPY host/services/shared/go.sum host/services/shared/go.sum
 COPY host/services/camera-proxy/go.mod host/services/camera-proxy/go.mod
 COPY host/services/camera-proxy/go.sum host/services/camera-proxy/go.sum
+
+# sync workspace to resolve local modules
 RUN go work sync
+
+# now copy sources
 COPY host/services/shared/ host/services/shared/
 COPY host/services/camera-proxy/ host/services/camera-proxy/
+
 WORKDIR /src/host/services/camera-proxy
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /out/camera-proxy .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/camera-proxy .
 
 FROM alpine:3.20
 ARG VERSION
 LABEL org.opencontainers.image.version=$VERSION
 RUN apk add --no-cache ca-certificates ffmpeg v4l-utils usbutils
-COPY --from=build /out/camera-proxy /usr/local/bin/camera-proxy
+COPY --from=builder /out/camera-proxy /usr/local/bin/camera-proxy
 EXPOSE 8000
 ENTRYPOINT ["/usr/local/bin/camera-proxy"]
 

@@ -1,5 +1,7 @@
 # simple Go build
-FROM golang:1.22-alpine AS build
+ARG GO_VERSION=1.23
+FROM golang:${GO_VERSION}-alpine AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
 
 WORKDIR /src
 COPY . .

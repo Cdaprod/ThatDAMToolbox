@@ -69,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Tools (pin staticcheck to a Go 1.22–compatible version)
+          # Tools (pin staticcheck to a Go 1.23–compatible version)
           go install honnef.co/go/tools/cmd/staticcheck@v0.5.1
           go install github.com/kisielk/errcheck@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
