@@ -412,7 +412,7 @@ const AssetExplorer: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 min-w-0">
             <SearchBarExtension
               placeholder="Search assets, tags, metadata..."
               onSearch={handleSearch}
@@ -420,7 +420,7 @@ const AssetExplorer: React.FC = () => {
               onResultSelect={handleResultSelect}
               availableTags={availableTags}
               availableFileTypes={availableFileTypes}
-              className="w-96"
+              className="w-full max-w-search-bar"
               showFilters
               showVectorSearch
             />
