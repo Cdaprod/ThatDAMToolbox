@@ -48,7 +48,8 @@ help: ## Show this help
 # VERSIONING (GitVersion SemVer parity: local == CI)
 # =============================================================================
 
-GITVERSION_CACHE := $(shell git rev-parse --git-dir)/.gitversion
+#GITVERSION_CACHE := $(shell git rev-parse --git-dir)/.gitversion
+GITVERSION_CACHE := $(shell git rev-parse --show-toplevel)/.github/.gitversion
 
 define run_gitversion
 	@if command -v gitversion >/dev/null 2>&1; then \
