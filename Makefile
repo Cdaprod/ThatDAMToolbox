@@ -48,30 +48,33 @@ help: ## Show this help
 # VERSIONING (GitVersion SemVer parity: local == CI)
 # =============================================================================
 
-#GITVERSION_CACHE := $(shell git rev-parse --git-dir)/.gitversion
-GITVERSION_CACHE := $(shell git rev-parse --show-toplevel)/.github/.gitversion
+# Cache file lives under .github, not .git
+REPO_ROOT       := $(shell git rev-parse --show-toplevel)
+GITVERSION_YML  := $(REPO_ROOT)/.github/GitVersion.yml
+GITVERSION_CACHE:= $(REPO_ROOT)/.github/.gitversion
 
 define run_gitversion
 	@if command -v gitversion >/dev/null 2>&1; then \
-	    gitversion /config ./$(ROOT)/.github/GitVersion.yml -verbosity Warn; \
+	    gitversion /config "$(GITVERSION_YML)" -verbosity Warn; \
 	else \
-	    docker run --rm -v "$$(pwd)":/repo gittools/gitversion:5 /repo \
+	    docker run --rm -v "$(REPO_ROOT)":/repo gittools/gitversion:5 /repo \
 	        /config /repo/.github/GitVersion.yml -verbosity Warn; \
 	fi
 endef
 
+.PHONY: version
 version:
 	@echo "🔍 Computing version with GitVersion..."
-	$(call run_gitversion) | tee $(GITVERSION_CACHE)
+	@mkdir -p "$(dir $(GITVERSION_CACHE))"
+	$(call run_gitversion) | tee "$(GITVERSION_CACHE)" >/dev/null
 
+# If cache missing, populate it once during parse
 ifeq ($(wildcard $(GITVERSION_CACHE)),)
-    $(shell $(MAKE) --no-print-directory version >/dev/null)
+  $(shell $(MAKE) --no-print-directory version >/dev/null)
 endif
 
-VERSION    := $(shell awk '/^SemVer:/ {print $$2}' $(GITVERSION_CACHE))
-SHORT_SHA  := $(shell git rev-parse --short HEAD)
-
-.PHONY: version
+VERSION   := $(shell awk '/^SemVer:/ {print $$2}' "$(GITVERSION_CACHE)")
+SHORT_SHA := $(shell git rev-parse --short HEAD)
 
 # =============================================================================
 # DOCKER TARGETS
@@ -81,28 +84,28 @@ SHORT_SHA  := $(shell git rev-parse --short HEAD)
         compose-up compose-down compose-logs compose-restart compose-status
 
 docker-build: ## Build Docker images (conditionally tag with TAG_IMAGE=true)
-	@echo "📦 Building $(DOCKER_IMAGE):latest with VERSION=$(VERSION) and SHA=$(SHORT_SHA)" $(DOCKER_COMPOSE) build \
-		--build-arg VERSION=$(VERSION) \
-		--build-arg GIT_SHA=$(SHORT_SHA)
-
-ifneq ($(TAG_IMAGE),)
-	@echo "🏷️ Tagging image as $(DOCKER_IMAGE):$(VERSION)"
-	@docker tag $(DOCKER_IMAGE):latest $(DOCKER_IMAGE):$(VERSION)
-endif
+	@echo "📦 Building $(DOCKER_IMAGE):latest with VERSION=$(VERSION) and SHA=$(SHORT_SHA)"
+	$(DOCKER_COMPOSE) build \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg GIT_SHA="$(SHORT_SHA)"
+	@if [ -n "$(strip $(TAG_IMAGE))" ]; then \
+	  echo "🏷️  Tagging image as $(DOCKER_IMAGE):$(VERSION)"; \
+	  docker tag "$(DOCKER_IMAGE):latest" "$(DOCKER_IMAGE):$(VERSION)"; \
+	fi
 
 docker-up: ## Start Docker services
-        $(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d
 
 docker-down: ## Stop Docker services
-        $(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) down
 
 docker-logs: ## Follow Docker logs
-        $(DOCKER_COMPOSE) logs -f
+	$(DOCKER_COMPOSE) logs -f
 
 docker-restart: docker-down docker-up ## Restart Docker services
 
 docker-status: ## Show Docker service status
-        $(DOCKER_COMPOSE) ps
+	$(DOCKER_COMPOSE) ps
 
 compose-up: docker-up
 compose-down: docker-down
@@ -114,21 +117,27 @@ compose-status: docker-status
 # GO HOST SERVICES (workspace-driven, keeps named binaries for 3 core services)
 # =============================================================================
 
-# Discover workspace modules from go.work (Go ≥ 1.20 preferred)
-GO_BIN            ?= go
-WORK_JSON         := $(shell $(GO_BIN) work edit -json 2>/dev/null)
+# --- Go workspace discovery (robust, ASCII-only) -----------------------------
+GO_BIN    ?= go
+WORK_JSON := $(shell $(GO_BIN) work edit -json 2>/dev/null || true)
+
 ifeq ($(strip $(WORK_JSON)),)
-  # Fallback parser: handles both single-line `use ./mod` and block `use ( ./a ./b )`
-  WORK_MODULES    := $(shell awk 'BEGIN{inuse=0} \
+  # Fallback: parse `use` lines from go.work (handles block and single-line)
+  WORK_MODULES := $(shell awk 'BEGIN{inuse=0} \
     /^use[[:space:]]*\(/ {inuse=1; next} \
-    /^\)/ {inuse=0} \
+    /^\)/               {inuse=0} \
     inuse==1 && $$1 ~ /^\.\// {print $$1} \
     /^use[[:space:]]+\.\// {sub(/^use[[:space:]]+/,""); print} \
-  ' go.work)
+  ' go.work 2>/dev/null || true)
 else
-  WORK_MODULES    := $(shell printf '%s\n' '$(WORK_JSON)' | sed -n 's/.*"DiskPath":"\([^"]*\)".*/\1/p')
+  # Extract all DiskPath entries from JSON without jq
+  WORK_MODULES := $(shell printf '%s\n' '$(WORK_JSON)' \
+    | grep -o '"DiskPath":"[^"]*"' \
+    | sed 's/.*"DiskPath":"//;s/"$$//') \
 endif
-WORK_MODULES      := $(sort $(filter-out ,$(WORK_MODULES)))
+
+# Normalize list (drop empties, sort/dedupe)
+WORK_MODULES := $(sort $(strip $(WORK_MODULES)))
 
 # Core services that produce named binaries (install step depends on these paths)
 CORE_GATEWAY_DIR         := $(HOST_SERVICES_DIR)/api-gateway
@@ -153,37 +162,52 @@ build-all: build-gateway build-proxy build-capture-daemon go-build-rest
 
 build-gateway: ## Build API Gateway
 	@echo "🔨 $(CORE_GATEWAY_DIR)"
-	cd $(CORE_GATEWAY_DIR) && \
-	CGO_ENABLED=$(CGO_ENABLED) $(GO_BIN) build $(GO_BUILD_FLAGS) -o api-gateway ./cmd
+	cd "$(CORE_GATEWAY_DIR)" && \
+	CGO_ENABLED="$(CGO_ENABLED)" "$(GO_BIN)" build $(GO_BUILD_FLAGS) -o api-gateway ./cmd
 
 build-proxy: ## Build Camera Proxy
 	@echo "🔨 $(CORE_PROXY_DIR)"
-	cd $(CORE_PROXY_DIR) && \
-	CGO_ENABLED=$(CGO_ENABLED) $(GO_BIN) build $(GO_BUILD_FLAGS) -o camera-proxy .
+	cd "$(CORE_PROXY_DIR)" && \
+	CGO_ENABLED="$(CGO_ENABLED)" "$(GO_BIN)" build $(GO_BUILD_FLAGS) -o camera-proxy .
 
 build-capture-daemon: ## Build the capture daemon
 	@echo "🔨 $(CORE_CAPTURE_DAEMON_DIR)"
-	cd $(CORE_CAPTURE_DAEMON_DIR) && \
-	CGO_ENABLED=$(CGO_ENABLED) $(GO_BIN) build $(GO_BUILD_FLAGS) -o capture-daemon .
+	cd "$(CORE_CAPTURE_DAEMON_DIR)" && \
+	CGO_ENABLED="$(CGO_ENABLED)" "$(GO_BIN)" build $(GO_BUILD_FLAGS) -o capture-daemon .
 
 go-build-rest: ## Build remaining workspace modules (generic ./...)
-	@set -e; \
-	for m in $(OTHER_MODULES); do \
-	  echo "🔧 build $$m"; \
-	  $(GO_BIN) -C "$$m" build ./...; \
-	done
+	@mods="$(OTHER_MODULES)"; \
+	if [ -n "$$mods" ]; then \
+	  set -e; \
+	  for m in $$mods; do \
+	    echo "🔧 build $$m"; \
+	    "$(GO_BIN)" -C "$$m" build ./...; \
+	  done; \
+	else \
+	  echo "ℹ️  No additional workspace modules to build"; \
+	fi
 
 # Workspace helpers
 go-list: ## List modules from go.work
-	@printf 'Workspace modules:\n'; \
-	for m in $(WORK_MODULES); do printf '  • %s\n' "$$m"; done
+	@mods="$(WORK_MODULES)"; \
+	if [ -n "$$mods" ]; then \
+	  printf 'Workspace modules:\n'; \
+	  for m in $$mods; do printf '  • %s\n' "$$m"; done; \
+	else \
+	  echo "ℹ️  No modules found in go.work"; \
+	fi
 
 go-tidy: ## go mod tidy for all modules in go.work
-	@set -e; \
-	for m in $(WORK_MODULES); do \
-	  echo "→ tidy $$m"; \
-	  $(GO_BIN) -C "$$m" mod tidy; \
-	done
+	@mods="$(WORK_MODULES)"; \
+	if [ -n "$$mods" ]; then \
+	  set -e; \
+	  for m in $$mods; do \
+	    echo "→ tidy $$m"; \
+	    "$(GO_BIN)" -C "$$m" mod tidy; \
+	  done; \
+	else \
+	  echo "ℹ️  No modules to tidy"; \
+	fi
 
 # Install all services
 install-all: build-all setup-system install-binaries install-services enable-services ## Install everything
@@ -212,31 +236,59 @@ enable-services: ## Enable all services
 	@echo "Enabling services..."
 	-sudo systemctl enable api-gateway camera-proxy capture-daemon
 
+
 # =============================================================================
 # SERVICE MANAGEMENT
 # =============================================================================
 
-.PHONY: start stop restart status logs
+SERVICES := api-gateway camera-proxy capture-daemon
+
+.PHONY: start stop restart status logs start-% stop-% restart-% status-% logs-%
 
 start: ## Start all services
-	sudo systemctl start api-gateway camera-proxy capture-daemon
+	@echo "▶️  Starting: $(SERVICES)"
+	sudo systemctl start $(SERVICES)
 
 stop: ## Stop all services
-	sudo systemctl stop api-gateway camera-proxy capture-daemon
+	@echo "⏹  Stopping: $(SERVICES)"
+	sudo systemctl stop $(SERVICES)
 
-restart: stop start ## Restart all services
+restart: ## Restart all services
+	@echo "🔁 Restarting: $(SERVICES)"
+	sudo systemctl restart $(SERVICES)
 
-status: ## Show service status
+status: ## Show service status (host + docker)
 	@echo "=== Host Services Status ==="
-	-sudo systemctl status api-gateway --no-pager -l
-	-sudo systemctl status camera-proxy --no-pager -l
-	-sudo systemctl status capture-daemon --no-pager -l
-        @echo -e "\n=== Docker Services Status ==="
-        $(DOCKER_COMPOSE) ps
+	-@for s in $(SERVICES); do sudo systemctl status $$s --no-pager -l || true; done
+	@echo
+	@echo "=== Docker Services Status ==="
+	$(DOCKER_COMPOSE) ps
 
-logs: ## Show all logs
-	@echo "=== Host Services Logs ==="
-	sudo journalctl -u api-gateway -u camera-proxy -u capture-daemon -f --no-pager
+logs: ## Tail host services logs
+	@echo "=== Host Services Logs (follow) ==="
+	sudo journalctl -fu $(SERVICES) --no-pager
+
+# ---------------- Individual service helpers ----------------
+
+start-%: ## Start a single service (make start-<name>)
+	@echo "▶️  Starting: $*"
+	sudo systemctl start $*
+
+stop-%: ## Stop a single service (make stop-<name>)
+	@echo "⏹  Stopping: $*"
+	sudo systemctl stop $*
+
+restart-%: ## Restart a single service (make restart-<name>)
+	@echo "🔁 Restarting: $*"
+	sudo systemctl restart $*
+
+status-%: ## Status for a single service (make status-<name>)
+	-@sudo systemctl status $* --no-pager -l || true
+
+logs-%: ## Follow logs for a single service (make logs-<name>)
+	@echo "=== Logs for $* (follow) ==="
+	sudo journalctl -fu $* --no-pager
+
 
 # =============================================================================
 # HEALTH & TESTING
@@ -272,6 +324,7 @@ dev-test: ## Quick development test
 	@curl -s http://localhost:8080/health || echo "Python API: OFFLINE"
 	@curl -s http://localhost:3000/ || echo "Frontend: OFFLINE"
 
+
 # =============================================================================
 # DEVELOPMENT MODE
 # =============================================================================
@@ -302,6 +355,7 @@ dev-all: ## Start everything in development mode
 	$(MAKE) dev-gateway &
 	@echo "All services starting... Use Ctrl+C to stop"
 
+
 # =============================================================================
 # DEPLOYMENT MODES
 # =============================================================================
@@ -331,31 +385,46 @@ deploy-host-only: ## Host services only (no Docker)
 	$(MAKE) start
 	$(MAKE) health
 
+
 # =============================================================================
 # MAINTENANCE & CLEANUP
 # =============================================================================
 
-.PHONY: clean-all clean-go clean-docker uninstall-all
+.PHONY: clean-all clean-go clean-docker uninstall-all clean-work clean-bins
 
 clean-all: clean-go clean-docker ## Clean everything
 
+# Remove built binaries for core services (safe if missing)
 clean-go: ## Clean Go build artifacts
-	rm -f $(HOST_SERVICES_DIR)/api-gateway/api-gateway
-	rm -f $(HOST_SERVICES_DIR)/camera-proxy/camera-proxy
-	rm -f $(HOST_SERVICES_DIR)/capture-daemon/capture-daemon
+	@echo "🧹 Cleaning Go artifacts"
+	@rm -f "$(HOST_SERVICES_DIR)/api-gateway/api-gateway"
+	@rm -f "$(HOST_SERVICES_DIR)/camera-proxy/camera-proxy"
+	@rm -f "$(HOST_SERVICES_DIR)/capture-daemon/capture-daemon"
 
+# Optional: nuke local Go build cache & module cache (use when CI space is tight)
+clean-work: ## Clean Go build caches (~/.cache/go-build and GOPATH mod cache)
+	@echo "🗑  Clearing Go build cache"
+	@go clean -cache -testcache -modcache
+
+# Remove compose stack, images built by this repo, volumes, orphans
 clean-docker: ## Clean Docker resources
-        $(DOCKER_COMPOSE) down --rmi all --volumes --remove-orphans 2>/dev/null || true
-        docker system prune -f
+	$(DOCKER_COMPOSE) down --rmi all --volumes --remove-orphans 2>/dev/null || true
+	docker system prune -f
+
+# Remove installed binaries from /usr/local/bin (leave data dirs intact)
+clean-bins: ## Remove installed binaries only (keeps services + data)
+	@echo "🧽 Removing installed binaries from $(BIN_DIR)"
+	-@sudo rm -f "$(BIN_DIR)/api-gateway" "$(BIN_DIR)/camera-proxy" "$(BIN_DIR)/capture-daemon"
 
 uninstall-all: ## Uninstall everything
-	@echo "Uninstalling all services..."
-	-sudo systemctl stop api-gateway camera-proxy capture-daemon
-	-sudo systemctl disable api-gateway camera-proxy capture-daemon
-	-sudo rm -f $(BIN_DIR)/api-gateway $(BIN_DIR)/camera-proxy $(BIN_DIR)/capture-daemon
-	-sudo rm -f $(SYSTEMD_DIR)/api-gateway.service $(SYSTEMD_DIR)/camera-proxy.service $(SYSTEMD_DIR)/capture-daemon.service
-	sudo systemctl daemon-reload
-	@echo "Uninstall complete. Data directories preserved."
+	@echo "🧨 Uninstalling all services..."
+	-@sudo systemctl stop api-gateway camera-proxy capture-daemon
+	-@sudo systemctl disable api-gateway camera-proxy capture-daemon
+	-@sudo rm -f "$(BIN_DIR)/api-gateway" "$(BIN_DIR)/camera-proxy" "$(BIN_DIR)/capture-daemon"
+	-@sudo rm -f "$(SYSTEMD_DIR)/api-gateway.service" "$(SYSTEMD_DIR)/camera-proxy.service" "$(SYSTEMD_DIR)/capture-daemon.service"
+	@sudo systemctl daemon-reload
+	@echo "✅ Uninstall complete. Data directories preserved."
+
 
 # =============================================================================
 # VERSION TAGGING
@@ -365,6 +434,7 @@ uninstall-all: ## Uninstall everything
 tag: ## Manually tag the current commit with the computed version
 	@git tag -a "$(VERSION)" -m "Release $(VERSION)"
 	@git push origin "$(VERSION)"
+
 
 # =============================================================================
 # GITHUB ACTIONS BUILD REPORT ARTIFACT
@@ -376,34 +446,53 @@ download-report: ## Download GitHub Actions build-report artifact
 	@echo "✅ build-report.txt saved"
 	@ls -l build-report.txt
 
+
 # =============================================================================
 # INFRA LAYER BOOTSTRAPPING
 # =============================================================================
 
 # ---- Config ----
-INFRA_COMPOSE=docker/compose/infra.yaml
-INFRA_PROFILE=infra
-INFRA_DOCKER_COMPOSE=docker compose -f $(INFRA_COMPOSE)
+INFRA_COMPOSE        ?= docker/compose/infra.yaml
+INFRA_PROFILE        ?= infra
+INFRA_DOCKER_COMPOSE := docker compose -f "$(INFRA_COMPOSE)" --profile "$(INFRA_PROFILE)"
+
+.PHONY: infra-build infra-up infra-wait infra-bootstrap-weaviate infra-up-all infra-down infra-logs
 
 # ---- Build All Infra Layer Services ----
 infra-build:
-        $(INFRA_DOCKER_COMPOSE) build
+	$(INFRA_DOCKER_COMPOSE) build --pull
 
 # ---- Deploy Infra Layer (up in detached mode) ----
 infra-up:
-        $(INFRA_DOCKER_COMPOSE) up -d --wait --pull always --remove-orphans --profile $(INFRA_PROFILE)
+	$(INFRA_DOCKER_COMPOSE) up -d --wait --pull always --remove-orphans
 
 # ---- Wait for All Services to be Healthy ----
+# Falls back to "running" if a service has no healthcheck.
 infra-wait:
-        @echo "⏳ Waiting for all infra services to be healthy..."
-        @$(INFRA_DOCKER_COMPOSE) ps
-        @timeout 90s bash -c 'until $(INFRA_DOCKER_COMPOSE) ps | grep -q "healthy"; do sleep 3; $(INFRA_DOCKER_COMPOSE) ps; done'
-        @echo "✅ All infra services healthy!"
+	@echo "⏳ Waiting for infra services to be healthy (profile=$(INFRA_PROFILE))..."
+	@$(INFRA_DOCKER_COMPOSE) ps
+	@set -e; \
+	DEADLINE=$$(($(date +%s) + 90)); \
+	while :; do \
+	  all_ok=1; \
+	  for cid in $$($(INFRA_DOCKER_COMPOSE) ps -q); do \
+	    st=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' $$cid 2>/dev/null || echo "unknown"); \
+	    case "$$st" in \
+	      healthy|running) : ;; \
+	      *) all_ok=0 ;; \
+	    esac; \
+	  done; \
+	  [ "$$all_ok" -eq 1 ] && break; \
+	  [ $$(date +%s) -ge $$DEADLINE ] && echo "❌ Timeout waiting for infra health" && exit 1; \
+	  sleep 3; \
+	  $(INFRA_DOCKER_COMPOSE) ps; \
+	done
+	@echo "✅ All infra services healthy!"
 
 # ---- Bootstrap Weaviate (Schema, etc) ----
 infra-bootstrap-weaviate:
-        @echo "🚀 Bootstrapping Weaviate schema..."
-        $(INFRA_DOCKER_COMPOSE) run --rm weaviate-schema-bootstrap
+	@echo "🚀 Bootstrapping Weaviate schema..."
+	$(INFRA_DOCKER_COMPOSE) run --rm weaviate-schema-bootstrap
 
 # ---- One-Stop Infra Layer Bringup (build, up, wait, bootstrap) ----
 infra-up-all: infra-build infra-up infra-wait infra-bootstrap-weaviate
@@ -411,13 +500,12 @@ infra-up-all: infra-build infra-up infra-wait infra-bootstrap-weaviate
 
 # ---- Teardown/Cleanup ----
 infra-down:
-        $(INFRA_DOCKER_COMPOSE) down --remove-orphans --volumes
+	$(INFRA_DOCKER_COMPOSE) down --remove-orphans --volumes
 
 # ---- Logs ----
 infra-logs:
-        $(INFRA_DOCKER_COMPOSE) logs -f
+	$(INFRA_DOCKER_COMPOSE) logs -f
 
-.PHONY: infra-build infra-up infra-wait infra-bootstrap-weaviate infra-up-all infra-down infra-logs
 
 # =============================================================================
 # QUICK REFERENCE
