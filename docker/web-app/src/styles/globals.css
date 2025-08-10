@@ -67,5 +67,8 @@ a {
   .border-theme-primary{ border-color:    var(--theme-primary)   !important; }
 }
 
-.is-selected { @apply ring-2 ring-theme-accent bg-theme-accent/10; }
+.is-selected {
+  @apply ring-2 ring-theme-accent;
+  background-color: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+}
 .is-active   { @apply bg-gray-200; }
