@@ -16,4 +16,25 @@
   --container-md : 768px;
   --container-lg : 1024px;
   --container-xl : 1280px;
+
+  /* Colors */
+  --color-background: #f7f9fc;
+  --color-surface:    #ffffff;
+  --color-border:     #e5e7eb; /* gray-200 */
+  --color-text:       #1f2937; /* gray-800 */
+  --color-muted:      #6b7280; /* gray-500 */
+  --color-primary:    #3b82f6; /* blue-500 */
+  --color-primary-bg: #eff6ff; /* blue-50 */
+  --color-accent:     #a855f7; /* purple-500 */
+  --color-accent-bg:  #f5f3ff; /* purple-50 */
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.15);
 }
