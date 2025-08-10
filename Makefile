@@ -169,6 +169,12 @@ tidy:
 	  (cd $$mod && go mod tidy) || exit 1; \
 	done
 
+go-tidy-all:
+	@grep -E '^\s*\./' go.work | awk '{print $$1}' | while read dir; do \
+		echo "Tidying $$dir"; \
+		go mod tidy -C $$dir; \
+	done
+
 # =============================================================================
 # SERVICE MANAGEMENT
 # =============================================================================
