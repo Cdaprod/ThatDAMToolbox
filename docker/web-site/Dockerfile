@@ -23,20 +23,20 @@ COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 RUN --mount=type=cache,target=/root/.npm \
     --mount=type=cache,target=/usr/local/share/.cache/yarn \
     --mount=type=cache,target=/pnpm-store \
-    sh -ceu '
-      if [ -f yarn.lock ]; then
-        corepack enable yarn
-        yarn install --frozen-lockfile
-      elif [ -f package-lock.json ]; then
-        npm ci || (echo "npm ci failed – falling back to npm install" && npm install)
-      elif [ -f pnpm-lock.yaml ]; then
-        corepack enable pnpm
-        pnpm install --frozen-lockfile
-      else
-        npm install
-      fi
-      # prove node_modules exists (avoids COPY --from=deps not found)
-      test -d node_modules
+    sh -ceu '\
+      if [ -f yarn.lock ]; then \
+        corepack enable yarn; \
+        yarn install --frozen-lockfile; \
+      elif [ -f package-lock.json ]; then \
+        npm ci || (echo "npm ci failed – falling back to npm install" && npm install); \
+      elif [ -f pnpm-lock.yaml ]; then \
+        corepack enable pnpm; \
+        pnpm install --frozen-lockfile; \
+      else \
+        npm install; \
+      fi; \
+      # prove node_modules exists (avoids COPY --from=deps not found) \
+      test -d node_modules \
     '
 
 # ─────────────────────────────────────────────────────────────────────────────
