@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ThatDamToolbox Service Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+      background: linear-gradient(135deg, #1e1e2e, #2d2d44);
+      color: #cdd6f4; min-height: 100vh; padding: 20px;
+    }
+    .dashboard { max-width: 1400px; margin: 0 auto; }
+    .header { text-align:center; margin-bottom: 24px; padding: 16px; border-radius:12px;
+      background: rgba(17,17,27,.8); border: 1px solid rgba(116,199,236,.2); }
+    .header h1{ color:#74c7ec; font-size:2rem; margin-bottom:6px; }
+    .host-info{ color:#89b4fa; }
+    .last-updated{ color:#f9e2af; font-size:.9rem; margin-top:6px; }
+
+    .stats-bar{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
+      background: rgba(17,17,27,.8); border:1px solid rgba(116,199,236,.2);
+      border-radius:12px; padding:16px; margin-bottom:24px; }
+    .stat-item{ text-align:center; }
+    .stat-number{ font-size:1.6rem; font-weight:700; margin-bottom:2px; }
+    .stat-online { color:#a6e3a1; } .stat-offline{ color:#f38ba8; } .stat-total { color:#74c7ec; }
+    .stat-label{ color:#a6adc8; font-size:.9rem; }
+
+    .category{ margin-bottom:28px; padding:16px; border-radius:12px;
+      background: rgba(17,17,27,.6); border: 1px solid rgba(116,199,236,.1); }
+    .category h2{ color:#a6e3a1; margin-bottom:14px; font-size:1.35rem; padding-bottom:8px;
+      border-bottom:2px solid rgba(166,227,161,.3); }
+
+    .services-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:16px; }
+
+    .service-card{
+      position:relative; height:280px; border-radius:12px; overflow:hidden;
+      border:1px solid rgba(116,199,236,.2); background: #0f1220; /* fallback */
+      isolation:isolate;
+    }
+    .service-card:hover{ box-shadow:0 10px 25px rgba(116,199,236,.2); border-color:rgba(116,199,236,.4); }
+
+    /* Iframe preview as the card background */
+    .card-preview{
+      position:absolute; inset:0; z-index:0; overflow:hidden; background:#0a0f1d;
+    }
+    .card-preview iframe{
+      width:200%; height:200%; border:0; transform: scale(.5); transform-origin: 0 0;
+      filter: saturate(.8) brightness(.75) contrast(.95);
+    }
+    /* subtle tint on top of the iframe */
+    .card-preview::after{
+      content:""; position:absolute; inset:0; background: radial-gradient(ellipse at 20% 15%, rgba(116,199,236,.18), transparent 50%),
+                                            linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.4));
+      pointer-events:none;
+    }
+
+    /* Overlay content */
+    .overlay{
+      position:absolute; inset:auto 0 0 0; z-index:1; padding:14px; backdrop-filter: blur(2px);
+      background: linear-gradient(180deg, rgba(10,12,24,0) 0%, rgba(10,12,24,.75) 45%, rgba(10,12,24,.92) 100%);
+    }
+    .service-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .service-name{ font-weight:700; font-size:1.1rem; }
+    .profile-indicator{ background:rgba(249,226,175,.2); color:#f9e2af; padding:2px 8px; border-radius:12px; font-size:.72rem; margin-left:8px; }
+    .status-indicator{ width:10px; height:10px; border-radius:50%; }
+    .status-online{ background:#a6e3a1; box-shadow:0 0 10px rgba(166,227,161,.55); }
+    .status-offline{ background:#f38ba8; box-shadow:0 0 10px rgba(243,139,168,.55); }
+    .status-checking{ background:#f9e2af; animation: pulse 2s infinite; }
+    @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    .service-port{ color:#89b4fa; font-size:.9rem; margin:4px 0; }
+    .service-description{ color:#c9d0e5; font-size:.85rem; margin-bottom:8px; }
+    .service-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .action-btn{ padding:6px 12px; border-radius:6px; text-decoration:none; font-size:.85rem; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
+    .btn-primary{ background:linear-gradient(135deg,#89b4fa,#74c7ec); color:#0b0e1a; }
+    .btn-secondary{ background:rgba(116,199,236,.2); color:#74c7ec; border:1px solid rgba(116,199,236,.35); }
+    .btn-health{ background: rgba(166,227,161,.22); color:#a6e3a1; border:1px solid rgba(166,227,161,.35); }
+
+    .health-details{ margin-top:8px; padding:8px; background:rgba(17,17,27,.55); border-left:3px solid #89b4fa; border-radius:6px; color:#a6adc8; font-size:.8rem; white-space:pre-wrap; display:none; }
+    .refresh-btn{ position:fixed; right:22px; bottom:22px; width:56px; height:56px; border-radius:50%; border:0; font-size:1.4rem;
+      background:linear-gradient(135deg,#a6e3a1,#94e2d5); color:#0b0e1a; box-shadow:0 6px 18px rgba(148,226,213,.35); }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div class="header">
+      <h1>ThatDamToolbox Service Dashboard</h1>
+      <div class="host-info">Docker Host: 192.168.0.22</div>
+      <div class="last-updated">Last Updated: <span id="lastUpdated">Loading…</span></div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-item"><div class="stat-number stat-online" id="onlineCount">-</div><div class="stat-label">Online</div></div>
+      <div class="stat-item"><div class="stat-number stat-offline" id="offlineCount">-</div><div class="stat-label">Offline</div></div>
+      <div class="stat-item"><div class="stat-number stat-total" id="totalCount">-</div><div class="stat-label">Total Services</div></div>
+    </div>
+
+    <!-- Public Gateway (no self-iframe to avoid recursion) -->
+    <div class="category">
+      <h2>🚪 Public Gateway</h2>
+      <div class="services-grid">
+        <div class="service-card" data-service="gw">
+          <div class="card-preview"><!-- intentionally blank --></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Gateway (NGINX) <span class="profile-indicator">gateway</span></div>
+              <div class="status-indicator status-checking" id="status-gw"></div>
+            </div>
+            <div class="service-port">Ports: 80, 443</div>
+            <div class="service-description">Main public-facing reverse proxy serving web apps and API gateway</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/" target="_blank">🌐 Open Root</a>
+              <a class="action-btn btn-secondary" href="https://192.168.0.22" target="_blank">🔒 HTTPS</a>
+            </div>
+            <div class="health-details" id="health-gw"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Infrastructure -->
+    <div class="category">
+      <h2>🏗️ Infrastructure Services</h2>
+      <div class="services-grid">
+        <div class="service-card" data-service="rabbitmq">
+          <div class="card-preview">
+            <iframe src="/preview/rabbitmq/" loading="lazy" referrerpolicy="no-referrer"></iframe>
+          </div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">RabbitMQ</div>
+              <div class="status-indicator status-checking" id="status-rabbitmq"></div>
+            </div>
+            <div class="service-port">Ports: 5672, 15672</div>
+            <div class="service-description">Message broker for event-driven communication between services</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/rabbitmq/" target="_blank">🐰 UI</a>
+              <button class="action-btn btn-health" onclick="checkHealth('rabbitmq','/preview/rabbitmq/')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-rabbitmq"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Golang Services -->
+    <div class="category">
+      <h2>🐹 Golang Services</h2>
+      <div class="services-grid">
+        <div class="service-card" data-service="camera-proxy">
+          <div class="card-preview"><iframe src="/preview/camera-proxy/" loading="lazy"></iframe></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Camera Proxy</div>
+              <div class="status-indicator status-checking" id="status-camera-proxy"></div>
+            </div>
+            <div class="service-port">Port: 8000</div>
+            <div class="service-description">Device-agnostic camera proxy with hot-plug support</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/camera-proxy/" target="_blank">📷 Open</a>
+              <button class="action-btn btn-health" onclick="checkHealth('camera-proxy','/preview/camera-proxy/healthz')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-camera-proxy"></div>
+          </div>
+        </div>
+
+        <div class="service-card" data-service="overlay-hub">
+          <div class="card-preview"><iframe src="/preview/overlay-hub/" loading="lazy"></iframe></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Overlay Hub</div>
+              <div class="status-indicator status-checking" id="status-overlay-hub"></div>
+            </div>
+            <div class="service-port">Port: 8090</div>
+            <div class="service-description">Video overlay management service</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/overlay-hub/" target="_blank">🎨 Open</a>
+              <button class="action-btn btn-health" onclick="checkHealth('overlay-hub','/preview/overlay-hub/healthz')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-overlay-hub"></div>
+          </div>
+        </div>
+
+        <div class="service-card" data-service="api-gateway">
+          <div class="card-preview"><iframe src="/preview/api-gateway/" loading="lazy"></iframe></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">API Gateway</div>
+              <div class="status-indicator status-checking" id="status-api-gateway"></div>
+            </div>
+            <div class="service-port">Port: 8085</div>
+            <div class="service-description">Host API gateway for service coordination</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/api-gateway/" target="_blank">🚪 Open</a>
+              <button class="action-btn btn-health" onclick="checkHealth('api-gateway','/preview/api-gateway/api/health')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-api-gateway"></div>
+          </div>
+        </div>
+
+        <div class="service-card" data-service="media-api">
+          <div class="card-preview"><iframe src="/preview/media-api/" loading="lazy"></iframe></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Media API <span class="profile-indicator">media-api</span></div>
+              <div class="status-indicator status-checking" id="status-media-api"></div>
+            </div>
+            <div class="service-port">Port: 8081</div>
+            <div class="service-description">Media processing API service (v2)</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/media-api/" target="_blank">🎬 Open</a>
+              <button class="action-btn btn-health" onclick="checkHealth('media-api','/preview/media-api/')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-media-api"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Python Services -->
+    <div class="category">
+      <h2>🐍 Python Services</h2>
+      <div class="services-grid">
+        <div class="service-card" data-service="video-api">
+          <div class="card-preview"><iframe src="/preview/video-api/" loading="lazy"></iframe></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Video API (FastAPI)</div>
+              <div class="status-indicator status-checking" id="status-video-api"></div>
+            </div>
+            <div class="service-port">Port: 8080</div>
+            <div class="service-description">Main FastAPI backend with video processing</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/video-api/" target="_blank">🐍 Open</a>
+              <a class="action-btn btn-secondary" href="/preview/video-api/docs" target="_blank">📚 Docs</a>
+              <button class="action-btn btn-health" onclick="checkHealth('video-api','/preview/video-api/health')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-video-api"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Web Applications -->
+    <div class="category">
+      <h2>🌐 Web Applications</h2>
+      <div class="services-grid">
+        <div class="service-card" data-service="video-web">
+          <div class="card-preview"><iframe src="/preview/video-web/" loading="lazy"></iframe></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Video Web App (Next.js)</div>
+              <div class="status-indicator status-checking" id="status-video-web"></div>
+            </div>
+            <div class="service-port">Port: 3000</div>
+            <div class="service-description">Main Next.js web application</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/video-web/" target="_blank">🎥 Open</a>
+              <button class="action-btn btn-health" onclick="checkHealth('video-web','/preview/video-web/api/health')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-video-web"></div>
+          </div>
+        </div>
+
+        <div class="service-card" data-service="web-site">
+          <div class="card-preview"><iframe src="/preview/web-site/" loading="lazy"></iframe></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Web Site (Next.js)</div>
+              <div class="status-indicator status-checking" id="status-web-site"></div>
+            </div>
+            <div class="service-port">Port: 3001</div>
+            <div class="service-description">Marketing site</div>
+            <div class="service-actions">
+              <a class="action-btn btn-primary" href="/preview/web-site/" target="_blank">🌍 Open</a>
+              <button class="action-btn btn-health" onclick="checkHealth('web-site','/preview/web-site/api/health')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-web-site"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Setup -->
+    <div class="category">
+      <h2>⚙️ Setup Services</h2>
+      <div class="services-grid">
+        <div class="service-card" data-service="hotspot-installer">
+          <div class="card-preview"><!-- no preview for one-shot setup --></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Hotspot Installer <span class="profile-indicator">setup</span></div>
+              <div class="status-indicator status-checking" id="status-hotspot-installer"></div>
+            </div>
+            <div class="service-port">No exposed ports</div>
+            <div class="service-description">One-shot host configurator (runs only with --profile setup)</div>
+            <div class="service-actions">
+              <button class="action-btn btn-health" onclick="markOnline('hotspot-installer','Container service (limited)')">📋 Check Status</button>
+            </div>
+            <div class="health-details" id="health-hotspot-installer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="refresh-btn" onclick="refreshAll()" title="Refresh All">🔄</button>
+
+  <script>
+    const services = {
+      'gw':            { health: '/',                                      kind:'http' },
+      'rabbitmq':      { health: '/preview/rabbitmq/',                     kind:'http' },
+      'camera-proxy':  { health: '/preview/camera-proxy/healthz',         kind:'http' },
+      'overlay-hub':   { health: '/preview/overlay-hub/healthz',          kind:'http' },
+      'api-gateway':   { health: '/preview/api-gateway/api/health',       kind:'http' },
+      'media-api':     { health: '/preview/media-api/',                    kind:'http' },
+      'video-api':     { health: '/preview/video-api/health',              kind:'http' },
+      'video-web':     { health: '/preview/video-web/api/health',          kind:'http' },
+      'web-site':      { health: '/preview/web-site/api/health',           kind:'http' },
+      'hotspot-installer': { health: null,                                 kind:'container' }
+    };
+
+    function markOnline(id,msg){
+      const el = document.getElementById(`status-${id}`); el.className='status-indicator status-online';
+      const hd = document.getElementById(`health-${id}`); if(hd){ hd.style.display='block'; hd.textContent=`✅ ${new Date().toLocaleTimeString()} ${msg}`;}
+    }
+    function markOffline(id,msg){
+      const el = document.getElementById(`status-${id}`); el.className='status-indicator status-offline';
+      const hd = document.getElementById(`health-${id}`); if(hd){ hd.style.display='block'; hd.textContent=`❌ ${new Date().toLocaleTimeString()} ${msg}`;}
+    }
+
+    async function checkHttp(id, url){
+      const el = document.getElementById(`status-${id}`);
+      el.className='status-indicator status-checking';
+      try{
+        const ctrl = new AbortController();
+        const t = setTimeout(()=>ctrl.abort(), 5000);
+        const res = await fetch(url, {signal: ctrl.signal, credentials:'include'}); // same-origin now
+        clearTimeout(t);
+        if(res.ok || res.type === 'opaque'){ markOnline(id, `HTTP ${res.status || 200}`); return true; }
+        markOffline(id, `HTTP ${res.status}`); return false;
+      }catch(e){
+        markOffline(id, e.name === 'AbortError' ? 'timeout (5s)' : e.message);
+        return false;
+      }
+    }
+
+    async function refreshAll(){
+      const entries = Object.entries(services);
+      const results = await Promise.all(entries.map(([id,s]) => s.kind==='http' ? checkHttp(id, s.health) : (markOnline(id,'Container (assumed)'), true)));
+      // update counts
+      let online=0, offline=0;
+      entries.forEach(([id])=>{
+        const c = document.getElementById(`status-${id}`).className;
+        if(c.includes('status-online')) online++; else if(c.includes('status-offline')) offline++;
+      });
+      document.getElementById('onlineCount').textContent = online;
+      document.getElementById('offlineCount').textContent = offline;
+      document.getElementById('totalCount').textContent = entries.length;
+      document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+    }
+    refreshAll();
+  </script>
+</body>
+</html>
