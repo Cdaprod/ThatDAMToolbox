@@ -1,10 +1,38 @@
 "use client";
 import { useEffect, useState } from "react";
 
+/**
+ * useCameraStream negotiates a WHEP session when available and
+ * falls back to HLS or a demo clip otherwise.
+ *
+ * Example:
+ * ```ts
+ * const { stream } = useCameraStream();
+ * ```
+ */
 interface StreamInfo {
   src?: string;
   stream?: MediaStream;
   fallback: boolean;
+}
+
+/**
+ * negotiateWHEP posts an SDP offer to the given URL and returns the answer SDP.
+ *
+ * Example:
+ * ```ts
+ * const ans = await negotiateWHEP('/whep/camera1', offer.sdp!);
+ * ```
+ */
+export async function negotiateWHEP(url: string, sdp: string): Promise<string> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sdp }),
+  });
+  if (!res.ok) throw new Error(`whep error: ${res.status}`);
+  const data = await res.json();
+  return data.sdp;
 }
 
 export function useCameraStream(): StreamInfo {
@@ -23,17 +51,14 @@ export function useCameraStream(): StreamInfo {
           pc.ontrack = (e) => stream.addTrack(e.track);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          const ansRes = await fetch("/hwcapture/webrtc", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sdp: pc.localDescription }),
-          });
-          const data = await ansRes.json();
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          const ans = await negotiateWHEP("/whep/camera1", offer.sdp!);
+          await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: ans }));
           if (!cancelled) setInfo({ stream, fallback: false });
           return;
         }
-      } catch {}
+      } catch {
+        // ignored; fallback path handles errors
+      }
 
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 2000);
