@@ -11,14 +11,15 @@ package v4l2probe
 //  fmt.Println("usable devices", kept)
 //
 import (
-	"context"
-	"fmt"
-	"os"
-	"path/filepath"
-	"slices"
-	"strings"
-	"syscall"
-	"unsafe"
+        "context"
+        "fmt"
+        "os"
+        "path/filepath"
+        "slices"
+        "strings"
+        "sync"
+        "syscall"
+        "unsafe"
 )
 
 const sysV4L = "/sys/class/video4linux"
@@ -165,36 +166,102 @@ func substrAny(s string, needles []string) bool {
 }
 
 // Discover enumerates V4L2 nodes and classifies them.
+// Discover enumerates V4L2 nodes and returns classified slices. It drains the
+// asynchronous stream produced by DiscoverStream.
 func Discover(ctx context.Context, opt Options) (kept, dropped []Device, err error) {
-	ents, err := os.ReadDir(sysV4L)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read %s: %w", sysV4L, err)
-	}
-	for _, e := range ents {
-		if !strings.HasPrefix(e.Name(), "video") {
-			continue
-		}
-		select {
-		case <-ctx.Done():
-			return kept, dropped, ctx.Err()
-		default:
-		}
-		node := filepath.Join("/dev", e.Name())
-		name, devCaps, caps, qErr := queryCaps(node)
-		if qErr != nil {
-			dropped = append(dropped, Device{Node: node, Name: name, Caps: "ERR", Kind: "open-failed:" + qErr.Error()})
-			continue
-		}
-		capStr := strings.Join(capStrings(devCaps, caps), "|")
-		kind, ok := classify(name, devCaps, caps, opt)
-		dev := Device{Node: node, Name: name, Caps: capStr, Kind: kind}
-		if ok {
-			kept = append(kept, dev)
-		} else {
-			dropped = append(dropped, dev)
-		}
-	}
-	slices.SortFunc(kept, func(a, b Device) int { return strings.Compare(a.Node, b.Node) })
-	slices.SortFunc(dropped, func(a, b Device) int { return strings.Compare(a.Node, b.Node) })
-	return
+        keptCh, dropCh, errCh := DiscoverStream(ctx, opt)
+
+        var wg sync.WaitGroup
+        wg.Add(2)
+        go func() {
+                for d := range keptCh {
+                        kept = append(kept, d)
+                }
+                wg.Done()
+        }()
+        go func() {
+                for d := range dropCh {
+                        dropped = append(dropped, d)
+                }
+                wg.Done()
+        }()
+        wg.Wait()
+
+        if e, ok := <-errCh; ok && e != nil {
+                err = e
+        }
+
+        slices.SortFunc(kept, func(a, b Device) int { return strings.Compare(a.Node, b.Node) })
+        slices.SortFunc(dropped, func(a, b Device) int { return strings.Compare(a.Node, b.Node) })
+        return
+}
+
+// DiscoverStream launches concurrent workers for each video node and streams
+// classified devices. Consumers must drain the returned channels until they are
+// closed. The error channel will contain at most one error before being
+// closed.
+func DiscoverStream(ctx context.Context, opt Options) (<-chan Device, <-chan Device, <-chan error) {
+        keptCh := make(chan Device)
+        dropCh := make(chan Device)
+        errCh := make(chan error, 1)
+
+        ents, err := os.ReadDir(sysV4L)
+        if err != nil {
+                errCh <- fmt.Errorf("read %s: %w", sysV4L, err)
+                close(keptCh)
+                close(dropCh)
+                close(errCh)
+                return keptCh, dropCh, errCh
+        }
+
+        var wg sync.WaitGroup
+        for _, e := range ents {
+                if !strings.HasPrefix(e.Name(), "video") {
+                        continue
+                }
+                node := filepath.Join("/dev", e.Name())
+                wg.Add(1)
+                go func(node string) {
+                        defer wg.Done()
+                        select {
+                        case <-ctx.Done():
+                                return
+                        default:
+                        }
+                        name, devCaps, caps, qErr := queryCaps(node)
+                        if qErr != nil {
+                                dev := Device{Node: node, Name: name, Caps: "ERR", Kind: "open-failed:" + qErr.Error()}
+                                select {
+                                case <-ctx.Done():
+                                        return
+                                case dropCh <- dev:
+                                }
+                                return
+                        }
+                        capStr := strings.Join(capStrings(devCaps, caps), "|")
+                        kind, ok := classify(name, devCaps, caps, opt)
+                        dev := Device{Node: node, Name: name, Caps: capStr, Kind: kind}
+                        out := dropCh
+                        if ok {
+                                out = keptCh
+                        }
+                        select {
+                        case <-ctx.Done():
+                                return
+                        case out <- dev:
+                        }
+                }(node)
+        }
+
+        go func() {
+                wg.Wait()
+                if ctx.Err() != nil {
+                        errCh <- ctx.Err()
+                }
+                close(keptCh)
+                close(dropCh)
+                close(errCh)
+        }()
+
+        return keptCh, dropCh, errCh
 }

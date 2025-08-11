@@ -8,12 +8,12 @@ package v4l2
 //  fmt.Println("kept", res.Kept)
 
 import (
-	"context"
-	"os"
-	"strings"
-	"time"
+        "context"
+        "os"
+        "strings"
+        "time"
 
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
+        "github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 )
 
 type Device = v4l2probe.Device
@@ -37,8 +37,37 @@ func Discover() (Result, error) {
 		opt.AllowM2M = splitCSVLower(v)
 	}
 
-	kept, dropped, err := v4l2probe.Discover(ctx, opt)
-	return Result{Kept: kept, Dropped: dropped}, err
+        keptCh, dropCh, errCh := v4l2probe.DiscoverStream(ctx, opt)
+
+        var (
+                kept    []Device
+                dropped []Device
+                retErr  error
+        )
+
+        for keptCh != nil || dropCh != nil || errCh != nil {
+                select {
+                case d, ok := <-keptCh:
+                        if !ok {
+                                keptCh = nil
+                                continue
+                        }
+                        kept = append(kept, d)
+                case d, ok := <-dropCh:
+                        if !ok {
+                                dropCh = nil
+                                continue
+                        }
+                        dropped = append(dropped, d)
+                case err, ok := <-errCh:
+                        if ok && err != nil {
+                                retErr = err
+                        }
+                        errCh = nil
+                }
+        }
+
+        return Result{Kept: kept, Dropped: dropped}, retErr
 }
 
 func splitCSVLower(s string) []string {
