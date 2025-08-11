@@ -1,0 +1,28 @@
+services:
+  verdaccio:
+    extends:
+      file: ./docker-compose.registry.yaml
+      service: verdaccio
+
+  web-app:
+    build: { context: ../web-app }
+    environment:
+      - NODE_ENV=development
+    depends_on: [verdaccio]
+    volumes:
+      - ../..:/workspace:cached
+    working_dir: /workspace/docker/web-app
+    command: npm run dev
+    ports: ["3000:3000"]
+
+  web-site:
+    build: { context: ../web-site }
+    environment:
+      - NODE_ENV=development
+    depends_on: [verdaccio]
+    volumes:
+      - ../..:/workspace:cached
+    working_dir: /workspace/docker/web-site
+    command: npm run dev
+    ports: ["3001:3000"]
+networks: { default: { name: damnet } }

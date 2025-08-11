@@ -558,6 +558,9 @@ sequenceDiagram
 git clone https://github.com/Cdaprod/ThatDAMToolbox.git
 cd ThatDAMToolbox
 
+# install workspace dependencies
+npm install
+
 # Build and run with Docker Compose
 docker-compose up -d
 

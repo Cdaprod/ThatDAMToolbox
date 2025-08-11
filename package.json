@@ -1,0 +1,23 @@
+{
+  "name": "thatdamtoolbox-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "docker/web-app",
+    "docker/web-site",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "npm -w @cdaprod/design-tokens run build && npm -w docker/web-app run build && npm -w docker/web-site run build",
+    "dev:web-app": "npm -w docker/web-app run dev",
+    "dev:web-site": "npm -w docker/web-site run dev",
+    "test": "npm -w @cdaprod/design-tokens run test --if-present && npm -w docker/web-app run test --if-present && npm -w docker/web-site run test --if-present",
+    "type-check": "npm -w @cdaprod/design-tokens run type-check --if-present && npm -w docker/web-app run type-check --if-present && npm -w docker/web-site run type-check --if-present"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10"
+}

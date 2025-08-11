@@ -1,4 +1,5 @@
 // /src/app/layout.tsx
+import '@cdaprod/design-tokens/tokens.css';
 import '@/styles/globals.css';
 import AppProviders from '@/providers/AppProviders';
 import TopBar from '@/components/TopBar';

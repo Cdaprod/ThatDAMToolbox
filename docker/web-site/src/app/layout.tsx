@@ -1,3 +1,4 @@
+import '@cdaprod/design-tokens/tokens.css'
 import CookieBanner from '../components/CookieBanner'
 
 /**
@@ -21,3 +22,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   )
 }
+

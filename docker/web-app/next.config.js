@@ -6,6 +6,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://host.docker.int
 module.exports = {
   reactStrictMode: true,
   output: 'standalone',
+  transpilePackages: ['@cdaprod/design-tokens'],
 
   async rewrites() {
     // anything under /api/video/* → your video-api
