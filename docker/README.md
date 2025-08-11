@@ -77,7 +77,9 @@ The Mermaid diagram at the top shows the request path flowing *down* the stack a
 |**`compose/docker-compose.yml`**|baseline stack: `video`, `video-api`, core backing stores    |
 |**`docker-compose.dev.yml`**    |local-dev overrides (source mounts, auto-reload, debug ports)|
 |**`docker-compose.prod.yml`**   |production overrides (no volumes, stricter health checks)    |
-|**`docker-compose.modules.yml`**|optional extras for `modules/` containers                    |
+|**`docker-compose.modules.yml`**|optional extras for `modules/` containers
+|**`docker-compose.server.yaml`**|server/frontend stack for self-hosted runner|
+|**`docker-compose.capture.yaml`**|capture device stack for self-hosted runner|
 
 Run-up patterns:
 
