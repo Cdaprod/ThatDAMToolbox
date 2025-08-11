@@ -1,0 +1,177 @@
+name: Build & Deploy (Server + Capture via Self-Hosted Runners)
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:     [ "v*", "release-*" ]
+  workflow_dispatch:
+
+env:
+  GHCR_REGISTRY: ghcr.io
+  GHCR_IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+  DOCKERHUB_IMAGE_PREFIX: docker.io/${{ secrets.DOCKERHUB_NAMESPACE }}/thatdamtoolbox
+  PUSH_GHCR_ON_MAIN: "true"
+
+jobs:
+  build:
+    name: Build Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        if: ${{ env.PUSH_GHCR_ON_MAIN == 'true' || startsWith(github.ref, 'refs/tags/') }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login DockerHub (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute tags
+        id: tags
+        run: |
+          REF="${GITHUB_REF#refs/*/}"
+          SHA_SHORT=$(git rev-parse --short=7 HEAD)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="$REF"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "push_ghcr=true" >> $GITHUB_OUTPUT
+            echo "push_dh=true"   >> $GITHUB_OUTPUT
+          else
+            TAG="commit-${SHA_SHORT}"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "push_ghcr=${PUSH_GHCR_ON_MAIN}" >> $GITHUB_OUTPUT
+            echo "push_dh=false"  >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build & (optionally) Push api-gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: host/services/api-gateway
+          file: host/services/api-gateway/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.tags.outputs.push_ghcr == 'true' || steps.tags.outputs.push_dh == 'true' }}
+          tags: |
+            ${{ env.GHCR_IMAGE_PREFIX }}/api-gateway:${{ steps.tags.outputs.tag }}
+            ${{ env.DOCKERHUB_IMAGE_PREFIX }}-api-gateway:${{ steps.tags.outputs.tag }}
+          provenance: false
+
+      - name: Build & (optionally) Push video-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/video-api/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.tags.outputs.push_ghcr == 'true' || steps.tags.outputs.push_dh == 'true' }}
+          tags: |
+            ${{ env.GHCR_IMAGE_PREFIX }}/video-api:${{ steps.tags.outputs.tag }}
+            ${{ env.DOCKERHUB_IMAGE_PREFIX }}-video-api:${{ steps.tags.outputs.tag }}
+          provenance: false
+
+      - name: Build & (optionally) Push web-app
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/web-app
+          file: docker/web-app/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.tags.outputs.push_ghcr == 'true' || steps.tags.outputs.push_dh == 'true' }}
+          tags: |
+            ${{ env.GHCR_IMAGE_PREFIX }}/web-app:${{ steps.tags.outputs.tag }}
+            ${{ env.DOCKERHUB_IMAGE_PREFIX }}-web-app:${{ steps.tags.outputs.tag }}
+          provenance: false
+
+      - name: Build & (optionally) Push capture-daemon
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/capture-daemon
+          file: docker/capture-daemon/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.tags.outputs.push_ghcr == 'true' || steps.tags.outputs.push_dh == 'true' }}
+          tags: |
+            ${{ env.GHCR_IMAGE_PREFIX }}/capture-daemon:${{ steps.tags.outputs.tag }}
+            ${{ env.DOCKERHUB_IMAGE_PREFIX }}-capture-daemon:${{ steps.tags.outputs.tag }}
+          provenance: false
+
+      - name: Save build metadata for deploy jobs
+        id: out
+        run: |
+          echo "tag=${{ steps.tags.outputs.tag }}" >> $GITHUB_OUTPUT
+
+  deploy-server:
+    name: Deploy to Server/Frontend
+    needs: [ build ]
+    runs-on: [ self-hosted, linux, role-server ]
+    env:
+      IMAGE_TAG: ${{ needs.build.outputs.tag }}
+      REG: ghcr.io
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Render .env for compose (server)
+        run: |
+          cat > .env <<EOF
+          IMAGE_TAG=${IMAGE_TAG}
+          GHCR_IMAGE_PREFIX=ghcr.io/${REPO}
+          EOF
+
+      - name: Reconcile server stack
+        run: |
+          docker compose -f docker/compose/docker-compose.server.yaml pull
+          docker compose -f docker/compose/docker-compose.server.yaml up -d --remove-orphans
+          docker compose -f docker/compose/docker-compose.server.yaml ps
+
+  deploy-capture:
+    name: Deploy to Capture Device
+    needs: [ build ]
+    runs-on: [ self-hosted, linux, role-capture ]
+    env:
+      IMAGE_TAG: ${{ needs.build.outputs.tag }}
+      REG: ghcr.io
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Render .env for compose (capture)
+        run: |
+          cat > .env <<EOF
+          IMAGE_TAG=${IMAGE_TAG}
+          GHCR_IMAGE_PREFIX=ghcr.io/${REPO}
+          EOF
+
+      - name: Reconcile capture stack
+        run: |
+          docker compose -f docker/compose/docker-compose.capture.yaml pull
+          docker compose -f docker/compose/docker-compose.capture.yaml up -d --remove-orphans
+          docker compose -f docker/compose/docker-compose.capture.yaml ps
