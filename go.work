@@ -1,4 +1,4 @@
-go 1.23
+go 1.23.0
 
 use (
         ./host/services/api-gateway
@@ -7,4 +7,5 @@ use (
         ./host/services/media-api
         ./host/services/overlay-hub
         ./host/services/shared
+        ./host/services/shared/hostcap/v4l2probe
 )
