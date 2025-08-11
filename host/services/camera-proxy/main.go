@@ -27,6 +27,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
+	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
@@ -38,7 +40,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -160,30 +161,34 @@ func (dp *DeviceProxy) discoverDevices() error {
 		}
 	}
 
+	devs, err := scanner.ScanAll()
+	if err != nil {
+		log.Printf("device scan failed: %v", err)
+	}
+	for _, d := range devs {
+		if _, exists := dp.devices[d.Path]; exists {
+			continue
+		}
+		dp.devices[d.Path] = &DeviceInfo{
+			Path:         d.Path,
+			Name:         d.Name,
+			IsAvailable:  true,
+			Capabilities: d.Capabilities,
+		}
+		log.Printf("Discovered device: %s (%s)", d.Name, d.Path)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	opt := v4l2probe.DefaultOptions()
-	kept, dropped, _ := v4l2probe.Discover(ctx, opt)
-	dp.probeKept, dp.probeDropped = kept, dropped
-
-	sort.SliceStable(kept, func(i, j int) bool { return kept[i].Node < kept[j].Node })
-	for _, d := range kept {
-		if _, exists := dp.devices[d.Node]; exists {
-			continue
-		}
-		if info, err := dp.getDeviceInfo(d.Node); err == nil {
-			info.Name = d.Name
-			dp.devices[d.Node] = info
-			log.Printf("Discovered device: %s (%s) caps=[%s] kind=%s", d.Node, d.Name, d.Caps, d.Kind)
-		}
-	}
-	for _, d := range dropped {
+	dp.probeKept, dp.probeDropped, _ = v4l2probe.Discover(ctx, opt)
+	for _, d := range dp.probeDropped {
 		log.Printf("Ignoring device: %s (%s) caps=[%s] reason=%s", d.Node, d.Name, d.Caps, d.Kind)
 	}
 
 	dp.scanUSBCameras()
 
-	if mergedFromDaemon == 0 && len(kept) == 0 {
+	if mergedFromDaemon == 0 && len(devs) == 0 {
 		return fmt.Errorf("no devices discovered from daemon or local probe")
 	}
 	return nil
@@ -191,113 +196,8 @@ func (dp *DeviceProxy) discoverDevices() error {
 
 var httpClient = &http.Client{Timeout: 5 * time.Second}
 
-// getDeviceInfo retrieves detailed information about a camera device
-func (dp *DeviceProxy) getDeviceInfo(devicePath string) (*DeviceInfo, error) {
-	// Check if device exists and is accessible
-	if _, err := os.Stat(devicePath); err != nil {
-		return nil, err
-	}
-
-	info := &DeviceInfo{
-		Path:         devicePath,
-		Name:         filepath.Base(devicePath),
-		IsAvailable:  true,
-		Capabilities: make(map[string]interface{}),
-	}
-
-	// Get device capabilities using v4l2-ctl
-	if caps, err := dp.getV4L2Capabilities(devicePath); err == nil {
-		info.Capabilities = caps
-		// Extract a more friendly name if available
-		if name, ok := caps["card"].(string); ok && name != "" {
-			info.Name = name
-		}
-	}
-
-	return info, nil
-}
-
-// getV4L2Capabilities gets device capabilities
-func (dp *DeviceProxy) getV4L2Capabilities(devicePath string) (map[string]interface{}, error) {
-	caps := make(map[string]interface{})
-
-	// Get device info
-	cmd := exec.Command("v4l2-ctl", "--device", devicePath, "--info")
-	output, err := cmd.Output()
-	if err != nil {
-		return caps, err
-	}
-
-	// Parse v4l2-ctl output
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ":") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(strings.ToLower(parts[0]))
-				value := strings.TrimSpace(parts[1])
-				caps[key] = value
-			}
-		}
-	}
-
-	// Get supported formats
-	cmd = exec.Command("v4l2-ctl", "--device", devicePath, "--list-formats-ext")
-	if output, err := cmd.Output(); err == nil {
-		caps["formats"] = dp.parseFormats(string(output))
-	}
-
-	return caps, nil
-}
-
-// parseFormats parses v4l2-ctl format output
-func (dp *DeviceProxy) parseFormats(output string) []map[string]interface{} {
-	var formats []map[string]interface{}
-	lines := strings.Split(output, "\n")
-
-	var currentFormat map[string]interface{}
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "[") && strings.Contains(line, "]") {
-			if currentFormat != nil {
-				formats = append(formats, currentFormat)
-			}
-			currentFormat = make(map[string]interface{})
-			// Extract format name
-			if start := strings.Index(line, "]"); start != -1 {
-				formatName := strings.TrimSpace(line[start+1:])
-				if colon := strings.Index(formatName, ":"); colon != -1 {
-					currentFormat["name"] = strings.TrimSpace(formatName[:colon])
-					currentFormat["description"] = strings.TrimSpace(formatName[colon+1:])
-				}
-			}
-		} else if strings.Contains(line, "Size:") && currentFormat != nil {
-			// Parse resolution and frame rates
-			currentFormat["resolutions"] = dp.parseResolutions(line)
-		}
-	}
-
-	if currentFormat != nil {
-		formats = append(formats, currentFormat)
-	}
-
-	return formats
-}
-
-// parseResolutions parses resolution information
-func (dp *DeviceProxy) parseResolutions(line string) []string {
-	var resolutions []string
-	// Simple resolution parsing - can be enhanced
-	if strings.Contains(line, "x") {
-		parts := strings.Split(line, " ")
-		for _, part := range parts {
-			if strings.Contains(part, "x") && len(strings.Split(part, "x")) == 2 {
-				resolutions = append(resolutions, part)
-			}
-		}
-	}
-	return resolutions
-}
+// remaining helper functions removed: detailed capability parsing now lives in
+// shared scanners.
 
 // scanUSBCameras looks for USB cameras that might need initialization
 func (dp *DeviceProxy) scanUSBCameras() {
