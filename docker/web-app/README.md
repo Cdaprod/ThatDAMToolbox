@@ -101,5 +101,13 @@ NODE_ENV=development
 ## Streaming protocol
 
 `CameraMonitor` probes `/hwcapture/features` at runtime to determine whether the
-capture-daemon exposes WebRTC. When available, it negotiates a WebRTC session;
-otherwise it falls back to the HLS preview.
+capture-daemon exposes WebRTC. When available, it negotiates a WHEP session via
+`/whep/<room>` to receive full‑res H.264 without transcoding; otherwise it falls
+back to the HLS preview.
+
+Recording is controlled via simple HTTP calls:
+
+```
+curl -X POST http://<host>/daemon/record/start
+curl -X POST http://<host>/daemon/record/stop
+```

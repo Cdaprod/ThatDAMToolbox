@@ -1,12 +1,17 @@
 module github.com/Cdaprod/ThatDamToolbox/host/services/shared
 
-go 1.22
+go 1.23
+
+toolchain go1.24.3
 
 require (
+	github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
 	github.com/google/uuid v1.5.0
 	github.com/quic-go/quic-go v0.40.0
 	github.com/rabbitmq/amqp091-go v1.9.0
 )
+
+replace github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe => ./hostcap/v4l2probe
 
 require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect

@@ -1,13 +1,11 @@
 'use client';
 
 import React, { ReactNode, useState, useEffect } from 'react';
-import { useVideoSocketCtx } from './VideoSocketProvider';
 import { CaptureContext, Codec } from './CaptureContext';
 import { bus } from '@/lib/eventBus';
 import { useTimecode } from '@/hooks/useTimecode';
 
 export default function CaptureProvider({ children }: { children: ReactNode }) {
-  const { sendJSON } = useVideoSocketCtx();
 
   // 1) Recording toggle
   const [recording, setRecording] = useState(false);
@@ -75,13 +73,24 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 9) Expose start/stop controls
+  // Start/stop recording via capture-daemon HTTP endpoints.
+  // Example:
+  // await fetch('/daemon/record/start', { method: 'POST' })
   const start = () => {
-    sendJSON({ action: 'start_record' });
-    setRecording(true);
+    fetch('/daemon/record/start', { method: 'POST' })
+      .then((res) => {
+        if (!res.ok) throw new Error('start failed');
+        setRecording(true);
+      })
+      .catch((err) => console.error(err));
   };
   const stop = () => {
-    sendJSON({ action: 'stop_record' });
-    setRecording(false);
+    fetch('/daemon/record/stop', { method: 'POST' })
+      .then((res) => {
+        if (!res.ok) throw new Error('stop failed');
+        setRecording(false);
+      })
+      .catch((err) => console.error(err));
   };
 
   return (
