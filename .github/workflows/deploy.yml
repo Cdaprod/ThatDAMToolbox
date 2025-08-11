@@ -125,8 +125,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Docker login GHCR (tokenless via GITHUB_TOKEN)
-        run: echo "${{ github.token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Docker login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Render .env for compose (server)
         run: |
@@ -152,8 +156,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Docker login GHCR (tokenless via GITHUB_TOKEN)
-        run: echo "${{ github.token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Docker login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Render .env for compose (capture)
         run: |
