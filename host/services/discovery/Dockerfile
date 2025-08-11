@@ -1,81 +1,30 @@
-# Multi-stage build for discovery service
-
-FROM golang:1.21-alpine AS builder
-
-# Install necessary packages
-
-RUN apk add –no-cache git ca-certificates tzdata
-
-# Set working directory
-
-WORKDIR /app
-
-# Copy go mod files
-
-COPY go.mod go.sum ./
-
-# Download dependencies
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Minimal runtime; no docker-in-docker, no extra daemons
+# Uses your Go code’s in-process mDNS (pion/mdns) and Serf libraries.
+# NOTE: Replace any curly/en-dashes from earlier drafts with regular ASCII.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM golang:1.23-alpine AS build
+WORKDIR /src
+COPY host/services/discovery/go.mod host/services/discovery/go.sum ./
 RUN go mod download
+COPY host/services/discovery/ .
+RUN CGO_ENABLED=0 go build -o /out/discovery-service ./...
 
-# Copy source code
-
-COPY . .
-
-# Build the application
-
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o discovery-service .
-
-# Final stage - minimal runtime image
-
-FROM alpine:latest
-
-# Install runtime dependencies
-
-RUN apk add –no-cache   
-ca-certificates   
-curl   
-docker-cli   
-docker-compose   
-avahi-tools   
-bind-tools   
-tailscale   
-&& rm -rf /var/cache/apk/*
-
-# Create non-root user
-
-RUN adduser -D -s /bin/sh discovery
-
-# Set working directory
-
+FROM alpine:3.20
+# runtime deps: curl for healthcheck; tzdata/ca-certs for logs/https if you add remote calls
+RUN apk add --no-cache ca-certificates tzdata curl
 WORKDIR /app
+COPY --from=build /out/discovery-service /usr/local/bin/discovery-service
 
-# Copy binary from builder
+# no root-required daemons (avahi/serf binaries) needed because your code uses libs
+# if you later add external daemons, you can re-introduce packages and run as root.
 
-COPY –from=builder /app/discovery-service .
-
-# Copy any additional files needed
-
-COPY docker-compose.yaml /app/
-COPY docker/ /app/docker/
-
-# Make binary executable
-
-RUN chmod +x discovery-service
-
-# Switch to non-root user for security
-
-USER discovery
-
-# Health check
-
-HEALTHCHECK –interval=30s –timeout=10s –start-period=5s –retries=3   
-CMD curl -f http://localhost:9999/health || exit 1
-
-# Expose health check port
+ENV DISCOVERY_BACKEND=auto \
+    SERVICE_NAME=thatdam \
+    SERVICE_PORT=8080 \
+    DISCOVERY_HTTP_PORT=9999 \
+    LEADER_FILE=/run/discovery/leader.env
+VOLUME ["/run/discovery"]
 
 EXPOSE 9999
-
-# Start the discovery service
-
-ENTRYPOINT ["./discovery-service"]
+ENTRYPOINT ["/usr/local/bin/discovery-service"]
