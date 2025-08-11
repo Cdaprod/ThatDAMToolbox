@@ -26,6 +26,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
+	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 	"io"
 	"log"
 	"net/http"
@@ -38,10 +42,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc/v3"
-	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 var ffmpegCmd = exec.CommandContext
@@ -82,13 +82,15 @@ type DeviceInfo struct {
 
 // DeviceProxy manages camera device virtualization and proxying
 type DeviceProxy struct {
-	devices     map[string]*DeviceInfo
-	mutex       sync.RWMutex
-	backendURL  *url.URL
-	frontendURL *url.URL
-	upgrader    websocket.Upgrader
-	daemonURL   string
-	daemonToken string
+	devices      map[string]*DeviceInfo
+	mutex        sync.RWMutex
+	backendURL   *url.URL
+	frontendURL  *url.URL
+	upgrader     websocket.Upgrader
+	daemonURL    string
+	daemonToken  string
+	probeKept    []v4l2probe.Device
+	probeDropped []v4l2probe.Device
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -132,60 +134,58 @@ func (dp *DeviceProxy) discoverDevices() error {
 	dp.mutex.Lock()
 	defer dp.mutex.Unlock()
 
-	// Clear existing devices
 	dp.devices = make(map[string]*DeviceInfo)
 
-	// Scan for V4L2 devices
-	pattern := "/dev/video*"
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return fmt.Errorf("failed to scan devices: %v", err)
-	}
-	sort.Strings(matches)
-	for _, devicePath := range matches {
-		if info, err := dp.getDeviceInfo(devicePath); err == nil {
-			dp.devices[devicePath] = info
-			log.Printf("Discovered device: %s (%s)", info.Name, info.Path)
-		}
-	}
-
-	// Also scan for USB cameras that might not be mounted
-	dp.scanUSBCameras()
-
-	// ─── Merge devices from capture-daemon ─────────────
+	mergedFromDaemon := 0
 	if dp.daemonURL != "" {
-		req, err := http.NewRequest(http.MethodGet, dp.daemonURL+"/devices", nil)
-		if err == nil {
-			if dp.daemonToken != "" {
-				req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
-			}
-			resp, err := httpClient.Do(req)
-			if err == nil && resp.StatusCode == http.StatusOK {
-				defer resp.Body.Close()
-				var daemonDevs []map[string]interface{}
-				if json.NewDecoder(resp.Body).Decode(&daemonDevs) == nil {
-					for _, d := range daemonDevs {
-						id, _ := d["id"].(string)
-						name, _ := d["name"].(string)
-						if id == "" {
-							continue
-						}
-						key := "daemon:" + id
-						dp.devices[key] = &DeviceInfo{
-							Path:        key,
-							Name:        name,
-							IsAvailable: true,
-							Capabilities: map[string]interface{}{
-								"source":  "capture-daemon",
-								"rawPath": id,
-							},
-						}
+		req, _ := http.NewRequest(http.MethodGet, dp.daemonURL+"/devices", nil)
+		if dp.daemonToken != "" {
+			req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+		}
+		if resp, err := httpClient.Do(req); err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			var daemonDevs []map[string]any
+			if json.NewDecoder(resp.Body).Decode(&daemonDevs) == nil {
+				for _, d := range daemonDevs {
+					id, _ := d["id"].(string)
+					name, _ := d["name"].(string)
+					if id == "" {
+						continue
 					}
+					key := "daemon:" + id
+					dp.devices[key] = &DeviceInfo{Path: key, Name: name, IsAvailable: true}
+					mergedFromDaemon++
 				}
 			}
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	opt := v4l2probe.DefaultOptions()
+	kept, dropped, _ := v4l2probe.Discover(ctx, opt)
+	dp.probeKept, dp.probeDropped = kept, dropped
+
+	sort.SliceStable(kept, func(i, j int) bool { return kept[i].Node < kept[j].Node })
+	for _, d := range kept {
+		if _, exists := dp.devices[d.Node]; exists {
+			continue
+		}
+		if info, err := dp.getDeviceInfo(d.Node); err == nil {
+			info.Name = d.Name
+			dp.devices[d.Node] = info
+			log.Printf("Discovered device: %s (%s) caps=[%s] kind=%s", d.Node, d.Name, d.Caps, d.Kind)
+		}
+	}
+	for _, d := range dropped {
+		log.Printf("Ignoring device: %s (%s) caps=[%s] reason=%s", d.Node, d.Name, d.Caps, d.Kind)
+	}
+
+	dp.scanUSBCameras()
+
+	if mergedFromDaemon == 0 && len(kept) == 0 {
+		return fmt.Errorf("no devices discovered from daemon or local probe")
+	}
 	return nil
 }
 
@@ -689,6 +689,24 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 	}
 }
 
+// handleDebugV4L2 exposes the last V4L2 discovery result.
+//
+// Example:
+//
+//	curl http://localhost:8000/debug/v4l2
+func (dp *DeviceProxy) handleDebugV4L2(w http.ResponseWriter, r *http.Request) {
+	dp.mutex.RLock()
+	out := struct {
+		Kept    []v4l2probe.Device `json:"kept"`
+		Dropped []v4l2probe.Device `json:"dropped"`
+	}{Kept: dp.probeKept, Dropped: dp.probeDropped}
+	dp.mutex.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		http.Error(w, "encode failed", http.StatusInternalServerError)
+	}
+}
+
 // setupRoutes configures the proxy routes
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
@@ -708,6 +726,9 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	// Enhanced device API endpoints
 	mux.HandleFunc("/api/devices", dp.enhanceDeviceResponse)
 	mux.HandleFunc("/devices", dp.enhanceDeviceResponse)
+
+	// Debug endpoint for V4L2 discovery
+	mux.HandleFunc("/debug/v4l2", dp.handleDebugV4L2)
 
 	// Default proxy to backend for all other requests
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
