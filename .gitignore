@@ -38,7 +38,7 @@ ehthumbs.db
 *.sublime-project
 
 # ---- Build & Dist ----
-build/
+#build/
 dist/
 *.log
 *.tmp
