@@ -190,11 +190,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-      depends_on:
-        - rabbitmq
-        - overlay-hub
-        - thatdamtoolbox-discovery
-      restart: unless-stopped
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - overlay-hub
+      - thatdamtoolbox-discovery
 
 
   ########################################################################
@@ -356,10 +356,10 @@ services:
       - /dev:/dev:rw,rshared
       - ./video:/video:rw
     restart: unless-stopped
-      depends_on:
-        - capture-daemon
-        - rabbitmq
-        - thatdamtoolbox-discovery
+    depends_on:
+      - capture-daemon
+      - rabbitmq
+      - thatdamtoolbox-discovery
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
@@ -428,10 +428,10 @@ services:
       - "video"
     device_cgroup_rules:
       - 'c 81:* rmw'
-      depends_on:
-        - video-api
-        - thatdamtoolbox-discovery
-      restart: unless-stopped
+    depends_on:
+      - video-api
+      - thatdamtoolbox-discovery
+    restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
     healthcheck:

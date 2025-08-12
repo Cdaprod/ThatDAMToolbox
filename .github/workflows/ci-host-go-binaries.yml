@@ -125,7 +125,7 @@ jobs:
           RACE_FLAG=""
           [ "${ENABLE_RACE}" = "1" ] && RACE_FLAG="-race"
           # Test only active services to keep memory low
-          for dir in host/services/shared host/services/api-gateway host/services/capture-daemon host/services/camera-proxy; do
+          for dir in host/services/shared host/services/api-gateway host/services/capture-daemon host/services/camera-proxy host/services/discovery; do
             if [ -f "$dir/go.mod" ]; then
               echo "🧪 go test $dir"
               ( cd "$dir" && go test ./... ${RACE_FLAG} -count=1 -timeout=6m -p=2 -parallel=2 )
