@@ -14,3 +14,9 @@ Endpoints:
 - `POST /v1/register`
 - `POST /v1/heartbeat`
 - `POST /v1/negotiate`
+
+## Tests
+
+```bash
+go test ./cmd/overlay-hub/...
+```

@@ -18,3 +18,9 @@ docker compose -f host/services/api-gateway/docker-compose.api-gateway.yaml --pr
 - `POST /agents/issue`
 - `GET /.well-known/jwks.json`
 - `GET /overlay/hints`
+
+## Tests
+
+```bash
+go test ./...
+```
