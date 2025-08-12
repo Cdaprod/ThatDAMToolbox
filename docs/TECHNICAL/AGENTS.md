@@ -15,6 +15,10 @@ This document explains the key principles and details you’ll need to develop a
 🟠  Tests + docs with every PR   • Prefer extending over rewriting
 🔴  Never add utils/ folders, global state, or AWS/Boto3 deps
 
+- Open/Closed Principle
+- Loose Coupling High Cohesion
+- Idempotently Agnostic Services to run independently but centralized in top layer(s)
+
 ## TOP OF MIND:
 	•	Avoid rewrites; wire new features into existing services.
 	•	Architecture layers:
