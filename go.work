@@ -4,6 +4,7 @@ use (
         ./host/services/api-gateway
         ./host/services/camera-proxy
         ./host/services/capture-daemon
+        ./host/services/ingestion
         ./host/services/media-api
         ./host/services/overlay-hub
         ./host/services/shared
