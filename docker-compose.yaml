@@ -11,6 +11,7 @@ include:
   - path: ./docker/compose/docker-compose.postgres.yaml
   - path: ./docker/compose/docker-compose.weaviate.yaml
   - path: ./docker/compose/docker-compose.minio.yaml
+  - path: ./docker/compose/docker-compose.registry.yaml
 
 
 ########################################################################
