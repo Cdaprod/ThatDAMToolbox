@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "workspaces": [
+    "docker/design-tokens",
     "docker/web-app",
     "docker/web-site",
-    "packages/*",
     "services/*"
   ],
   "scripts": {
