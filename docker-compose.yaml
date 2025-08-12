@@ -1,3 +1,4 @@
+
 ########################################################################
 # Root "/docker-compose.yaml"
 ########################################################################
@@ -47,6 +48,7 @@ services:
       context: ./docker/nginx
       dockerfile: Dockerfile
     container_name: thatdamtoolbox-gateway
+    entrypoint: ["/entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
     # profiles: ["gateway"]
     restart: unless-stopped

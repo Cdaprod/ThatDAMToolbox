@@ -25,4 +25,5 @@ services:
 
 volumes:
   thatdamtoolbox_discovery-run:
-    driver: local
+    external: true
+
