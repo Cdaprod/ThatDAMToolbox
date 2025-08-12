@@ -53,14 +53,10 @@ services:
     # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
-      api-gateway:
-        condition: service_started
-      video-web:
-        condition: service_started
-      video-api:
-        condition: service_started
-      thatdamtoolbox-discovery:
-        condition: service_healthy
+      - api-gateway
+      - video-web
+      - video-api
+      - thatdamtoolbox-discovery
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
     # ports: ["80:80"]
@@ -144,12 +140,9 @@ services:
       retries: 3
     restart: unless-stopped
     depends_on:
-      rabbitmq:
-        condition: service_started
-      overlay-hub:
-        condition: service_started
-      thatdamtoolbox-discovery:
-        condition: service_healthy
+      - rabbitmq
+      - overlay-hub
+      - thatdamtoolbox-discovery
 
 
   ########################################################################
@@ -197,14 +190,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-    depends_on:
-      rabbitmq:
-        condition: service_started
-      overlay-hub:
-        condition: service_started
-      thatdamtoolbox-discovery:
-        condition: service_healthy
-    restart: unless-stopped
+      depends_on:
+        - rabbitmq
+        - overlay-hub
+        - thatdamtoolbox-discovery
+      restart: unless-stopped
 
 
   ########################################################################
@@ -366,13 +356,10 @@ services:
       - /dev:/dev:rw,rshared
       - ./video:/video:rw
     restart: unless-stopped
-    depends_on:
-      capture-daemon:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
-      thatdamtoolbox-discovery:
-        condition: service_healthy
+      depends_on:
+        - capture-daemon
+        - rabbitmq
+        - thatdamtoolbox-discovery
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
@@ -441,12 +428,10 @@ services:
       - "video"
     device_cgroup_rules:
       - 'c 81:* rmw'
-    depends_on:
-      video-api:
-        condition: service_started
-      thatdamtoolbox-discovery:
-        condition: service_healthy
-    restart: unless-stopped
+      depends_on:
+        - video-api
+        - thatdamtoolbox-discovery
+      restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
     healthcheck:
