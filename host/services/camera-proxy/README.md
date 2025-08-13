@@ -71,3 +71,9 @@ curl -i 'http://localhost:8000/stream?device=daemon:cam1'
 
 If WebRTC negotiation with the daemon fails, the proxy serves an MJPEG stream directly so browsers and tools can still view the feed.
 
+## Tests
+
+```bash
+go test ./...
+```
+
