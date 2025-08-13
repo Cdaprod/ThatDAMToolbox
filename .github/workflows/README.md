@@ -9,6 +9,7 @@ This directory contains all **CI/CD workflow definitions** for building, testing
 |--------------------------------------|-------------------------------------------------------------------------|
 | ci-build-and-publish.yml             | Detects changed Docker services, parallel builds, tags & pushes         |
 | ci-engineer-env.yml                  | Engineers and validates the full prod-like environment (host+docker)     |
+| deploy.yml                           | Build images and deploy via self-hosted runners |
 | generate-docker-diagram.yml          | Builds SVG architecture diagrams from docker-compose.yaml                |
 | generate-nodeprop-config.yml         | Runs NodeProp config generator & commits results                        |
 
@@ -81,3 +82,8 @@ This directory contains all **CI/CD workflow definitions** for building, testing
 ---
 
 *For CI/CD strategy details, see `.github/README.md`.*
+### **deploy.yml**
+- **Purpose:**
+  Builds multi-arch images and deploys them to self-hosted runners (server and capture roles).
+- **Triggers:**
+  Pushes to `main`, tags starting with `v` or `release-`, and manual runs via `workflow_dispatch`.

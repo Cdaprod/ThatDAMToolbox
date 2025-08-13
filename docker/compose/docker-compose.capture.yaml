@@ -1,0 +1,12 @@
+name: thatdamtoolbox-capture
+services:
+  capture-daemon:
+    image: ${GHCR_IMAGE_PREFIX}/capture-daemon:${IMAGE_TAG}
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/video0:/dev/video0
+    volumes:
+      - ./data:/data
+    environment:
+      CAPTURE_NODE_ID: "${HOSTNAME}"
