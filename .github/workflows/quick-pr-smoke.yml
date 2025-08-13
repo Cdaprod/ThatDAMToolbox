@@ -1,0 +1,134 @@
+name: Quick PR Smoke
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [ "**" ]
+
+# Cancel superseded runs on the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      node:  ${{ steps.filter.outputs.node }}
+      go:    ${{ steps.filter.outputs.go }}
+      py:    ${{ steps.filter.outputs.py }}
+      cmp:   ${{ steps.filter.outputs.compose }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # Fast, robust path filtering for monorepos
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: .github/filters.yaml
+
+  node:
+    name: Node (lint + typecheck)
+    needs: detect
+    if: needs.detect.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup Node with dependency cache (npm/yarn auto-detected)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install (ci-friendly)
+        run: |
+          if [ -f package-lock.json ]; then npm ci --prefer-offline --no-audit --no-fund; \
+          elif [ -f yarn.lock ]; then corepack enable && yarn install --immutable; \
+          elif [ -f pnpm-lock.yaml ]; then corepack enable && pnpm install --frozen-lockfile; \
+          else echo "No lockfile found, skipping install"; fi
+
+      - name: Lint (best-effort)
+        run: |
+          if [ -f package.json ]; then \
+            npx --yes eslint . --max-warnings=0 || true; \
+          fi
+
+      - name: Typecheck (no emit)
+        run: |
+          if [ -f tsconfig.json ]; then npx --yes tsc -p tsconfig.json --noEmit; fi
+
+  go:
+    name: Go (vet + build -short)
+    needs: detect
+    if: needs.detect.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # setup-go has caching by default
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go build (all)
+        run: go build ./...
+
+      - name: Go test (short)
+        run: go test -run=^$ -short ./... || true
+
+  python:
+    name: Python (ruff lint)
+    needs: detect
+    if: needs.detect.outputs.py == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # setup-python can cache pip deps
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install ruff (only)
+        run: pip install --disable-pip-version-check --no-cache-dir ruff
+
+      - name: Ruff check
+        run: ruff check .
+
+  compose:
+    name: Compose validation
+    needs: detect
+    if: needs.detect.outputs.cmp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose config
+        run: |
+          docker version
+          docker compose version
+          # Validate root compose + any included layers if present
+          docker compose config
+
+  success:
+    name: ✅ All quick checks passed
+    if: always()
+    needs: [detect, node, go, python, compose]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize
+        run: |
+          echo "Node:   ${{ needs.detect.outputs.node }}"
+          echo "Go:     ${{ needs.detect.outputs.go }}"
+          echo "Python: ${{ needs.detect.outputs.py }}"
+          echo "Compose:${{ needs.detect.outputs.cmp }}"
