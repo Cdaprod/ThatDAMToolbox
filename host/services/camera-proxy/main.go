@@ -611,11 +611,15 @@ func (dp *DeviceProxy) handleDebugV4L2(w http.ResponseWriter, r *http.Request) {
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// Health endpoint
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, "ok")
-	})
+       // Health endpoints
+       mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+               w.WriteHeader(http.StatusOK)
+               io.WriteString(w, "ok")
+       })
+       mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+               w.WriteHeader(http.StatusOK)
+               io.WriteString(w, "ok")
+       })
 
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)

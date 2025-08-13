@@ -715,6 +715,15 @@ sequenceDiagram
 
 ## Installation
 
+### Quick Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Cdaprod/ThatDAMToolbox/main/scripts/install.sh | sudo bash
+```
+
+The script auto-detects the Raspberry Pi architecture, downloads the latest
+release binaries, and installs them to `/usr/local/bin`.
+
 ### Prerequisites
 
 - Python 3.8+
@@ -728,6 +737,9 @@ sequenceDiagram
 # Clone the repository
 git clone https://github.com/Cdaprod/ThatDAMToolbox.git
 cd ThatDAMToolbox
+
+# install workspace dependencies
+npm install
 
 # Build and run with Docker Compose
 docker-compose up -d
