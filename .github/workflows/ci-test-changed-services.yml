@@ -145,21 +145,28 @@ jobs:
             [ -d "docker/$svc" ] && docker build -q -t "local/$svc:ci" "docker/$svc" || true
           done
 
-      - name: Bring up compose stack
+      - name: Compose up (all layers)
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
+          export COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1
+
+          # Default envs for CI
+          if [ -f .github/ci/.env ]; then
+            set -a; source .github/ci/.env; set +a
+          fi
+
           ROOT="-f docker-compose.yaml"
           [ -f docker-compose.yml ] && ROOT="-f docker-compose.yml"
+
           LAYERS=""
           if ls docker/compose/docker-compose.*.y*ml >/dev/null 2>&1; then
             LAYERS=$(ls docker/compose/docker-compose.*.y*ml | xargs printf -- '-f %s ')
           fi
+
           echo "Using: $ROOT $LAYERS"
-          docker compose $ROOT $LAYERS up -d
-          echo "⏳ waiting 30s for services..."
-          sleep 30
-          docker compose ps
+          docker compose $ROOT $LAYERS up -d --remove-orphans --wait
+          docker compose $ROOT $LAYERS ps --format table
 
       - name: Basic health checks (best-effort)
         run: |
