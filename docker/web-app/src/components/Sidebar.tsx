@@ -4,28 +4,20 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { dashboardTools } from './dashboardTools'
 import clsx from 'clsx'
-import { useSidebar } from '@/hooks/useSidebar'
+import { useSidebar } from '../hooks/useSidebar'
 
 export default function Sidebar() {
-  const { collapsed, setCollapsed } = useSidebar()
-  const pathname = usePathname()
+  const { collapsed } = useSidebar()
+  const pathname = usePathname() || ''
 
   return (
     <aside
-        className={clsx(
-          'transition-all duration-300 backdrop-blur shadow-lg border-r border-color-border',
-          'bg-surface',
-          collapsed ? 'w-16' : 'w-64',
-        )}
-      >
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="p-3 w-full text-left text-sm font-semibold hover:bg-surface"
-      >
-        {collapsed ? '▶' : 'Collapse ◀'}
-      </button>
-
-      <nav className="flex flex-col gap-1 px-2">
+      className={clsx(
+        'h-full overflow-hidden bg-surface border-r border-color-border shadow-lg transition-all duration-300',
+        collapsed ? 'w-0 md:w-16' : 'w-64'
+      )}
+    >
+      <nav className="flex flex-col gap-1 px-2 py-2">
         {Object.values(dashboardTools).map(({ href, title, icon: Icon, id }) => {
           const active = pathname.startsWith(href)
           return (
@@ -38,7 +30,7 @@ export default function Sidebar() {
               )}
             >
               <Icon className="text-lg shrink-0" />
-              {!collapsed && <span>{title}</span>}
+              {!collapsed && <span className="text-body">{title}</span>}
             </Link>
           )
         })}

@@ -65,6 +65,13 @@ a {
   .bg-color-primary-bg{ background-color: var(--color-primary-bg) !important; }
   .bg-color-accent-bg { background-color: var(--color-accent-bg)  !important; }
   .border-theme-primary{ border-color:    var(--theme-primary)   !important; }
+
+  .text-body    { font-size: var(--text-body);    font-weight: var(--font-weight-regular); }
+  .text-heading { font-size: var(--text-heading); font-weight: var(--font-weight-semibold); }
+
+  .px-gutter-sm { padding-left: var(--gutter-sm); padding-right: var(--gutter-sm); }
+  .px-gutter-md { padding-left: var(--gutter-md); padding-right: var(--gutter-md); }
+  .px-gutter-lg { padding-left: var(--gutter-lg); padding-right: var(--gutter-lg); }
 }
 
 .is-selected {
