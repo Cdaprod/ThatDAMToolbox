@@ -92,6 +92,8 @@ type DeviceProxy struct {
 	daemonToken  string
 	probeKept    []v4l2probe.Device
 	probeDropped []v4l2probe.Device
+	usbSeen      map[string]struct{}
+	ignoredSeen  map[string]struct{}
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -113,6 +115,8 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		frontendURL: frontendURL,
 		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
 		daemonToken: getEnv("CAPTURE_DAEMON_TOKEN", ""),
+		usbSeen:     make(map[string]struct{}),
+		ignoredSeen: make(map[string]struct{}),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				if len(allow) == 1 && allow[0] == "" {
@@ -135,6 +139,7 @@ func (dp *DeviceProxy) discoverDevices() error {
 	dp.mutex.Lock()
 	defer dp.mutex.Unlock()
 
+	prev := dp.devices
 	dp.devices = make(map[string]*DeviceInfo)
 
 	mergedFromDaemon := 0
@@ -175,7 +180,15 @@ func (dp *DeviceProxy) discoverDevices() error {
 			IsAvailable:  true,
 			Capabilities: d.Capabilities,
 		}
-		log.Printf("Discovered device: %s (%s)", d.Name, d.Path)
+		if _, seen := prev[d.Path]; !seen {
+			log.Printf("Discovered device: %s (%s)", d.Name, d.Path)
+		}
+	}
+
+	for k, d := range prev {
+		if _, ok := dp.devices[k]; !ok {
+			log.Printf("Device removed: %s (%s)", d.Name, d.Path)
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -183,7 +196,10 @@ func (dp *DeviceProxy) discoverDevices() error {
 	opt := v4l2probe.DefaultOptions()
 	dp.probeKept, dp.probeDropped, _ = v4l2probe.Discover(ctx, opt)
 	for _, d := range dp.probeDropped {
-		log.Printf("Ignoring device: %s (%s) caps=[%s] reason=%s", d.Node, d.Name, d.Caps, d.Kind)
+		if _, logged := dp.ignoredSeen[d.Node]; !logged {
+			log.Printf("Ignoring device: %s (%s) caps=[%s] reason=%s", d.Node, d.Name, d.Caps, d.Kind)
+			dp.ignoredSeen[d.Node] = struct{}{}
+		}
 	}
 
 	dp.scanUSBCameras()
@@ -210,10 +226,18 @@ func (dp *DeviceProxy) scanUSBCameras() {
 
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
-		if strings.Contains(strings.ToLower(line), "camera") ||
-			strings.Contains(strings.ToLower(line), "video") ||
-			strings.Contains(strings.ToLower(line), "webcam") {
-			log.Printf("Found USB camera: %s", strings.TrimSpace(line))
+		l := strings.TrimSpace(line)
+		lower := strings.ToLower(l)
+		if lower == "" {
+			continue
+		}
+		if strings.Contains(lower, "camera") ||
+			strings.Contains(lower, "video") ||
+			strings.Contains(lower, "webcam") {
+			if _, seen := dp.usbSeen[l]; !seen {
+				log.Printf("Found USB camera: %s", l)
+				dp.usbSeen[l] = struct{}{}
+			}
 		}
 	}
 }
@@ -611,15 +635,15 @@ func (dp *DeviceProxy) handleDebugV4L2(w http.ResponseWriter, r *http.Request) {
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-       // Health endpoints
-       mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-               w.WriteHeader(http.StatusOK)
-               io.WriteString(w, "ok")
-       })
-       mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-               w.WriteHeader(http.StatusOK)
-               io.WriteString(w, "ok")
-       })
+	// Health endpoints
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "ok")
+	})
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "ok")
+	})
 
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)
