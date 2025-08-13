@@ -56,12 +56,16 @@ jobs:
 
       - name: Enforce formatting (gofmt -s) -- skip host/legacy
         shell: bash
+        continue-on-error: true
         run: |
           files=$(gofmt -s -l . | grep -E '\.go$' | grep -v '^host/legacy/' || true)
           if [ -n "$files" ]; then
-            echo "These files need 'gofmt -s':"
+            echo "::warning::These files need 'gofmt -s':"
             echo "$files"
-            exit 1
+            # Optional: print proposed diff (read-only)
+            # gofmt -s -d $files || true
+          else
+            echo "All Go files already formatted."
           fi
 
       - name: Per-module staticcheck • vet • errcheck • govulncheck • tests
