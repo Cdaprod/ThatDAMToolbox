@@ -75,35 +75,48 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          RACE_FLAG=""
-          [ "${ENABLE_RACE}" = "1" ] && RACE_FLAG="-race"
+          TARGETS="linux/amd64 linux/arm64 linux/arm"
           mkdir -p out/bin
 
           while IFS= read -r mod; do
             dir="$(dirname "$mod")"
             echo "🔨 Building in $dir"
             pushd "$dir" >/dev/null
-              # Keep dependencies tidy for reproducibility; don't fail the job on minor deltas here
               go mod tidy || true
 
-              # pick build target per module
               bin=""
+              pkg=""
               if [ -f "./cmd/main.go" ]; then
-                # typical layout (api-gateway)
                 bin="$(basename "$(dirname "$PWD")")"
-                go build ${RACE_FLAG} -o "../../out/bin/${bin}" ./cmd
+                pkg="./cmd"
               elif [ -f "./main.go" ]; then
-                # module root main (camera-proxy, capture-daemon)
                 bin="$(basename "$PWD")"
-                go build ${RACE_FLAG} -o "../../out/bin/${bin}" .
+                pkg="."
               else
                 echo "No main package found in $dir; skipping build"
+                popd >/dev/null
+                continue
               fi
+
+              for target in $TARGETS; do
+                GOOS=${target%/*}
+                GOARCH=${target#*/}
+                export GOOS GOARCH
+                unset GOARM RACE_FLAG
+                if [ "$GOARCH" = "arm" ]; then export GOARM=7; fi
+                if [ "$GOARCH" = "amd64" ] && [ "${ENABLE_RACE}" = "1" ]; then
+                  RACE_FLAG="-race"
+                fi
+                outdir="../../out/bin/${GOOS}-${GOARCH}"
+                mkdir -p "$outdir"
+                echo "  → $GOOS/$GOARCH $bin"
+                go build ${RACE_FLAG:-} -o "$outdir/${bin}" "$pkg"
+              done
             popd >/dev/null
           done < /tmp/mods.txt
 
           echo "Built binaries:"
-          ls -l out/bin || true
+          find out/bin -type f -maxdepth 2 -printf '%P\n' || true
 
       - name: Unit tests (sequential, low parallelism)
         shell: bash
@@ -112,7 +125,7 @@ jobs:
           RACE_FLAG=""
           [ "${ENABLE_RACE}" = "1" ] && RACE_FLAG="-race"
           # Test only active services to keep memory low
-          for dir in host/services/shared host/services/api-gateway host/services/capture-daemon host/services/camera-proxy; do
+          for dir in host/services/shared host/services/api-gateway host/services/capture-daemon host/services/camera-proxy host/services/discovery; do
             if [ -f "$dir/go.mod" ]; then
               echo "🧪 go test $dir"
               ( cd "$dir" && go test ./... ${RACE_FLAG} -count=1 -timeout=6m -p=2 -parallel=2 )
@@ -157,13 +170,23 @@ jobs:
 
       - name: Package Host Binaries
         run: |
-          tar czf host-binaries-${{ github.ref_name }}.tar.gz -C host-binaries .
-          ls -lh host-binaries-${{ github.ref_name }}.tar.gz
+          for dir in host-binaries/*; do
+            arch=$(basename "$dir")
+            tar czf "host-binaries-${arch}.tar.gz" -C "$dir" .
+            ls -lh "host-binaries-${arch}.tar.gz"
+          done
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
+      - name: Upload Release Assets
+        env:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./host-binaries-${{ github.ref_name }}.tar.gz
-          asset_name: host-binaries-${{ github.ref_name }}.tar.gz
-          asset_content_type: application/gzip
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for tar in host-binaries-*.tar.gz; do
+            name=$(basename "$tar")
+            echo "Uploading $name"
+            curl -sSL \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/gzip" \
+              --data-binary "@$tar" \
+              "$upload_url?name=$name"
+          done
