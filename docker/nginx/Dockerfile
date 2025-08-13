@@ -1,7 +1,7 @@
 FROM nginx:1.27-alpine
 
 # tiny entrypoint that renders the template with env-vars
-RUN apk add --no-cache bash gettext
+RUN apk add --no-cache bash gettext curl
 
 WORKDIR /etc/nginx
 
