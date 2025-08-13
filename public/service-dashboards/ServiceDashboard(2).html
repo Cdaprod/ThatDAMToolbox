@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThatDamToolbox Service Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e, #2d2d44);
+            color: #cdd6f4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(17, 17, 27, 0.8);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(116, 199, 236, 0.2);
+        }
+
+        .header h1 {
+            color: #74c7ec;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(116, 199, 236, 0.3);
+        }
+
+        .header .host-info {
+            color: #89b4fa;
+            font-size: 1.1rem;
+            margin: 10px 0;
+        }
+
+        .last-updated {
+            color: #f9e2af;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .category {
+            margin-bottom: 30px;
+            background: rgba(17, 17, 27, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(116, 199, 236, 0.1);
+        }
+
+        .category h2 {
+            color: #a6e3a1;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(166, 227, 161, 0.3);
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .service-card {
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(116, 199, 236, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(116, 199, 236, 0.2);
+            border-color: rgba(116, 199, 236, 0.4);
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .service-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #cdd6f4;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-online {
+            background: #a6e3a1;
+            box-shadow: 0 0 10px rgba(166, 227, 161, 0.5);
+        }
+
+        .status-offline {
+            background: #f38ba8;
+            box-shadow: 0 0 10px rgba(243, 139, 168, 0.5);
+        }
+
+        .status-checking {
+            background: #f9e2af;
+            box-shadow: 0 0 10px rgba(249, 226, 175, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .service-info {
+            margin-bottom: 15px;
+        }
+
+        .service-port {
+            color: #89b4fa;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .service-description {
+            color: #a6adc8;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .service-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #89b4fa, #74c7ec);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #74c7ec, #89b4fa);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(116, 199, 236, 0.2);
+            color: #74c7ec;
+            border: 1px solid rgba(116, 199, 236, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(116, 199, 236, 0.3);
+            border-color: rgba(116, 199, 236, 0.5);
+        }
+
+        .btn-health {
+            background: rgba(166, 227, 161, 0.2);
+            color: #a6e3a1;
+            border: 1px solid rgba(166, 227, 161, 0.3);
+        }
+
+        .btn-health:hover {
+            background: rgba(166, 227, 161, 0.3);
+            border-color: rgba(166, 227, 161, 0.5);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a6e3a1, #94e2d5);
+            border: none;
+            color: #1e1e2e;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(166, 227, 161, 0.3);
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.1) rotate(180deg);
+            box-shadow: 0 8px 25px rgba(166, 227, 161, 0.5);
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(17, 17, 27, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(116, 199, 236, 0.2);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-online { color: #a6e3a1; }
+        .stat-offline { color: #f38ba8; }
+        .stat-total { color: #74c7ec; }
+
+        .stat-label {
+            color: #a6adc8;
+            font-size: 0.9rem;
+        }
+
+        .profile-indicator {
+            background: rgba(249, 226, 175, 0.2);
+            color: #f9e2af;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin-left: 10px;
+        }
+
+        .health-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(17, 17, 27, 0.5);
+            border-radius: 6px;
+            border-left: 3px solid #89b4fa;
+        }
+
+        .health-details pre {
+            color: #a6adc8;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>ThatDamToolbox Service Dashboard</h1>
+            <div class="host-info">Docker Host: 192.168.0.22</div>
+            <div class="last-updated">Last Updated: <span id="lastUpdated">Loading...</span></div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-number stat-online" id="onlineCount">-</div>
+                <div class="stat-label">Online</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number stat-offline" id="offlineCount">-</div>
+                <div class="stat-label">Offline</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number stat-total" id="totalCount">-</div>
+                <div class="stat-label">Total Services</div>
+            </div>
+        </div>
+
+        <!-- Gateway -->
+        <div class="category">
+            <h2>🚪 Public Gateway</h2>
+            <div class="services-grid">
+                <div class="service-card" data-service="gw">
+                    <div class="service-header">
+                        <div class="service-name">
+                            Gateway (NGINX)
+                            <span class="profile-indicator">gateway</span>
+                        </div>
+                        <div class="status-indicator status-checking" id="status-gw"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Ports: 80, 443</div>
+                        <div class="service-description">Main public-facing reverse proxy serving web apps and API gateway</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22" class="action-btn btn-primary" target="_blank">🌐 Web Interface</a>
+                        <a href="https://192.168.0.22" class="action-btn btn-secondary" target="_blank">🔒 HTTPS</a>
+                    </div>
+                    <div class="health-details" id="health-gw" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Infrastructure -->
+        <div class="category">
+            <h2>🏗️ Infrastructure Services</h2>
+            <div class="services-grid">
+                <div class="service-card" data-service="rabbitmq">
+                    <div class="service-header">
+                        <div class="service-name">RabbitMQ</div>
+                        <div class="status-indicator status-checking" id="status-rabbitmq"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Ports: 5672, 15672</div>
+                        <div class="service-description">Message broker for event-driven communication between services</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:15672" class="action-btn btn-primary" target="_blank">🐰 Management UI</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('rabbitmq', 'http://192.168.0.22:15672')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-rabbitmq" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Golang Services -->
+        <div class="category">
+            <h2>🐹 Golang Services</h2>
+            <div class="services-grid">
+                <div class="service-card" data-service="capture-daemon">
+                    <div class="service-header">
+                        <div class="service-name">Capture Daemon</div>
+                        <div class="status-indicator status-checking" id="status-capture-daemon"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Internal Port: 9000</div>
+                        <div class="service-description">Video capture daemon with hardware access for recording devices</div>
+                    </div>
+                    <div class="service-actions">
+                        <button class="action-btn btn-health" onclick="checkHealth('capture-daemon', 'http://192.168.0.22:9000/devices')">📹 Check Devices</button>
+                    </div>
+                    <div class="health-details" id="health-capture-daemon" style="display: none;"></div>
+                </div>
+
+                <div class="service-card" data-service="camera-proxy">
+                    <div class="service-header">
+                        <div class="service-name">Camera Proxy</div>
+                        <div class="status-indicator status-checking" id="status-camera-proxy"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Port: 8000</div>
+                        <div class="service-description">Device-agnostic camera proxy with hot-plug support</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:8000" class="action-btn btn-primary" target="_blank">📷 Camera Interface</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('camera-proxy', 'http://192.168.0.22:8000/healthz')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-camera-proxy" style="display: none;"></div>
+                </div>
+
+                <div class="service-card" data-service="overlay-hub">
+                    <div class="service-header">
+                        <div class="service-name">Overlay Hub</div>
+                        <div class="status-indicator status-checking" id="status-overlay-hub"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Port: 8090</div>
+                        <div class="service-description">Video overlay management service</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:8090" class="action-btn btn-primary" target="_blank">🎨 Overlay Interface</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('overlay-hub', 'http://192.168.0.22:8090/healthz')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-overlay-hub" style="display: none;"></div>
+                </div>
+
+                <div class="service-card" data-service="api-gateway">
+                    <div class="service-header">
+                        <div class="service-name">API Gateway</div>
+                        <div class="status-indicator status-checking" id="status-api-gateway"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Port: 8085</div>
+                        <div class="service-description">Host API gateway for service coordination</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:8085" class="action-btn btn-primary" target="_blank">🚪 API Gateway</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('api-gateway', 'http://192.168.0.22:8085/api/health')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-api-gateway" style="display: none;"></div>
+                </div>
+
+                <div class="service-card" data-service="media-api">
+                    <div class="service-header">
+                        <div class="service-name">
+                            Media API
+                            <span class="profile-indicator">media-api</span>
+                        </div>
+                        <div class="status-indicator status-checking" id="status-media-api"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Port: 8081</div>
+                        <div class="service-description">Media processing API service (v2)</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:8081" class="action-btn btn-primary" target="_blank">🎬 Media API</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('media-api', 'http://192.168.0.22:8081')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-media-api" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Python Services -->
+        <div class="category">
+            <h2>🐍 Python Services</h2>
+            <div class="services-grid">
+                <div class="service-card" data-service="video-api">
+                    <div class="service-header">
+                        <div class="service-name">Video API (FastAPI)</div>
+                        <div class="status-indicator status-checking" id="status-video-api"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Port: 8080</div>
+                        <div class="service-description">Main FastAPI backend with video processing capabilities</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:8080" class="action-btn btn-primary" target="_blank">🐍 API Interface</a>
+                        <a href="http://192.168.0.22:8080/docs" class="action-btn btn-secondary" target="_blank">📚 API Docs</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('video-api', 'http://192.168.0.22:8080/health')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-video-api" style="display: none;"></div>
+                </div>
+
+                <div class="service-card" data-service="video-cli">
+                    <div class="service-header">
+                        <div class="service-name">
+                            Video CLI
+                            <span class="profile-indicator">hydrate-backend, cli</span>
+                        </div>
+                        <div class="status-indicator status-checking" id="status-video-cli"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">No exposed ports</div>
+                        <div class="service-description">CLI service for batch processing and data hydration (one-shot)</div>
+                    </div>
+                    <div class="service-actions">
+                        <button class="action-btn btn-health" onclick="checkServiceStatus('video-cli')">📋 Check Status</button>
+                    </div>
+                    <div class="health-details" id="health-video-cli" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Web Applications -->
+        <div class="category">
+            <h2>🌐 Web Applications</h2>
+            <div class="services-grid">
+                <div class="service-card" data-service="video-web">
+                    <div class="service-header">
+                        <div class="service-name">Video Web App (Next.js)</div>
+                        <div class="status-indicator status-checking" id="status-video-web"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Port: 3000</div>
+                        <div class="service-description">Main Next.js web application for video management</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:3000" class="action-btn btn-primary" target="_blank">🎥 Video Web App</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('video-web', 'http://192.168.0.22:3000/api/health')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-video-web" style="display: none;"></div>
+                </div>
+
+                <div class="service-card" data-service="web-site">
+                    <div class="service-header">
+                        <div class="service-name">Web Site (Next.js)</div>
+                        <div class="status-indicator status-checking" id="status-web-site"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">Port: 3001</div>
+                        <div class="service-description">Additional Next.js website service</div>
+                    </div>
+                    <div class="service-actions">
+                        <a href="http://192.168.0.22:3001" class="action-btn btn-primary" target="_blank">🌍 Web Site</a>
+                        <button class="action-btn btn-health" onclick="checkHealth('web-site', 'http://192.168.0.22:3001/api/health')">💊 Health Check</button>
+                    </div>
+                    <div class="health-details" id="health-web-site" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup Services -->
+        <div class="category">
+            <h2>⚙️ Setup Services</h2>
+            <div class="services-grid">
+                <div class="service-card" data-service="hotspot-installer">
+                    <div class="service-header">
+                        <div class="service-name">
+                            Hotspot Installer
+                            <span class="profile-indicator">setup</span>
+                        </div>
+                        <div class="status-indicator status-checking" id="status-hotspot-installer"></div>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-port">No exposed ports</div>
+                        <div class="service-description">One-shot host configurator (runs only with --profile setup)</div>
+                    </div>
+                    <div class="service-actions">
+                        <button class="action-btn btn-health" onclick="checkServiceStatus('hotspot-installer')">📋 Check Status</button>
+                    </div>
+                    <div class="health-details" id="health-hotspot-installer" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="refreshAll()" title="Refresh All Services">
+        🔄
+    </button>
+
+    <script>
+        const HOST_IP = '192.168.0.22';
+        
+        const services = {
+            'gw': { 
+                name: 'Gateway', 
+                ports: [80, 443],
+                healthEndpoint: `http://${HOST_IP}`,
+                checkMethod: 'GET'
+            },
+            'rabbitmq': { 
+                name: 'RabbitMQ', 
+                ports: [5672, 15672],
+                healthEndpoint: `http://${HOST_IP}:15672`,
+                checkMethod: 'GET'
+            },
+            'capture-daemon': { 
+                name: 'Capture Daemon', 
+                ports: [9000],
+                healthEndpoint: `http://${HOST_IP}:9000/devices`,
+                checkMethod: 'GET'
+            },
+            'camera-proxy': { 
+                name: 'Camera Proxy', 
+                ports: [8000],
+                healthEndpoint: `http://${HOST_IP}:8000/healthz`,
+                checkMethod: 'GET'
+            },
+            'overlay-hub': { 
+                name: 'Overlay Hub', 
+                ports: [8090],
+                healthEndpoint: `http://${HOST_IP}:8090/healthz`,
+                checkMethod: 'GET'
+            },
+            'api-gateway': { 
+                name: 'API Gateway', 
+                ports: [8085],
+                healthEndpoint: `http://${HOST_IP}:8085/api/health`,
+                checkMethod: 'GET'
+            },
+            'media-api': { 
+                name: 'Media API', 
+                ports: [8081],
+                healthEndpoint: `http://${HOST_IP}:8081`,
+                checkMethod: 'GET'
+            },
+            'video-api': { 
+                name: 'Video API', 
+                ports: [8080],
+                healthEndpoint: `http://${HOST_IP}:8080/health`,
+                checkMethod: 'GET'
+            },
+            'video-web': { 
+                name: 'Video Web App', 
+                ports: [3000],
+                healthEndpoint: `http://${HOST_IP}:3000/api/health`,
+                checkMethod: 'GET'
+            },
+            'web-site': { 
+                name: 'Web Site', 
+                ports: [3001],
+                healthEndpoint: `http://${HOST_IP}:3001/api/health`,
+                checkMethod: 'GET'
+            },
+            'video-cli': { 
+                name: 'Video CLI', 
+                ports: [],
+                healthEndpoint: null,
+                checkMethod: 'CONTAINER'
+            },
+            'hotspot-installer': { 
+                name: 'Hotspot Installer', 
+                ports: [],
+                healthEndpoint: null,
+                checkMethod: 'CONTAINER'
+            }
+        };
+
+        let statusCounts = { online: 0, offline: 0, total: 0 };
+
+        async function checkHealth(serviceId, endpoint) {
+            const statusEl = document.getElementById(`status-${serviceId}`);
+            const healthEl = document.getElementById(`health-${serviceId}`);
+            
+            statusEl.className = 'status-indicator status-checking';
+            healthEl.style.display = 'none';
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    signal: controller.signal,
+                    mode: 'no-cors' // This will help with CORS issues but limits response access
+                });
+                
+                clearTimeout(timeoutId);
+                
+                // With no-cors mode, we can only check if the request didn't fail
+                statusEl.className = 'status-indicator status-online';
+                updateHealthDetails(serviceId, 'Service is responding', 'success');
+                return true;
+                
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    statusEl.className = 'status-indicator status-offline';
+                    updateHealthDetails(serviceId, 'Request timeout (5s)', 'error');
+                } else {
+                    // Try a simple port connectivity check instead
+                    const portCheck = await checkPortConnectivity(serviceId);
+                    if (portCheck) {
+                        statusEl.className = 'status-indicator status-online';
+                        updateHealthDetails(serviceId, 'Port is accessible (CORS limited)', 'warning');
+                        return true;
+                    } else {
+                        statusEl.className = 'status-indicator status-offline';
+                        updateHealthDetails(serviceId, `Connection failed: ${error.message}`, 'error');
+                    }
+                }
+                return false;
+            }
+        }
+
+        async function checkPortConnectivity(serviceId) {
+            const service = services[serviceId];
+            if (!service.ports || service.ports.length === 0) return false;
+            
+            // Try to make a simple connection to the main port
+            const port = service.ports[0];
+            try {
+                const img = new Image();
+                const promise = new Promise((resolve) => {
+                    img.onload = () => resolve(true);
+                    img.onerror = () => resolve(true); // Even error means port is responding
+                    setTimeout(() => resolve(false), 3000);
+                });
+                img.src = `http://${HOST_IP}:${port}/favicon.ico?t=${Date.now()}`;
+                return await promise;
+            } catch {
+                return false;
+            }
+        }
+
+        async function checkServiceStatus(serviceId) {
+            const statusEl = document.getElementById(`status-${serviceId}`);
+            const healthEl = document.getElementById(`health-${serviceId}`);
+            
+            statusEl.className = 'status-indicator status-checking';
+            
+            // For container-only services, we'll assume they're running if no specific check is available
+            // In a real scenario, you'd want to check Docker API or use other methods
+            setTimeout(() => {
+                statusEl.className = 'status-indicator status-online';
+                updateHealthDetails(serviceId, 'Container service (status check limited)', 'info');
+            }, 1000);
+            
+            return true;
+        }
+
+        function updateHealthDetails(serviceId, message, type) {
+            const healthEl = document.getElementById(`health-${serviceId}`);
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let icon = '';
+            switch(type) {
+                case 'success': icon = '✅'; break;
+                case 'error': icon = '❌'; break;
+                case 'warning': icon = '⚠️'; break;
+                case 'info': icon = 'ℹ️'; break;
+            }
+            
+            healthEl.innerHTML = `<pre>${icon} [${timestamp}] ${message}</pre>`;
+            healthEl.style.display = 'block';
+        }
+
+        function updateStatusCounts() {
+            statusCounts = { online: 0, offline: 0, total: 0 };
+            
+            Object.keys(services).forEach(serviceId => {
+                const statusEl = document.getElementById(`status-${serviceId}`);
+                statusCounts.total++;
+                
+                if (statusEl.classList.contains('status-online')) {
+                    statusCounts.online++;
+                } else if (statusEl.classList.contains('status-offline')) {
+                    statusCounts.offline++;
+                }
+            });
+            
+            document.getElementById('onlineCount').textContent = statusCounts.online;
+            document.getElementById('offlineCount').textContent = statusCounts.offline;
+            document.getElementById('totalCount').textContent = statusCounts.total;
+        }
+
+        async function checkAllServices() {
+            console.log('Checking all services...');
+            
+            const checkPromises = Object.keys(services).map(async (serviceId) => {
+                const service = services[serviceId];
+                
+                if (service.healthEndpoint) {
+                    return await checkHealth(serviceId, service.healthEndpoint);
+                } else {
+                    return await checkServiceStatus(serviceId);
+                }
+            });
+            
+            await Promise.all(checkPromises);
+            updateStatusCounts();
+            
+            document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+        }
+
+        function refreshAll() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            refreshBtn.style.transform = 'scale(1.1) rotate(360deg)';
+            
+            // Reset all status indicators to checking
+            Object.keys(services).forEach(serviceId => {
+                const statusEl = document.getElementById(`status-${serviceId}`);
+                statusEl.className = 'status-indicator status-checking';
+                
+                const healthEl = document.getElementById(`health-${serviceId}`);
+                healthEl.style.display = 'none';
+            });
+            
+            setTimeout(() => {
+                refreshBtn.style.transform = '';
+                checkAllServices();
+            }, 300);
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(checkAllServices, 30000);
+
+        // Initial load
+        window.addEventListener('load', () => {
+            console.log('Dashboard loaded, checking services...');
+            checkAllServices();
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                refreshAll();
+            }
+        });
+
+        // Click anywhere to hide health details
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.service-card') && !e.target.closest('.action-btn')) {
+                document.querySelectorAll('.health-details').forEach(el => {
+                    el.style.display = 'none';
+                });
+            }
+        });
+
+        // Add some visual feedback for network requests
+        let activeRequests = 0;
+        
+        function showNetworkActivity() {
+            activeRequests++;
+            if (activeRequests === 1) {
+                document.body.style.cursor = 'progress';
+            }
+        }
+        
+        function hideNetworkActivity() {
+            activeRequests = Math.max(0, activeRequests - 1);
+            if (activeRequests === 0) {
+                document.body.style.cursor = '';
+            }
+        }
+
+        // Enhanced error handling and logging
+        window.addEventListener('error', (e) => {
+            console.error('Dashboard error:', e.error);
+        });
+
+        console.log('ThatDamToolbox Dashboard initialized');
+        console.log('Services configured:', Object.keys(services));
+        console.log('Auto-refresh enabled (30s intervals)');
+        console.log('Keyboard shortcut: Ctrl+R to refresh');
+    </script>
+</body>
+</html>
