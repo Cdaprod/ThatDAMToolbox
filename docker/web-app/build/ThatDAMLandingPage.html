@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThatDAMPlatform - Next Generation Digital Asset Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background: radial-gradient(ellipse at center, #0a0a0f 0%, #000000 100%);
+            perspective: 1500px;
+            perspective-origin: 50% 50%;
+            min-height: 100vh;
+        }
+
+        .infinite-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            transform-style: preserve-3d;
+            z-index: 1;
+            animation: infiniteRotate 180s linear infinite;
+        }
+
+        @keyframes infiniteRotate {
+            0% { transform: rotateX(2deg) rotateY(0deg) rotateZ(0deg); }
+            25% { transform: rotateX(1deg) rotateY(90deg) rotateZ(1deg); }
+            50% { transform: rotateX(-1deg) rotateY(180deg) rotateZ(-1deg); }
+            75% { transform: rotateX(0deg) rotateY(270deg) rotateZ(2deg); }
+            100% { transform: rotateX(2deg) rotateY(360deg) rotateZ(0deg); }
+        }
+
+        .background-grid {
+            position: absolute;
+            width: 300vw;
+            height: 300vh;
+            top: -100vh;
+            left: -100vw;
+            background: 
+                linear-gradient(90deg, rgba(14, 165, 233, 0.1) 1px, transparent 1px),
+                linear-gradient(0deg, rgba(14, 165, 233, 0.1) 1px, transparent 1px),
+                radial-gradient(circle at 25% 25%, rgba(168, 85, 247, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+            background-size: 60px 60px, 60px 60px, 400px 400px, 400px 400px;
+            transform: translateZ(-800px) rotateX(85deg);
+            animation: gridFlow 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes gridFlow {
+            0% { 
+                opacity: 0.4; 
+                transform: translateZ(-800px) rotateX(85deg) translateY(0px);
+            }
+            100% { 
+                opacity: 0.8; 
+                transform: translateZ(-800px) rotateX(85deg) translateY(-50px);
+            }
+        }
+
+        .floating-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: float 12s linear infinite;
+        }
+
+        .particle.small {
+            width: 1px;
+            height: 1px;
+            background: rgba(14, 165, 233, 0.8);
+        }
+
+        .particle.medium {
+            width: 2px;
+            height: 2px;
+            background: rgba(168, 85, 247, 0.6);
+        }
+
+        .particle.large {
+            width: 3px;
+            height: 3px;
+            background: rgba(236, 72, 153, 0.4);
+        }
+
+        @keyframes float {
+            0% { 
+                transform: translateZ(-1200px) translateY(120vh) translateX(var(--random-x));
+                opacity: 0;
+            }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { 
+                transform: translateZ(300px) translateY(-120vh) translateX(var(--random-x));
+                opacity: 0;
+            }
+        }
+
+        .content-container {
+            position: relative;
+            z-index: 100;
+            min-height: 100vh;
+            padding: 20px;
+            transform-style: preserve-3d;
+        }
+
+        .glass-section {
+            position: relative;
+            backdrop-filter: blur(20px) saturate(180%);
+            background: rgba(15, 15, 30, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: clamp(24px, 5vw, 48px);
+            margin: clamp(20px, 3vw, 40px) auto;
+            max-width: min(90vw, 800px);
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                0 8px 32px rgba(14, 165, 233, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transform-style: preserve-3d;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .glass-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(14, 165, 233, 0.5) 20%, 
+                rgba(168, 85, 247, 0.5) 50%, 
+                rgba(236, 72, 153, 0.5) 80%, 
+                transparent);
+        }
+
+        .glass-section:hover {
+            transform: translateZ(30px) scale(1.02);
+            background: rgba(20, 20, 40, 0.7);
+            box-shadow: 
+                0 40px 80px rgba(0, 0, 0, 0.6),
+                0 12px 48px rgba(14, 165, 233, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border-color: rgba(14, 165, 233, 0.3);
+        }
+
+        .hero-section {
+            text-align: center;
+            transform: translateZ(80px);
+            animation: heroFloat 8s ease-in-out infinite;
+        }
+
+        @keyframes heroFloat {
+            0%, 100% { transform: translateZ(80px) rotateX(2deg); }
+            50% { transform: translateZ(120px) rotateX(-2deg); }
+        }
+
+        .features-section {
+            transform: translateZ(40px) rotateY(-5deg);
+            animation: featureFloat 10s ease-in-out infinite;
+        }
+
+        @keyframes featureFloat {
+            0%, 100% { transform: translateZ(40px) rotateY(-5deg); }
+            50% { transform: translateZ(70px) rotateY(-2deg); }
+        }
+
+        .tech-section {
+            transform: translateZ(60px) rotateY(5deg);
+            animation: techFloat 12s ease-in-out infinite reverse;
+        }
+
+        @keyframes techFloat {
+            0%, 100% { transform: translateZ(60px) rotateY(5deg); }
+            50% { transform: translateZ(90px) rotateY(8deg); }
+        }
+
+        .cta-section {
+            text-align: center;
+            transform: translateZ(50px);
+            animation: ctaFloat 9s ease-in-out infinite;
+        }
+
+        @keyframes ctaFloat {
+            0%, 100% { transform: translateZ(50px) rotateX(-3deg); }
+            50% { transform: translateZ(80px) rotateX(3deg); }
+        }
+
+        .logo {
+            position: fixed;
+            top: clamp(20px, 3vw, 40px);
+            left: clamp(20px, 3vw, 40px);
+            z-index: 200;
+            font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #0ea5e9, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(14, 165, 233, 0.3);
+            transform: translateZ(200px);
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, #0ea5e9 0%, #a855f7 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: clamp(16px, 3vw, 32px);
+            text-shadow: 0 0 60px rgba(14, 165, 233, 0.3);
+            line-height: 1.1;
+        }
+
+        h2 {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            color: #0ea5e9;
+            margin-bottom: clamp(12px, 2.5vw, 24px);
+            text-shadow: 0 0 30px rgba(14, 165, 233, 0.4);
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        p {
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.7;
+            font-size: clamp(1rem, 2.2vw, 1.2rem);
+            margin-bottom: clamp(12px, 2.5vw, 20px);
+            font-weight: 400;
+        }
+
+        .highlight {
+            color: #0ea5e9;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #0ea5e9, #a855f7);
+            border: none;
+            padding: clamp(12px, 3vw, 20px) clamp(24px, 6vw, 48px);
+            border-radius: 50px;
+            color: white;
+            font-size: clamp(1rem, 2.5vw, 1.3rem);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 15px 35px rgba(14, 165, 233, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 25px 50px rgba(14, 165, 233, 0.6);
+            background: linear-gradient(135deg, #0ea5e9, #ec4899);
+        }
+
+        .cta-button:hover::before {
+            left: 100%;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            gap: clamp(8px, 2vw, 16px);
+        }
+
+        .feature-list li {
+            color: rgba(255, 255, 255, 0.9);
+            padding: clamp(8px, 2vw, 16px);
+            padding-left: clamp(16px, 4vw, 32px);
+            position: relative;
+            background: rgba(14, 165, 233, 0.05);
+            border-radius: 12px;
+            border-left: 3px solid #0ea5e9;
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            transition: all 0.3s ease;
+        }
+
+        .feature-list li:hover {
+            background: rgba(14, 165, 233, 0.1);
+            transform: translateX(8px);
+        }
+
+        .feature-list li::before {
+            content: '▶';
+            position: absolute;
+            left: clamp(8px, 2vw, 16px);
+            color: #0ea5e9;
+            animation: pulse 3s infinite;
+            font-size: 0.8em;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(clamp(140px, 25vw, 180px), 1fr));
+            gap: clamp(12px, 3vw, 20px);
+            margin-top: clamp(16px, 3vw, 32px);
+        }
+
+        .tech-item {
+            background: rgba(14, 165, 233, 0.08);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tech-item::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(14, 165, 233, 0.1), transparent);
+            animation: rotate 4s linear infinite;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tech-item:hover::before {
+            opacity: 1;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tech-item:hover {
+            background: rgba(14, 165, 233, 0.15);
+            transform: translateY(-5px) scale(1.02);
+            border-color: rgba(14, 165, 233, 0.4);
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.2);
+        }
+
+        .nav-dots {
+            position: fixed;
+            right: clamp(20px, 3vw, 40px);
+            top: 50%;
+            transform: translateY(-50%) translateZ(150px);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+        }
+
+        .nav-dot.active {
+            background: #0ea5e9;
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.8);
+            border-color: rgba(14, 165, 233, 0.3);
+            transform: scale(1.2);
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            body {
+                perspective: 1000px;
+                overflow-y: auto;
+                height: auto;
+            }
+
+            .infinite-canvas {
+                animation-duration: 240s;
+            }
+
+            .content-container {
+                padding: 16px;
+            }
+
+            .glass-section {
+                margin: 16px auto;
+                padding: 24px;
+                max-width: 95vw;
+            }
+
+            .nav-dots {
+                display: none;
+            }
+
+            .logo {
+                position: relative;
+                top: 0;
+                left: 0;
+                text-align: center;
+                padding: 20px 0;
+                transform: none;
+            }
+
+            .hero-section,
+            .features-section,
+            .tech-section,
+            .cta-section {
+                transform: translateZ(20px);
+                animation: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .content-container {
+                padding: 12px;
+            }
+
+            .glass-section {
+                border-radius: 16px;
+                padding: 20px;
+                margin: 12px auto;
+            }
+        }
+
+        /* Dark theme enhancements */
+        .glass-section {
+            background: rgba(8, 8, 20, 0.8);
+        }
+
+        .glass-section:hover {
+            background: rgba(12, 12, 30, 0.9);
+        }
+
+        /* Improved accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .infinite-canvas,
+            .hero-section,
+            .features-section,
+            .tech-section,
+            .cta-section {
+                animation: none;
+            }
+
+            .particle {
+                animation: none;
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="infinite-canvas">
+        <div class="background-grid"></div>
+        <div class="floating-particles"></div>
+    </div>
+
+    <div class="content-container">
+        <div class="logo">ThatDAMPlatform</div>
+        
+        <div class="nav-dots">
+            <div class="nav-dot active"></div>
+            <div class="nav-dot"></div>
+            <div class="nav-dot"></div>
+            <div class="nav-dot"></div>
+        </div>
+
+        <section class="glass-section hero-section">
+            <h1>ThatDAMPlatform</h1>
+            <p>Revolutionary <span class="highlight">Digital Asset Management</span> platform that replaces traditional camera monitors, streaming software, and wireless transmitters with a unified, browser-compatible solution.</p>
+            <p>Transform your <span class="highlight">iPhone 16 Pro Max</span> into a professional monitoring and capture device with built-in 3D asset management and cloud-native architecture.</p>
+        </section>
+
+        <section class="glass-section features-section">
+            <h2>Core Features</h2>
+            <ul class="feature-list">
+                <li>Replace Atomos Ninja V monitoring systems</li>
+                <li>Built-in OBS streaming functionality</li>
+                <li>Advanced restreaming capabilities</li>
+                <li>Wireless transmission protocols</li>
+                <li>3D spatial asset explorer interface</li>
+                <li>Multi-device capture aggregation</li>
+                <li>Cloud-native storage architecture</li>
+                <li>Browser-compatible, no apps required</li>
+            </ul>
+        </section>
+
+        <section class="glass-section tech-section">
+            <h2>Technology Stack</h2>
+            <p>Enterprise-grade <span class="highlight">PaaS/SaaS/IaaS</span> solution engineered for professional content creators, production teams, and media organizations.</p>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <h3>Browser Native</h3>
+                    <p>Zero installation required</p>
+                </div>
+                <div class="tech-item">
+                    <h3>Real-time Sync</h3>
+                    <p>Multi-device orchestration</p>
+                </div>
+                <div class="tech-item">
+                    <h3>3D Interface</h3>
+                    <p>Spatial asset management</p>
+                </div>
+                <div class="tech-item">
+                    <h3>Cloud Storage</h3>
+                    <p>Eliminate physical media</p>
+                </div>
+                <div class="tech-item">
+                    <h3>AI Processing</h3>
+                    <p>Intelligent asset tagging</p>
+                </div>
+                <div class="tech-item">
+                    <h3>Edge Computing</h3>
+                    <p>Local-first architecture</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-section cta-section">
+            <h2>Ready to Transform Your Workflow?</h2>
+            <p>Join the revolution in digital asset management and professional content creation. Experience the future of unified media production platforms.</p>
+            <button class="cta-button" onclick="window.open('mailto:contact@thatdamplatform.com?subject=Early Access Request', '_blank')">Request Early Access</button>
+        </section>
+    </div>
+
+    <script>
+        // Enhanced particle system
+        function createParticles() {
+            const particleContainer = document.querySelector('.floating-particles');
+            const particleCount = window.innerWidth < 768 ? 30 : 80;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                const size = Math.random();
+                
+                if (size < 0.6) {
+                    particle.className = 'particle small';
+                } else if (size < 0.85) {
+                    particle.className = 'particle medium';
+                } else {
+                    particle.className = 'particle large';
+                }
+                
+                const randomX = (Math.random() - 0.5) * 200;
+                particle.style.setProperty('--random-x', randomX + 'px');
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 12 + 's';
+                particle.style.animationDuration = (Math.random() * 8 + 8) + 's';
+                
+                particleContainer.appendChild(particle);
+            }
+        }
+
+        // Enhanced section interaction
+        function setupSectionInteractions() {
+            const sections = document.querySelectorAll('.glass-section');
+            const navDots = document.querySelectorAll('.nav-dot');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry, index) => {
+                    if (entry.isIntersecting) {
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        const sectionIndex = Array.from(sections).indexOf(entry.target);
+                        if (navDots[sectionIndex]) {
+                            navDots[sectionIndex].classList.add('active');
+                        }
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            sections.forEach(section => observer.observe(section));
+
+            // Navigation dot clicks
+            navDots.forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    sections[index]?.scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                });
+            });
+        }
+
+        // Enhanced mouse interaction
+        function setupMouseInteraction() {
+            let mouseX = 0, mouseY = 0;
+            let targetX = 0, targetY = 0;
+            
+            document.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+                mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+            });
+
+            function animate() {
+                targetX += (mouseX - targetX) * 0.05;
+                targetY += (mouseY - targetY) * 0.05;
+                
+                const canvas = document.querySelector('.infinite-canvas');
+                if (canvas && window.innerWidth > 768) {
+                    canvas.style.transform = 
+                        `rotateY(${targetX * 3}deg) rotateX(${-targetY * 3}deg)`;
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // Performance optimization
+        function optimizeForDevice() {
+            const isLowEnd = navigator.hardwareConcurrency < 4 || 
+                           window.innerWidth < 768 ||
+                           window.devicePixelRatio < 2;
+            
+            if (isLowEnd) {
+                document.documentElement.style.setProperty('--particle-count', '20');
+                const canvas = document.querySelector('.infinite-canvas');
+                if (canvas) {
+                    canvas.style.animationDuration = '300s';
+                }
+            }
+        }
+
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', () => {
+            optimizeForDevice();
+            createParticles();
+            setupSectionInteractions();
+            setupMouseInteraction();
+        });
+
+        // Handle resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                // Re-create particles for new screen size
+                const particleContainer = document.querySelector('.floating-particles');
+                particleContainer.innerHTML = '';
+                createParticles();
+            }, 300);
+        });
+    </script>
+</body>
+</html>
