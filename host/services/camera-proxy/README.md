@@ -51,6 +51,16 @@ docker run -p 8000:8000 \
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC (optional)
 - `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
 
+### Logging
+
+Configure log output with environment variables:
+
+- `LOG_LEVEL` – debug|info|warn|error (default info)
+- `LOG_FORMAT` – auto|json|text (default auto)
+- `LOG_CALLER` – off|short|full (default short)
+- `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
+- `LOG_NO_COLOR` – set to `1` to disable colored output
+
 Health check endpoint: `GET /healthz` returns `200 OK` when ready.
 
 

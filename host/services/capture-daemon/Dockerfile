@@ -79,5 +79,7 @@ ENV CAPTURE_BROKER_URL="amqp://video:video@rabbitmq:5672/" \
 # copy the binary
 COPY --from=builder /out/capture-daemon /usr/local/bin/capture-daemon
 
+ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
+
 EXPOSE 9000
 ENTRYPOINT ["/sbin/tini","-s","--","/usr/local/bin/capture-daemon"]

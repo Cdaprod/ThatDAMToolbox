@@ -14,6 +14,16 @@ docker run -p 8080:8080 api-gateway
 docker compose -f host/services/api-gateway/docker-compose.api-gateway.yaml --profile api-gateway up
 ```
 
+### Logging
+
+Configure via environment variables:
+
+- `LOG_LEVEL` – debug|info|warn|error (default info)
+- `LOG_FORMAT` – auto|json|text (default auto)
+- `LOG_CALLER` – off|short|full (default short)
+- `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
+- `LOG_NO_COLOR` – set to `1` to disable colored output
+
 ## Overlay endpoints
 - `POST /agents/issue`
 - `GET /.well-known/jwks.json`

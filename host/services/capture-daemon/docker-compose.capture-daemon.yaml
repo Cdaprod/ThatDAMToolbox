@@ -2,6 +2,8 @@ services:
   capture-daemon:
     image: ${REGISTRY:-localhost}/capture-daemon:${VERSION:-dev}
     profiles: ["capture-daemon"]
+    environment:
+      LOG_FORMAT: text
     ports:
       - "${CAPTURE_DAEMON_PORT:-9000}:9000"
 

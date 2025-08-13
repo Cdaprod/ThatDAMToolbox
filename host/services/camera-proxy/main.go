@@ -26,14 +26,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
-	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
-	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc/v3"
-	"github.com/pion/webrtc/v3/pkg/media"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -43,9 +36,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
+	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
+	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
 
-var ffmpegCmd = exec.CommandContext
+var (
+	version   = "dev"
+	ffmpegCmd = exec.CommandContext
+)
 
 // hwAccelArgs returns additional ffmpeg arguments from FFMPEG_HWACCEL.
 func hwAccelArgs() []string {
@@ -92,6 +96,8 @@ type DeviceProxy struct {
 	daemonToken  string
 	probeKept    []v4l2probe.Device
 	probeDropped []v4l2probe.Device
+	usbSeen      map[string]struct{}
+	ignoredSeen  map[string]struct{}
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -113,6 +119,8 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		frontendURL: frontendURL,
 		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
 		daemonToken: getEnv("CAPTURE_DAEMON_TOKEN", ""),
+		usbSeen:     make(map[string]struct{}),
+		ignoredSeen: make(map[string]struct{}),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				if len(allow) == 1 && allow[0] == "" {
@@ -135,6 +143,7 @@ func (dp *DeviceProxy) discoverDevices() error {
 	dp.mutex.Lock()
 	defer dp.mutex.Unlock()
 
+	prev := dp.devices
 	dp.devices = make(map[string]*DeviceInfo)
 
 	mergedFromDaemon := 0
@@ -163,7 +172,7 @@ func (dp *DeviceProxy) discoverDevices() error {
 
 	devs, err := scanner.ScanAll()
 	if err != nil {
-		log.Printf("device scan failed: %v", err)
+		logx.L.Error("device scan failed", "err", err)
 	}
 	for _, d := range devs {
 		if _, exists := dp.devices[d.Path]; exists {
@@ -175,7 +184,15 @@ func (dp *DeviceProxy) discoverDevices() error {
 			IsAvailable:  true,
 			Capabilities: d.Capabilities,
 		}
-		log.Printf("Discovered device: %s (%s)", d.Name, d.Path)
+		if _, seen := prev[d.Path]; !seen {
+			logx.L.Info("device discovered", "name", d.Name, "path", d.Path)
+		}
+	}
+
+	for k, d := range prev {
+		if _, ok := dp.devices[k]; !ok {
+			logx.L.Info("device removed", "name", d.Name, "path", d.Path)
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -183,7 +200,10 @@ func (dp *DeviceProxy) discoverDevices() error {
 	opt := v4l2probe.DefaultOptions()
 	dp.probeKept, dp.probeDropped, _ = v4l2probe.Discover(ctx, opt)
 	for _, d := range dp.probeDropped {
-		log.Printf("Ignoring device: %s (%s) caps=[%s] reason=%s", d.Node, d.Name, d.Caps, d.Kind)
+		if _, logged := dp.ignoredSeen[d.Node]; !logged {
+			logx.L.Info("ignoring device", "node", d.Node, "name", d.Name, "caps", d.Caps, "reason", d.Kind)
+			dp.ignoredSeen[d.Node] = struct{}{}
+		}
 	}
 
 	dp.scanUSBCameras()
@@ -210,10 +230,18 @@ func (dp *DeviceProxy) scanUSBCameras() {
 
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
-		if strings.Contains(strings.ToLower(line), "camera") ||
-			strings.Contains(strings.ToLower(line), "video") ||
-			strings.Contains(strings.ToLower(line), "webcam") {
-			log.Printf("Found USB camera: %s", strings.TrimSpace(line))
+		l := strings.TrimSpace(line)
+		lower := strings.ToLower(l)
+		if lower == "" {
+			continue
+		}
+		if strings.Contains(lower, "camera") ||
+			strings.Contains(lower, "video") ||
+			strings.Contains(lower, "webcam") {
+			if _, seen := dp.usbSeen[l]; !seen {
+				logx.L.Info("found usb camera", "path", l)
+				dp.usbSeen[l] = struct{}{}
+			}
 		}
 	}
 }
@@ -468,7 +496,7 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		n, err := stdout.Read(buffer)
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("Stream read error: %v", err)
+				logx.L.Error("stream read error", "err", err)
 			}
 			break
 		}
@@ -495,7 +523,7 @@ func (dp *DeviceProxy) handleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 	// Upgrade connection
 	clientConn, err := dp.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		logx.L.Error("websocket upgrade failed", "err", err)
 		return
 	}
 	defer clientConn.Close()
@@ -508,7 +536,7 @@ func (dp *DeviceProxy) handleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 
 	backendConn, _, err := websocket.DefaultDialer.Dial(backendURL, nil)
 	if err != nil {
-		log.Printf("Backend WebSocket connection failed: %v", err)
+		logx.L.Error("backend websocket connection failed", "err", err)
 		return
 	}
 	defer backendConn.Close()
@@ -523,7 +551,7 @@ func (dp *DeviceProxy) proxyWebSocketMessages(from, to *websocket.Conn, directio
 	for {
 		messageType, data, err := from.ReadMessage()
 		if err != nil {
-			log.Printf("WebSocket read error (%s): %v", direction, err)
+			logx.L.Error("websocket read error", "direction", direction, "err", err)
 			break
 		}
 
@@ -533,7 +561,7 @@ func (dp *DeviceProxy) proxyWebSocketMessages(from, to *websocket.Conn, directio
 		}
 
 		if err := to.WriteMessage(messageType, data); err != nil {
-			log.Printf("WebSocket write error (%s): %v", direction, err)
+			logx.L.Error("websocket write error", "direction", direction, "err", err)
 			break
 		}
 	}
@@ -570,7 +598,7 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 	defer ticker.Stop()
 
 	if err := dp.discoverDevices(); err != nil {
-		log.Printf("Initial device discovery failed: %v", err)
+		logx.L.Error("initial device discovery failed", "err", err)
 	} else {
 		_ = dp.registerWithDaemon(ctx)
 	}
@@ -581,7 +609,7 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := dp.discoverDevices(); err != nil {
-				log.Printf("Device discovery failed: %v", err)
+				logx.L.Error("device discovery failed", "err", err)
 			} else {
 				_ = dp.registerWithDaemon(ctx)
 			}
@@ -611,15 +639,15 @@ func (dp *DeviceProxy) handleDebugV4L2(w http.ResponseWriter, r *http.Request) {
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-       // Health endpoints
-       mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-               w.WriteHeader(http.StatusOK)
-               io.WriteString(w, "ok")
-       })
-       mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-               w.WriteHeader(http.StatusOK)
-               io.WriteString(w, "ok")
-       })
+	// Health endpoints
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "ok")
+	})
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "ok")
+	})
 
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)
@@ -644,6 +672,16 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 }
 
 func main() {
+	logx.Init(logx.Config{
+		Service: "camera-proxy",
+		Version: version,
+		Level:   getEnv("LOG_LEVEL", "info"),
+		Format:  getEnv("LOG_FORMAT", "auto"),
+		Caller:  getEnv("LOG_CALLER", "short"),
+		Time:    getEnv("LOG_TIME", "rfc3339ms"),
+		NoColor: os.Getenv("LOG_NO_COLOR") == "1",
+	})
+
 	// Configuration from environment variables
 	proxyPort := getEnv("PROXY_PORT", "8000")
 	backendAddr := getEnv("BACKEND_URL", "http://localhost:8080")
@@ -652,7 +690,8 @@ func main() {
 	// Create device proxy
 	proxy, err := NewDeviceProxy(backendAddr, frontendAddr)
 	if err != nil {
-		log.Fatalf("Failed to create device proxy: %v", err)
+		logx.L.Error("failed to create device proxy", "err", err)
+		os.Exit(1)
 	}
 
 	// Start device discovery
@@ -665,9 +704,9 @@ func main() {
 	handler := proxy.setupRoutes()
 
 	// Start proxy server
-	log.Printf("Camera Device Proxy starting on port %s", proxyPort)
-	log.Printf("Proxying to backend: %s", backendAddr)
-	log.Printf("Serving frontend: %s", frontendAddr)
+	logx.L.Info("service starting", "port", proxyPort)
+	logx.L.Info("proxying to backend", "backend", backendAddr)
+	logx.L.Info("serving frontend", "frontend", frontendAddr)
 
 	server := &http.Server{
 		Addr:    ":" + proxyPort,
@@ -676,9 +715,15 @@ func main() {
 	cert := getEnv("TLS_CERT_FILE", "")
 	key := getEnv("TLS_KEY_FILE", "")
 	if cert != "" && key != "" {
-		log.Fatal(server.ListenAndServeTLS(cert, key))
+		if err := server.ListenAndServeTLS(cert, key); err != nil {
+			logx.L.Error("server failed", "err", err)
+			os.Exit(1)
+		}
 	}
-	log.Fatal(server.ListenAndServe())
+	if err := server.ListenAndServe(); err != nil {
+		logx.L.Error("server failed", "err", err)
+		os.Exit(1)
+	}
 }
 
 // getEnv gets environment variable with default value

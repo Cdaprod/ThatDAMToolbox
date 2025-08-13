@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	"github.com/hashicorp/mdns"
 	"github.com/hashicorp/serf/serf"
 )
@@ -31,6 +31,8 @@ const (
 	DiscoverySerf      = "serf"
 	DiscoveryTailscale = "tailscale"
 )
+
+var version = "dev"
 
 type ServiceInfo struct {
 	Host     string    `json:"host"`
@@ -78,8 +80,8 @@ func NewDiscoveryManager() *DiscoveryManager {
 func (dm *DiscoveryManager) Start() error {
 	printBanner()
 
-	log.Printf("🚀 Starting ThatDAM Hybrid Discovery Service")
-	log.Printf("📡 Node ID: %s", dm.nodeID)
+	logx.L.Info("starting discovery service")
+	logx.L.Info("node id", "id", dm.nodeID)
 
 	// Start health check server first
 	if err := dm.startHealthServer(); err != nil {
@@ -88,18 +90,18 @@ func (dm *DiscoveryManager) Start() error {
 
 	// Determine discovery backend based on environment
 	backend := dm.detectDiscoveryBackend()
-	log.Printf("🔍 Using discovery backend: %s", backend)
+	logx.L.Info("using discovery backend", "backend", backend)
 
 	// Start discovery based on backend
 	switch backend {
 	case DiscoveryTailscale:
 		if err := dm.startTailscaleDiscovery(); err != nil {
-			log.Printf("⚠️  Tailscale discovery failed, falling back to mDNS: %v", err)
+			logx.L.Warn("tailscale discovery failed, falling back to mdns", "err", err)
 			backend = DiscoveryMDNS
 		}
 	case DiscoverySerf:
 		if err := dm.startSerfDiscovery(); err != nil {
-			log.Printf("⚠️  Serf discovery failed, falling back to mDNS: %v", err)
+			logx.L.Warn("serf discovery failed, falling back to mdns", "err", err)
 			backend = DiscoveryMDNS
 		}
 	}
@@ -152,9 +154,9 @@ func (dm *DiscoveryManager) startHealthServer() error {
 	}
 
 	go func() {
-		log.Printf("🏥 Health server listening on :%d", HealthCheckPort)
+		logx.L.Info("health server listening", "port", HealthCheckPort)
 		if err := dm.healthServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("❌ Health server error: %v", err)
+			logx.L.Error("health server error", "err", err)
 		}
 	}()
 
@@ -189,7 +191,7 @@ func (dm *DiscoveryManager) handleDiscovery(w http.ResponseWriter, r *http.Reque
 }
 
 func (dm *DiscoveryManager) startMDNSDiscovery() error {
-	log.Printf("🔍 Starting mDNS discovery...")
+	logx.L.Info("starting mdns discovery")
 
 	// Start mDNS browser
 	go dm.browseMDNS()
@@ -214,7 +216,7 @@ func (dm *DiscoveryManager) browseMDNS() {
 			}
 			dm.mutex.Unlock()
 
-			log.Printf("🎯 Discovered mDNS service: %s:%d (Node: %s)", entry.Host, entry.Port, entry.Info)
+			logx.L.Info("discovered mdns service", "host", entry.Host, "port", entry.Port, "node", entry.Info)
 		}
 	}()
 
@@ -232,7 +234,7 @@ func (dm *DiscoveryManager) browseMDNS() {
 }
 
 func (dm *DiscoveryManager) startSerfDiscovery() error {
-	log.Printf("🔍 Starting Serf discovery...")
+	logx.L.Info("starting serf discovery")
 
 	config := serf.DefaultConfig()
 	config.NodeName = dm.nodeID
@@ -252,9 +254,9 @@ func (dm *DiscoveryManager) startSerfDiscovery() error {
 	if joinAddr := os.Getenv("SERF_JOIN"); joinAddr != "" {
 		_, err = dm.serfAgent.Join([]string{joinAddr}, true)
 		if err != nil {
-			log.Printf("⚠️  Failed to join Serf cluster at %s: %v", joinAddr, err)
+			logx.L.Warn("failed to join serf cluster", "addr", joinAddr, "err", err)
 		} else {
-			log.Printf("🤝 Joined Serf cluster via %s", joinAddr)
+			logx.L.Info("joined serf cluster", "addr", joinAddr)
 		}
 	}
 
@@ -277,7 +279,7 @@ func (dm *DiscoveryManager) handleSerfEvents() {
 					}
 					dm.mutex.Unlock()
 
-					log.Printf("🎯 Discovered Serf member: %s (%s)", member.Name, member.Addr)
+					logx.L.Info("discovered serf member", "name", member.Name, "addr", member.Addr)
 				}
 			}
 		}
@@ -285,7 +287,7 @@ func (dm *DiscoveryManager) handleSerfEvents() {
 }
 
 func (dm *DiscoveryManager) startTailscaleDiscovery() error {
-	log.Printf("🔍 Starting Tailscale discovery...")
+	logx.L.Info("starting tailscale discovery")
 
 	// Get Tailscale status
 	cmd := exec.Command("tailscale", "status", "--json")
@@ -342,7 +344,7 @@ func (dm *DiscoveryManager) checkTailscalePeer(dnsName string) {
 		}
 		dm.mutex.Unlock()
 
-		log.Printf("🎯 Discovered Tailscale peer: %s (%s)", nodeID, dnsName)
+		logx.L.Info("discovered tailscale peer", "id", nodeID, "dns", dnsName)
 	}
 }
 
@@ -353,18 +355,18 @@ func (dm *DiscoveryManager) decideMode() {
 
 	if serverCount == 0 {
 		dm.mode = ModeServer
-		log.Printf("👑 No existing servers found - becoming SERVER")
+		logx.L.Info("no existing servers found - becoming server")
 
 		// Start advertising our service
 		dm.advertiseService()
 	} else {
 		dm.mode = ModeProxy
-		log.Printf("📹 Found %d existing server(s) - becoming CAMERA-PROXY", serverCount)
+		logx.L.Info("found existing servers - becoming camera-proxy", "count", serverCount)
 
 		// Display discovered servers
 		dm.mutex.RLock()
 		for nodeID, info := range dm.discoveredServers {
-			log.Printf("   → %s at %s:%d", nodeID, info.Host, info.Port)
+			logx.L.Info("existing server", "id", nodeID, "host", info.Host, "port", info.Port)
 		}
 		dm.mutex.RUnlock()
 	}
@@ -400,17 +402,17 @@ func (dm *DiscoveryManager) advertiseMDNS() {
 
 	service, err := mdns.NewMDNSService(host, ServiceName, "", "", ServicePort, nil, info)
 	if err != nil {
-		log.Printf("❌ Failed to create mDNS service: %v", err)
+		logx.L.Error("failed to create mdns service", "err", err)
 		return
 	}
 
 	dm.mdnsServer, err = mdns.NewServer(&mdns.Config{Zone: service})
 	if err != nil {
-		log.Printf("❌ Failed to start mDNS server: %v", err)
+		logx.L.Error("failed to start mdns server", "err", err)
 		return
 	}
 
-	log.Printf("📡 Advertising mDNS service: %s", ServiceName)
+	logx.L.Info("advertising mdns service", "service", ServiceName)
 }
 
 func (dm *DiscoveryManager) advertiseSerfLeadership() {
@@ -428,9 +430,9 @@ func (dm *DiscoveryManager) advertiseSerfLeadership() {
 	payloadBytes, _ := json.Marshal(payload)
 	err := dm.serfAgent.UserEvent("leader-elected", payloadBytes, true)
 	if err != nil {
-		log.Printf("❌ Failed to send Serf leadership event: %v", err)
+		logx.L.Error("failed to send serf leadership event", "err", err)
 	} else {
-		log.Printf("📡 Announced Serf leadership")
+		logx.L.Info("announced serf leadership")
 	}
 }
 
@@ -446,7 +448,7 @@ func (dm *DiscoveryManager) startServices() error {
 }
 
 func (dm *DiscoveryManager) startServerMode() error {
-	log.Printf("🚀 Starting SERVER mode - launching full infrastructure...")
+	logx.L.Info("starting server mode")
 
 	// Launch docker-compose with server profile
 	cmd := exec.Command("docker-compose",
@@ -462,7 +464,7 @@ func (dm *DiscoveryManager) startServerMode() error {
 		return fmt.Errorf("failed to start server services: %w", err)
 	}
 
-	log.Printf("✅ Server infrastructure started successfully")
+	logx.L.Info("server infrastructure started")
 
 	// Monitor services
 	go dm.monitorServerServices()
@@ -471,7 +473,7 @@ func (dm *DiscoveryManager) startServerMode() error {
 }
 
 func (dm *DiscoveryManager) startProxyMode() error {
-	log.Printf("🚀 Starting CAMERA-PROXY mode...")
+	logx.L.Info("starting camera-proxy mode")
 
 	// Select a server to connect to
 	var targetServer ServiceInfo
@@ -486,7 +488,7 @@ func (dm *DiscoveryManager) startProxyMode() error {
 		return fmt.Errorf("no server available for proxy connection")
 	}
 
-	log.Printf("🎯 Connecting to server: %s (%s:%d)", targetServer.NodeID, targetServer.Host, targetServer.Port)
+	logx.L.Info("connecting to server", "id", targetServer.NodeID, "host", targetServer.Host, "port", targetServer.Port)
 
 	// Set environment variables for proxy
 	os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", targetServer.Host, targetServer.Port))
@@ -504,7 +506,7 @@ func (dm *DiscoveryManager) startProxyMode() error {
 		return fmt.Errorf("failed to start camera-proxy: %w", err)
 	}
 
-	log.Printf("✅ Camera proxy started successfully")
+	logx.L.Info("camera proxy started")
 	return nil
 }
 
@@ -517,13 +519,13 @@ func (dm *DiscoveryManager) monitorServerServices() {
 		case <-dm.ctx.Done():
 			return
 		case <-ticker.C:
-			log.Printf("💓 Server heartbeat - monitoring %d services", len(dm.discoveredServers))
+			logx.L.Info("server heartbeat", "services", len(dm.discoveredServers))
 		}
 	}
 }
 
 func (dm *DiscoveryManager) Stop() {
-	log.Printf("🛑 Shutting down discovery service...")
+	logx.L.Info("shutting down discovery service")
 
 	dm.cancel()
 
@@ -559,6 +561,16 @@ func printBanner() {
 }
 
 func main() {
+	logx.Init(logx.Config{
+		Service: "discovery",
+		Version: version,
+		Level:   getEnv("LOG_LEVEL", "info"),
+		Format:  getEnv("LOG_FORMAT", "auto"),
+		Caller:  getEnv("LOG_CALLER", "short"),
+		Time:    getEnv("LOG_TIME", "rfc3339ms"),
+		NoColor: os.Getenv("LOG_NO_COLOR") == "1",
+	})
+
 	dm := NewDiscoveryManager()
 
 	// Graceful shutdown handling
@@ -569,9 +581,17 @@ func main() {
 	}()
 
 	if err := dm.Start(); err != nil {
-		log.Fatalf("❌ Failed to start discovery service: %v", err)
+		logx.L.Error("failed to start discovery service", "err", err)
+		os.Exit(1)
 	}
 
 	// Keep running
 	select {}
+}
+
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }

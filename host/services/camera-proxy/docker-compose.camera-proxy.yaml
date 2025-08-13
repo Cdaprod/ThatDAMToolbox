@@ -2,6 +2,8 @@ services:
   camera-proxy:
     image: ${REGISTRY:-localhost}/camera-proxy:${VERSION:-dev}
     profiles: ["camera-proxy"]
+    environment:
+      LOG_FORMAT: text
     ports:
       - "${CAMERA_PROXY_PORT:-8000}:8000"
     devices:

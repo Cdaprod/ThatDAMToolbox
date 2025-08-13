@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	"github.com/gorilla/websocket"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/api-gateway/pkg/middleware"
@@ -25,7 +25,19 @@ var wsUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+var version = "dev"
+
 func main() {
+	logx.Init(logx.Config{
+		Service: "api-gateway",
+		Version: version,
+		Level:   getEnv("LOG_LEVEL", "info"),
+		Format:  getEnv("LOG_FORMAT", "auto"),
+		Caller:  getEnv("LOG_CALLER", "short"),
+		Time:    getEnv("LOG_TIME", "rfc3339ms"),
+		NoColor: os.Getenv("LOG_NO_COLOR") == "1",
+	})
+
 	// 1) Configuration via flags
 	addr := flag.String("addr", ":8080", "HTTP bind address")
 	apiPrefix := flag.String("api-prefix", "/api/", "API route prefix")
@@ -79,9 +91,10 @@ func main() {
 
 	// 5) Start & graceful shutdown
 	go func() {
-		log.Printf("🚀 Listening on %s", *addr)
+		logx.L.Info("listening", "addr", *addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("ListenAndServe: %v", err)
+			logx.L.Error("server error", "err", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -89,13 +102,21 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 
-	log.Println("⚙️  Shutting down…")
+	logx.L.Info("shutting down")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Shutdown error: %v", err)
+		logx.L.Error("shutdown error", "err", err)
+		os.Exit(1)
 	}
-	log.Println("✅ Shutdown complete")
+	logx.L.Info("shutdown complete")
+}
+
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 // Handlers
@@ -165,7 +186,7 @@ func WebSocketUpgradeMiddleware(next http.Handler) http.Handler {
 func handleWebSocketUpgrade(w http.ResponseWriter, r *http.Request) {
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade error: %v", err)
+		logx.L.Error("websocket upgrade error", "err", err)
 		return
 	}
 	defer conn.Close()
