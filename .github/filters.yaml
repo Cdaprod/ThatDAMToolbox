@@ -1,0 +1,27 @@
+# Paths → "areas" for ThatDAMToolbox (tune as you wish)
+node:
+  - 'package.json'
+  - 'pnpm-lock.yaml'
+  - 'yarn.lock'
+  - 'package-lock.json'
+  - '**/*.ts'
+  - '**/*.tsx'
+  - 'docker/web-app/**'
+  - 'docker/web-site/**'
+
+go:
+  - '**/*.go'
+  - 'go.mod'
+  - 'go.sum'
+  - 'host/**'
+  - 'cmd/**'
+
+py:
+  - '**/*.py'
+  - 'requirements*.txt'
+  - 'pyproject.toml'
+  - 'docker/video-api/**'
+
+compose:
+  - 'docker-compose.y*ml'
+  - 'docker/compose/**/docker-compose.*.y*ml'

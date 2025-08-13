@@ -20,7 +20,6 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/registry"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
-	_ "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner/v4l2"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
 )
 

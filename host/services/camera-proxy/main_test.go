@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -149,6 +150,29 @@ func TestHandleDeviceStreamFallback(t *testing.T) {
 	}
 	if ct := rr.Header().Get("Content-Type"); !strings.HasPrefix(ct, "multipart/x-mixed-replace") {
 		t.Fatalf("unexpected content type: %s", ct)
+	}
+}
+
+// TestDebugV4L2 exposes the probe results via /debug/v4l2.
+func TestDebugV4L2(t *testing.T) {
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp.probeKept = []v4l2probe.Device{{Node: "/dev/video19", Name: "rpivid", Kind: "m2m-decoder"}}
+	dp.probeDropped = []v4l2probe.Device{{Node: "/dev/video0", Name: "pispbe", Kind: "ignored"}}
+	srv := httptest.NewServer(dp.setupRoutes())
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/debug/v4l2")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	var out struct {
+		Kept    []v4l2probe.Device `json:"kept"`
+		Dropped []v4l2probe.Device `json:"dropped"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out.Kept) != 1 || out.Kept[0].Node != "/dev/video19" {
+		t.Fatalf("unexpected response: %+v", out)
 	}
 }
 

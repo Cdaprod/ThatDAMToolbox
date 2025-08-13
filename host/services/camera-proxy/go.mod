@@ -1,10 +1,13 @@
 // /host/services/camera-proxy/go.mod
 module github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy
 
-go 1.22
+go 1.23
+
+toolchain go1.24.3
 
 require (
 	github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0-00010101000000-000000000000
+	github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/pion/webrtc/v3 v3.2.0
 )
@@ -28,8 +31,10 @@ require (
 	github.com/pion/turn/v2 v2.1.0 // indirect
 	github.com/pion/udp/v2 v2.0.1 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 )
 
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared => ../shared
+
+replace github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe => ../shared/hostcap/v4l2probe

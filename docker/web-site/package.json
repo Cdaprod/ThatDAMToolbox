@@ -4,12 +4,24 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --test src/lib/sendMail.test.js"
+    "start": "node start.js start",
+    "test": "node --test src/lib/sendMail.test.js && node --test -r ts-node/register src/lib/email/sendgrid.test.js",
+    "postinstall": "node -e \"try{require('child_process').execSync('npx --yes next telemetry disable',{stdio:'ignore'})}catch{}\""
   },
   "dependencies": {
     "@cdaprod/design-tokens": "^0.3.2",
+    "amqplib": "^0.10.3",
     "next": "^14.2.10",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@sendgrid/mail": "^8.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.4",
+    "ts-node": "^10.9.2"
   }
 }

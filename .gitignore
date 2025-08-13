@@ -22,6 +22,7 @@ notebooks/*.ipynb_checkpoints/
 *.env
 example.env
 !.env.example
+!/.github/ci/.env
 
 # ---- OS Junk ----
 .DS_Store
@@ -38,7 +39,7 @@ ehthumbs.db
 *.sublime-project
 
 # ---- Build & Dist ----
-build/
+#build/
 dist/
 *.log
 *.tmp

@@ -1,3 +1,4 @@
+
 ########################################################################
 # Root "/docker-compose.yaml"
 ########################################################################
@@ -12,6 +13,7 @@ include:
   - path: ./docker/compose/docker-compose.weaviate.yaml
   - path: ./docker/compose/docker-compose.minio.yaml
   - path: ./docker/compose/docker-compose.registry.yaml
+  - path: ./docker/compose/docker-compose.discovery.yaml
 
 
 ########################################################################
@@ -47,6 +49,7 @@ services:
       context: ./docker/nginx
       dockerfile: Dockerfile
     container_name: thatdamtoolbox-gateway
+    entrypoint: ["/entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
     # profiles: ["gateway"]
     restart: unless-stopped
@@ -54,26 +57,22 @@ services:
       - api-gateway
       - video-web
       - video-api
+      - thatdamtoolbox-discovery
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
     # ports: ["80:80"]
-    environment:
-      # host-net → talk to services via 127.0.0.1
-      API_HOST: "127.0.0.1"
-      API_PORT: "8080"
-      API_GW_HOST: "127.0.0.1"
-      API_GW_PORT: "8081"
-      WEB_HOST: "127.0.0.1"
-      WEB_PORT: "3000"
     volumes:
-      # allow you to override nginx.tmpl without rebuilding
-      - ./docker/nginx/nginx.tmpl:/etc/nginx/nginx.tmpl:ro
-      - ./docker/nginx/proxy_defaults.conf:/etc/nginx/proxy_defaults.conf:rw
-      - ./docker/nginx/proxy_ws.conf:/etc/nginx/proxy_ws.conf:ro
-      - ./docker/nginx/proxy_nobuf.conf:/etc/nginx/proxy_nobuf.conf:ro
-      - ./docker/nginx/dev.crt:/etc/nginx/dev.crt:ro
-      - ./docker/nginx/dev.key:/etc/nginx/dev.key:ro
+      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ./host/services/gw/entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
+      - discovery-run:/run/discovery:ro
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
@@ -134,6 +133,7 @@ services:
       - /dev:/dev
       - /lib/modules:/lib/modules:ro
       - ./data/modules/hwcapture/records:/records   # Adjust to your persistent record dir
+      - discovery-run:/run/discovery:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:9000/devices"]
       interval: 10s
@@ -143,6 +143,7 @@ services:
     depends_on:
       - rabbitmq
       - overlay-hub
+      - thatdamtoolbox-discovery
 
 
   ########################################################################
@@ -160,7 +161,11 @@ services:
     # - Mount the whole /dev so new /dev/video* nodes appear without restart
     # - Open cgroup rules for V4L2 (+DRM if you later use HW accel)
     # - No fixed `devices:` mapping, so it's idempotent on hosts with 0 cameras
+    entrypoint: ["/entrypoint.sh"]
     volumes:
+      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ./host/services/camera-proxy/entrypoint.sh:/entrypoint.sh:ro
+      - discovery-run:/run/discovery:ro
       - /dev:/dev:rw,rshared
     device_cgroup_rules:
       - "c 81:* rmw"     # video4linux (/dev/video*)
@@ -181,14 +186,16 @@ services:
       FFMPEG_HWACCEL: ""  # e.g. "cuda -hwaccel_device 0" when using NV encoders
     # Health is OK even with 0 devices; your app serves /healthz regardless.
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
     depends_on:
       - rabbitmq
       - overlay-hub
-    restart: unless-stopped
+      - thatdamtoolbox-discovery
 
 
   ########################################################################
@@ -335,7 +342,11 @@ services:
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
     # --- Storage mounts ------------------------
+    entrypoint: ["/entrypoint.sh"]
     volumes:
+      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - discovery-run:/run/discovery:ro
       # __ 1) your SMB-mounted data (media, previews, etc.)__
       - "${DATA_ROOT:-./data}:/data:rw"
       # __2) incoming staging dir__
@@ -349,6 +360,7 @@ services:
     depends_on:
       - capture-daemon
       - rabbitmq
+      - thatdamtoolbox-discovery
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
@@ -356,10 +368,11 @@ services:
     mem_limit: 1500m
     cpus: 1.0
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -o /dev/null -H 'X-Health-Check: 1' http://localhost:8080/health"]
-      interval: 120s   # was 60s; stretch it if you don’t need tight liveness
-      timeout: 3s
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
       retries: 3
+      start_period: 20s
 
 
   ########################################################################
@@ -411,12 +424,14 @@ services:
       - ./docker/web-app:/app:rw
       - /app/node_modules           # Anonymous volume, container owns it
       - /app/.next                  # Anonymous volume, container owns it
+      - discovery-run:/run/discovery:ro
     group_add:
       - "video"
     device_cgroup_rules:
       - 'c 81:* rmw'
     depends_on:
       - video-api
+      - thatdamtoolbox-discovery
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
@@ -479,4 +494,7 @@ secrets:
 volumes:
   db_wal:
     driver: local
-  rabbitmq_data: 
+  rabbitmq_data:
+  discovery-run:
+    external: true
+    name: thatdamtoolbox_discovery-run
