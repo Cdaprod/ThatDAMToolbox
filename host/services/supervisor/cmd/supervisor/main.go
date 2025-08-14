@@ -146,6 +146,11 @@ func main() {
 	}()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/nodes/register", nodesRegister)
+	mux.HandleFunc("/v1/nodes/plan", nodesPlan)
+	mux.HandleFunc("/v1/nodes/heartbeat", nodesHeartbeat)
+	mux.HandleFunc("/v1/leader/claim", leaderClaim)
+	mux.HandleFunc("/v1/leader", leaderGet)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
