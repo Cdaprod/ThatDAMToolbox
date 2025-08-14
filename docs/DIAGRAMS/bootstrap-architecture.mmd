@@ -1,0 +1,48 @@
+graph TD
+
+  subgraph Control_Plane [Control Plane]
+    SUP["Supervisor registry and plan"]
+    DISC["Discovery role logic"]
+    MQ["RabbitMQ overlay events"]
+  end
+
+  subgraph Frontend [Frontend]
+    WEB["Web App"]
+    GW["Api Gateway"]
+  end
+
+  subgraph Agents [Agents and Devices]
+    A1["Agent A capture and proxy"]
+    A2["Agent B capture and proxy"]
+    A3["Agent N capture and proxy"]
+    DEV1["Devices A"]
+    DEV2["Devices B"]
+    DEVN["Devices N"]
+  end
+
+  %% Control wiring
+  DISC --> SUP
+  SUP --- MQ
+
+  %% Agents to supervisor
+  A1 --> SUP
+  A2 --> SUP
+  A3 --> SUP
+
+  %% Devices contribute to logical pool
+  DEV1 -.-> SUP
+  DEV2 -.-> SUP
+  DEVN -.-> SUP
+
+  %% Frontend to control plane
+  WEB --> GW
+  GW --> SUP
+
+  %% Styling minimal and safe
+  style SUP fill:#e8f5e9,stroke:#2e7d32,stroke-width:1.2px
+  style A1 fill:#e3f2fd,stroke:#1565c0
+  style A2 fill:#e3f2fd,stroke:#1565c0
+  style A3 fill:#e3f2fd,stroke:#1565c0
+  style DEV1 fill:#fce4ec,stroke:#ad1457
+  style DEV2 fill:#fce4ec,stroke:#ad1457
+  style DEVN fill:#fce4ec,stroke:#ad1457
