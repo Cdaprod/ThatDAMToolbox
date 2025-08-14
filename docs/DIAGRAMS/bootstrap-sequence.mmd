@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    participant N as Node
+    participant D as Discovery
+    participant S as Supervisor
+    participant GW as Api Gateway
+    participant MQ as RabbitMQ
+
+    Note over D: Boot and identify read or create node id
+
+    D->>S: Register node
+    S-->>D: Ok registered
+    D->>S: Request plan
+    S-->>D: Plan with role services epoch ttl and urls
+
+    D->>D: Apply plan write cluster json start services
+
+    D->>S: Heartbeat role and services running
+    S-->>MQ: overlay heartbeat
+
+    par Environment reconcile
+        D->>S: Get environment profile
+        D->>D: Reconcile storage then broker then index
+        D->>S: Bootstrap events per component
+    end
+
+    Note over GW,S: Frontend reads logical state through gateway or supervisor
