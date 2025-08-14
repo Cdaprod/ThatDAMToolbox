@@ -7,6 +7,7 @@ POST /v1/nodes/register
 - Req: node id, capabilities, host, ip, software versions
 - Res: registered true
 - Side effect: upsert node and emit overlay register
+
 Example:
 {
   "node_id": "n-abc123",
@@ -19,6 +20,7 @@ Example:
 POST /v1/nodes/plan
 - Req: node id
 - Res: role, services array, control plane url, gateway url, epoch, ttl seconds
+
 Example:
 {
   "role": "worker",
@@ -33,6 +35,7 @@ POST /v1/nodes/heartbeat
 - Req: node id, role, services running, versions, optional metrics
 - Res: no content
 - Side effect: refresh ttl and emit overlay heartbeat
+
 Example:
 {
   "node_id": "n-abc123",
@@ -44,6 +47,7 @@ Example:
 POST /v1/leader/claim
 - Req: node id, url
 - Res: granted bool, leader url, epoch
+
 Notes: subject to lease/hysteresis; returns current leader if not granted.
 
 GET  /v1/leader
@@ -79,4 +83,3 @@ Example:
 POST /v1/bootstrap/events
 - Req: node id, component, action, status, message optional
 Notes: mirrored to AMQP as overlay.bootstrap.{component}.{ok|error}
-

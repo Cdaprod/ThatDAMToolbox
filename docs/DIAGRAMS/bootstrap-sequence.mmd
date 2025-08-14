@@ -11,9 +11,11 @@ sequenceDiagram
     D->>S: Register node
     S-->>D: Ok registered
     D->>S: Request plan
+
     S-->>D: Plan { role, services[], epoch, ttl, urls }
 
     D->>D: Apply plan → write cluster.json → (start/stop) services
+
 
     D->>S: Heartbeat role and services running
     S-->>MQ: overlay heartbeat
