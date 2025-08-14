@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/businproc"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/indexmem"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/storagefs"
+	businproc "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/bus_inproc"
+	indexmem "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/index_mem"
+	storagefs "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/storage_fs"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
 )
 
