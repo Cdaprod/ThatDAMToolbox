@@ -458,11 +458,14 @@ Each service image should set ENV SERVICE_NAME=<service> and include this entryp
 
 ⸻
 
+
+
 Idempotency rules you now get
 	•	Run anywhere: every machine can docker compose up the exact same stack.
 	•	Solo or cluster: if isolated, a node operates solo; when it detects peers, it joins.
 	•	Self-healing control plane: if the leader disappears, new nodes won’t find a leader and one of them will self-elect.
 	•	No "role config drift": roles are computed from cluster.json at runtime; services decide to serve, connect, or noop.
+	
 
 ⸻
 
@@ -483,3 +486,425 @@ Next upgrades (optional but recommended)
 If you paste these files and rebuild, you’ll have exactly what you asked: same compose everywhere, services that are idempotent alone or together, and a tiny bootstrapper that "puts up what’s needed."
 
 Want me to wire the SERVICE_NAME + entrypoint into each of your existing Dockerfiles next, or add the worker-registry endpoints to the api-gateway so the web-app can list nodes and assets live?
+
+
+---
+
+---
+Yes. Let’s lock it in and make it real, with idempotent discovery → leader/worker roles → supervisor heartbeats. Below is a tight, drop-in plan with concrete file paths and minimal code where it matters (using your logx), plus Compose wiring so every node can docker compose up the same stack and auto-form a cluster.
+
+⸻
+
+/docs/ARCH/control-plane-runtime.md
+
+# Control-Plane Runtime (Discovery → Roles → Supervisor)
+
+## Node lifecycle
+1) Boot → **discovery** starts first (health-gated).
+2) discovery ensures a stable **node_id** at `/var/lib/thatdam/node_id`.
+3) discovery tries to find a **leader**:
+   - mDNS browse `_thatdam._tcp.local`.
+   - If unset/fail, try `CLOUD_CONTROL_URL` (optional).
+4) If leader found → write `cluster.json` with role=worker (or proxy) + leader URL.
+   If no leader → **self-elect**: start supervisor (if not already), advertise mDNS, write `cluster.json` with role=leader.
+5) All other services read `cluster.json` on start:
+   - `leader`: run **api-gateway** (+ already-running supervisor), accept registrations.
+   - `worker`: run **capture-daemon** (+ camera-proxy if present), point to leader `SUPERVISOR_URL` + `API_URL`.
+   - `proxy-only`: only camera-proxy/relay.
+6) Supervisor tracks heartbeats; if TTL expires and no leader resolves, a worker promotes to leader on next discovery tick.
+
+## Idempotence
+- Any node can be isolated → runs solo.
+- When peers appear, node **joins** without reconfig.
+- Leader disappears → next eligible worker self-elects.
+
+## Files
+- `/var/lib/thatdam/node_id` – stable UUIDv4 string.
+- `/var/lib/thatdam/cluster.json` – desired/observed cluster view.
+
+## cluster.json schema (versioned)
+{
+  "version": 1,
+  "node_id": "uuid",
+  "role": "leader" | "worker" | "proxy",
+  "leader": {
+    "url": "http://leader-ip:8070",
+    "advertised_via": "mdns|cloud|static",
+    "last_seen": "RFC3339"
+  },
+  "services": {
+    "api_url": "http://leader-ip:8080",
+    "supervisor_url": "http://leader-ip:8070"
+  }
+}
+
+
+⸻
+
+/docker-compose.yaml (key additions)
+
+ services:
++  discovery:
++    build:
++      context: .
++      dockerfile: host/services/discovery/Dockerfile
++    image: cdaprod/discovery:latest
++    container_name: thatdamtoolbox-discovery
++    networks: [damnet]
++    environment:
++      CLOUD_CONTROL_URL: ${CLOUD_CONTROL_URL:-}
++      MDNS_SERVICE: _thatdam._tcp
++      SUPERVISOR_PORT: "8070"
++      API_GATEWAY_PORT: "8080"
++      DISCOVERY_TTL: "45s"
++    volumes:
++      - thatdam-var:/var/lib/thatdam
++    healthcheck:
++      test: ["CMD", "wget", "-qO-", "http://localhost:8099/health"]   # discovery exposes simple health
++      interval: 5s
++      timeout: 2s
++      retries: 10
++    restart: unless-stopped
++
+   supervisor:
+     build:
+       context: .
+       dockerfile: host/services/supervisor/Dockerfile
+     image: cdaprod/supervisor:latest
+     container_name: thatdamtoolbox-supervisor
+     networks: [damnet]
+     ports: ["8070:8070"]
+     environment:
+       SUPERVISOR_API_KEY: "changeme"
+       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+       EVENT_PREFIX: "overlay"
+     healthcheck:
+       test: ["CMD", "wget", "-qO-", "http://localhost:8070/health"]
+       interval: 10s
+       timeout: 3s
+       retries: 5
+-    depends_on:
+-      - rabbitmq
++    depends_on:
++      discovery:
++        condition: service_healthy
++      rabbitmq:
++        condition: service_started
+     restart: unless-stopped
+@@
+   api-gateway:
+     ...
+-    depends_on:
+-      - rabbitmq
++    depends_on:
++      discovery:
++        condition: service_healthy
++      rabbitmq:
++        condition: service_started
+     restart: unless-stopped
+@@
+   capture-daemon:
+     ...
+-    depends_on:
+-      - rabbitmq
++    depends_on:
++      discovery:
++        condition: service_healthy
++      rabbitmq:
++        condition: service_started
+     restart: unless-stopped
+
+ volumes:
++  thatdam-var:
+
+We gate all services on discovery’s health. This doesn’t guarantee runtime order, but it guarantees discovery wrote cluster.json before others configure themselves.
+
+⸻
+
+/host/services/discovery/main.go (core behaviors; minimal code, uses logx)
+
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/google/uuid"
+)
+
+type Cluster struct {
+	Version int    `json:"version"`
+	NodeID  string `json:"node_id"`
+	Role    string `json:"role"` // leader|worker|proxy
+	Leader  struct {
+		URL        string `json:"url"`
+		Advertised string `json:"advertised_via"`
+		LastSeen   string `json:"last_seen"`
+	} `json:"leader"`
+	Services struct {
+		API  string `json:"api_url"`
+		Sup  string `json:"supervisor_url"`
+	} `json:"services"`
+}
+
+const (
+	stateDir   = "/var/lib/thatdam"
+	nodeIDFile = "node_id"
+	clusterFile= "cluster.json"
+)
+
+func main() {
+	logx.Init(logx.Config{Service: "discovery", Level: os.Getenv("LOG_LEVEL"), Caller: "short"})
+	ctx := context.Background()
+
+	nodeID := ensureNodeID()
+	t := time.Now().UTC().Format(time.RFC3339)
+	mdnsSvc := getenv("MDNS_SERVICE", "_thatdam._tcp")
+	apiPort := getenv("API_GATEWAY_PORT", "8080")
+	supPort := getenv("SUPERVISOR_PORT", "8070")
+	ttl, _ := time.ParseDuration(getenv("DISCOVERY_TTL", "45s"))
+
+	leaderURL, advertised := probeLeader(ctx, mdnsSvc, os.Getenv("CLOUD_CONTROL_URL"))
+	if leaderURL == "" {
+		// self-elect leader
+		leaderURL = "http://" + firstIP() + ":" + supPort
+		writeCluster(Cluster{
+			Version: 1, NodeID: nodeID, Role: "leader",
+			Leader: struct {
+				URL string "json:\"url\""; Advertised string "json:\"advertised_via\""; LastSeen string "json:\"last_seen\""
+			}{URL: leaderURL, Advertised: "self", LastSeen: t},
+			Services: struct{ API, Sup string }{API: "http://" + firstIP() + ":" + apiPort, Sup: leaderURL},
+		})
+		advertiseMDNS(mdnsSvc, supPort) // tiny no-op if mdns disabled
+		startHealth(":8099")
+		logx.L.Infof("self-elected leader: %s", leaderURL)
+		return
+	}
+
+	// follower/worker path
+	writeCluster(Cluster{
+		Version: 1, NodeID: nodeID, Role: "worker",
+		Leader: struct {
+			URL string "json:\"url\""; Advertised string "json:\"advertised_via\""; LastSeen string "json:\"last_seen\""
+		}{URL: leaderURL, Advertised: advertised, LastSeen: t},
+		Services: struct{ API, Sup string }{
+			API: strings.Replace(leaderURL, ":"+supPort, ":"+apiPort, 1),
+			Sup: leaderURL,
+		},
+	})
+	// optional: register with supervisor immediately (best-effort)
+	bestEffortRegister(ctx, leaderURL, nodeID)
+
+	// loop: watch TTL; if leader becomes unreachable past TTL → promote
+	go func() {
+		tk := time.NewTicker(ttl / 3)
+		for range tk.C {
+			if !reachable(leaderURL) {
+				deadline := time.Now().Add(ttl)
+				for time.Now().Before(deadline) {
+					if reachable(leaderURL) { break }
+					time.Sleep(2 * time.Second)
+				}
+				if !reachable(leaderURL) {
+					// promote
+					newURL := "http://" + firstIP() + ":" + supPort
+					writeCluster(Cluster{
+						Version: 1, NodeID: nodeID, Role: "leader",
+						Leader: struct {
+							URL string "json:\"url\""; Advertised string "json:\"advertised_via\""; LastSeen string "json:\"last_seen\""
+						}{URL: newURL, Advertised: "self", LastSeen: time.Now().UTC().Format(time.RFC3339)},
+						Services: struct{ API, Sup string }{API: "http://" + firstIP() + ":" + apiPort, Sup: newURL},
+					})
+					advertiseMDNS(mdnsSvc, supPort)
+					logx.L.Warn("promoted to leader due to TTL")
+					break
+				}
+			}
+		}
+	}()
+	startHealth(":8099")
+}
+
+func ensureNodeID() string {
+	_ = os.MkdirAll(stateDir, 0o755)
+	p := filepath.Join(stateDir, nodeIDFile)
+	if b, err := os.ReadFile(p); err == nil && len(strings.TrimSpace(string(b))) > 0 {
+		return strings.TrimSpace(string(b))
+	}
+	id := uuid.NewString()
+	_ = os.WriteFile(p, []byte(id+"\n"), 0o644)
+	return id
+}
+
+func writeCluster(c Cluster) {
+	b, _ := json.MarshalIndent(c, "", "  ")
+	_ = os.WriteFile(filepath.Join(stateDir, clusterFile), b, 0o644)
+}
+
+func probeLeader(ctx context.Context, mdnsService, cloudURL string) (url, advertised string) {
+	// (A) mDNS (best-effort)
+	if u := mdnsLookupFirst(mdnsService); u != "" {
+		return u, "mdns"
+	}
+	// (B) Cloud hint
+	if cloudURL != "" && reachable(cloudURL) {
+		return cloudURL, "cloud"
+	}
+	return "", ""
+}
+
+func firstIP() string {
+	ifaces, _ := net.Interfaces()
+	for _, ifc := range ifaces {
+		addrs, _ := ifc.Addrs()
+		for _, a := range addrs {
+			if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.To4() != nil && !ipnet.IP.IsLoopback() {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return "127.0.0.1"
+}
+
+func reachable(u string) bool {
+	c := &http.Client{Timeout: 2 * time.Second}
+	req, _ := http.NewRequest(http.MethodGet, u+"/health", nil)
+	resp, err := c.Do(req)
+	if err != nil { return false }
+	_ = resp.Body.Close()
+	return resp.StatusCode/100 == 2
+}
+
+func startHealth(addr string) {
+	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200); w.Write([]byte("ok")) })
+	go http.ListenAndServe(addr, nil)
+}
+
+// stubs (keep no-op-safe; you can replace with zeroconf later)
+func advertiseMDNS(service string, port string) { /* no-op placeholder */ }
+func mdnsLookupFirst(service string) string      { return "" }
+
+// best-effort registration (uses your shared supervisor client)
+func bestEffortRegister(ctx context.Context, leaderURL, nodeID string) {
+	os.Setenv("SUPERVISOR_URL", leaderURL)
+	// optional: set SUPERVISOR_API_KEY or token env beforehand
+	// Using your shared client:
+	// supervisor.Register(ctx, supervisor.Agent{ID: nodeID, Class: "discovery"})
+	// _ = supervisor.Heartbeat(ctx, nodeID)
+}
+
+Notes:
+	•	mDNS functions are no-op placeholders so this ships clean; you can switch to github.com/grandcat/zeroconf later without changing flow.
+	•	Health endpoint at :8099 lets Compose gate everything else.
+
+⸻
+
+/host/services/capture-daemon/main.go (best-effort control-plane heartbeat)
+
+// near startup after config is loaded:
+go func() {
+  ctx := context.Background()
+  sup := os.Getenv("SUPERVISOR_URL")
+  if sup == "" {
+    // try from cluster.json
+    if b, err := os.ReadFile("/var/lib/thatdam/cluster.json"); err == nil {
+      var c struct{ Services struct{ Sup string `json:"supervisor_url"` } `json:"services"` }
+      _ = json.Unmarshal(b, &c)
+      if c.Services.Sup != "" { os.Setenv("SUPERVISOR_URL", c.Services.Sup) }
+    }
+  }
+  if os.Getenv("SUPERVISOR_URL") == "" { return }
+  _ = supervisor.Register(ctx, supervisor.Agent{
+    ID: os.Getenv("AGENT_ID"), Class: "capture-daemon", Version: os.Getenv("SERVICE_VERSION"),
+    Features: []string{"v4l2","webrtc","hls"},
+  })
+  t := time.NewTicker(10 * time.Second); defer t.Stop()
+  for range t.C { _ = supervisor.Heartbeat(ctx, os.Getenv("AGENT_ID")) }
+}()
+
+Mirror the same snippet in camera-proxy (Class: "camera-proxy") and api-gateway (Class: "api-gateway"). It’s fully optional: if SUPERVISOR_URL is absent, it no-ops.
+
+⸻
+
+/host/services/supervisor/cmd/supervisor/main.go (switch to logx)
+
+- import "log"
++ import "github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+@@
+- log.Printf("supervisor listening on %s", *addr)
++ logx.Init(logx.Config{Service: "supervisor", Level: os.Getenv("LOG_LEVEL"), Caller: "short"})
++ logx.L.Infof("supervisor listening on %s", *addr)
+@@
+- log.Fatalf("load jwks: %v", err)
++ logx.L.Fatalf("load jwks: %v", err)
+@@
+- log.Printf("[supervisor] AMQP connected")
++ logx.L.Info("amqp connected")
+@@
+- log.Printf("bus: %v", err)
++ logx.L.Warnf("bus: %v", err)
+
+(Apply similarly for other log.* calls.)
+
+⸻
+
+/host/services/discovery/entrypoint-snippet.sh (idempotent boot order)
+
+#!/usr/bin/env sh
+set -e
+# Wait for RabbitMQ (optional), then run discovery
+# nc -z rabbitmq 5672 || sleep 2
+exec /app/discovery
+
+
+⸻
+
+/docs/OPERATIONS/failover.md
+
+# Leader Failover
+- discovery on each worker probes leader URL every DISCOVERY_TTL/3.
+- If unreachable for TTL, node promotes to leader:
+  1) writes cluster.json with role=leader
+  2) advertises via mDNS
+  3) leaves existing workloads running (idempotent)
+- When original leader returns, it will detect an existing leader via mDNS and demote to worker.
+
+
+⸻
+
+Optional next upgrades (wire-ready)
+	•	Tailscale hints: set CLOUD_CONTROL_URL=https://api-gw.<tailnet>.ts.net:8070; discovery will try it before self-electing.
+	•	Worker Registry API: extend supervisor with /v1/nodes that surfaces class/feature inventory for web-app dashboards (you already publish AMQP events).
+	•	Signed intents: Add POST /intents/join on supervisor; web-site can mint short-lived tokens → discovery consumes them to join securely.
+
+⸻
+
+Quick test script
+
+# wipe state, boot one node
+docker compose down -v
+docker compose up -d rabbitmq discovery supervisor api-gateway capture-daemon camera-proxy
+docker compose logs -f discovery supervisor
+
+# check leader state
+cat /var/lib/thatdam/cluster.json
+curl -s http://localhost:8070/agents | jq
+
+# simulate leader death by stopping supervisor; watch promotion
+docker stop thatdamtoolbox-supervisor
+sleep 60
+cat /var/lib/thatdam/cluster.json
+
+
+⸻
+
+If you want, I’ll add mDNS (zeroconf) impl stubs next and the tiny web-app badge that reads /var/lib/thatdam/cluster.json (server-side) to display Leader/Worker/Proxy in the top bar.
+

@@ -77,14 +77,50 @@ jobs:
         with:
           go-version: 'stable'
 
-      - name: Go vet
-        run: go vet ./...
+      # Auto-detect the go.work root and anchor all commands there (no hardcoded module list)
+      - name: Prepare Go workspace (auto-detect go.work root)
+        id: gowork
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      - name: Go build (all)
-        run: go build ./...
+          # Ensure workspaces aren't disabled
+          unset GOWORK || true
 
-      - name: Go test (short)
-        run: go test -run=^$ -short ./... || true
+          # Ask Go where the workspace is; fall back to repo root if needed
+          GOWORK_PATH="$(go env GOWORK || echo off)"
+          if [[ "$GOWORK_PATH" == "off" || -z "$GOWORK_PATH" || ! -f "$GOWORK_PATH" ]]; then
+            GIT_ROOT="$(git rev-parse --show-toplevel)"
+            if [[ -f "$GIT_ROOT/go.work" ]]; then
+              GOWORK_PATH="$GIT_ROOT/go.work"
+            else
+              echo "❌ Could not find go.work (go env GOWORK=$GOWORK_PATH)."
+              echo "pwd=$(pwd)"
+              exit 1
+            fi
+          fi
+
+          WS_ROOT="$(dirname "$GOWORK_PATH")"
+          echo "GO_WS_ROOT=$WS_ROOT" >> "$GITHUB_ENV"
+
+          echo "Workspace root: $WS_ROOT"
+          echo "go.work:        $GOWORK_PATH"
+
+          # Sync the workspace to ensure replaces/uses are honored in CI
+          go -C "$WS_ROOT" work sync
+
+          # Quick debug info (helps if something breaks later)
+          go -C "$WS_ROOT" env GOWORK
+          ls -la "$WS_ROOT"
+
+      - name: Go vet (workspace anchored)
+        run: go -C "$GO_WS_ROOT" vet ./...
+
+      - name: Go build (workspace anchored)
+        run: go -C "$GO_WS_ROOT" build ./...
+
+      - name: Go test (short; no packages run, just discovery)
+        run: go -C "$GO_WS_ROOT" test -run=^$ -short ./... || true
 
   python:
     name: Python (ruff lint)
