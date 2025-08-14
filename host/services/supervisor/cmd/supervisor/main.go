@@ -12,8 +12,10 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
@@ -160,17 +162,29 @@ func main() {
 	mux.HandleFunc("/heartbeat", heartbeatHandler)
 
 	srv := &http.Server{
-		Addr:         *addr,
-		Handler:      mux,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
+		Addr:              *addr,
+		Handler:           withSafety(mux),
+		ReadTimeout:       5 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	logx.L.Info("supervisor listening", "addr", *addr)
-	if err := srv.ListenAndServe(); err != nil {
-		logx.L.Error("server failed", "err", err)
-		os.Exit(1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logx.L.Error("server failed", "err", err)
+		}
+	}()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		logx.L.Error("graceful shutdown failed", "err", err)
 	}
+	logx.L.Info("supervisor stopped")
 }
 
 func agentsHandler(w http.ResponseWriter, r *http.Request) {
@@ -180,12 +194,16 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	if err := auth(r); err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	var a Agent
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
+	if err := decodeStrict(r, &a); err != nil {
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
@@ -194,9 +212,14 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	reg.Upsert(a)
 	publishEvent("register", a)
 	w.WriteHeader(http.StatusOK)
+	logx.L.Info("register", "id", a.ID)
 }
 
 func heartbeatHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	if err := auth(r); err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -205,13 +228,14 @@ func heartbeatHandler(w http.ResponseWriter, r *http.Request) {
 		ID   string         `json:"id"`
 		Meta map[string]any `json:"meta,omitempty"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := decodeStrict(r, &payload); err != nil {
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
 	reg.Heartbeat(payload.ID, payload.Meta)
 	publishEvent("heartbeat", Agent{ID: payload.ID})
 	w.WriteHeader(http.StatusOK)
+	logx.L.Info("heartbeat", "id", payload.ID)
 }
 
 func publishEvent(action string, a Agent) {
@@ -220,12 +244,27 @@ func publishEvent(action string, a Agent) {
 
 func auth(r *http.Request) error {
 	if jwks != nil {
-		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if token == "" {
+		raw := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		if raw == "" {
 			return errors.New("missing token")
 		}
-		if _, err := jwt.Parse(token, jwks.Keyfunc); err != nil {
+		token, err := jwt.Parse(raw, jwks.Keyfunc)
+		if err != nil || !token.Valid {
+			if err == nil {
+				err = errors.New("invalid token")
+			}
 			return err
+		}
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if aud := os.Getenv("JWT_AUD"); aud != "" && claims.VerifyAudience(aud, true) == false {
+				return errors.New("invalid audience")
+			}
+			if iss := os.Getenv("JWT_ISS"); iss != "" && claims.VerifyIssuer(iss, true) == false {
+				return errors.New("invalid issuer")
+			}
+		}
+		if alg := token.Method.Alg(); alg != "RS256" && alg != "ES256" {
+			return errors.New("invalid algorithm")
 		}
 		return nil
 	}
@@ -242,4 +281,20 @@ func getEnv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// withSafety adds simple hardening: method guards, body size limits, and request logging.
+func withSafety(next *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		logx.L.Debug("http", "method", r.Method, "path", r.URL.Path, "dur_ms", time.Since(start).Milliseconds())
+	})
+}
+
+func decodeStrict(r *http.Request, dst any) error {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	return dec.Decode(dst)
 }

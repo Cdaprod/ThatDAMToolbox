@@ -9,5 +9,6 @@ use (
 	./host/services/overlay-hub
         ./host/services/supervisor
         ./host/services/shared
-	./host/services/shared/hostcap/v4l2probe
+        ./host/services/shared/hostcap/v4l2probe
+        ./host/services/runner
 )

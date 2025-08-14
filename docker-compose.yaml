@@ -249,6 +249,24 @@ services:
     depends_on:
       - rabbitmq
     restart: unless-stopped
+
+  runner:
+    build:
+      context: host/services/runner
+      dockerfile: Dockerfile
+    image: cdaprod/runner:latest
+    container_name: thatdamtoolbox-runner
+    networks: [damnet]
+    environment:
+      SUPERVISOR_URL: "http://supervisor:8070"
+    depends_on:
+      - supervisor
+    healthcheck:
+      test: ["CMD", "sh", "-c", "pgrep runner >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
   ########################################################################
   # 3d. Golang - host api gateway
   ########################################################################

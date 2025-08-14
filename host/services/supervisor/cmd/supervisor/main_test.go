@@ -6,11 +6,14 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 )
 
 func TestRegisterHeartbeat(t *testing.T) {
 	reg = NewRegistry()
 	apiKey = ""
+	logx.Init(logx.Config{Service: "supervisor", Level: "error"})
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(`{"id":"a1"}`))
