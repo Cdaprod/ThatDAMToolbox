@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -18,9 +17,12 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	"github.com/MicahParks/keyfunc"
 	"github.com/golang-jwt/jwt/v4"
 )
+
+var version = "dev"
 
 // Agent describes a registered agent.
 type Agent struct {
@@ -106,6 +108,16 @@ func main() {
 	ttl := flag.Duration("stale-ttl", 30*time.Second, "stale TTL")
 	flag.Parse()
 
+	logx.Init(logx.Config{
+		Service: "supervisor",
+		Version: version,
+		Level:   getEnv("LOG_LEVEL", "info"),
+		Format:  getEnv("LOG_FORMAT", "auto"),
+		Caller:  getEnv("LOG_CALLER", "short"),
+		Time:    getEnv("LOG_TIME", "rfc3339ms"),
+		NoColor: os.Getenv("LOG_NO_COLOR") == "1",
+	})
+
 	apiKey = os.Getenv("SUPERVISOR_API_KEY")
 	eventPrefix = os.Getenv("EVENT_PREFIX")
 	if eventPrefix == "" {
@@ -117,12 +129,13 @@ func main() {
 		var err error
 		jwks, err = keyfunc.Get(*jwksURL, keyfunc.Options{RefreshInterval: time.Minute})
 		if err != nil {
-			log.Fatalf("load jwks: %v", err)
+			logx.L.Error("load jwks", "err", err)
+			os.Exit(1)
 		}
 	}
 
 	if _, err := bus.Connect(context.Background(), bus.Config{}); err != nil {
-		log.Printf("bus: %v", err)
+		logx.L.Error("bus connection failed", "err", err)
 	}
 
 	go func() {
@@ -148,8 +161,11 @@ func main() {
 		WriteTimeout: 5 * time.Second,
 	}
 
-	log.Printf("supervisor listening on %s", *addr)
-	log.Fatal(srv.ListenAndServe())
+	logx.L.Info("supervisor listening", "addr", *addr)
+	if err := srv.ListenAndServe(); err != nil {
+		logx.L.Error("server failed", "err", err)
+		os.Exit(1)
+	}
 }
 
 func agentsHandler(w http.ResponseWriter, r *http.Request) {
@@ -214,4 +230,11 @@ func auth(r *http.Request) error {
 		}
 	}
 	return nil
+}
+
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
