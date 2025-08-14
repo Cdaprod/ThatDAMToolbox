@@ -37,4 +37,5 @@ LABEL org.opencontainers.image.version=$VERSION
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /out/api-gateway /usr/local/bin/api-gateway
 EXPOSE 8080
+ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
 ENTRYPOINT ["/usr/local/bin/api-gateway"]

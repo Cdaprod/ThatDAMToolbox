@@ -64,6 +64,16 @@ Additional runtime options:
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC negotiation.
 - `FFMPEG_HWACCEL` – extra ffmpeg args to enable hardware acceleration.
 
+### Logging
+
+Set these variables to control log output:
+
+- `LOG_LEVEL` – debug|info|warn|error (default info)
+- `LOG_FORMAT` – auto|json|text (default auto)
+- `LOG_CALLER` – off|short|full (default short)
+- `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
+- `LOG_NO_COLOR` – set to `1` to disable colored output
+
 ## Security
 
 Set `AUTH_TOKEN` to require a bearer token on API requests. To serve HTTPS, provide `TLS_CERT_FILE` and `TLS_KEY_FILE` with the certificate and key paths.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -37,6 +40,35 @@ func TestDiscoverDevicesIncludesDaemon(t *testing.T) {
 	if _, ok := proxy.devices["daemon:/dev/video1"]; !ok {
 		t.Fatalf("expected daemon device to be merged")
 	}
+}
+
+// TestDiscoverDevicesLogsOnce ensures repeated discovery doesn't spam logs.
+func TestDiscoverDevicesLogsOnce(t *testing.T) {
+	scanner.Register(fakeScanner{})
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+
+	var buf bytes.Buffer
+	logx.Init(logx.Config{Service: "camera-proxy", Writer: &buf, Format: "text"})
+
+	if err := dp.discoverDevices(); err != nil {
+		t.Fatalf("discoverDevices first: %v", err)
+	}
+	if c := strings.Count(buf.String(), "device discovered"); c != 1 {
+		t.Fatalf("expected 1 log, got %d", c)
+	}
+	buf.Reset()
+	if err := dp.discoverDevices(); err != nil {
+		t.Fatalf("discoverDevices second: %v", err)
+	}
+	if c := strings.Count(buf.String(), "device discovered"); c != 0 {
+		t.Fatalf("expected no new logs, got %d", c)
+	}
+}
+
+type fakeScanner struct{}
+
+func (fakeScanner) Scan() ([]scanner.Device, error) {
+	return []scanner.Device{{Path: "/dev/fake", Name: "FakeCam"}}, nil
 }
 
 // TestRegisterWithDaemon posts local devices to /register.
