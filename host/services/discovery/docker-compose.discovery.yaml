@@ -20,6 +20,7 @@ services:
       SERVICE_PORT: ${SERVICE_PORT:-8080}
       DISCOVERY_HTTP_PORT: ${DISCOVERY_HTTP_PORT:-9999}
       LEADER_FILE: ${LEADER_FILE:-/run/discovery/leader.env}
+      LOG_FORMAT: text
       # SERF_JOIN: "10.0.0.12:7946,10.0.0.13:7946"       # optional seeds if you want
       # DISCOVERY_ORCHESTRATE: "false"                   # stays off by default
     volumes:
@@ -43,6 +44,7 @@ services:
     profiles: ["orchestrator"]
     environment:
       DISCOVERY_ORCHESTRATE: "true"
+      LOG_FORMAT: text
       # If your discovery code shells out to `docker compose`, the plugin must be available on host.
     volumes:
       - discovery-run:/run/discovery

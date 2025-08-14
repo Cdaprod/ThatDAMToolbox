@@ -23,7 +23,8 @@ ENV DISCOVERY_BACKEND=auto \
     SERVICE_NAME=thatdam \
     SERVICE_PORT=8080 \
     DISCOVERY_HTTP_PORT=9999 \
-    LEADER_FILE=/run/discovery/leader.env
+    LEADER_FILE=/run/discovery/leader.env \
+    LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
 VOLUME ["/run/discovery"]
 
 EXPOSE 9999

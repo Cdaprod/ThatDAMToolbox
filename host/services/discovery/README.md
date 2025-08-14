@@ -4,6 +4,16 @@
 
 This discovery service intelligently determines whether to become a “central server” (running capture-daemon + all infrastructure) or a “camera-proxy” (connecting to existing server) based on network environment discovery.
 
+### Logging
+
+The service uses a shared logger configured via environment variables:
+
+- `LOG_LEVEL` – debug|info|warn|error (default info)
+- `LOG_FORMAT` – auto|json|text (default auto)
+- `LOG_CALLER` – off|short|full (default short)
+- `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
+- `LOG_NO_COLOR` – set to `1` to disable colored output
+
 ## 🎯 What This Solves
 
 **Current Problem:**
