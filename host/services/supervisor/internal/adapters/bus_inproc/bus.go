@@ -14,6 +14,7 @@ package businproc
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
@@ -24,7 +25,7 @@ type InProcBus struct {
 	mu          sync.Mutex
 	exchanges   map[string]ports.Exchange
 	queues      map[string]ports.Queue
-	bindings    []ports.Binding
+	bindings    map[string]struct{}
 	subscribers map[string][]chan []byte
 }
 
@@ -34,6 +35,7 @@ func New() *InProcBus {
 		exchanges:   make(map[string]ports.Exchange),
 		queues:      make(map[string]ports.Queue),
 		subscribers: make(map[string][]chan []byte),
+		bindings:    make(map[string]struct{}),
 	}
 }
 
@@ -59,7 +61,10 @@ func (b *InProcBus) EnsureQueue(ctx context.Context, q ports.Queue) error {
 func (b *InProcBus) EnsureBinding(ctx context.Context, bd ports.Binding) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.bindings = append(b.bindings, bd)
+	k := bd.Exchange + "|" + bd.Queue + "|" + bd.Key
+	if _, ok := b.bindings[k]; !ok {
+		b.bindings[k] = struct{}{}
+	}
 	return nil
 }
 
@@ -67,9 +72,14 @@ func (b *InProcBus) EnsureBinding(ctx context.Context, bd ports.Binding) error {
 func (b *InProcBus) Publish(ctx context.Context, topic string, body []byte, _ string) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	for _, bd := range b.bindings {
-		if bd.Key == topic {
-			subs := b.subscribers[bd.Queue]
+	for k := range b.bindings {
+		parts := strings.SplitN(k, "|", 3)
+		if len(parts) != 3 {
+			continue
+		}
+		ex, q, rk := parts[0], parts[1], parts[2]
+		if ex == topic || rk == topic {
+			subs := b.subscribers[q]
 			for _, ch := range subs {
 				select {
 				case ch <- body:
@@ -82,13 +92,27 @@ func (b *InProcBus) Publish(ctx context.Context, topic string, body []byte, _ st
 }
 
 // Subscribe returns a channel receiving messages for the given queue.
-func (b *InProcBus) Subscribe(queue string) (<-chan []byte, error) {
+func (b *InProcBus) Subscribe(queue string) (<-chan []byte, func(), error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if _, ok := b.queues[queue]; !ok {
-		return nil, errors.New("queue not declared")
+		return nil, nil, errors.New("queue not declared")
 	}
 	ch := make(chan []byte, 1)
 	b.subscribers[queue] = append(b.subscribers[queue], ch)
-	return ch, nil
+	cancel := func() {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		subs := b.subscribers[queue]
+		for i := range subs {
+			if subs[i] == ch {
+				subs[i] = subs[len(subs)-1]
+				subs = subs[:len(subs)-1]
+				break
+			}
+		}
+		b.subscribers[queue] = subs
+		close(ch)
+	}
+	return ch, cancel, nil
 }

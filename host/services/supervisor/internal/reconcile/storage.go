@@ -2,6 +2,8 @@ package reconcile
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
 )
@@ -18,19 +20,27 @@ func NewStorageReconciler(s ports.ObjectStorage) StorageReconciler {
 
 // Apply ensures buckets, versioning, lifecycle and tags exist as desired.
 func (r StorageReconciler) Apply(ctx context.Context, buckets []StorageBucket) error {
+	var errs []error
 	for _, b := range buckets {
 		if err := r.store.EnsureBucket(ctx, b.Name); err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("%s: ensure bucket: %w", b.Name, err))
+			continue
 		}
 		if err := r.store.EnsureVersioning(ctx, b.Name, b.Versioned); err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("%s: versioning: %w", b.Name, err))
+			continue
 		}
 		if err := r.store.EnsureLifecycle(ctx, b.Name, b.Lifecycle); err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("%s: lifecycle: %w", b.Name, err))
+			continue
 		}
 		if err := r.store.EnsureTags(ctx, b.Name, b.Tags); err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("%s: tags: %w", b.Name, err))
+			continue
 		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 	return nil
 }

@@ -25,10 +25,11 @@ func TestPublish(t *testing.T) {
 		t.Fatalf("binding: %v", err)
 	}
 
-	ch, err := bus.Subscribe("q")
+	ch, cancel, err := bus.Subscribe("q")
 	if err != nil {
 		t.Fatalf("subscribe: %v", err)
 	}
+	defer cancel()
 
 	if err := bus.Publish(ctx, "k", []byte("hi"), "id1"); err != nil {
 		t.Fatalf("publish: %v", err)
