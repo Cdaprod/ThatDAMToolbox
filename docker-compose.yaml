@@ -229,6 +229,26 @@ services:
     restart: unless-stopped
 
 
+  supervisor:
+    build:
+      context: host/services/supervisor
+      dockerfile: Dockerfile
+    image: cdaprod/supervisor:latest
+    container_name: thatdamtoolbox-supervisor
+    networks: [damnet]
+    ports: ["8070:8070"]
+    environment:
+      SUPERVISOR_API_KEY: "changeme"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      EVENT_PREFIX: "overlay"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8070/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
   ########################################################################
   # 3d. Golang - host api gateway
   ########################################################################
