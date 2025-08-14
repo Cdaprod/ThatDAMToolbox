@@ -41,6 +41,16 @@ This document explains the key principles and details you’ll need to develop a
 	•	tests/ – Go/Python/TS integration and unit tests for core services.
 	•	Root-level orchestration: docker-compose.yaml, entrypoint.sh, Makefile, setup.py, requirements.txt, README.md, run_video.py, CLI/TUI entrypoints.
 
+### supervisor
+• control-plane
+• ...
+
+### discovery
+1. **Single Entry Point:** `./startup.sh start` on any machine
+1. **Environment Detection:** Auto-detects available discovery backends
+1. **Network Scanning:** Uses mDNS, Serf, or Tailscale to find existing servers
+1. **Intelligent Decision:** Determines server vs proxy mode based on discoveries
+
 ### capture-daemon
 	•	Discovers and manages camera devices via v4l2.
 	•	Streams live video (HLS) and/or records to files.
