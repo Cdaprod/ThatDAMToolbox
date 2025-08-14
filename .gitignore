@@ -183,7 +183,7 @@ host/releases/
 {*,*}
 
 /public/design-token-styles/**
-/public/service-dashboards/**
+!/public/service-dashboards/**
 
 # ------------------------------------------------------------------
 # Latest Iteration of Logo
@@ -202,5 +202,4 @@ host/releases/
 # ------------------------------------------------------------------
 !/docker/web-app/build/ServiceDashboard.html
 !/docker/web-app/build/*
-
 

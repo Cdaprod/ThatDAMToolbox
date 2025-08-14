@@ -122,7 +122,10 @@ jobs:
 
           if [ -d "$HOST_DIR" ] && [ -f "$HOST_DIR/go.mod" ]; then
             echo "🧪 go test $HOST_DIR/..."
-            go test "$HOST_DIR/..." -v -race -shuffle=on -count=1
+            go test "$HOST_DIR/..." -v -race -shuffle=on -count=1 || {
+              [[ $? -eq 1 && "$(go list "$HOST_DIR/...")" == "" ]] && \
+                echo "ℹ️  No Go packages to test in $HOST_DIR; ignoring" || exit 1
+            }
           fi
 
   compose-smoke:

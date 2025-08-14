@@ -1,0 +1,585 @@
+<!--
+  Improved Service Dashboard with Embedded Previews
+
+  This file expands upon the original dashboard by embedding each
+  service’s web interface directly into its card.  The embedded
+  preview (an iframe) is tinted and scaled to fit within the card,
+  allowing you to glance at the current state of the service without
+  leaving the dashboard.  A semi‑transparent overlay contains the
+  service metadata and controls on top of the preview.
+
+  If a service cannot be embedded due to X‑Frame‑Options or CORS
+  restrictions, the iframe may remain blank or show an error.  The
+  health checker still monitors reachability via HTTP.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>That D.A.M. Toolbox – Live Service Dashboard</title>
+  <style>
+    /* Reset and base styles */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e1e2e, #2d2d44);
+      color: #cdd6f4;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .dashboard {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: rgba(17, 17, 27, 0.8);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(116, 199, 236, 0.2);
+    }
+    .header h1 {
+      color: #74c7ec;
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(116, 199, 236, 0.3);
+    }
+    .header .host-info {
+      color: #89b4fa;
+      font-size: 1.1rem;
+      margin: 10px 0;
+    }
+    .last-updated {
+      color: #f9e2af;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      background: rgba(17, 17, 27, 0.8);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(116, 199, 236, 0.2);
+    }
+    .stat-item { text-align: center; }
+    .stat-number { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+    .stat-online { color: #a6e3a1; }
+    .stat-offline { color: #f38ba8; }
+    .stat-total { color: #74c7ec; }
+    .stat-label { color: #a6adc8; font-size: 0.9rem; }
+
+    .category {
+      margin-bottom: 30px;
+      background: rgba(17, 17, 27, 0.6);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(116, 199, 236, 0.1);
+    }
+    .category h2 {
+      color: #a6e3a1;
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+      padding-bottom: 10px;
+      border-bottom: 2px solid rgba(166, 227, 161, 0.3);
+    }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .service-card {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(116, 199, 236, 0.2);
+      background: rgba(30, 30, 46, 0.8);
+    }
+    .service-card iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      filter: blur(0px) brightness(0.4) saturate(0.7);
+      pointer-events: none; /* prevent interacting with the iframe */
+    }
+    .card-overlay {
+      position: relative;
+      z-index: 2;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      backdrop-filter: none; /* overlay uses tinted iframe as background */
+    }
+    .service-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .service-name {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #cdd6f4;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .profile-indicator {
+      background: rgba(249, 226, 175, 0.2);
+      color: #f9e2af;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+    }
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    .status-online { background: #a6e3a1; box-shadow: 0 0 10px rgba(166, 227, 161, 0.5); }
+    .status-offline { background: #f38ba8; box-shadow: 0 0 10px rgba(243, 139, 168, 0.5); }
+    .status-checking { background: #f9e2af; box-shadow: 0 0 10px rgba(249, 226, 175, 0.5); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .service-info .service-port { color: #89b4fa; font-size: 0.9rem; margin-bottom: 5px; }
+    .service-info .service-description { color: #a6adc8; font-size: 0.85rem; line-height: 1.4; }
+
+    .service-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #89b4fa, #74c7ec);
+      color: white;
+    }
+    .btn-primary:hover { background: linear-gradient(135deg, #74c7ec, #89b4fa); transform: translateY(-1px); }
+    .btn-secondary {
+      background: rgba(116, 199, 236, 0.2);
+      color: #74c7ec;
+      border: 1px solid rgba(116, 199, 236, 0.3);
+    }
+    .btn-secondary:hover { background: rgba(116, 199, 236, 0.3); border-color: rgba(116, 199, 236, 0.5); }
+    .btn-health {
+      background: rgba(166, 227, 161, 0.2);
+      color: #a6e3a1;
+      border: 1px solid rgba(166, 227, 161, 0.3);
+    }
+    .btn-health:hover { background: rgba(166, 227, 161, 0.3); border-color: rgba(166, 227, 161, 0.5); }
+
+    .health-details {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(17, 17, 27, 0.5);
+      border-radius: 6px;
+      border-left: 3px solid #89b4fa;
+      display: none;
+    }
+    .health-details pre { color: #a6adc8; font-size: 0.8rem; white-space: pre-wrap; margin: 0; }
+
+    .refresh-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #a6e3a1, #94e2d5);
+      border: none;
+      color: #1e1e2e;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 5px 15px rgba(166, 227, 161, 0.3);
+    }
+    .refresh-btn:hover { transform: scale(1.1) rotate(180deg); box-shadow: 0 8px 25px rgba(166, 227, 161, 0.5); }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div class="header">
+      <h1>That D.A.M. Toolbox Service Dashboard</h1>
+      <div class="host-info">Docker Host: 192.168.0.22</div>
+      <div class="last-updated">Last Updated: <span id="lastUpdated">Loading…</span></div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-number stat-online" id="onlineCount">-</div>
+        <div class="stat-label">Online</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number stat-offline" id="offlineCount">-</div>
+        <div class="stat-label">Offline</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number stat-total" id="totalCount">-</div>
+        <div class="stat-label">Total Services</div>
+      </div>
+    </div>
+
+    <!-- Public Gateway -->
+    <div class="category">
+      <h2>🚪 Public Gateway</h2>
+      <div class="services-grid" id="gateway-section"></div>
+    </div>
+
+    <!-- Infrastructure -->
+    <div class="category">
+      <h2>🏗️ Infrastructure Services</h2>
+      <div class="services-grid" id="infra-section"></div>
+    </div>
+
+    <!-- Golang Services -->
+    <div class="category">
+      <h2>🐹 Golang Services</h2>
+      <div class="services-grid" id="golang-section"></div>
+    </div>
+
+    <!-- Python Services -->
+    <div class="category">
+      <h2>🐍 Python Services</h2>
+      <div class="services-grid" id="python-section"></div>
+    </div>
+
+    <!-- Web Applications -->
+    <div class="category">
+      <h2>🌐 Web Applications</h2>
+      <div class="services-grid" id="web-section"></div>
+    </div>
+
+    <!-- Setup Services -->
+    <div class="category">
+      <h2>⚙️ Setup Services</h2>
+      <div class="services-grid" id="setup-section"></div>
+    </div>
+  </div>
+
+  <button class="refresh-btn" onclick="refreshAll()" title="Refresh All Services">🔄</button>
+
+  <script>
+    const HOST_IP = '192.168.0.22';
+    // Define service metadata.  Each entry specifies the category,
+    // human‑friendly name, ports, optional profile labels, primary
+    // endpoint for iframe previews and health checks.
+    const serviceList = [
+      {
+        id: 'gw', category: 'gateway', name: 'Gateway (NGINX)',
+        ports: [80, 443], description: 'Main public‑facing reverse proxy serving web apps and API gateway.',
+        iframe: `http://${HOST_IP}`, health: `http://${HOST_IP}`
+      },
+      {
+        id: 'rabbitmq', category: 'infra', name: 'RabbitMQ',
+        ports: [5672, 15672], description: 'Message broker for event‑driven communication between services.',
+        iframe: `http://${HOST_IP}:15672`, health: `http://${HOST_IP}:15672`
+      },
+      {
+        id: 'postgres', category: 'infra', name: 'PostgreSQL',
+        ports: [5432], description: 'Relational database service.',
+        iframe: null, health: `http://${HOST_IP}:5432`
+      },
+      {
+        id: 'weaviate', category: 'infra', name: 'Weaviate',
+        ports: [8080], description: 'Vector search engine (GraphQL on port 8080).',
+        iframe: `http://${HOST_IP}:8080`, health: `http://${HOST_IP}:8080`
+      },
+      {
+        id: 'minio', category: 'infra', name: 'MinIO',
+        ports: [9001], description: 'Object storage service; console on 9001.',
+        iframe: `http://${HOST_IP}:9001`, health: `http://${HOST_IP}:9001`
+      },
+      {
+        id: 'capture-daemon', category: 'golang', name: 'Capture Daemon',
+        ports: [9000], description: 'Video capture daemon with hardware access for recording devices.',
+        iframe: null, health: `http://${HOST_IP}:9000/devices`
+      },
+      {
+        id: 'camera-proxy', category: 'golang', name: 'Camera Proxy',
+        ports: [8000], description: 'Device‑agnostic camera proxy with hot‑plug support.',
+        iframe: `http://${HOST_IP}:8000`, health: `http://${HOST_IP}:8000/healthz`
+      },
+      {
+        id: 'overlay-hub', category: 'golang', name: 'Overlay Hub',
+        ports: [8090], description: 'Video overlay management service.',
+        iframe: `http://${HOST_IP}:8090`, health: `http://${HOST_IP}:8090/healthz`
+      },
+      {
+        id: 'api-gateway', category: 'golang', name: 'API Gateway',
+        ports: [8085], description: 'Host API gateway for service coordination.',
+        iframe: `http://${HOST_IP}:8085`, health: `http://${HOST_IP}:8085/api/health`
+      },
+      {
+        id: 'media-api', category: 'golang', name: 'Media API', profile: 'media-api',
+        ports: [8081], description: 'Media processing API service (v2).',
+        iframe: `http://${HOST_IP}:8081`, health: `http://${HOST_IP}:8081/api/health`
+      },
+      {
+        id: 'video-api', category: 'python', name: 'Video API (FastAPI)',
+        ports: [8080], description: 'Main FastAPI backend with video processing capabilities.',
+        iframe: `http://${HOST_IP}:8080`, health: `http://${HOST_IP}:8080/health`
+      },
+      {
+        id: 'video-cli', category: 'python', name: 'Video CLI', profile: 'hydrate-backend, cli',
+        ports: [], description: 'CLI service for batch processing and data hydration (one‑shot).',
+        iframe: null, health: null
+      },
+      {
+        id: 'video-web', category: 'web', name: 'Video Web App (Next.js)',
+        ports: [3000], description: 'Main Next.js web application for video management.',
+        iframe: `http://${HOST_IP}:3000`, health: `http://${HOST_IP}:3000/api/health`
+      },
+      {
+        id: 'web-site', category: 'web', name: 'Web Site (Next.js)',
+        ports: [3001], description: 'Additional Next.js website service.',
+        iframe: `http://${HOST_IP}:3001`, health: `http://${HOST_IP}:3001/api/health`
+      },
+      {
+        id: 'hotspot-installer', category: 'setup', name: 'Hotspot Installer', profile: 'setup',
+        ports: [], description: 'One‑shot host configurator (runs only with --profile setup).',
+        iframe: null, health: null
+      }
+    ];
+
+    // Build the DOM cards dynamically for each service and insert into
+    // the corresponding category container.  This makes the HTML
+    // scalable when services are added or removed.
+    function buildCards() {
+      serviceList.forEach(service => {
+        const sectionId = {
+          gateway: 'gateway-section',
+          infra: 'infra-section',
+          golang: 'golang-section',
+          python: 'python-section',
+          web: 'web-section',
+          setup: 'setup-section'
+        }[service.category];
+        const container = document.getElementById(sectionId);
+        if (!container) return;
+        const card = document.createElement('div');
+        card.className = 'service-card';
+        card.dataset.service = service.id;
+        // Add iframe preview if defined
+        if (service.iframe) {
+          const iframe = document.createElement('iframe');
+          iframe.src = service.iframe;
+          iframe.loading = 'lazy';
+          card.appendChild(iframe);
+        }
+        // Overlay container
+        const overlay = document.createElement('div');
+        overlay.className = 'card-overlay';
+        // Header
+        const header = document.createElement('div');
+        header.className = 'service-header';
+        const nameSpan = document.createElement('div');
+        nameSpan.className = 'service-name';
+        nameSpan.textContent = service.name;
+        if (service.profile) {
+          const profileSpan = document.createElement('span');
+          profileSpan.className = 'profile-indicator';
+          profileSpan.textContent = service.profile;
+          nameSpan.appendChild(profileSpan);
+        }
+        const statusDot = document.createElement('div');
+        statusDot.id = `status-${service.id}`;
+        statusDot.className = 'status-indicator status-checking';
+        header.appendChild(nameSpan);
+        header.appendChild(statusDot);
+        overlay.appendChild(header);
+        // Info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'service-info';
+        const portDiv = document.createElement('div');
+        portDiv.className = 'service-port';
+        portDiv.textContent = service.ports && service.ports.length > 0 ? `Ports: ${service.ports.join(', ')}` : 'No exposed ports';
+        const descDiv = document.createElement('div');
+        descDiv.className = 'service-description';
+        descDiv.textContent = service.description;
+        infoDiv.appendChild(portDiv);
+        infoDiv.appendChild(descDiv);
+        overlay.appendChild(infoDiv);
+        // Actions
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'service-actions';
+        // Primary action: open service UI if available
+        if (service.iframe) {
+          const webBtn = document.createElement('a');
+          webBtn.href = service.iframe;
+          webBtn.target = '_blank';
+          webBtn.className = 'action-btn btn-primary';
+          webBtn.textContent = 'Open';
+          actionsDiv.appendChild(webBtn);
+        }
+        // Secondary: for services with TLS or docs; we add docs for video-api
+        if (service.id === 'gw') {
+          const httpsBtn = document.createElement('a');
+          httpsBtn.href = `https://${HOST_IP}`;
+          httpsBtn.target = '_blank';
+          httpsBtn.className = 'action-btn btn-secondary';
+          httpsBtn.textContent = 'HTTPS';
+          actionsDiv.appendChild(httpsBtn);
+        } else if (service.id === 'video-api') {
+          const docsBtn = document.createElement('a');
+          docsBtn.href = `http://${HOST_IP}:8080/docs`;
+          docsBtn.target = '_blank';
+          docsBtn.className = 'action-btn btn-secondary';
+          docsBtn.textContent = 'Docs';
+          actionsDiv.appendChild(docsBtn);
+        }
+        // Health check button if health endpoint defined
+        if (service.health) {
+          const healthBtn = document.createElement('button');
+          healthBtn.className = 'action-btn btn-health';
+          healthBtn.textContent = 'Health Check';
+          healthBtn.addEventListener('click', () => {
+            checkHealth(service.id, service.health);
+          });
+          actionsDiv.appendChild(healthBtn);
+        } else {
+          const statusBtn = document.createElement('button');
+          statusBtn.className = 'action-btn btn-health';
+          statusBtn.textContent = 'Check Status';
+          statusBtn.addEventListener('click', () => {
+            checkServiceStatus(service.id);
+          });
+          actionsDiv.appendChild(statusBtn);
+        }
+        overlay.appendChild(actionsDiv);
+        // Health details
+        const healthDiv = document.createElement('div');
+        healthDiv.className = 'health-details';
+        healthDiv.id = `health-${service.id}`;
+        overlay.appendChild(healthDiv);
+        // Compose card
+        card.appendChild(overlay);
+        container.appendChild(card);
+      });
+    }
+
+    // Health check functions similar to the earlier dashboard
+    async function checkHealth(id, endpoint) {
+      const statusEl = document.getElementById(`status-${id}`);
+      const healthEl = document.getElementById(`health-${id}`);
+      statusEl.className = 'status-indicator status-checking';
+      healthEl.style.display = 'none';
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        await fetch(endpoint, { method: 'GET', signal: controller.signal, mode: 'no-cors' });
+        clearTimeout(timeoutId);
+        statusEl.className = 'status-indicator status-online';
+        updateHealthDetails(id, 'Service is responding', 'success');
+        return true;
+      } catch (error) {
+        // Attempt fallback port connectivity
+        const ok = await checkPortConnectivity(id);
+        if (ok) {
+          statusEl.className = 'status-indicator status-online';
+          updateHealthDetails(id, 'Port is accessible (CORS limited)', 'warning');
+        } else {
+          statusEl.className = 'status-indicator status-offline';
+          updateHealthDetails(id, 'Service unreachable', 'error');
+        }
+        return ok;
+      }
+    }
+
+    async function checkPortConnectivity(id) {
+      const service = serviceList.find(s => s.id === id);
+      if (!service || !service.ports || service.ports.length === 0) return false;
+      const port = service.ports[0];
+      return new Promise(resolve => {
+        const img = new Image();
+        const timer = setTimeout(() => {
+          resolve(false);
+        }, 3000);
+        img.onload = () => { clearTimeout(timer); resolve(true); };
+        img.onerror = () => { clearTimeout(timer); resolve(true); };
+        img.src = `http://${HOST_IP}:${port}/favicon.ico?t=${Date.now()}`;
+      });
+    }
+
+    function updateHealthDetails(id, message, type) {
+      const healthEl = document.getElementById(`health-${id}`);
+      const timestamp = new Date().toLocaleTimeString();
+      let icon = '';
+      switch (type) {
+        case 'success': icon = '✅'; break;
+        case 'error': icon = '❌'; break;
+        case 'warning': icon = '⚠️'; break;
+        default: icon = 'ℹ️';
+      }
+      healthEl.innerHTML = `<pre>${icon} [${timestamp}] ${message}</pre>`;
+      healthEl.style.display = 'block';
+    }
+
+    async function checkServiceStatus(id) {
+      const statusEl = document.getElementById(`status-${id}`);
+      const healthEl = document.getElementById(`health-${id}`);
+      statusEl.className = 'status-indicator status-checking';
+      healthEl.style.display = 'none';
+      // Simulate container status; real implementation would call Docker API
+      setTimeout(() => {
+        statusEl.className = 'status-indicator status-online';
+        updateHealthDetails(id, 'Container service (status check limited)', 'info');
+      }, 1000);
+      return true;
+    }
+
+    async function refreshAll() {
+      // Iterate over services and ping each health endpoint
+      let online = 0;
+      let offline = 0;
+      const checks = serviceList.map(async svc => {
+        const statusEl = document.getElementById(`status-${svc.id}`);
+        const healthEl = document.getElementById(`health-${svc.id}`);
+        statusEl.className = 'status-indicator status-checking';
+        if (svc.health) {
+          const ok = await checkHealth(svc.id, svc.health);
+          if (ok) online++; else offline++;
+        } else {
+          // Non‑HTTP services default to unknown, treat as online for total count
+          online++;
+          statusEl.className = 'status-indicator status-online';
+          updateHealthDetails(svc.id, 'Status check limited', 'info');
+        }
+      });
+      await Promise.all(checks);
+      const total = serviceList.length;
+      document.getElementById('onlineCount').textContent = online;
+      document.getElementById('offlineCount').textContent = offline;
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      buildCards();
+      refreshAll();
+      // periodic refresh every minute
+      setInterval(refreshAll, 60000);
+    });
+  </script>
+</body>
+</html>

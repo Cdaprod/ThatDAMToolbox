@@ -15,8 +15,7 @@ services:
     image: ${GHCR_IMAGE_PREFIX}/capture-daemon:${IMAGE_TAG}
     restart: unless-stopped
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/devices"]
       interval: 5s
@@ -32,8 +31,7 @@ services:
     volumes:
       - ./data:/data
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
       interval: 5s
@@ -47,10 +45,7 @@ services:
     env_file: [ .env ]
     ports: [ "8081:8081" ]
     depends_on:
-      video-api:
-        condition: service_healthy
-      overlay-hub:
-        condition: service_healthy
+      - video-api
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/__health"]
       interval: 5s
