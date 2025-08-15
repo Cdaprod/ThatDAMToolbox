@@ -126,11 +126,19 @@ mint_token_authbridge() {
 
 if [[ -z "${DRY_RUN:-}" ]]; then
   REG_TOKEN="$(mint_token_authbridge || true)"
-  if [[ -z "$REG_TOKEN" ]]; then
+  if [[ -n "$REG_TOKEN" ]]; then
+    log "received registration token from auth-bridge"
+  else
     REG_TOKEN="$(mint_token_github || true)"
+    [[ -n "$REG_TOKEN" ]] && log "received registration token from GitHub API"
   fi
   [[ -z "$REG_TOKEN" ]] && die "failed to mint a short-lived registration token (auth-bridge or GitHub API)"
 else
+  if [[ -n "${AUTH_BRIDGE_URL:-}" ]]; then
+    log "DRY RUN: would request token from auth-bridge"
+  else
+    log "DRY RUN: would request token from GitHub API"
+  fi
   REG_TOKEN="<dry-run-token>"
 fi
 

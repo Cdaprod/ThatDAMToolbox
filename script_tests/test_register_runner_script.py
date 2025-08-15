@@ -1,4 +1,3 @@
-import json
 import os
 import pathlib
 import subprocess
@@ -33,6 +32,7 @@ def test_dry_run(tmp_path):
     result = run_script(env)
     assert result.returncode == 0
     assert "DRY RUN" in result.stderr
+    assert "would request token from GitHub" in result.stderr
 
 
 def test_prefers_auth_bridge_token(tmp_path):
@@ -49,6 +49,7 @@ def test_prefers_auth_bridge_token(tmp_path):
     result = run_script(env)
     assert result.returncode == 0
     assert "DRY RUN" in result.stderr
+    assert "would request token from auth-bridge" in result.stderr
 
 
 def test_idempotent_reconfigure(tmp_path):
