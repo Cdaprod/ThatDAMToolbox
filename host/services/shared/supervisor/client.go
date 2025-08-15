@@ -11,6 +11,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -57,6 +59,10 @@ func Register(ctx context.Context, a Agent) error {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		io.CopyN(io.Discard, resp.Body, 1024)
+		return fmt.Errorf("supervisor register: %s", resp.Status)
+	}
 	return nil
 }
 
@@ -84,5 +90,9 @@ func Heartbeat(ctx context.Context, id string) error {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		io.CopyN(io.Discard, resp.Body, 1024)
+		return fmt.Errorf("supervisor heartbeat: %s", resp.Status)
+	}
 	return nil
 }

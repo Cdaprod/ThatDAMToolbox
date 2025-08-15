@@ -80,6 +80,8 @@ flowchart TD
   APP -->|WHEP view| SFU
 ``` 
 
+See [Control Plane Bootstrapping](docs/TECHNICAL/BOOTSTRAP_ARCHITECTURE.md) for node roles and environment reconcile.
+
 ## Table of Contents
 
 - [Core Features](#core-features)

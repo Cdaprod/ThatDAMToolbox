@@ -1,0 +1,51 @@
+version: "3.9"
+name: thatdamtoolbox-auth-keycloak
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: thatdamtoolbox-keycloak
+    networks: [damnet]
+    ports: ["8089:8080"]
+    environment:
+      KEYCLOAK_ADMIN: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: "admin"
+    command: ["start-dev","--import-realm"]
+    volumes:
+      - ./seeds/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  auth-bridge:
+    build:
+      context: .
+      dockerfile: docker/auth-bridge/Dockerfile
+    image: cdaprod/auth-bridge:latest
+    container_name: thatdamtoolbox-auth
+    networks: [damnet]
+    ports: ["8081:8081"]
+    environment:
+      OIDC_PROVIDER: "keycloak"
+      OIDC_ISSUER: "http://keycloak:8080/realms/thatdam"
+      OIDC_CLIENT_ID: "web-app"
+      OIDC_CLIENT_SECRET: ""
+      OIDC_SCOPES: "openid profile email"
+      AUTH_REDIRECT_BASE: "${AUTH_REDIRECT_BASE:-http://localhost:8081}"
+      AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:-localhost}"
+      AUTH_ALLOWED_ORIGINS: "${AUTH_ALLOWED_ORIGINS:-http://localhost:3000}"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+networks:
+  damnet:
+    external: true
+

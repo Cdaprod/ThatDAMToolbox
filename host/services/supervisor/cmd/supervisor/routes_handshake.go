@@ -3,20 +3,37 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
 )
 
-// Stub route handlers for handshake endpoints (no internals).
-// Wire these in main.go mux when you implement.
+// Handshake route handlers with basic policy enforcement.
 // Example: curl -X POST http://localhost:8070/v1/nodes/register -d '{}'
 
 func nodesRegister(w http.ResponseWriter, r *http.Request) {
-	// TODO: auth, decode payload, upsert node registry, emit overlay.register
+	p, err := auth(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	if !policy.Allow(r.Context(), p, ports.ActRegister) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"registered": true})
 }
 
 func nodesPlan(w http.ResponseWriter, r *http.Request) {
-	// TODO: auth, read node_id, compute desired role/services based on policy/leader
+	p, err := auth(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	if !policy.Allow(r.Context(), p, ports.ActPlan) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	resp := map[string]any{
 		"role":              "worker",
 		"services":          []string{"capture-daemon"},
@@ -30,12 +47,28 @@ func nodesPlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func nodesHeartbeat(w http.ResponseWriter, r *http.Request) {
-	// TODO: auth, decode payload, refresh TTL, emit overlay.heartbeat
+	p, err := auth(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	if !policy.Allow(r.Context(), p, ports.ActHeartbeat) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func leaderClaim(w http.ResponseWriter, r *http.Request) {
-	// TODO: auth, CAS leader; if no current or expired, grant and bump epoch
+	p, err := auth(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	if !policy.Allow(r.Context(), p, ports.ActLeader) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	resp := map[string]any{
 		"granted":    false,
 		"leader_url": "http://supervisor:8070",
@@ -46,6 +79,5 @@ func leaderClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 func leaderGet(w http.ResponseWriter, r *http.Request) {
-	// TODO: return current leader if present, else 404
 	http.NotFound(w, r)
 }

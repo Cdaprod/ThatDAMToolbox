@@ -3,24 +3,26 @@ sequenceDiagram
     participant N as Node
     participant D as Discovery
     participant S as Supervisor
-    participant GW as Api Gateway
+    participant GW as API-Gateway
     participant MQ as RabbitMQ
 
-    Note over D: Boot and identify read or create node id
+    Note over D: Boot → read/create node_id
 
     D->>S: Register node
     S-->>D: Ok registered
     D->>S: Request plan
-    S-->>D: Plan with role services epoch ttl and urls
 
-    D->>D: Apply plan write cluster json start services
+    S-->>D: Plan { role, services[], epoch, ttl, urls }
+
+    D->>D: Apply plan → write cluster.json → (start/stop) services
+
 
     D->>S: Heartbeat role and services running
     S-->>MQ: overlay heartbeat
 
-    par Environment reconcile
+    par Environment reconcile (idempotent)
         D->>S: Get environment profile
-        D->>D: Reconcile storage then broker then index
+        D->>D: Reconcile storage → broker → index
         D->>S: Bootstrap events per component
     end
 
