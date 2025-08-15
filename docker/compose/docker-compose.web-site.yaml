@@ -1,20 +1,22 @@
 version: "3.9"
+name: thatdamtoolbox-web-site
+
 services:
   web-site:
     build:
-      context: ./docker/web-site
+      context: ../web-site          # NOTE: relative to this compose file's folder
+      dockerfile: Dockerfile
+      # target: production          # final stage is production by default
     image: ghcr.io/cdaprod/thatdamtoolbox-website:latest
     container_name: thatdamtoolbox-website
     restart: unless-stopped
     env_file:
-      - ./docker/web-site/.env           # or mount secrets in your preferred way
+      - ../web-site/.env            # keep secrets/env outside image
     environment:
       NODE_ENV: production
-      # You can also override here in CI or host:
-      # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
-    ports:
-      - "3000:3000"
+    ports: ["3000:3000"]
     networks: [damnet]
+
 networks:
   damnet:
     external: true
