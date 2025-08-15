@@ -41,6 +41,9 @@ web-app/
 │       │   └── page.tsx         # Fullscreen Asset Explorer
 │       └── ...                  # (Any other dashboard tools/features)
 ├── Components/
+│   ├── CameraMonitor/
+│   ├── DAMApp/
+│   ├── DAMExplorer/
 │   ├── Sidebar.tsx
 │   ├── TopBar.tsx
 │   ├── ModalCard.tsx
