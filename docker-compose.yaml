@@ -25,6 +25,56 @@ networks:
 
 services:
   ########################################################################
+  # Auth: Bridge (cloud/on-prem flip) + optional Keycloak
+  ########################################################################
+  auth-bridge:
+    build:
+      context: .
+      dockerfile: docker/auth-bridge/Dockerfile
+    image: cdaprod/auth-bridge:latest
+    container_name: thatdamtoolbox-auth
+    networks: [damnet]
+    ports: ["8081:8081"]
+    # Pick provider at runtime: "auth0" or "keycloak"
+    environment:
+      OIDC_PROVIDER: "${OIDC_PROVIDER:-auth0}"
+      # Auth0 defaults (ignored if provider=keycloak)
+      OIDC_ISSUER: "${AUTH0_ISSUER:-https://example.us.auth0.com/}"
+      OIDC_CLIENT_ID: "${AUTH0_CLIENT_ID:-changeme}"
+      OIDC_CLIENT_SECRET: "${AUTH0_CLIENT_SECRET:-changeme}"
+      OIDC_SCOPES: "openid profile email"
+      AUTH_REDIRECT_BASE: "${AUTH_REDIRECT_BASE:-http://localhost:8081}"
+      AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:-localhost}"
+      AUTH_ALLOWED_ORIGINS: "${AUTH_ALLOWED_ORIGINS:-http://localhost:3000}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    profiles: ["auth0","keycloak"]  # available in both profiles
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: thatdamtoolbox-keycloak
+    networks: [damnet]
+    ports: ["8089:8080"]
+    environment:
+      KEYCLOAK_ADMIN: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: "admin"
+    # Guard: only run when provider=keycloak (otherwise exit fast/no-op)
+    command: ["sh","-lc","[ \"$${OIDC_PROVIDER:-auth0}\" = keycloak ] || { echo 'Keycloak disabled'; exit 0; }; exec /opt/keycloak/bin/kc.sh start-dev --import-realm"]
+    volumes:
+      - ./seeds/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    profiles: ["keycloak"]  # only appears when keycloak profile is active
+
+  ########################################################################
   # 0. one-shot host configurator (runs only with `--profile setup`)
   ########################################################################
   hotspot-installer:
