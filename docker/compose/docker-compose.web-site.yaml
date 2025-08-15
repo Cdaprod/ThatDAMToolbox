@@ -3,7 +3,7 @@ services:
   web-site:
     build:
       context: ./docker/web-site
-    image: ghcr.io/cdaprod/thatdamtoolbox-website:latest
+    image: ghcr.io/cdaprod/thatdamtoolbox-website:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-website
     restart: unless-stopped
     env_file:
