@@ -1,8 +1,8 @@
 import { Eye, Tag, Trash2 } from 'lucide-react';
-import { useAssets } from '@/providers/AssetProvider';
-import { bus } from '@/lib/eventBus';
-import type { Action } from '@/types/actions';
-import type { Asset } from '@/lib/apiAssets';
+import { useAssets } from '../../providers/AssetProvider';
+import { bus } from '../../lib/eventBus';
+import type { Action } from '../../types/actions';
+import type { Asset } from '../../lib/apiAssets';
 
 export function useAssetActions(asset?: Asset): Action[] {
   const { remove } = useAssets();

@@ -1,4 +1,4 @@
-// /docker/web-app/src/components/DAMExplorer.tsx
+// /docker/web-app/src/components/DAMExplorer/AssetExplorer.tsx
 import React, { useState, useEffect } from 'react'
 import {
   Grid,
@@ -7,30 +7,25 @@ import {
   Trash2,
   Tag,
   Folder,
-  Image,
-  Video,
-  FileText,
-  ChevronRight,
-  ChevronDown,
   Move,
   RefreshCw,
   Undo2,
-  AlertCircle,
+  FileText,
 } from 'lucide-react'
 import SearchBarExtension, {
   SearchResult,
   SearchFilters,
 } from '@/components/SearchBarExtension'
 import { useAssets } from '@/providers/AssetProvider'
-import { updateAsset, Asset as ApiAsset, FolderNode } from '@/lib/apiAssets'
+import { updateAsset, Asset as ApiAsset } from '@/lib/apiAssets'
 import TagPopover from '@/components/TagPopover'
-import { folderIndentStyle, statusClasses } from '@/styles/theme'
-import SelectableItem from '@/components/primitives/SelectableItem'
-import { useAssetActions } from '@/tools/dam-explorer/actions'
 import { useSelection } from '@/state/selection'
 import { bus } from '@/lib/eventBus'
+import AssetThumbnail from './AssetThumbnail'
+import FolderTree from './FolderTree'
+import StatusBar from './StatusBar'
 
-interface Asset extends ApiAsset {
+export interface Asset extends ApiAsset {
   type?: 'image' | 'video' | 'document'
   dimensions?: string
   duration?: string
@@ -40,7 +35,7 @@ interface Asset extends ApiAsset {
   status?: 'processed' | 'processing' | 'error' | 'deleted'
 }
 
-interface StatusMessage {
+export interface StatusMessage {
   message: string
   type: 'info' | 'success' | 'error' | 'warning'
 }
@@ -52,160 +47,10 @@ interface UndoOperation {
   toPath?: string
 }
 
-// Component: AssetThumbnail
-const AssetThumbnail: React.FC<{ asset: Asset }> = ({ asset }) => {
-  const actions = useAssetActions(asset)
-  const getIcon = (type: Asset['type'] | Asset['kind']) => {
-    switch (type) {
-      case 'image':
-        return <Image className="w-8 h-8" />
-      case 'video':
-        return <Video className="w-8 h-8" />
-      default:
-        return <FileText className="w-8 h-8" />
-    }
-  }
-
-  const getStatusColor = (status?: Asset['status']) => {
-    switch (status) {
-      case 'processed':
-        return 'bg-green-100 text-green-800'
-      case 'processing':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'error':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const sizeMb = (asset.size / 1_000_000).toFixed(1)
-
-  return (
-    <SelectableItem
-      id={asset.id}
-      actions={actions}
-      className="relative group cursor-pointer p-3 transition-all duration-200 hover:shadow-md border-color-border bg-surface rounded-lg border"
-    >
-      {/* Thumbnail or Icon */}
-      <div className="aspect-square mb-2 bg-surface rounded-md flex items-center justify-center overflow-hidden">
-        {asset.thumbnail ? (
-          <img
-            src={asset.thumbnail}
-            alt={asset.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="text-color-muted">
-            {getIcon(asset.type ?? asset.kind)}
-          </div>
-        )}
-      </div>
-
-      {/* Asset Info */}
-      <div className="space-y-1">
-        <h4 className="font-medium text-sm truncate" title={asset.name}>
-          {asset.name}
-        </h4>
-        <div className="flex items-center justify-between text-xs text-color-muted">
-          <span>{sizeMb} MB</span>
-          <span
-            className={`px-2 py-1 rounded-full text-xs ${getStatusColor(asset.status)}`}
-          >
-            {asset.status ?? 'processed'}
-          </span>
-        </div>
-      </div>
-
-      {/* Quick Actions removed in favour of ActionSheet */}
-    </SelectableItem>
-  )
-}
-
-// Component: FolderTree
-const FolderTree: React.FC<{
-  folders: FolderNode[]
-  currentPath: string
-  onPathChange: (path: string) => void
-}> = ({ folders, currentPath, onPathChange }) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const toggle = (path: string) =>
-    setExpanded((prev) => {
-      const s = new Set(prev)
-      s.has(path) ? s.delete(path) : s.add(path)
-      return s
-    })
-
-  const renderFolder = (folder: FolderNode, level = 0): React.ReactNode => {
-    const isOpen = expanded.has(folder.path)
-    return (
-      <div key={folder.path} style={folderIndentStyle(level)}>
-        <div
-          className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-surface ${
-            currentPath === folder.path ? 'bg-color-primary-bg text-theme-primary' : ''
-          }`}
-          onClick={() => onPathChange(folder.path)}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              toggle(folder.path)
-            }}
-            className="p-1 hover:bg-surface rounded"
-          >
-            {folder.children.length > 0 ? (
-              isOpen ? (
-                <ChevronDown className="w-4 h-4" />
-              ) : (
-                <ChevronRight className="w-4 h-4" />
-              )
-            ) : (
-              <div className="w-4 h-4" />
-            )}
-          </button>
-          <Folder className="w-4 h-4 text-color-muted" />
-          <span className="text-sm">{folder.name}</span>
-        </div>
-        {isOpen &&
-          folder.children.map((child) => renderFolder(child, level + 1))}
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-1">{folders.map((root) => renderFolder(root))}</div>
-  )
-}
-
-// Component: StatusBar
-const StatusBar: React.FC<{
-  message?: string
-  type?: StatusMessage['type']
-  onDismiss?: () => void
-}> = ({ message, type = 'info', onDismiss }) => {
-  if (!message) return null
-
-  return (
-    <div
-      className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg border shadow-lg ${statusClasses[type]} z-50`}
-    >
-      <div className="flex items-center space-x-2">
-        <AlertCircle className="w-4 h-4" />
-        <span className="text-sm">{message}</span>
-        {onDismiss && (
-          <button onClick={onDismiss} className="ml-2 hover:opacity-70">
-            ×
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // Main Component: AssetExplorer
 const AssetExplorer: React.FC = () => {
-  const { view, folders, foldersLoading, move, remove, refresh, setFilters, filters } = useAssets()
-  const assets = view
+  const { view: rawView, folders, foldersLoading, move, remove, refresh, setFilters, filters } = useAssets()
+  const assets = rawView as Asset[]
   const { ids: selectedAssets, clear: clearSelection } = useSelection()
   const [currentPath, setCurrentPath] = useState<string>('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -323,8 +168,8 @@ const AssetExplorer: React.FC = () => {
       const matchesDate =
         (!filters?.dateFrom && !filters?.dateTo) ||
         ((!filters?.dateFrom ||
-          new Date(asset.created) >= new Date(filters.dateFrom)) &&
-          (!filters?.dateTo || new Date(asset.created) <= new Date(filters.dateTo)))
+          new Date(asset.createdAt) >= new Date(filters.dateFrom)) &&
+          (!filters?.dateTo || new Date(asset.createdAt) <= new Date(filters.dateTo)))
       return matchesQuery && matchesFileType && matchesTags && matchesDate
     })
 
@@ -338,8 +183,8 @@ const AssetExplorer: React.FC = () => {
       score: 1.0,
       metadata: {
         size: asset.size,
-        created: asset.created,
-        modified: asset.modified,
+        created: asset.createdAt,
+        modified: asset.updatedAt,
         tags: asset.tags,
       },
     }))
@@ -562,7 +407,7 @@ const AssetExplorer: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => setSelectedAssets(new Set())}
+                  onClick={clearSelection}
                   className="text-sm text-gray-600 hover:text-gray-800"
                 >
                   Clear selection
@@ -673,11 +518,11 @@ const AssetExplorer: React.FC = () => {
               </div>
               <div>
                 <b>Created:</b>{' '}
-                {new Date(previewAsset.created).toLocaleString()}
+                {new Date(previewAsset.createdAt ?? '').toLocaleString()}
               </div>
               <div>
                 <b>Modified:</b>{' '}
-                {new Date(previewAsset.modified).toLocaleString()}
+                {new Date(previewAsset.updatedAt ?? '').toLocaleString()}
               </div>
               <div>
                 <b>Path:</b> {previewAsset.path}

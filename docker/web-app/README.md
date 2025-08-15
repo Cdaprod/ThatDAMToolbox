@@ -168,9 +168,35 @@ web-app/.
 ├── start.js
 ├── tailwind.config.js
 ├── tsconfig.json
+├── .env.local
+├── public/
+│   ├── favicon.ico
+│   ├── logo.svg
+│   └── images/
+├── App/
+│   ├── page.tsx                 # Root/home page
+│   ├── layout.tsx               # Root layout
+│   └── Dashboard/
+│       ├── page.tsx             # Dashboard overview
+│       ├── CameraMonitor/
+│       │   └── page.tsx         # Fullscreen Camera Monitor
+│       ├── AssetExplorer/
+│       │   └── page.tsx         # Fullscreen Asset Explorer
+│       └── ...                  # (Any other dashboard tools/features)
+├── Components/
+│   ├── CameraMonitor/
+│   ├── DAMApp/
+│   ├── DAMExplorer/
+│   ├── Sidebar.tsx
+│   ├── TopBar.tsx
+│   ├── ModalCard.tsx
+│   └── ...
+├── Styles/
+│   └── globals.css
 └── tsconfig.test.json
 
 39 directories, 112 files
+
 ```
 
 ## Quick Start Commands

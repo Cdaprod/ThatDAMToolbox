@@ -1,6 +1,7 @@
 'use client'
+// /docker/web-app/src/components/DAMApp/index.tsx
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
-import { BatchCard, VideoCard, UploadCard } from './Cards';
+import { BatchCard, VideoCard, UploadCard } from '../Cards';
 import { damAppContainerStyle, damAppMainStyle } from '@/styles/theme';
 
 // ────── Config + EventBus as Contexts ──────
