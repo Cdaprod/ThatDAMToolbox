@@ -247,6 +247,19 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 NODE_ENV=development
 ```
 
+## API Mappings
+
+Dashboard views map to service APIs as follows:
+
+- Nodes & Plans → Supervisor (`/v1/nodes/*`, `/v1/bootstrap/*`)
+- Events → Broker topics (`overlay.*`, `capture.*`, `video.*`, `webapp.*`)
+- Capture devices → capture-daemon API (`/hwcapture/*`)
+- Jobs & Search → video-api (`/video/*`)
+- Observability → service `/health` and `/metrics` endpoints
+- Credentials, Webhooks, Billing → api-gateway
+
+All requests flow through the typed clients in `src/lib/api`, generated via `yarn run generate-api` for a single source of truth.
+
 ## Streaming protocol
 
 `CameraMonitor` probes `/hwcapture/features` at runtime to determine whether the
