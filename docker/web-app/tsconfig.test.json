@@ -20,6 +20,7 @@
     "src/components/Cards.tsx",
     "src/providers/AssetProvider.tsx",
     "src/hooks/useIntelligentLayout.ts",
-    "src/providers/TenantProvider.tsx"
+    "src/providers/TenantProvider.tsx",
+    "src/providers/AuthProvider.tsx"
   ]
 }

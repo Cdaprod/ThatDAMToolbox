@@ -8,8 +8,19 @@
  */
 import { apiUrl } from '../networkConfig';
 
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path), { next: { revalidate: 0 } } as any);
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const res = await fetch(
+    apiUrl(path),
+    { headers, next: { revalidate: 0 } } as any
+  );
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }

@@ -260,6 +260,10 @@ Dashboard views map to service APIs as follows:
 
 All requests flow through the typed clients in `src/lib/api`, generated via `yarn run generate-api` for a single source of truth.
 
+## Authentication
+
+`AuthProvider` wraps the app and injects a bearer token into every API call via `src/lib/api`. Use it to handle login/logout and expose user context.
+
 ## Streaming protocol
 
 `CameraMonitor` probes `/hwcapture/features` at runtime to determine whether the
