@@ -4,7 +4,7 @@ services:
     build:
       context: ../../.
       dockerfile: host/services/discovery/Dockerfile
-    image: cdaprod/thatdam-discovery:latest
+    image: cdaprod/thatdam-discovery:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-discovery
     network_mode: host
     restart: unless-stopped

@@ -4,6 +4,8 @@
 ########################################################################
 name: thatdamtoolbox
 
+# Set IMAGE_TAG to control cdaprod image tags (default: dev)
+
 
 ########################################################################
 # Optionally Included Infra-Grade Services
@@ -31,7 +33,7 @@ services:
     build:
       context: .
       dockerfile: docker/auth-bridge/Dockerfile
-    image: cdaprod/auth-bridge:latest
+    image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-auth
     networks: [damnet]
     ports: ["8081:8081"]
@@ -78,7 +80,7 @@ services:
   # 0. one-shot host configurator (runs only with `--profile setup`)
   ########################################################################
   hotspot-installer:
-    image: thatdam-hotspot-installer:latest     # the image with setup.sh
+    image: thatdam-hotspot-installer:${IMAGE_TAG:-dev}     # the image with setup.sh
     privileged: true                            # needs NET_ADMIN, etc.
     network_mode: host                          # touches wlan0 directly
     profiles: ["setup"]                         # ← won’t start in the main stack
@@ -134,7 +136,7 @@ services:
     build:
       context: ./docker/rabbitmq
       dockerfile: Dockerfile
-    image: cdaprod/thatdamtoolbox-rabbitmq   # was rabbitmq:3.13-alpine
+    image: cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}   # was rabbitmq:3.13-alpine
     container_name: thatdamtoolbox-rabbitmq
     restart: unless-stopped
     networks: [damnet]
@@ -160,7 +162,7 @@ services:
     build:
       context: .
       dockerfile: host/services/capture-daemon/Dockerfile
-    image: cdaprod/video-capture-daemon:latest    # Can omit for local dev, keep for registry pushes
+    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}    # Can omit for local dev, keep for registry pushes
     container_name: thatdamtoolbox-capture-daemon
     networks: [damnet]
     init: false
@@ -202,7 +204,7 @@ services:
     build:
       context: .
       dockerfile: host/services/camera-proxy/Dockerfile
-    image: cdaprod/camera-proxy:latest
+    image: cdaprod/camera-proxy:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-camera-proxy
     networks: [damnet]
     ports: ["8000:8000"]
@@ -254,7 +256,7 @@ services:
     build:
       context: host/services/overlay-hub
       dockerfile: Dockerfile
-    image: cdaprod/overlay-hub:latest
+    image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-overlay-hub
     networks: [damnet]
     ports: ["8090:8090"]
@@ -283,7 +285,7 @@ services:
     build:
       context: host/services/supervisor
       dockerfile: Dockerfile
-    image: cdaprod/supervisor:latest
+    image: cdaprod/supervisor:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-supervisor
     networks: [damnet]
     ports: ["8070:8070"]
@@ -304,7 +306,7 @@ services:
     build:
       context: host/services/runner
       dockerfile: Dockerfile
-    image: cdaprod/runner:latest
+    image: cdaprod/runner:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-runner
     networks: [damnet]
     environment:
@@ -324,7 +326,7 @@ services:
     build:
       context: .
       dockerfile: host/services/api-gateway/Dockerfile
-    image: cdaprod/api-gateway:latest
+    image: cdaprod/api-gateway:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-api-gateway
     networks: [damnet]
     ports: ["8085:8080"]
@@ -350,7 +352,7 @@ services:
     build:
       context: .
       dockerfile: host/services/media-api/Dockerfile
-    image: cdaprod/media-api:dev
+    image: cdaprod/media-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-media-api
     networks: [damnet]
     ports: ["8081:8080"]
@@ -367,7 +369,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile            # Multi-arch build
-    image: cdaprod/video:dev
+    image: cdaprod/video:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
     # --- Networking (host-mode exposes 8080) ---
@@ -466,7 +468,7 @@ services:
   # 4b. optional CLI job
   ########################################################################
   video-cli:
-    image: cdaprod/video:dev
+    image: cdaprod/video:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-cli-ephemeral
     networks: [damnet]
     profiles: [hydrate-backend, cli]
@@ -492,7 +494,7 @@ services:
       context: ./docker/web-app
       dockerfile: Dockerfile
       target: development
-    image: cdaprod/video-web:dev
+    image: cdaprod/video-web:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-web-app
     platform: linux/arm64
     ports:
@@ -537,7 +539,7 @@ services:
       context: ./docker/web-site
       dockerfile: Dockerfile
       target: development
-    image: cdaprod/web-site:dev
+    image: cdaprod/web-site:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-web-site
     platform: linux/arm64
     ports:
