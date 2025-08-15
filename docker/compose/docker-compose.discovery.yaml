@@ -2,7 +2,7 @@ version: "3.9"
 services:
   thatdamtoolbox-discovery:
     build:
-      context: .
+      context: ../../.
       dockerfile: host/services/discovery/Dockerfile
     image: cdaprod/thatdam-discovery:latest
     container_name: thatdamtoolbox-discovery
