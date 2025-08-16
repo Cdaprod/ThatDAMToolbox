@@ -1,4 +1,4 @@
-package main
+package handshake
 
 import (
 	"context"

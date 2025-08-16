@@ -1,4 +1,4 @@
-package main
+package manager
 
 import (
 	"context"
@@ -32,7 +32,7 @@ const (
 	DiscoveryTailscale = "tailscale"
 )
 
-var version = "dev"
+const Version = "dev"
 
 type ServiceInfo struct {
 	Host     string    `json:"host"`
@@ -60,7 +60,7 @@ type DiscoveryManager struct {
 	healthServer *http.Server
 }
 
-func NewDiscoveryManager() *DiscoveryManager {
+func New() *DiscoveryManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Generate unique node ID
@@ -558,40 +558,4 @@ func printBanner() {
 🌐 Enterprise-grade auto-discovery for PaaS/IaaS/SaaS deployment
 `
 	fmt.Println(banner)
-}
-
-func main() {
-	logx.Init(logx.Config{
-		Service: "discovery",
-		Version: version,
-		Level:   getEnv("LOG_LEVEL", "info"),
-		Format:  getEnv("LOG_FORMAT", "auto"),
-		Caller:  getEnv("LOG_CALLER", "short"),
-		Time:    getEnv("LOG_TIME", "rfc3339ms"),
-		NoColor: os.Getenv("LOG_NO_COLOR") == "1",
-	})
-
-	dm := NewDiscoveryManager()
-
-	// Graceful shutdown handling
-	go func() {
-		// In a real implementation, you'd handle SIGINT/SIGTERM here
-		time.Sleep(time.Hour) // Placeholder - run for an hour
-		dm.Stop()
-	}()
-
-	if err := dm.Start(); err != nil {
-		logx.L.Error("failed to start discovery service", "err", err)
-		os.Exit(1)
-	}
-
-	// Keep running
-	select {}
-}
-
-func getEnv(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
 }

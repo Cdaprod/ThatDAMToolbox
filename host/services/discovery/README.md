@@ -4,6 +4,17 @@
 
 This discovery service intelligently determines whether to become a “central server” (running capture-daemon + all infrastructure) or a “camera-proxy” (connecting to existing server) based on network environment discovery.
 
+### Development
+
+```bash
+# run service
+go run ./cmd/discovery
+
+# run tests
+go test ./...
+```
+
+
 ### Logging
 
 The service uses a shared logger configured via environment variables:
