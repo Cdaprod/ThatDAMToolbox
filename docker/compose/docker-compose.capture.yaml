@@ -1,7 +1,8 @@
 name: thatdamtoolbox-capture
 services:
   capture-daemon:
-    image: ${GHCR_IMAGE_PREFIX}/capture-daemon:${IMAGE_TAG}
+    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-capture-daemon
     restart: unless-stopped
     privileged: true
     devices:
