@@ -10,6 +10,7 @@ WORKDIR /src
 # 1) Copy only manifests (cache-friendly)
 COPY host/services/shared/go.mod            host/services/shared/go.mod
 COPY host/services/shared/go.sum            host/services/shared/go.sum
+COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/capture-daemon/go.mod    host/services/capture-daemon/go.mod
 COPY host/services/capture-daemon/go.sum    host/services/capture-daemon/go.sum
 
