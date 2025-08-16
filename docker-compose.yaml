@@ -584,6 +584,5 @@ volumes:
   db_wal:
     driver: local
   rabbitmq_data:
-  discovery-run:
-    external: true
-    name: thatdamtoolbox_discovery-run
+      discovery-run:
+    driver: local
