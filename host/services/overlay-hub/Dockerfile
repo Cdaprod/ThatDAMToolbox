@@ -26,11 +26,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY host/services/shared/            host/services/shared/
 COPY host/services/overlay-hub/       host/services/overlay-hub/
 
-# ── build (expects ./cmd)
+# ── build (expects ./cmd/overlay-hub)
 WORKDIR /src/host/services/overlay-hub
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/overlay-hub ./cmd
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/overlay-hub ./cmd/overlay-hub
 
 # ── runtime
 FROM alpine:3.20
