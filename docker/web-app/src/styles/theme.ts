@@ -90,4 +90,5 @@ export const dashboardColorClasses: Record<string, string> = {
   live:             'text-green-500',
   witness:          'text-yellow-500',
   explorer:         'text-blue-500',
+  nodes:            'text-cyan-500',
 };
