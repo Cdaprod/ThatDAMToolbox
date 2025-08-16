@@ -95,14 +95,14 @@ services:
   ########################################################################
   # 1. public front-door (owns :80 / :443 on the Pi)
   ########################################################################
-  gw:
+  gateway:
     build:
-      context: ./docker/nginx
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
-    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
-    # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
       - api-gateway
@@ -114,9 +114,9 @@ services:
     # ports: ["80:80"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ./docker/nginx/entrypoint.sh:/entrypoint.sh:ro
       - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
-      - discovery-run:/run/discovery:ro
     healthcheck:
       test: ["CMD","curl","-fsS","http://127.0.0.1/health"]
       interval: 30s
