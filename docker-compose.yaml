@@ -586,5 +586,4 @@ volumes:
     driver: local
   rabbitmq_data:
   discovery-run:
-    external: true
-    name: thatdamtoolbox_discovery-run
+    name: ${COMPOSE_PROJECT_NAME:-thatdamtoolbox}_discovery-run

@@ -23,4 +23,6 @@ services:
       start_period: 20s
 
 volumes:
-  discovery-run: {}
+  discovery-run:
+    external: true
+    name: thatdamtoolbox_discovery-run
