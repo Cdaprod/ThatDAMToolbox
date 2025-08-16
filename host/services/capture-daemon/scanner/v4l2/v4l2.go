@@ -1,91 +1,82 @@
-// /host/services/capture-daemon/scanner/v4l2/v4l2.go
 package v4l2
 
-import (
-    "os/exec"
-    "strings"
-    "path/filepath"
+// Package v4l2 wraps the shared V4L2 probe for capture-daemon.
+//
+// Example:
+//  res, err := v4l2.Discover()
+//  if err != nil { log.Fatal(err) }
+//  fmt.Println("kept", res.Kept)
 
-    "github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
+import (
+        "context"
+        "os"
+        "strings"
+        "time"
+
+        "github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 )
 
-type V4L2Scanner struct{}
+type Device = v4l2probe.Device
 
-func (s *V4L2Scanner) Scan() ([]scanner.Device, error) {
-    files, _ := filepath.Glob("/dev/video*")
-    var devices []scanner.Device
-    for _, file := range files {
-        if !scanner.IsCaptureNode(file) {
-            continue
-        }
-
-        // Query device formats, resolutions, and framerates using v4l2-ctl (best effort)
-        capabilities := map[string]interface{}{
-            "source":  "v4l2",
-            "capture": true,
-        }
-
-        // Try v4l2-ctl --list-formats-ext
-        out, err := exec.Command("v4l2-ctl", "--device="+file, "--list-formats-ext").CombinedOutput()
-        if err == nil {
-            formats := parseV4L2Formats(string(out))
-            capabilities["formats"] = formats
-        } else {
-            capabilities["formats"] = []string{}
-        }
-
-        devices = append(devices, scanner.Device{
-            ID:           file,
-            Kind:         "v4l2",
-            Path:         file,
-            Name:         filepath.Base(file),
-            Capabilities: capabilities,
-            Status:       "online",
-        })
-    }
-    return devices, nil
+// Result bundles kept and dropped devices from discovery.
+type Result struct {
+	Kept    []Device
+	Dropped []Device
 }
 
-// parseV4L2Formats parses v4l2-ctl --list-formats-ext output into a struct.
-func parseV4L2Formats(raw string) []map[string]interface{} {
-    var result []map[string]interface{}
-    var current map[string]interface{}
-    for _, line := range strings.Split(raw, "\n") {
-        line = strings.TrimSpace(line)
-        if strings.HasPrefix(line, "Index") {
-            if current != nil {
-                result = append(result, current)
-            }
-            current = map[string]interface{}{}
+// Discover runs the shared V4L2 probe with optional env overrides.
+func Discover() (Result, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	opt := v4l2probe.DefaultOptions()
+	if v := os.Getenv("V4L2_HARD_EXCLUDE"); v != "" {
+		opt.HardExclude = splitCSVLower(v)
+	}
+	if v := os.Getenv("V4L2_ALLOW_M2M"); v != "" {
+		opt.AllowM2M = splitCSVLower(v)
+	}
+
+        keptCh, dropCh, errCh := v4l2probe.DiscoverStream(ctx, opt)
+
+        var (
+                kept    []Device
+                dropped []Device
+                retErr  error
+        )
+
+        for keptCh != nil || dropCh != nil || errCh != nil {
+                select {
+                case d, ok := <-keptCh:
+                        if !ok {
+                                keptCh = nil
+                                continue
+                        }
+                        kept = append(kept, d)
+                case d, ok := <-dropCh:
+                        if !ok {
+                                dropCh = nil
+                                continue
+                        }
+                        dropped = append(dropped, d)
+                case err, ok := <-errCh:
+                        if ok && err != nil {
+                                retErr = err
+                        }
+                        errCh = nil
+                }
         }
-        if strings.HasPrefix(line, "Pixel Format:") {
-            pf := strings.TrimSpace(strings.TrimPrefix(line, "Pixel Format:"))
-            current["pixel_format"] = pf
-        }
-        if strings.HasPrefix(line, "Name:") {
-            current["name"] = strings.TrimSpace(strings.TrimPrefix(line, "Name:"))
-        }
-        if strings.HasPrefix(line, "Size: Discrete") {
-            sz := strings.TrimSpace(strings.TrimPrefix(line, "Size: Discrete"))
-            if current["sizes"] == nil {
-                current["sizes"] = []string{}
-            }
-            current["sizes"] = append(current["sizes"].([]string), sz)
-        }
-        if strings.HasPrefix(line, "Interval: Discrete") {
-            iv := strings.TrimSpace(strings.TrimPrefix(line, "Interval: Discrete"))
-            if current["intervals"] == nil {
-                current["intervals"] = []string{}
-            }
-            current["intervals"] = append(current["intervals"].([]string), iv)
-        }
-    }
-    if current != nil && len(current) > 0 {
-        result = append(result, current)
-    }
-    return result
+
+        return Result{Kept: kept, Dropped: dropped}, retErr
 }
 
-func init() {
-    scanner.Register(&V4L2Scanner{})
+func splitCSVLower(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		p = strings.TrimSpace(strings.ToLower(p))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

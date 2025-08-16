@@ -22,7 +22,7 @@ Thumbs.db
 #  Host layer golang
 ###############################
 host/releases/
-go.sum
+/go.sum
 
 ###############################
 #  Python artefacts

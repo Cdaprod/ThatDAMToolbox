@@ -1,0 +1,123 @@
+# /.github/workflows/enforce-branch-protections.yml
+name: Enforce Branch Protections (self-healing)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: "Space-separated branches to protect"
+        type: string
+        default: "main style-2 style-3-design-token-layers"
+      checks:
+        description: "Comma-separated required check names"
+        type: string
+        default: "CI-Test-Changed-Services,build-and-publish"
+  schedule:
+    - cron: "11 4 * * 1"  # Mondays @ 04:11 UTC
+
+# Valid permission scopes only
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  converge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure jq + gh present
+        run: |
+          set -e
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y && sudo apt-get install -y jq
+          fi
+          gh --version
+
+      - name: Converge protection (PUT /branches/{branch}/protection)
+        shell: bash
+        env:
+          GH_PRIMARY: ${{ secrets.ADMIN_TOKEN }}
+          GH_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Prefer ADMIN_TOKEN if provided; else fallback to GITHUB_TOKEN
+          export GH_TOKEN="${GH_PRIMARY:-$GH_FALLBACK}"
+
+          REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+          IFS=' ' read -r -a BRANCHES <<< "${{ inputs.branches }}"
+          IFS=',' read -r -a CHECK_NAMES <<< "${{ inputs.checks }}"
+
+          CHECKS_JSON="$(printf '%s\n' "${CHECK_NAMES[@]}" \
+            | awk 'NF{gsub(/^[[:space:]]+|[[:space:]]+$/,""); print}' \
+            | jq -R 'select(length>0)' | jq -s 'map({context:.})')"
+
+          echo "Repo: $REPO"
+          echo "Branches: ${BRANCHES[*]}"
+          echo "Checks: $(echo "$CHECKS_JSON" | jq -c .)"
+
+          for BR in "${BRANCHES[@]}"; do
+            echo "── Protecting $REPO@$BR"
+
+            # Skip if branch not found
+            if ! gh api "/repos/$REPO/branches/$BR" >/dev/null 2>&1; then
+              echo "   ⚠️  Branch '$BR' not found -- skipping."
+              continue
+            fi
+
+            # Build full JSON body and PUT once
+            jq -n --argjson checks "$CHECKS_JSON" '{
+              required_status_checks: { strict: true, checks: $checks },
+              enforce_admins: true,
+              required_pull_request_reviews: {
+                dismiss_stale_reviews: true,
+                require_code_owner_reviews: false,
+                required_approving_review_count: 1,
+                require_last_push_approval: false
+              },
+              restrictions: null,
+              required_linear_history: true,
+              allow_force_pushes: false,
+              allow_deletions: false,
+              block_creations: false,
+              required_conversation_resolution: true,
+              lock_branch: false,
+              allow_fork_syncing: false
+            }' \
+            | gh api --method PUT -H "Accept: application/vnd.github+json" \
+                     "/repos/$REPO/branches/$BR/protection" \
+                     --input - \
+            && echo "   ✅ Protection applied."
+          done
+
+      - name: Require signed commits (POST /required_signatures)
+        shell: bash
+        env:
+          GH_PRIMARY: ${{ secrets.ADMIN_TOKEN }}
+          GH_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          export GH_TOKEN="${GH_PRIMARY:-$GH_FALLBACK}"
+          REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+          for BR in ${{ inputs.branches }}; do
+            echo "✍️  Require signed commits → $REPO@$BR"
+            # 201/204 are success; ignore if already enabled
+            gh api --method POST -H "Accept: application/vnd.github+json" \
+              "/repos/$REPO/branches/$BR/protection/required_signatures" >/dev/null || true
+            gh api "/repos/$REPO/branches/$BR/protection/required_signatures" \
+              | jq -r --arg br "$BR" '"   " + $br + ": signed_commits=" + ( .enabled|tostring )'
+          done
+
+      - name: Show effective protection
+        shell: bash
+        env:
+          GH_PRIMARY: ${{ secrets.ADMIN_TOKEN }}
+          GH_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          export GH_TOKEN="${GH_PRIMARY:-$GH_FALLBACK}"
+          REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+          for BR in ${{ inputs.branches }}; do
+            echo "🔎 $REPO@$BR"
+            gh api "/repos/$REPO/branches/$BR/protection" \
+              | jq '{branch:"'"$BR"'", admins:.enforce_admins.enabled, linear:.required_linear_history.enabled, pr_reviews: .required_pull_request_reviews.required_approving_review_count, convos:.required_conversation_resolution.enabled, checks:(.required_status_checks.checks|map(.context))}'
+          done

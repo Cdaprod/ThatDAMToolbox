@@ -9,6 +9,8 @@ import { ThemeProvider }   from '@/context/ThemeContext'
 import VideoSocketProvider from './VideoSocketProvider'
 import AssetProvider       from './AssetProvider'
 import ModalProvider       from './ModalProvider'
+import ActionSheet         from '@/components/modals/ActionSheet'
+import { SidebarProvider } from '../hooks/useSidebar'
 
 const qc = new QueryClient()
 
@@ -29,18 +31,21 @@ const CaptureProvider = dynamic(
 export default function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={qc}>
-      <ThemeProvider>
-        <VideoSocketProvider>
-          <CaptureProvider>
-            <AssetProvider>
-              <ModalProvider>
-                {children}
-              </ModalProvider>
-            </AssetProvider>
-          </CaptureProvider>
-        </VideoSocketProvider>
-      </ThemeProvider>
-      <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />
+      <SidebarProvider>
+        <ThemeProvider>
+          <VideoSocketProvider>
+            <CaptureProvider>
+              <AssetProvider>
+                <ModalProvider>
+                  {children}
+                  <ActionSheet />
+                </ModalProvider>
+              </AssetProvider>
+            </CaptureProvider>
+          </VideoSocketProvider>
+        </ThemeProvider>
+      </SidebarProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )
 }

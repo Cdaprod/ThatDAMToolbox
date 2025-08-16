@@ -1,7 +1,7 @@
 // host/services/capture-daemon/broker/broker.go
 //
 // Fault-tolerant RabbitMQ helper used by the capture-daemon.
-// • zero-conf dev mode  – if $AMQP_URL is empty, Publish() is a no-op.
+// • zero-conf dev mode  – if $EVENT_BROKER_URL/$AMQP_URL is empty, Publish() is a no-op.
 // • reconnect loop      – exponential back-off, loss-tolerant buffer.
 // • non-blocking API    – caller never waits on the network.
 // • Close() helper      – graceful shutdown for `go test` or SIGTERM.
@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	addr         = os.Getenv("AMQP_URL")
+	addr         = firstNonEmpty(os.Getenv("EVENT_BROKER_URL"), os.Getenv("AMQP_URL"))
 	exchangeName = firstNonEmpty(os.Getenv("BROKER_EXCHANGE"), "events")
 
 	// ring-buffer defaults to 256 msgs but can be tuned via env
@@ -35,7 +35,7 @@ var (
 func Init() {
 	initOnce.Do(func() {
 		if addr == "" {
-			log.Println("[broker] AMQP_URL not set – running in in-proc mode")
+			log.Println("[broker] AMQP_URL/EVENT_BROKER_URL not set – running in in-proc mode")
 			return
 		}
 		ctx, cancel := context.WithCancel(context.Background())
@@ -51,6 +51,11 @@ func Close() {
 		cancelFunc()
 		cancelFunc = nil
 	}
+}
+
+// IsConnected reports whether the broker pump is running (used by health checks).
+func IsConnected() bool {
+	return cancelFunc != nil
 }
 
 // Envelope is what we actually serialise and send.

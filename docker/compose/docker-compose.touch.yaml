@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   camerarig-wifi:
     build: .
-    container_name: camerarig-wifi-manager
+    container_name: thatdamtoolbox-camerarig-wifi-manager
     restart: unless-stopped
     
     # Network configuration

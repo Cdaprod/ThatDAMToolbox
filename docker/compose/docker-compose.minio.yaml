@@ -1,0 +1,22 @@
+# ──────────────────────────────────────────────────────────────
+# Object-store
+# ──────────────────────────────────────────────────────────────
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: thatdamtoolbox-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER:     minio
+      MINIO_ROOT_PASSWORD: minio123
+      # ── Webhook target "primary" ────────────────────────────
+      MINIO_NOTIFY_WEBHOOK_ENABLE_primary: "on"           #  [oai_citation:0‡Documentation](https://docs.min.io/enterprise/aistor-object-store/administration/bucket-notifications/publish-events-to-webhook/?utm_source=chatgpt.com)
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_primary: "http://webhook:5000/events"  #  [oai_citation:1‡MinIO](https://min.io/docs/minio/linux/reference/minio-server/settings/notifications/webhook-service.html?utm_source=chatgpt.com)
+      MINIO_NOTIFY_WEBHOOK_AUTH_TOKEN_primary: ""         # optional
+    ports: ["9000:9000","9001:9001"]
+    volumes: ["./data/minio:/data"]
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:9000/minio/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

@@ -23,9 +23,9 @@ func PublishSchemas() {
 			Schema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"id": map[string]interface{}{"type": "string"},
-					"path": map[string]interface{}{"type": "string"},
-					"name": map[string]interface{}{"type": "string"},
+					"id":     map[string]interface{}{"type": "string"},
+					"path":   map[string]interface{}{"type": "string"},
+					"name":   map[string]interface{}{"type": "string"},
 					"status": map[string]interface{}{"type": "string"},
 					"last_seen": map[string]interface{}{
 						"type":   "string",
@@ -65,7 +65,7 @@ func PublishSchemas() {
 	// (2) Package the envelope
 	envelope := map[string]interface{}{
 		"service":   "capture-daemon",
-		"version":   "v0.1.0",                            // bump when you change schema
+		"version":   "v0.1.0", // bump when you change schema
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"schemas":   defs,
 	}

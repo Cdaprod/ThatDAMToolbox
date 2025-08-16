@@ -1,0 +1,18 @@
+syntax = "proto3";
+package overlay;
+
+// AgentIdentity represents an agent instance.
+message AgentIdentity {
+  string agent_id = 1;
+}
+
+// TokenRequest asks the gateway for a signed token.
+message TokenRequest {
+  string agent_id = 1;
+  string tenant = 2;
+}
+
+// TokenResponse carries a signed JWT.
+message TokenResponse {
+  string token = 1;
+}

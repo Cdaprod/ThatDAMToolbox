@@ -1,6 +1,8 @@
 ## Dashboard Modules
 
-The dashboard auto-discovers its tools from `components/dashboardTools.ts`.
+The dashboard auto-discovers its tools from `components/dashboardTools.ts` and
+groups them using the `useIntelligentLayout` hook (`src/hooks/useIntelligentLayout.ts`).
+Tools are rendered in primary/secondary/tertiary sections based on activity and recency.
 
 | Route                           | Purpose            |
 |---------------------------------|--------------------|
@@ -10,3 +12,6 @@ The dashboard auto-discovers its tools from `components/dashboardTools.ts`.
 | /dashboard/motion               | Motion Tool        |
 | /dashboard/live                 | Live Monitor       |
 | /dashboard/witness              | Witness Tool       |
+| /dashboard/explorer/layered     | Layered Explorer   |
+
+The layered explorer is experimental and does not replace the existing file explorer.

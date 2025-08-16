@@ -1,72 +1,40 @@
 // /docker/web-app/src/app/dashboard/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import { stats } from '@/lib/video';                // ← wrapper we built
-import { dashboardTools } from '@/components/dashboardTools';
-import ToolCard from '@/components/ToolCard';
-
-type ApiStats = {
-  files: number;
-  batches: number;
-  duration_sec: number;
-  total_bytes: number;
-  // …anything else your /stats endpoint returns
-};
+import { dashboardTools } from '@/components/dashboardTools'
+import ToolCard from '@/components/ToolCard'
+import AnalyticsCard from '@/components/tools/AnalyticsCard'
+import { useIntelligentLayout } from '@/hooks/useIntelligentLayout'
 
 export default function DashboardMain() {
-  const [info, setInfo] = useState<ApiStats | null>(null);
-  const [err, setErr]   = useState<string | null>(null);
-
-  useEffect(() => {
-    stats()
-      .then(setInfo)
-      .catch(e => setErr(e.message));
-  }, []);
+  const tools = Object.values(dashboardTools)
+  const { layoutGroups } = useIntelligentLayout(tools)
 
   return (
-    <div className="space-y-6">
-      {/* ────── live stats card ────── */}
-      <section className="rounded-lg bg-white shadow p-6 border border-gray-200">
-        <h2 className="font-bold text-lg mb-2">📊 Library Stats</h2>
-        {err && <p className="text-red-600 text-sm">{err}</p>}
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <AnalyticsCard />
 
-        {!info && !err && (
-          <p className="text-gray-500 text-sm">Fetching…</p>
+      <section className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {layoutGroups.primary.map(t => (
+            <ToolCard key={t.id} toolId={t.id} />
+          ))}
+        </div>
+        {layoutGroups.secondary.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {layoutGroups.secondary.map(t => (
+              <ToolCard key={t.id} toolId={t.id} isRelated />
+            ))}
+          </div>
         )}
-
-        {info && (
-          <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <li>
-              <span className="font-semibold text-gray-700">{info.files}</span>
-              <br />files
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">{info.batches}</span>
-              <br />batches
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">
-                {(info.duration_sec / 3600).toFixed(1)} h
-              </span>
-              <br />total duration
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">
-                {(info.total_bytes / 1_000_000_000).toFixed(1)} GB
-              </span>
-              <br />disk usage
-            </li>
-          </ul>
+        {layoutGroups.tertiary.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {layoutGroups.tertiary.map(t => (
+              <ToolCard key={t.id} toolId={t.id} />
+            ))}
+          </div>
         )}
       </section>
-
-      {/* ────── existing tool grid ────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {dashboardTools.map(({ href }) => (
-          <ToolCard key={href} href={href} />
-        ))}
-      </div>
     </div>
   );
 }

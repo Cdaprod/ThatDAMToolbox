@@ -1,0 +1,35 @@
+name: visual-regression-pdf
+
+# Trigger it on demand *and* after every change to the main branch
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:        # allows you to run it from the Actions tab at any time
+
+jobs:
+  visreg:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ grab the code to be tested
+      - uses: actions/checkout@v4
+
+      # 2️⃣ run the visual-regression → PDF action that lives in
+      #    github.com/Cdaprod/nextjs-visreq-pdf (tag v1)
+      - name: 🖼️  generate visual-regression PDF
+        uses: Cdaprod/nextjs-visreq-pdf@v1        # ← public marketplace action
+        with:
+          # Required inputs (all match the post-patch schema)
+          context:      docker/web-app            # path that contains the Dockerfile
+          dockerfile:   Dockerfile                # defaults to "Dockerfile", but explicit is nice
+          port:         '3000'                    # port exposed by your app image
+          depth:        '2'                       # how deep the crawler follows internal links
+          output_dir:   docs/visual-regression    # final PDF(s) get placed here
+          keep:         '5'                       # keep only the newest 5 PDFs
+          commit:       'true'                    # set to 'false' to skip committing the PDF back
+
+      # 3️⃣ (optional) verify the PDF really showed up – good smoke-test
+      - name: ✅ confirm PDF artifact exists
+        run: |
+          ls -R docs/visual-regression
+          test -f docs/visual-regression/*.pdf

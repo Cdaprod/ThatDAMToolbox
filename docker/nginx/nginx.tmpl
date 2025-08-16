@@ -35,23 +35,37 @@ http {
     ##   – If the gateway runs with `network_mode: host` these resolve to 127.0.0.1
     ##   – If the gateway runs on a user bridge they resolve to Docker DNS names.
     ##
-    upstream video_api { server ${API_HOST}:${API_PORT}; }
-    upstream video_web { server ${WEB_HOST}:${WEB_PORT}; }
+    upstream video_api   { server ${API_HOST}:${API_PORT}; }
+    upstream api_gateway { server ${API_GW_HOST}:${API_GW_PORT}; }
+    upstream video_web   { server ${WEB_HOST}:${WEB_PORT}; }
 
     server {
-        listen 80 default_server;
+        set $fa "frame-ancestors 'self' http://192.168.0.22 https://192.168.0.22";
+        listen 80  default_server;
+        listen 443 ssl default_server;
         server_name _;   # catch-all
+
+        ssl_certificate     /etc/nginx/dev.crt;
+        ssl_certificate_key /etc/nginx/dev.key;
 
         # ------------------ health ------------------------------------------
         location = /health {
             proxy_pass http://video_api/health;
             proxy_set_header Host $host;
         }
+        location = /gw/health {
+            include proxy_defaults.conf;
+            proxy_pass http://api_gateway/health;
+        }
 
         # ------------------ REST / websocket / streams ----------------------
-        location /api/    { include proxy_defaults.conf; proxy_pass http://video_api; }
-        location /ws/     { include proxy_ws.conf;       proxy_pass http://video_api; }
-        location /stream/ { include proxy_nobuf.conf;    proxy_pass http://video_api; }
+        location /api/       { include proxy_defaults.conf; proxy_pass http://video_api; }
+        location /ws/        { include proxy_ws.conf;       proxy_pass http://video_api; }
+        location /stream/    { include proxy_nobuf.conf;    proxy_pass http://video_api; }
+
+        # ------------------ Go API gateway ---------------------------------
+        location /gw/        { include proxy_defaults.conf; proxy_pass http://api_gateway; }
+        location /gw/ws/     { include proxy_ws.conf;       proxy_pass http://api_gateway; }
 
         # ------------------ Production (static) frontend ------------------
         # (Uncomment this block once you have built your Next.js app to /usr/share/nginx/html)
@@ -69,6 +83,132 @@ http {
 
         # ------------------ Dev frontend (Next.js) ------------------------
         # In local dev we don’t have a static build yet--just proxy everything
+        # ------------------ Dashboard (exact match; bypass Next.js) --------
+        # Put the file at docker/web-app/out/ServiceDashboard.html
+        # (mounted to /usr/share/nginx/html via compose)
+        location = /ServiceDashboard.html {
+            root /usr/share/nginx/html;
+            default_type text/html;
+            expires -1;   # disable cache while iterating
+        }
+
+        # ------------------ PREVIEW PROXY (same-origin iframes) ------------
+        # Each block strips upstream frame-blockers and allows SAMEORIGIN.
+
+        # RabbitMQ UI (:15672)
+        location /preview/rabbitmq/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://127.0.0.1:15672/;
+            proxy_set_header Host $host;
+        }
+
+        # FastAPI video-api (uses upstream)
+        location /preview/video-api/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://video_api/;
+            proxy_set_header Host $host;
+        }
+
+        # Go api-gateway (uses upstream)
+        location /preview/api-gateway/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://api_gateway/;
+            proxy_set_header Host $host;
+        }
+
+        # Media API (Go) (:8081)
+        location /preview/media-api/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://127.0.0.1:8081/;
+            proxy_set_header Host $host;
+        }
+
+        # Camera proxy (Go) (:8000)
+        location /preview/camera-proxy/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://127.0.0.1:8000/;
+            proxy_set_header Host $host;
+        }
+
+        # Overlay hub (Go) (:8090)
+        location /preview/overlay-hub/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://127.0.0.1:8090/;
+            proxy_set_header Host $host;
+        }
+
+        # Next.js apps (dev/prod)
+        location /preview/video-web/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://video_web/;
+            proxy_set_header Host $host;
+        }
+
+        # Marketing site (Next.js) (:3001)
+        location /preview/web-site/ {
+            include proxy_ws.conf;
+            include proxy_defaults.conf;
+
+            proxy_hide_header X-Frame-Options;
+            proxy_hide_header Content-Security-Policy;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header Content-Security-Policy $fa always;
+
+            proxy_pass http://127.0.0.1:3001/;
+            proxy_set_header Host $host;
+        }
+
+        # ------------------ Dev frontend (Next.js) --------------------------
+        # In local dev we don’t have a static build yet--just proxy everything.
         location / {
             include proxy_defaults.conf;
             proxy_pass http://video_web;

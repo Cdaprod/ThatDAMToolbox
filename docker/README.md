@@ -77,7 +77,9 @@ The Mermaid diagram at the top shows the request path flowing *down* the stack a
 |**`compose/docker-compose.yml`**|baseline stack: `video`, `video-api`, core backing stores    |
 |**`docker-compose.dev.yml`**    |local-dev overrides (source mounts, auto-reload, debug ports)|
 |**`docker-compose.prod.yml`**   |production overrides (no volumes, stricter health checks)    |
-|**`docker-compose.modules.yml`**|optional extras for `modules/` containers                    |
+|**`docker-compose.modules.yml`**|optional extras for `modules/` containers
+|**`docker-compose.server.yaml`**|server/frontend stack for self-hosted runner|
+|**`docker-compose.capture.yaml`**|capture device stack for self-hosted runner|
 
 Run-up patterns:
 
@@ -91,6 +93,14 @@ docker compose \
 # Clean production
 docker compose -f docker/compose/docker-compose.yml -f docker/compose/docker-compose.prod.yml up -d
 ```
+
+### Tagging & container names
+
+Local development images use an environment-driven tag so builds stay consistent across files.
+
+- **Image tag** – every service references `${IMAGE_TAG}` and defaults to `dev`.
+- **Container name** – remains stable (`thatdamtoolbox-…`) regardless of tag.
+- **Override** – set `IMAGE_TAG=latest` (or a release) when deploying.
 
 -----
 

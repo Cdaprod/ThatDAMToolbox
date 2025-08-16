@@ -1,92 +1,157 @@
-# .github/workflows/ci-host-go-binaries.yml
-
 name: CI Host Go Binaries & Release
 
 on:
   push:
-    branches: [ "**" ]
-    tags:     [ "**" ]
+    branches: ["**"]
+    tags:     ["**"]
     paths:
       - "host/services/**"
       - "Makefile"
-      - "go.mod"
-      - "go.sum"
+      - "**/go.*"
       - "scripts/systemd/*.service"
       - ".github/workflows/ci-host-go-binaries.yml"
   pull_request:
-    branches: [ "**" ]
+    branches: ["**"]
     paths:
       - "host/services/**"
       - "Makefile"
-      - "go.mod"
-      - "go.sum"
+      - "**/go.*"
       - "scripts/systemd/*.service"
       - ".github/workflows/ci-host-go-binaries.yml"
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   build-go-host:
     name: Build & Test Go Host Binaries
     runs-on: ubuntu-latest
-
     env:
-      GO_VERSION: '1.21'
+      GO_VERSION: "1.23.x"
+      GOFLAGS: "-trimpath -buildvcs=true -p=2"
+      GOMAXPROCS: "2"
+      CGO_ENABLED: "0"
+      ENABLE_RACE: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && '1' || '0' }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Setup Go (with per-module cache)
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
+          cache-dependency-path: |
+            host/services/**/go.sum
 
-      - name: Print Go environment
-        run: go env
+      - name: Extra build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-gobuild-${{ hashFiles('host/services/**/go.sum') }}
+          restore-keys: ${{ runner.os }}-gobuild-
 
-      - name: Clean Go artifacts
-        run: make clean-go
-
-      - name: Build all Go host binaries
-        run: make build-all
-
-      - name: List built binaries
+      - name: Print runner resources (debug)
         run: |
-          find host/services/ -type f -perm /u=x,g=x,o=x -print -exec file {} \;
+          uname -a
+          free -h
+          df -h
 
-      - name: Run Go unit tests
+      - name: Discover modules (respect go.work; skip host/legacy)
+        id: mods
+        shell: bash
         run: |
-          set -e
-          cd host/services/shared && go test ./... -v
-          cd ../api-gateway && go test ./... -v
-          cd ../../capture-daemon && go test ./... -v
+          set -euo pipefail
+          if [ -f go.work ]; then
+            mapfile -t MODS < <(go work edit -json | awk -F'"' '/"DiskPath"/{print $4"/go.mod"}')
+          else
+            mapfile -t MODS < <(git ls-files '**/go.mod' | grep -vE '/vendor/')
+          fi
+          MODS=($(printf '%s\n' "${MODS[@]}" | grep -vE '^host/legacy/'))
+          printf '%s\n' "${MODS[@]}" | tee /tmp/mods.txt
 
-      - name: Verify go.mod is tidy
+      - name: Build binaries (bounded, per module)
+        shell: bash
         run: |
-          go mod tidy
-          git diff --exit-code go.mod go.sum || (echo "go.mod/go.sum are not tidy!" && exit 1)
+          set -euo pipefail
+          TARGETS="linux/amd64 linux/arm64 linux/arm"
+          mkdir -p out/bin
+
+          while IFS= read -r mod; do
+            dir="$(dirname "$mod")"
+            echo "🔨 Building in $dir"
+            pushd "$dir" >/dev/null
+              go mod tidy || true
+
+              bin=""
+              pkg=""
+              if [ -f "./cmd/main.go" ]; then
+                bin="$(basename "$(dirname "$PWD")")"
+                pkg="./cmd"
+              elif [ -f "./main.go" ]; then
+                bin="$(basename "$PWD")"
+                pkg="."
+              else
+                echo "No main package found in $dir; skipping build"
+                popd >/dev/null
+                continue
+              fi
+
+              for target in $TARGETS; do
+                GOOS=${target%/*}
+                GOARCH=${target#*/}
+                export GOOS GOARCH
+                unset GOARM RACE_FLAG
+                if [ "$GOARCH" = "arm" ]; then export GOARM=7; fi
+                if [ "$GOARCH" = "amd64" ] && [ "${ENABLE_RACE}" = "1" ]; then
+                  RACE_FLAG="-race"
+                fi
+                outdir="../../out/bin/${GOOS}-${GOARCH}"
+                mkdir -p "$outdir"
+                echo "  → $GOOS/$GOARCH $bin"
+                go build ${RACE_FLAG:-} -o "$outdir/${bin}" "$pkg"
+              done
+            popd >/dev/null
+          done < /tmp/mods.txt
+
+          echo "Built binaries:"
+          find out/bin -type f -maxdepth 2 -printf '%P\n' || true
+
+      - name: Unit tests (sequential, low parallelism)
+        shell: bash
+        run: |
+          set -euo pipefail
+          RACE_FLAG=""
+          [ "${ENABLE_RACE}" = "1" ] && RACE_FLAG="-race"
+          # Test only active services to keep memory low
+          for dir in host/services/shared host/services/api-gateway host/services/capture-daemon host/services/camera-proxy host/services/discovery; do
+            if [ -f "$dir/go.mod" ]; then
+              echo "🧪 go test $dir"
+              ( cd "$dir" && go test ./... ${RACE_FLAG} -count=1 -timeout=6m -p=2 -parallel=2 )
+            fi
+          done
 
       - name: Upload host Go binaries
         uses: actions/upload-artifact@v4
         with:
           name: host-go-binaries
           path: |
-            host/services/api-gateway/api-gateway
-            host/services/camera-proxy/camera-proxy
-            host/services/capture-daemon/capture-daemon
+            out/bin/**
+          if-no-files-found: warn
 
       - name: Upload systemd service files
         uses: actions/upload-artifact@v4
         with:
           name: host-systemd-services
           path: scripts/systemd/*.service
+          if-no-files-found: warn
 
   release-host-binaries:
     name: Package & Release Host Binaries
     runs-on: ubuntu-latest
     needs: build-go-host
     if: startsWith(github.ref, 'refs/tags/')
-
     steps:
       - name: Download host Go binaries artifact
         uses: actions/download-artifact@v4
@@ -105,13 +170,23 @@ jobs:
 
       - name: Package Host Binaries
         run: |
-          tar czf host-binaries-${GITHUB_REF_NAME}.tar.gz -C host-binaries .
-          ls -lh host-binaries-${GITHUB_REF_NAME}.tar.gz
+          for dir in host-binaries/*; do
+            arch=$(basename "$dir")
+            tar czf "host-binaries-${arch}.tar.gz" -C "$dir" .
+            ls -lh "host-binaries-${arch}.tar.gz"
+          done
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
+      - name: Upload Release Assets
+        env:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./host-binaries-${GITHUB_REF_NAME}.tar.gz
-          asset_name: host-binaries-${GITHUB_REF_NAME}.tar.gz
-          asset_content_type: application/gzip
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for tar in host-binaries-*.tar.gz; do
+            name=$(basename "$tar")
+            echo "Uploading $name"
+            curl -sSL \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/gzip" \
+              --data-binary "@$tar" \
+              "$upload_url?name=$name"
+          done

@@ -5,8 +5,8 @@ ThatDAM Camera-Agent
 • tries to load a persisted config from /data/agent.yaml
 • otherwise discovers the first gateway advertising _thatdam._tcp via mDNS
 • optionally falls back to a statically-defined GATEWAY_URL env var
-• registers itself, stores the returned creds, then begins streaming JPEG
-  frames over a WebSocket at /ws/camera?deviceId=<id>
+• registers itself, stores the returned creds, then streams either
+  JPEG-over-WebSocket or WebRTC depending on STREAM_MODE
 • reconnects forever with back-off; CTRL-C / SIGTERM exits cleanly
 """
 import asyncio, base64, json, os, signal, sys, time
@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Optional
 
 import aiohttp, cv2, websockets
+from aiohttp import web
+from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
+from av import VideoFrame
 from zeroconf.asyncio import AsyncServiceBrowser, AsyncZeroconf
+
 
 ###############################################################################
 # Config helpers
@@ -32,6 +36,7 @@ CAPTURE_ID    = int(os.getenv("VIDEO_DEVICE_IDX", "0"))
 FRAME_W       = int(os.getenv("FRAME_W", "640"))
 FRAME_H       = int(os.getenv("FRAME_H", "360"))
 FPS           = float(os.getenv("FPS", "10"))
+STREAM_MODE   = os.getenv("STREAM_MODE", "ws-jpeg")
 
 ###############################################################################
 # Utility I/O
@@ -82,7 +87,11 @@ async def fetch_well_known(host: str) -> dict:
             return await r.json()
 
 async def register(host: str, token: str) -> dict:
-    payload = {"serial": DEVICE_SERIAL, "model": "raspberrypi-camera"}
+    payload = {
+        "serial": DEVICE_SERIAL,
+        "model": "raspberrypi-camera",
+        "stream_mode": STREAM_MODE,
+    }
     async with aiohttp.ClientSession() as s:
         async with s.post(
             f"http://{host}{REGISTER_PATH}",
@@ -113,10 +122,10 @@ async def ensure_config() -> dict:
     return cfg
 
 ###############################################################################
-# Video capture + WebSocket
+# Video capture + transport
 ###############################################################################
 
-async def cam_loop(cfg: dict):
+async def cam_loop_ws(cfg: dict):
     device_id   = cfg["device_id"]
     ws_url      = f"ws://{cfg['gateway']}:8080/ws/camera?deviceId={device_id}"
 
@@ -155,6 +164,77 @@ async def cam_loop(cfg: dict):
     finally:
         cap.release()
 
+
+class CameraStreamTrack(VideoStreamTrack):
+    def __init__(self, cap):
+        super().__init__()
+        self.cap = cap
+
+    async def recv(self):
+        pts, time_base = await self.next_timestamp()
+        ret, frame = self.cap.read()
+        if not ret:
+            await asyncio.sleep(1 / FPS)
+            return await self.recv()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        video_frame = VideoFrame.from_ndarray(frame, format="rgb24")
+        video_frame.pts = pts
+        video_frame.time_base = time_base
+        return video_frame
+
+
+async def cam_loop_webrtc(cfg: Optional[dict]):
+    cap = cv2.VideoCapture(CAPTURE_ID)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
+    cap.set(cv2.CAP_PROP_FPS, FPS)
+
+    if not cap.isOpened():
+        raise RuntimeError("Unable to open /dev/video*")
+
+    pcs = set()
+
+    async def offer(request):
+        params = await request.json()
+        offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
+        pc = RTCPeerConnection()
+        pcs.add(pc)
+
+        @pc.on("connectionstatechange")
+        async def on_state_change():
+            if pc.connectionState in {"failed", "closed", "disconnected"}:
+                await pc.close()
+                pcs.discard(pc)
+
+        pc.addTrack(CameraStreamTrack(cap))
+        await pc.setRemoteDescription(offer)
+        answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+        return web.Response(
+            content_type="application/json",
+            text=json.dumps({
+                "sdp": pc.localDescription.sdp,
+                "type": pc.localDescription.type,
+            }),
+        )
+
+    app = web.Application()
+    app.router.add_post("/webrtc", offer)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8081)
+    await site.start()
+    print("[agent] WebRTC server on http://0.0.0.0:8081/webrtc")
+
+    try:
+        while True:
+            await asyncio.sleep(3600)
+    finally:
+        for pc in pcs:
+            await pc.close()
+        cap.release()
+
 def reconnect(backoff_initial=1, backoff_max=30):
     backoff = backoff_initial
     while True:
@@ -166,8 +246,16 @@ def reconnect(backoff_initial=1, backoff_max=30):
 ###############################################################################
 
 async def main():
-    cfg = await ensure_config()
-    await cam_loop(cfg)
+    cfg = None
+    if STREAM_MODE == "ws-jpeg":
+        cfg = await ensure_config()
+        await cam_loop_ws(cfg)
+    else:
+        try:
+            cfg = await ensure_config()
+        except Exception as e:
+            print(f"[agent] proceeding without gateway: {e}")
+        await cam_loop_webrtc(cfg)
 
 def shutdown(loop):
     for t in asyncio.all_tasks(loop):
