@@ -302,6 +302,7 @@ services:
       - rabbitmq
     restart: unless-stopped
 
+
   runner:
     build:
       context: .
@@ -319,6 +320,8 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+
+
   ########################################################################
   # 3d. Golang - host api gateway
   ########################################################################
@@ -585,4 +588,5 @@ volumes:
     driver: local
   rabbitmq_data:
   discovery-run:
-    driver: local
+    external: true
+    name: thatdamtoolbox_discovery-run
