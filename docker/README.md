@@ -100,6 +100,14 @@ docker compose \
 docker compose -f docker/compose/docker-compose.yml -f docker/compose/docker-compose.prod.yml up -d
 ```
 
+### Tagging & container names
+
+Local development images use an environment-driven tag so builds stay consistent across files.
+
+- **Image tag** – every service references `${IMAGE_TAG}` and defaults to `dev`.
+- **Container name** – remains stable (`thatdamtoolbox-…`) regardless of tag.
+- **Override** – set `IMAGE_TAG=latest` (or a release) when deploying.
+
 -----
 
 ## 5. Base image workflow

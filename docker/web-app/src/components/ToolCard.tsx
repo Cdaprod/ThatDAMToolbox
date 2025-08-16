@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { dashboardTools } from './dashboardTools';
 import clsx from 'clsx';
 import { sizeClasses, iconClasses, titleClasses, cardBaseClasses } from '../styles/theme';
+import { useTenant } from '../providers/TenantProvider';
 
 interface ToolCardProps {
   toolId: string;
@@ -22,12 +23,14 @@ export default function ToolCard({
   if (!tool) return null;
 
   const { id, href, title, icon: Icon } = tool;
+  const tenant = useTenant();
+  const fullHref = `/${tenant}${href}`;
 
   // Sizing and style classes
 
   return (
     <Link
-      href={href}
+      href={fullHref}
       onMouseEnter={() => onFocus?.(id)}
       className={clsx(
         'w-full h-full',

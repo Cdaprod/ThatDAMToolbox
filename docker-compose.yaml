@@ -4,6 +4,8 @@
 ########################################################################
 name: thatdamtoolbox
 
+# Set IMAGE_TAG to control cdaprod image tags (default: dev)
+
 
 ########################################################################
 # Optionally Included Infra-Grade Services

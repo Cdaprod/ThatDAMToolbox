@@ -1,5 +1,5 @@
 import { dashboardColorClasses } from '../styles/theme';
-import { Camera, FolderOpen, Video, Activity, UserCheck, Eye } from 'lucide-react';
+import { Camera, FolderOpen, Video, Activity, UserCheck, Eye, Server } from 'lucide-react';
 
 /** 
  * A dashboard "tool" with rich metadata for intelligent layout 
@@ -20,6 +20,17 @@ export interface DashboardTool {
  * Your canonical list of dashboard tools, now with context, recency, status, etc. 
  */
 export const dashboardTools: Record<string, DashboardTool> = {
+  nodes: {
+    id: 'nodes',
+    href: '/dashboard/nodes',
+    title: 'Nodes',
+    icon: Server,
+    color: dashboardColorClasses['nodes'],
+    context: 'cluster',
+    relatedTools: [],
+    lastUsed: new Date().toISOString(),
+    status: 'idle',
+  },
   'camera-monitor': {
     id: 'camera-monitor',
     href: '/dashboard/camera-monitor',
