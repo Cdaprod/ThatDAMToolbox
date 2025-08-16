@@ -30,7 +30,7 @@ COPY host/services/discovery/            host/services/discovery/
 WORKDIR /src/host/services/discovery
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -o /out/discovery-service ./...
+    CGO_ENABLED=0 go build -o /out/discovery-service ./cmd/discovery
 
 FROM alpine:3.20
 # runtime deps: curl for healthcheck; tzdata/ca-certs for logs/https if you add remote calls
