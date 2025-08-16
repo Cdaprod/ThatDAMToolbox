@@ -179,6 +179,7 @@ func registerRunnerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// generateToken returns a random 16-byte hex token.
 func generateToken() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
