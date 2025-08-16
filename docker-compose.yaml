@@ -254,8 +254,8 @@ services:
   ########################################################################
   overlay-hub:
     build:
-      context: host/services/overlay-hub
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: host/services/overlay-hub/Dockerfile
     image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-overlay-hub
     networks: [damnet]
@@ -283,8 +283,8 @@ services:
 
   supervisor:
     build:
-      context: host/services/supervisor
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: host/services/supervisor/Dockerfile
     image: cdaprod/supervisor:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-supervisor
     networks: [damnet]
@@ -304,8 +304,8 @@ services:
 
   runner:
     build:
-      context: host/services/runner
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: host/services/runner/Dockerfile
     image: cdaprod/runner:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-runner
     networks: [damnet]
