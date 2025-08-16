@@ -9,6 +9,7 @@ WORKDIR /src
 # manifests
 COPY host/services/shared/go.mod          host/services/shared/go.mod
 COPY host/services/shared/go.sum          host/services/shared/go.sum
+COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/supervisor/go.mod      host/services/supervisor/go.mod
 COPY host/services/supervisor/go.sum      host/services/supervisor/go.sum
 

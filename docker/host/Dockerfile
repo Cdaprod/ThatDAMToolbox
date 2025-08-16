@@ -11,6 +11,7 @@ COPY host/services/camera-proxy/go.mod      host/services/camera-proxy/
 COPY host/services/capture-daemon/go.mod    host/services/capture-daemon/
 # If you have a shared module:
 COPY host/services/shared/go.mod            host/services/shared/
+COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/
 
 # 1c) Copy the rest of your code
 COPY host/services/ host/services/
