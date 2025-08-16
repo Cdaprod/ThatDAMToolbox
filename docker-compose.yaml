@@ -100,7 +100,8 @@ services:
       context: ./docker/nginx
       dockerfile: Dockerfile
     container_name: thatdamtoolbox-gateway
-    entrypoint: ["/entrypoint.sh"]
+    #entrypoint: ["/entrypoint.sh"]
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
     # profiles: ["gateway"]
     restart: unless-stopped
@@ -114,6 +115,7 @@ services:
     # ports: ["80:80"]
     volumes:
       - ./docker/nginx/entrypoint.sh:/entrypoint.sh:ro
+
       - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
       - discovery-run:/run/discovery:ro
@@ -168,7 +170,7 @@ services:
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     ports:
-      - "9000:9000"
+      - "${CAPTURE_DAEMON_HOST_PORT:-19000}:9000"
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
@@ -301,6 +303,7 @@ services:
       - rabbitmq
     restart: unless-stopped
 
+
   runner:
     build:
       context: .
@@ -318,6 +321,8 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+
+
   ########################################################################
   # 3d. Golang - host api gateway
   ########################################################################
