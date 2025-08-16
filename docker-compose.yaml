@@ -95,14 +95,14 @@ services:
   ########################################################################
   # 1. public front-door (owns :80 / :443 on the Pi)
   ########################################################################
-  gw:
+  gateway:
     build:
-      context: ./docker/nginx
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
-    entrypoint: ["/entrypoint.sh"]
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
-    # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
       - api-gateway
@@ -114,10 +114,9 @@ services:
     # ports: ["80:80"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
-      - ./host/services/gw/entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/nginx/entrypoint.sh:/entrypoint.sh:ro
       - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
-      - discovery-run:/run/discovery:ro
     healthcheck:
       test: ["CMD","curl","-fsS","http://127.0.0.1/health"]
       interval: 30s
@@ -254,8 +253,8 @@ services:
   ########################################################################
   overlay-hub:
     build:
-      context: host/services/overlay-hub
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: host/services/overlay-hub/Dockerfile
     image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-overlay-hub
     networks: [damnet]
@@ -283,8 +282,8 @@ services:
 
   supervisor:
     build:
-      context: host/services/supervisor
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: host/services/supervisor/Dockerfile
     image: cdaprod/supervisor:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-supervisor
     networks: [damnet]
@@ -304,8 +303,8 @@ services:
 
   runner:
     build:
-      context: host/services/runner
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: host/services/runner/Dockerfile
     image: cdaprod/runner:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-runner
     networks: [damnet]
@@ -431,10 +430,9 @@ services:
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
     # --- Storage mounts ------------------------
-    entrypoint: ["/entrypoint.sh"]
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
-      - ./entrypoint.sh:/entrypoint.sh:ro
       - discovery-run:/run/discovery:ro
       # __ 1) your SMB-mounted data (media, previews, etc.)__
       - "${DATA_ROOT:-./data}:/data:rw"
