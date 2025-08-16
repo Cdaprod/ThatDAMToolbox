@@ -168,7 +168,7 @@ services:
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     ports:
-      - "9000:9000"
+      - "${CAPTURE_DAEMON_HOST_PORT:-19000}:9000"
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
@@ -301,6 +301,7 @@ services:
       - rabbitmq
     restart: unless-stopped
 
+
   runner:
     build:
       context: .
@@ -318,6 +319,8 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+
+
   ########################################################################
   # 3d. Golang - host api gateway
   ########################################################################
