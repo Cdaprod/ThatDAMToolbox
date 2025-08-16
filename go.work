@@ -1,12 +1,13 @@
 go 1.23.0
 
 use (
-	./host/services/api-gateway
-	./host/services/camera-proxy
-	./host/services/capture-daemon
-	./host/services/discovery
-	./host/services/media-api
-	./host/services/overlay-hub
+        ./host/services/api-gateway
+        ./host/services/camera-proxy
+        ./host/services/capture-daemon
+        ./host/services/discovery
+        ./host/services/auth-bridge
+        ./host/services/media-api
+        ./host/services/overlay-hub
         ./host/services/supervisor
         ./host/services/shared
         ./host/services/shared/hostcap/v4l2probe

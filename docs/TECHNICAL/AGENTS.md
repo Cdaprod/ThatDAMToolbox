@@ -18,6 +18,7 @@ This document explains the key principles and details you’ll need to develop a
 ## TOP OF MIND:
 
 - Avoid rewrites; wire new features into existing services.
+- auth-bridge flips between Auth0 and Keycloak; see `AUTH_FLIP.md`.
 - Architecture layers:
     – Host: Go services for device discovery, streaming, and proxying (capture-daemon, camera-proxy).
     – Backend: Python-based video-api and media modules.
