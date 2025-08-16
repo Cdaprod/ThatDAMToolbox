@@ -23,7 +23,4 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
-networks:
-  damnet:
-    external: true
 
