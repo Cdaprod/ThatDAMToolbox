@@ -28,7 +28,7 @@ proxy_buffering off;
 proxy_cache off;
 EOF
 
-# defaults for envsubst
+# defaults for envsubst (keep in sync with compose)
 : ${API_HOST:=video-api}
 : ${API_PORT:=8080}
 : ${API_GW_HOST:=api-gateway}

@@ -10,6 +10,8 @@
   "include": [
     "src/components/__tests__/**/*.tsx",
     "src/hooks/__tests__/**/*.tsx",
+    "src/providers/__tests__/**/*.tsx",
+    "src/lib/__tests__/**/*.ts",
     "src/components/tools/FFmpegConsole.tsx",
     "src/components/tools/AnalyticsCard.tsx",
     "src/components/tools/MotionExtract.tsx",
@@ -17,6 +19,8 @@
     "src/components/dashboardTools.tsx",
     "src/components/Cards.tsx",
     "src/providers/AssetProvider.tsx",
-    "src/hooks/useIntelligentLayout.ts"
+    "src/hooks/useIntelligentLayout.ts",
+    "src/providers/TenantProvider.tsx",
+    "src/providers/AuthProvider.tsx"
   ]
 }

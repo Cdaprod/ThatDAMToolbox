@@ -4,15 +4,19 @@
 ########################################################################
 name: thatdamtoolbox
 
+# Set IMAGE_TAG to control cdaprod image tags (default: dev)
+
 
 ########################################################################
 # Optionally Included Infra-Grade Services
 ########################################################################
 include:
+    #### Infra Provided Services
   - path: ./docker/compose/docker-compose.postgres.yaml
   - path: ./docker/compose/docker-compose.weaviate.yaml
   - path: ./docker/compose/docker-compose.minio.yaml
-  - path: ./docker/compose/docker-compose.discovery.yaml
+    #### Golang Host Services
+  - path: ./host/services/discovery/docker-compose.discovery.yaml
 
 
 ########################################################################
@@ -93,14 +97,14 @@ services:
   ########################################################################
   # 1. public front-door (owns :80 / :443 on the Pi)
   ########################################################################
-  gw:
+  gateway:
     build:
-      context: ./docker/nginx
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
-    entrypoint: ["/entrypoint.sh"]
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
-    # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
       - api-gateway
@@ -112,10 +116,9 @@ services:
     # ports: ["80:80"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
-      - ./host/services/gw/entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/nginx/entrypoint.sh:/entrypoint.sh:ro
       - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
-      - discovery-run:/run/discovery:ro
     healthcheck:
       test: ["CMD","curl","-fsS","http://127.0.0.1/health"]
       interval: 30s
@@ -167,7 +170,7 @@ services:
     privileged: true                        # Needed for /dev and v4l2
     pid: host
     ports:
-      - "9000:9000"
+      - "${CAPTURE_DAEMON_HOST_PORT:-19000}:9000"
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
@@ -300,6 +303,7 @@ services:
       - rabbitmq
     restart: unless-stopped
 
+
   runner:
     build:
       context: .
@@ -317,6 +321,8 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+
+
   ########################################################################
   # 3d. Golang - host api gateway
   ########################################################################
@@ -429,10 +435,9 @@ services:
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
     # --- Storage mounts ------------------------
-    entrypoint: ["/entrypoint.sh"]
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
-      - ./entrypoint.sh:/entrypoint.sh:ro
       - discovery-run:/run/discovery:ro
       # __ 1) your SMB-mounted data (media, previews, etc.)__
       - "${DATA_ROOT:-./data}:/data:rw"
@@ -583,5 +588,4 @@ volumes:
     driver: local
   rabbitmq_data:
   discovery-run:
-    external: true
-    name: thatdamtoolbox_discovery-run
+    name: ${COMPOSE_PROJECT_NAME:-thatdamtoolbox}_discovery-run
