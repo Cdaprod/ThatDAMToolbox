@@ -216,8 +216,8 @@ ENV \
     VIDEO_TMP_DIR=/var/lib/thatdamtoolbox/tmp \
     VIDEO_INCOMING_DIR=/var/lib/thatdamtoolbox/_INCOMING
 
-COPY --chown=appuser:appuser entrypoint.sh /thatdamtoolbox/entrypoint.sh
-RUN chmod +x /thatdamtoolbox/entrypoint.sh
+COPY --chown=appuser:appuser entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8080
 
@@ -236,5 +236,5 @@ EXPOSE 8080
 
 # USER appuser if no need to chown in entrypoint–which steps down to appuser from root anyways
 USER root
-ENTRYPOINT ["tini","--","/thatdamtoolbox/entrypoint.sh"]
+ENTRYPOINT ["tini","--","/entrypoint.sh"]
 CMD ["python", "-m", "video"]

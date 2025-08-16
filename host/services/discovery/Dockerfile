@@ -5,10 +5,32 @@
 # ─────────────────────────────────────────────────────────────────────────────
 FROM golang:1.23-alpine AS build
 WORKDIR /src
-COPY host/services/discovery/go.mod host/services/discovery/go.sum ./
-RUN go mod download
-COPY host/services/discovery/ .
-RUN CGO_ENABLED=0 go build -o /out/discovery-service ./...
+
+# manifests
+COPY host/services/shared/go.mod          host/services/shared/go.mod
+COPY host/services/shared/go.sum          host/services/shared/go.sum
+COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
+COPY host/services/discovery/go.mod       host/services/discovery/go.mod
+COPY host/services/discovery/go.sum       host/services/discovery/go.sum
+
+# workspace
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    sh -ceu '\
+      go work init ./host/services/discovery; \
+      go work use  ./host/services/shared; \
+      go work sync \
+    '
+
+# sources
+COPY host/services/shared/               host/services/shared/
+COPY host/services/discovery/            host/services/discovery/
+
+# build
+WORKDIR /src/host/services/discovery
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -o /out/discovery-service ./cmd/discovery
 
 FROM alpine:3.20
 # runtime deps: curl for healthcheck; tzdata/ca-certs for logs/https if you add remote calls
