@@ -173,11 +173,23 @@ Discovery selects adapters from env; reconcilers are idempotent and non-destruct
     edge case; prefer integration tests.
 
 Commit / PR Checklist
-- Change is self-contained & idempotent.  
-- No unnecessary files or dependencies added.  
-- Tests added or updated.  
-- Docs / OpenAPI / Events updated.  
+- Change is self-contained & idempotent.
+- No unnecessary files or dependencies added.
+- Tests added or updated.
+- Docs / OpenAPI / Events updated.
 - Conventional commit message (feat, fix, …).
+- Milestone set from list below.
+
+📆 Milestones
+- Assign one of the GitHub milestones below to every PR and mention it in the PR body so Codex can surface the phase in its output.
+    - 🛠️ Project Initialization – Foundation layer - Initializing the project.
+    - 🧪 Planning and Setup – Initial stage focused on defining project scope, requirements, and setting up basic project infrastructure.
+    - 🧬 Feature Development – Stage for building and implementing core project features and functionality.
+    - 🎯 Prototype and Validation – Creating a prototype for validation, testing the feasibility, and refining key project aspects.
+    - 🛠️ Refinement and Optimization – Focusing on refining features and optimizing performance before staging.
+    - 🧪 Staging and Testing – Setting up the staging environment for final tests and quality assurance before release.
+    - 🎉 Public Release – Launching the project to the public and ensuring stable deployment.
+    - 🎯 Post-Release and Maintenance – Ongoing maintenance, bug fixes, and feature improvements after public release.
 ⸻
 
 2 · Repository Cheat Sheet
