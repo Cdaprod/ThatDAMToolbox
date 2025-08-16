@@ -1,7 +1,8 @@
 name: thatdamtoolbox-server
 services:
   overlay-hub:
-    image: ${GHCR_IMAGE_PREFIX}/overlay-hub:${IMAGE_TAG}
+    image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-overlay-hub
     restart: unless-stopped
     depends_on: {}
     healthcheck:
@@ -12,7 +13,8 @@ services:
       start_period: 10s
 
   capture-daemon:
-    image: ${GHCR_IMAGE_PREFIX}/capture-daemon:${IMAGE_TAG}
+    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-capture-daemon
     restart: unless-stopped
     depends_on:
       - rabbitmq
@@ -24,7 +26,8 @@ services:
       start_period: 10s
 
   video-api:
-    image: ${GHCR_IMAGE_PREFIX}/video-api:${IMAGE_TAG}
+    image: cdaprod/video:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-video-api
     restart: unless-stopped
     env_file: [ .env ]
     ports: [ "8080:8080" ]
@@ -40,7 +43,8 @@ services:
       start_period: 10s
 
   api-gateway:
-    image: ${GHCR_IMAGE_PREFIX}/api-gateway:${IMAGE_TAG}
+    image: cdaprod/api-gateway:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-api-gateway
     restart: unless-stopped
     env_file: [ .env ]
     ports: [ "8081:8081" ]
@@ -54,7 +58,8 @@ services:
       start_period: 10s
 
   video-web:
-    image: ${GHCR_IMAGE_PREFIX}/video-web:${IMAGE_TAG}
+    image: cdaprod/video-web:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-video-web-app
     restart: unless-stopped
     env_file: [ .env ]
     ports: [ "3000:3000" ]

@@ -3,7 +3,8 @@ secrets:
 
 services:
   hotspot-installer:
-    image: thatdam-hotspot-installer:latest     # the image with setup.sh
+    image: thatdam-hotspot-installer:${IMAGE_TAG:-dev}     # the image with setup.sh
+    container_name: thatdamtoolbox-hotspot-installer
     privileged: true                            # needs NET_ADMIN, etc.
     network_mode: host                          # touches wlan0 directly
     profiles: ["setup"]                         # ← won’t start in the main stack

@@ -1,7 +1,8 @@
 # /docker/camera-agent/docker-compose.video-cam-agent.yaml
 services:
   camera-agent:
-    image: camera-agent:latest
+    image: cdaprod/camera-agent:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-camera-agent
     environment:
       - DEVICE_ID=${HOSTNAME}               # or whatever unique ID you choose
       - SERVER_WS=ws://central-host:8080/ws/camera
