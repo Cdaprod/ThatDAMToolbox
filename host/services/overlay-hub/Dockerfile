@@ -9,6 +9,7 @@ WORKDIR /src
 # ── manifests first
 COPY host/services/shared/go.mod          host/services/shared/go.mod
 COPY host/services/shared/go.sum          host/services/shared/go.sum
+COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/overlay-hub/go.mod     host/services/overlay-hub/go.mod
 COPY host/services/overlay-hub/go.sum     host/services/overlay-hub/go.sum
 
