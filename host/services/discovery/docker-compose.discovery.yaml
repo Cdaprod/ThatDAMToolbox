@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ────────────────────────────────────────────────────────────────────────────
   # A) DEFAULT: SAFE DISCOVERY (no docker.sock, no privileged)
@@ -8,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: host/services/discovery/Dockerfile
-    image: cdaprod/thatdam-discovery:latest
+    image: cdaprod/thatdam-discovery:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-discovery
     # Host network makes mDNS/Serf UDP easy; if you only use pion/mdns and in-proc serf,
     # host net is still simplest across Pi/desktop.

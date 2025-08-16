@@ -1,6 +1,7 @@
 services:
   camerarig-wifi:
     build: .
+    image: cdaprod/camerarig-wifi:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-camerarig-wifi-manager
     restart: unless-stopped
     
@@ -55,7 +56,7 @@ services:
   # Optional: Web interface for monitoring
   camerarig-web:
     image: nginx:alpine
-    container_name: camerarig-web
+    container_name: thatdamtoolbox-camerarig-web
     restart: unless-stopped
     ports:
       - "80:80"

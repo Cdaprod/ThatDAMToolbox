@@ -5,7 +5,8 @@
 display-agent:
   build:                       # reuse the Dockerfile you pasted
     context: docker/touch-display
-  container_name: thatdam-display-agent
+  image: cdaprod/display-agent:${IMAGE_TAG:-dev}
+  container_name: thatdamtoolbox-display-agent
   <<: [*common-config, *standard-logging, *network-host]
   privileged: true             # needs /dev/i2c-1 and iw*
   devices:
