@@ -114,8 +114,8 @@ services:
     # networks: [damnet]
     # ports: ["80:80"]
     volumes:
-      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
-      #- ./host/services/gw/entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/nginx/entrypoint.sh:/entrypoint.sh:ro
+
       - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
       - discovery-run:/run/discovery:ro
