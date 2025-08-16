@@ -11,10 +11,12 @@ name: thatdamtoolbox
 # Optionally Included Infra-Grade Services
 ########################################################################
 include:
+    #### Infra Provided Services
   - path: ./docker/compose/docker-compose.postgres.yaml
   - path: ./docker/compose/docker-compose.weaviate.yaml
   - path: ./docker/compose/docker-compose.minio.yaml
-  - path: ./docker/compose/docker-compose.discovery.yaml
+    #### Golang Host Services
+  - path: ./host/services/discovery/docker-compose.discovery.yaml
 
 
 ########################################################################
