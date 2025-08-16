@@ -7,7 +7,7 @@
 [![Generate NodeProp Configuration](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-nodeprop-config.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-nodeprop-config.yml)
 [![Generate Docker Compose Diagram](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-docker-diagram.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-docker-diagram.yml)
 [![Engineer Production Environment](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-engineer-env.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-engineer-env.yml)
-
+[![Create Project Milestones](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-milestones.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-milestones.yml)
 
 <div align="center">
 

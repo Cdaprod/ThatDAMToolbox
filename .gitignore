@@ -159,6 +159,8 @@ host/releases/
 !/docker/rabbitmq/definitions.json
 !/docker/weaviate/schema.json
 
+/public/design-token-styles/**
+/docs/GIT-APPLY/**
 
 # ---- Node ----
 **/node_modules/
@@ -202,4 +204,3 @@ host/releases/
 # ------------------------------------------------------------------
 !/docker/web-app/build/ServiceDashboard.html
 !/docker/web-app/build/*
-
