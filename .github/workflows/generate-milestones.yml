@@ -3,7 +3,7 @@ name: Create Project Milestones
 on:
   push:
     paths:
-      - '.github/workflows/milestones.yml'
+      - '.github/workflows/generate-milestones.yml'
   workflow_dispatch:
 
 jobs:
