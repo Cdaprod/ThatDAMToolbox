@@ -1,4 +1,4 @@
-package main
+package manager
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 func TestDetectDiscoveryBackendDefault(t *testing.T) {
 	os.Unsetenv("SERF_JOIN")
 	os.Unsetenv("DISCOVERY_BACKEND")
-	dm := NewDiscoveryManager()
+	dm := New()
 	if got := dm.detectDiscoveryBackend(); got != DiscoveryMDNS {
 		t.Fatalf("expected %s, got %s", DiscoveryMDNS, got)
 	}
@@ -19,7 +19,7 @@ func TestDetectDiscoveryBackendDefault(t *testing.T) {
 func TestDetectDiscoveryBackendOverride(t *testing.T) {
 	os.Setenv("DISCOVERY_BACKEND", "serf")
 	t.Cleanup(func() { os.Unsetenv("DISCOVERY_BACKEND") })
-	dm := NewDiscoveryManager()
+	dm := New()
 	if got := dm.detectDiscoveryBackend(); got != DiscoverySerf {
 		t.Fatalf("expected %s, got %s", DiscoverySerf, got)
 	}
