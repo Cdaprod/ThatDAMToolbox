@@ -9,6 +9,7 @@ WORKDIR /src
 # manifests
 COPY host/services/shared/go.mod          host/services/shared/go.mod
 COPY host/services/shared/go.sum          host/services/shared/go.sum
+COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/supervisor/go.mod      host/services/supervisor/go.mod
 COPY host/services/supervisor/go.sum      host/services/supervisor/go.sum
 
@@ -25,11 +26,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY host/services/shared/            host/services/shared/
 COPY host/services/supervisor/        host/services/supervisor/
 
-# build
+# build (cmd/supervisor is the main package)
 WORKDIR /src/host/services/supervisor
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/supervisor ./cmd
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/supervisor ./cmd/supervisor
 
 # runtime
 FROM alpine:3.20

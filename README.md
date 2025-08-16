@@ -740,8 +740,11 @@ release binaries, and installs them to `/usr/local/bin`.
 git clone https://github.com/Cdaprod/ThatDAMToolbox.git
 cd ThatDAMToolbox
 
+# Build Go service images (run from repo root)
+docker compose build overlay-hub supervisor runner
+
 # Build and run with Docker Compose
-docker-compose up -d
+docker compose up -d
 
 # Access the web interface
 open http://localhost:8080
