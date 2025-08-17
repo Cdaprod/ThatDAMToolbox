@@ -110,7 +110,7 @@ services:
       - api-gateway
       - video-web
       - video-api
-      - thatdamtoolbox-discovery
+      - discovery
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
     # ports: ["80:80"]
