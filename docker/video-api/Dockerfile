@@ -216,8 +216,8 @@ ENV \
     VIDEO_TMP_DIR=/var/lib/thatdamtoolbox/tmp \
     VIDEO_INCOMING_DIR=/var/lib/thatdamtoolbox/_INCOMING
 
-COPY --chown=appuser:appuser entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY --chown=appuser:appuser docker/video-api/entrypoint.sh /entrypoint.sh
+RUN chmod 0555 /entrypoint.sh
 
 EXPOSE 8080
 
