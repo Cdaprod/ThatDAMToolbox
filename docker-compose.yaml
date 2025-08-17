@@ -99,8 +99,8 @@ services:
   ########################################################################
   gateway:
     build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile
+      context: ./docker/nginx
+      dockerfile: Dockerfile
     image: cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
     entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
