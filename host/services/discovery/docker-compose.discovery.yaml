@@ -17,6 +17,7 @@ services:
       DISCOVERY_HTTP_PORT: ${DISCOVERY_HTTP_PORT:-9999}
       LEADER_FILE: ${LEADER_FILE:-/run/discovery/leader.env}
       LOG_FORMAT: text
+      DISCOVERY_ORCHESTRATE: "false"
     volumes:
       - discovery-run:/run/discovery
     healthcheck:
