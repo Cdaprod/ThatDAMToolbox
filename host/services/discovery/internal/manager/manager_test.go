@@ -24,3 +24,13 @@ func TestDetectDiscoveryBackendOverride(t *testing.T) {
 		t.Fatalf("expected %s, got %s", DiscoverySerf, got)
 	}
 }
+
+// TestComposeCmdMissing ensures a clear error when docker-compose is not found.
+func TestComposeCmdMissing(t *testing.T) {
+	orig := os.Getenv("PATH")
+	os.Setenv("PATH", "")
+	t.Cleanup(func() { os.Setenv("PATH", orig) })
+	if _, err := composeCmd("up"); err == nil {
+		t.Fatalf("expected error when docker-compose is missing")
+	}
+}

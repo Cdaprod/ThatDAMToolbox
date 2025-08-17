@@ -77,6 +77,17 @@ func New() *DiscoveryManager {
 	return dm
 }
 
+// composeCmd returns an exec.Cmd for docker-compose or 'docker compose'.
+func composeCmd(args ...string) (*exec.Cmd, error) {
+	if path, err := exec.LookPath("docker-compose"); err == nil {
+		return exec.Command(path, args...), nil
+	}
+	if path, err := exec.LookPath("docker"); err == nil {
+		return exec.Command(path, append([]string{"compose"}, args...)...), nil
+	}
+	return nil, fmt.Errorf("docker-compose: executable not found")
+}
+
 func (dm *DiscoveryManager) Start() error {
 	printBanner()
 
@@ -451,12 +462,15 @@ func (dm *DiscoveryManager) startServerMode() error {
 	logx.L.Info("starting server mode")
 
 	// Launch docker-compose with server profile
-	cmd := exec.Command("docker-compose",
+	cmd, err := composeCmd(
 		"-f", "docker-compose.yaml",
 		"--profile", "server",
 		"up", "-d",
-		"capture-daemon", "rabbitmq", "video-api", "video-web", "gw")
-
+		"capture-daemon", "rabbitmq", "video-api", "video-web", "gw",
+	)
+	if err != nil {
+		return fmt.Errorf("failed to start server services: %w", err)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -495,10 +509,10 @@ func (dm *DiscoveryManager) startProxyMode() error {
 	os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", targetServer.Host))
 
 	// Launch camera-proxy
-	cmd := exec.Command("docker-compose",
-		"-f", "docker-compose.yaml",
-		"up", "-d", "camera-proxy")
-
+	cmd, err := composeCmd("-f", "docker-compose.yaml", "up", "-d", "camera-proxy")
+	if err != nil {
+		return fmt.Errorf("failed to start camera-proxy: %w", err)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
