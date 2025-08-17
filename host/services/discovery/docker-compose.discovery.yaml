@@ -40,8 +40,3 @@ services:
     volumes:
       - discovery-run:/run/discovery
       - /var/run/docker.sock:/var/run/docker.sock:rw
-
-volumes:
-  discovery-run:
-    external: true
-    name: thatdamtoolbox_discovery-run
