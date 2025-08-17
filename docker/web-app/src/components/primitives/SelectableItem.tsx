@@ -1,10 +1,10 @@
 'use client';
 import { ReactNode, useRef } from 'react';
 import clsx from 'clsx';
-import { useInputGesture } from '@/hooks/useInputGesture';
-import { useSelection } from '@/state/selection';
-import type { Action } from '@/types/actions';
-import { bus } from '@/lib/eventBus';
+import { useInputGesture } from '../../hooks/useInputGesture';
+import { useSelection } from '../../state/selection';
+import type { Action } from '../../types/actions';
+import { bus } from '../../lib/eventBus';
 
 interface Props {
   id: string;

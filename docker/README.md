@@ -81,6 +81,12 @@ The Mermaid diagram at the top shows the request path flowing *down* the stack a
 |**`docker-compose.server.yaml`**|server/frontend stack for self-hosted runner|
 |**`docker-compose.capture.yaml`**|capture device stack for self-hosted runner|
 
+### Naming and tagging convention
+
+- Images built from this repo follow `cdaprod/<service>:<tag>`.
+- Development stacks use a shared tag (`IMAGE_TAG`, default `dev`) so all services can be retagged together.
+- Runtime containers are named `thatdamtoolbox-<service>` to keep names consistent across compose files.
+
 Run-up patterns:
 
 ```bash
@@ -93,6 +99,14 @@ docker compose \
 # Clean production
 docker compose -f docker/compose/docker-compose.yml -f docker/compose/docker-compose.prod.yml up -d
 ```
+
+### Tagging & container names
+
+Local development images use an environment-driven tag so builds stay consistent across files.
+
+- **Image tag** – every service references `${IMAGE_TAG}` and defaults to `dev`.
+- **Container name** – remains stable (`thatdamtoolbox-…`) regardless of tag.
+- **Override** – set `IMAGE_TAG=latest` (or a release) when deploying.
 
 -----
 

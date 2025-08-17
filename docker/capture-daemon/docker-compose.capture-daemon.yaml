@@ -4,7 +4,7 @@ services:
     build:
       context: ../../host/services/capture-daemon      # adjust if path differs
       target: runtime
-    image: cdaprod/capture-daemon:dev                  # tag for reuse
+    image: cdaprod/capture-daemon:${IMAGE_TAG:-dev}                  # tag for reuse
     profiles: ["capture-daemon"]
     privileged: true          # needed for modprobe + /dev access
     pid: host                 # so modprobe touches host kernel

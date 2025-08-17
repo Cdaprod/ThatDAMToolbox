@@ -168,9 +168,35 @@ web-app/.
 ├── start.js
 ├── tailwind.config.js
 ├── tsconfig.json
+├── .env.local
+├── public/
+│   ├── favicon.ico
+│   ├── logo.svg
+│   └── images/
+├── App/
+│   ├── page.tsx                 # Root/home page
+│   ├── layout.tsx               # Root layout
+│   └── Dashboard/
+│       ├── page.tsx             # Dashboard overview
+│       ├── CameraMonitor/
+│       │   └── page.tsx         # Fullscreen Camera Monitor
+│       ├── AssetExplorer/
+│       │   └── page.tsx         # Fullscreen Asset Explorer
+│       └── ...                  # (Any other dashboard tools/features)
+├── Components/
+│   ├── CameraMonitor/
+│   ├── DAMApp/
+│   ├── DAMExplorer/
+│   ├── Sidebar.tsx
+│   ├── TopBar.tsx
+│   ├── ModalCard.tsx
+│   └── ...
+├── Styles/
+│   └── globals.css
 └── tsconfig.test.json
 
 39 directories, 112 files
+
 ```
 
 ## Quick Start Commands
@@ -220,6 +246,23 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 NODE_ENV=development
 ```
+
+## API Mappings
+
+Dashboard views map to service APIs as follows:
+
+- Nodes & Plans → Supervisor (`/v1/nodes/*`, `/v1/bootstrap/*`)
+- Events → Broker topics (`overlay.*`, `capture.*`, `video.*`, `webapp.*`)
+- Capture devices → capture-daemon API (`/hwcapture/*`)
+- Jobs & Search → video-api (`/video/*`)
+- Observability → service `/health` and `/metrics` endpoints
+- Credentials, Webhooks, Billing → api-gateway
+
+All requests flow through the typed clients in `src/lib/api`, generated via `yarn run generate-api` for a single source of truth.
+
+## Authentication
+
+`AuthProvider` wraps the app and injects a bearer token into every API call via `src/lib/api`. Use it to handle login/logout and expose user context.
 
 ## Streaming protocol
 

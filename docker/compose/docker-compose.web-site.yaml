@@ -1,10 +1,9 @@
-version: "3.9"
 services:
   web-site:
     build:
       context: ./docker/web-site
-    image: ghcr.io/cdaprod/thatdamtoolbox-website:latest
-    container_name: thatdamtoolbox-website
+    image: cdaprod/web-site:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-web-site
     restart: unless-stopped
     env_file:
       - ./docker/web-site/.env           # or mount secrets in your preferred way

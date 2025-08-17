@@ -20,6 +20,8 @@ import (
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	envpolicy "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/policy/envpolicy"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
 	"github.com/MicahParks/keyfunc"
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -98,6 +100,7 @@ func (r *Registry) MarkStale(ttl time.Duration) {
 }
 
 var (
+	policy      ports.Policy
 	reg         *Registry
 	apiKey      string
 	jwks        *keyfunc.JWKS
@@ -125,6 +128,7 @@ func main() {
 	if eventPrefix == "" {
 		eventPrefix = "overlay"
 	}
+	policy = envpolicy.NewFromEnv()
 	reg = NewRegistry()
 
 	if *jwksURL != "" {
@@ -198,7 +202,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if err := auth(r); err != nil {
+	if _, err := auth(r); err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -220,7 +224,7 @@ func heartbeatHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if err := auth(r); err != nil {
+	if _, err := auth(r); err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -242,38 +246,55 @@ func publishEvent(action string, a Agent) {
 	_ = bus.Publish(eventPrefix+"."+action, map[string]any{"action": action, "agent": a})
 }
 
-func auth(r *http.Request) error {
+func auth(r *http.Request) (ports.Principal, error) {
+	var p ports.Principal
 	if jwks != nil {
 		raw := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 		if raw == "" {
-			return errors.New("missing token")
+			return p, nil
 		}
 		token, err := jwt.Parse(raw, jwks.Keyfunc)
 		if err != nil || !token.Valid {
 			if err == nil {
 				err = errors.New("invalid token")
 			}
-			return err
+			return p, err
 		}
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			if aud := os.Getenv("JWT_AUD"); aud != "" && claims.VerifyAudience(aud, true) == false {
-				return errors.New("invalid audience")
+			if aud := os.Getenv("JWT_AUD"); aud != "" && !claims.VerifyAudience(aud, true) {
+				return p, errors.New("invalid audience")
 			}
-			if iss := os.Getenv("JWT_ISS"); iss != "" && claims.VerifyIssuer(iss, true) == false {
-				return errors.New("invalid issuer")
+			if iss := os.Getenv("JWT_ISS"); iss != "" && !claims.VerifyIssuer(iss, true) {
+				return p, errors.New("invalid issuer")
+			}
+			if sub, ok := claims["sub"].(string); ok {
+				p.Sub = sub
+			}
+			if scope, ok := claims["scope"].(string); ok {
+				p.Scopes = make(map[string]bool)
+				for _, s := range strings.Fields(scope) {
+					p.Scopes[s] = true
+				}
 			}
 		}
 		if alg := token.Method.Alg(); alg != "RS256" && alg != "ES256" {
-			return errors.New("invalid algorithm")
+			return p, errors.New("invalid algorithm")
 		}
-		return nil
+		return p, nil
 	}
 	if apiKey != "" {
 		if r.Header.Get("X-API-Key") != apiKey {
-			return errors.New("unauthorized")
+			return p, errors.New("unauthorized")
+		}
+		p.Sub = "apikey"
+		p.Scopes = map[string]bool{
+			"thatdam:register": true,
+			"thatdam:read":     true,
+			"thatdam:apply":    true,
+			"thatdam:admin":    true,
 		}
 	}
-	return nil
+	return p, nil
 }
 
 func getEnv(key, def string) string {

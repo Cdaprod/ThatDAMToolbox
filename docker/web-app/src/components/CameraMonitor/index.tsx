@@ -1,4 +1,4 @@
-// docker/web-app/src/components/CameraMonitor.tsx
+// /docker/web-app/src/components/CameraMonitor/index.tsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,20 +18,20 @@ import {
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(
-  () => import("./overlays/FocusPeakingOverlay"),
+  () => import("../overlays/FocusPeakingOverlay"),
   { ssr: false },
 );
-const ZebraOverlay = dynamic(() => import("./overlays/ZebraOverlay"), {
+const ZebraOverlay = dynamic(() => import("../overlays/ZebraOverlay"), {
   ssr: false,
 });
 const FalseColorOverlay = dynamic(
-  () => import("./overlays/FalseColorOverlay"),
+  () => import("../overlays/FalseColorOverlay"),
   { ssr: false },
 );
-const HistogramMonitor = dynamic(() => import("./overlays/HistogramMonitor"), {
+const HistogramMonitor = dynamic(() => import("../overlays/HistogramMonitor"), {
   ssr: false,
 });
-const WaveformMonitor = dynamic(() => import("./overlays/WaveformMonitor"), {
+const WaveformMonitor = dynamic(() => import("../overlays/WaveformMonitor"), {
   ssr: false,
 });
 

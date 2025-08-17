@@ -5,10 +5,12 @@ import { usePathname } from 'next/navigation'
 import { dashboardTools } from './dashboardTools'
 import clsx from 'clsx'
 import { useSidebar } from '../hooks/useSidebar'
+import { useTenant } from '../providers/TenantProvider'
 
 export default function Sidebar() {
   const { collapsed } = useSidebar()
   const pathname = usePathname() || ''
+  const tenant = useTenant()
 
   return (
     <aside
@@ -19,11 +21,12 @@ export default function Sidebar() {
     >
       <nav className="flex flex-col gap-1 px-2 py-2">
         {Object.values(dashboardTools).map(({ href, title, icon: Icon, id }) => {
-          const active = pathname.startsWith(href)
+          const fullHref = `/${tenant}${href}`
+          const active = pathname.startsWith(fullHref)
           return (
             <Link
               key={id}
-              href={href}
+              href={fullHref}
               className={clsx(
                 'flex items-center gap-3 p-2 rounded-md hover:bg-surface',
                 active && 'bg-color-primary-bg text-theme-primary font-semibold'

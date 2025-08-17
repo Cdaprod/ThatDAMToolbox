@@ -4,6 +4,7 @@ Minimal HTTP bridge exposing auth endpoints for Auth0 or Keycloak.
 
 ## Usage
 ```bash
+
 # run with Auth0 (default)
 OIDC_PROVIDER=auth0 go run ./cmd/auth-bridge
 ```

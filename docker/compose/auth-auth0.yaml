@@ -1,11 +1,10 @@
-version: "3.9"
 name: thatdamtoolbox-auth-auth0
 services:
   auth-bridge:
     build:
       context: .
       dockerfile: docker/auth-bridge/Dockerfile
-    image: cdaprod/auth-bridge:latest
+    image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-auth
     networks: [damnet]
     ports: ["8081:8081"]
@@ -24,7 +23,9 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+
 networks:
   damnet:
     external: true
+
 

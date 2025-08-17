@@ -1,17 +1,13 @@
-version: "3.9"
-
 services:
   # ────────────────────────────────────────────────────────────────────────────
   # A) DEFAULT: SAFE DISCOVERY (no docker.sock, no privileged)
   # ────────────────────────────────────────────────────────────────────────────
   discovery:
     build:
-      context: .
+      context: ../../../
       dockerfile: host/services/discovery/Dockerfile
-    image: cdaprod/thatdam-discovery:latest
+    image: cdaprod/thatdam-discovery:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-discovery
-    # Host network makes mDNS/Serf UDP easy; if you only use pion/mdns and in-proc serf,
-    # host net is still simplest across Pi/desktop.
     network_mode: host
     restart: unless-stopped
     environment:
@@ -21,8 +17,6 @@ services:
       DISCOVERY_HTTP_PORT: ${DISCOVERY_HTTP_PORT:-9999}
       LEADER_FILE: ${LEADER_FILE:-/run/discovery/leader.env}
       LOG_FORMAT: text
-      # SERF_JOIN: "10.0.0.12:7946,10.0.0.13:7946"       # optional seeds if you want
-      # DISCOVERY_ORCHESTRATE: "false"                   # stays off by default
     volumes:
       - discovery-run:/run/discovery
     healthcheck:
@@ -34,8 +28,6 @@ services:
 
   # ────────────────────────────────────────────────────────────────────────────
   # B) OPTIONAL: ORCHESTRATOR PROFILE (off by default)
-  #    Enables discovery to run `docker compose` on the host.
-  #    Use: `docker compose -f docker/compose/docker-compose.discovery.yaml --profile orchestrator up -d`
   # ────────────────────────────────────────────────────────────────────────────
   discovery-orchestrator:
     extends:
@@ -45,13 +37,11 @@ services:
     environment:
       DISCOVERY_ORCHESTRATE: "true"
       LOG_FORMAT: text
-      # If your discovery code shells out to `docker compose`, the plugin must be available on host.
     volumes:
       - discovery-run:/run/discovery
       - /var/run/docker.sock:/var/run/docker.sock:rw
-    # keep this unprivileged; docker.sock mount is already high-privilege.
-    # if you later add tailscale-in-container or external daemons, revisit caps/privileged.
 
 volumes:
   discovery-run:
-    driver: local
+    external: true
+    name: thatdamtoolbox_discovery-run
