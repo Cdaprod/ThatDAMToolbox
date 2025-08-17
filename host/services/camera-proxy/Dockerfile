@@ -36,8 +36,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM alpine:3.20
 ARG VERSION
 LABEL org.opencontainers.image.version=$VERSION
-RUN apk add --no-cache ca-certificates ffmpeg v4l-utils usbutils
+# Install runtime dependencies including bash for entrypoint scripts
+RUN apk add --no-cache bash ca-certificates ffmpeg v4l-utils usbutils
 COPY --from=builder /out/camera-proxy /usr/local/bin/camera-proxy
 EXPOSE 8000
 ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
 ENTRYPOINT ["/usr/local/bin/camera-proxy"]
+
