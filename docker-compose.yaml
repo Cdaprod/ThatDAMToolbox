@@ -372,8 +372,8 @@ services:
   video-api:
     build:
       context: .
-      dockerfile: Dockerfile            # Multi-arch build
-    image: cdaprod/video:${IMAGE_TAG:-dev}
+      dockerfile: docker/video-api/Dockerfile            # Multi-arch build
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
     # --- Networking (host-mode exposes 8080) ---
@@ -435,7 +435,7 @@ services:
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
     # --- Storage mounts ------------------------
-    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /docker/video-api/entrypoint.sh"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
       - discovery-run:/run/discovery:ro
@@ -471,7 +471,7 @@ services:
   # 4b. optional CLI job
   ########################################################################
   video-cli:
-    image: cdaprod/video:${IMAGE_TAG:-dev}
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-cli-ephemeral
     networks: [damnet]
     profiles: [hydrate-backend, cli]
@@ -548,6 +548,7 @@ services:
     ports:
       - "3001:3000"
     networks: [damnet]
+    profiles: [web-site]
     environment:
       NODE_ENV: development
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
