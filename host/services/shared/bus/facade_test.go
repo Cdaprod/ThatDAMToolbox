@@ -38,7 +38,8 @@ func TestPublishSubscribe(t *testing.T) {
 	adapterCtor = newMockBus
 	defer func() { adapterCtor = nil }()
 
-	if _, err := Connect(context.Background(), Config{}); err != nil {
+	cfg := Config{URL: "amqp://test", Exchange: "events"}
+	if _, err := Connect(context.Background(), cfg); err != nil {
 		t.Fatalf("connect: %v", err)
 	}
 
