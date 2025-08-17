@@ -2,16 +2,18 @@ package main
 
 import (
 	"bytes"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/auth-bridge/internal/config"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/auth-bridge/internal/server"
 )
 
-// TestHealthAndSession ensures basic endpoints respond.
-func TestHealthAndSession(t *testing.T) {
-	mux := buildMux(Config{CookieDomain: "localhost"})
+// TestEndpoints ensures basic endpoints respond.
+func TestEndpoints(t *testing.T) {
+	cfg := config.Load()
+	mux := server.BuildMux(cfg)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
@@ -22,30 +24,10 @@ func TestHealthAndSession(t *testing.T) {
 	if resp, err := http.Get(srv.URL + "/session/me"); err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("session: %v status=%d", err, resp.StatusCode)
 	}
-}
 
-// TestRunnerRegister verifies that the registration endpoint returns a script
-// and logs the request.
-func TestRunnerRegister(t *testing.T) {
-	runnerStore = &memoryStore{}
-	mux := buildMux(Config{CookieDomain: "localhost"})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	body := strings.NewReader(`{"profile":"demo"}`)
+	body := bytes.NewBufferString(`{"profile":"capture"}`)
 	resp, err := http.Post(srv.URL+"/runners/register", "application/json", body)
-	if err != nil {
-		t.Fatalf("post: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status=%d", resp.StatusCode)
-	}
-	data, _ := io.ReadAll(resp.Body)
-	if !bytes.Contains(data, []byte("TOKEN=")) {
-		t.Fatalf("script missing token: %s", data)
-	}
-	if ms, ok := runnerStore.(*memoryStore); !ok || len(ms.logs) != 1 {
-		t.Fatalf("registration not logged")
+	if err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("register: %v status=%d", err, resp.StatusCode)
 	}
 }

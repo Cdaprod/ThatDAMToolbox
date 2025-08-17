@@ -20,9 +20,24 @@ docker compose -f docker/compose/auth-auth0.yaml up --build
 ```bash
 docker compose -f docker/compose/auth-keycloak.yaml up --build
 ```
-2) Console: http://localhost:8089  (admin/admin)  
-   Realm: `thatdam`, Client: `web-app` (public + PKCE).  
+2) Console: http://localhost:8089  (admin/admin)
+   Realm: `thatdam`, Client: `web-app` (public + PKCE).
 3) `auth-bridge` at http://localhost:8081
+
+### Root Compose Profiles
+Use the root `docker-compose.yaml` with profiles when you want the bridge and IdP managed together.
+
+```bash
+# Auth0
+export COMPOSE_PROFILES=auth0
+export OIDC_PROVIDER=auth0
+docker compose up -d --build auth-bridge
+
+# Keycloak
+export COMPOSE_PROFILES=keycloak
+export OIDC_PROVIDER=keycloak
+docker compose up -d --build keycloak auth-bridge
+```
 
 ## Service Contract (stable routes)
 - `GET /health`
