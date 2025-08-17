@@ -783,6 +783,16 @@ recent_media = indexer.get_recent()
 results = indexer.search("sunset beach")
 ```
 
+### Upstream Configuration
+
+Set `UPSTREAM` to a `host:port` pair so services know where to reach the API gateway:
+
+```bash
+export UPSTREAM=api-gateway:8080
+```
+
+The entrypoint automatically splits this into `UPSTREAM_HOST` and `UPSTREAM_PORT`.
+
 ### Web Interface
 
 1. Navigate to `http://localhost:8080`
