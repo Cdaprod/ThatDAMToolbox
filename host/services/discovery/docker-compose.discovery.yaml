@@ -2,7 +2,7 @@ services:
   # ────────────────────────────────────────────────────────────────────────────
   # A) DEFAULT: SAFE DISCOVERY (no docker.sock, no privileged)
   # ────────────────────────────────────────────────────────────────────────────
-  discovery:
+  thatdamtoolbox-discovery:
     build:
       context: ../../../
       dockerfile: host/services/discovery/Dockerfile
@@ -29,7 +29,7 @@ services:
   # ────────────────────────────────────────────────────────────────────────────
   # B) OPTIONAL: ORCHESTRATOR PROFILE (off by default)
   # ────────────────────────────────────────────────────────────────────────────
-  discovery-orchestrator:
+  thatdamtoolbox-discovery-orchestrator:
     extends:
       service: discovery
     container_name: thatdamtoolbox-discovery-orchestrator
