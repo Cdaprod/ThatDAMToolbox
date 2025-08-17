@@ -34,10 +34,16 @@ func (m *mockBus) Subscribe(topic string, fn func([]byte)) error {
 
 func (m *mockBus) Close() error { return nil }
 
-func TestPublishSubscribe(t *testing.T) {
-	adapterCtor = newMockBus
-	defer func() { adapterCtor = nil }()
+func reset() {
+	once = sync.Once{}
+	inst = nil
+	instErr = nil
+	adapterCtor = nil
+}
 
+func TestPublishSubscribe(t *testing.T) {
+	reset()
+	adapterCtor = newMockBus
 	cfg := Config{URL: "amqp://test", Exchange: "events"}
 	if _, err := Connect(context.Background(), cfg); err != nil {
 		t.Fatalf("connect: %v", err)
@@ -58,5 +64,13 @@ func TestPublishSubscribe(t *testing.T) {
 		}
 	default:
 		t.Fatal("no message")
+	}
+}
+
+func TestConnectNoAdapter(t *testing.T) {
+	reset()
+	cfg := Config{URL: "amqp://test", Exchange: "events"}
+	if _, err := Connect(context.Background(), cfg); err == nil {
+		t.Fatal("expected error when no adapter registered")
 	}
 }
