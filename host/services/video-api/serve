@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# serve - wrapper to launch the video API
+# Example: ./serve --port 8080
+#
+# Starts the FastAPI video service using Python.
+set -euo pipefail
+exec python -m video.api.main "$@"

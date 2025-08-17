@@ -36,8 +36,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM alpine:3.20
 ARG VERSION
 LABEL org.opencontainers.image.version=$VERSION
+# Install runtime dependencies; bash not required for /bin/sh entrypoint
 RUN apk add --no-cache ca-certificates ffmpeg v4l-utils usbutils
 COPY --from=builder /out/camera-proxy /usr/local/bin/camera-proxy
+COPY host/services/camera-proxy/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 EXPOSE 8000
 ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
-ENTRYPOINT ["/usr/local/bin/camera-proxy"]
+ENTRYPOINT ["/entrypoint.sh"]
+

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 )
@@ -38,18 +39,35 @@ func SetAdapter(fn func(Config) (Bus, error)) { adapterCtor = fn }
 func Connect(ctx context.Context, cfg Config) (Bus, error) {
 	once.Do(func() {
 		if cfg.URL == "" {
-			cfg.URL = os.Getenv("EVENT_BROKER_URL")
+			cfg.URL = os.Getenv("BROKER_URL")
 			if cfg.URL == "" {
-				cfg.URL = os.Getenv("AMQP_URL")
+				cfg.URL = os.Getenv("EVENT_BROKER_URL")
+			}
+		}
+		if cfg.URL == "" {
+			instErr = errors.New("bus: missing broker URL")
+			return
+		}
+		if cfg.Exchange == "" {
+			cfg.Exchange = os.Getenv("BROKER_EXCHANGE")
+			if cfg.Exchange == "" {
+				cfg.Exchange = os.Getenv("AMQP_EXCHANGE")
 			}
 		}
 		if cfg.Exchange == "" {
-			cfg.Exchange = os.Getenv("AMQP_EXCHANGE")
-			if cfg.Exchange == "" {
-				cfg.Exchange = "events"
-			}
+			instErr = errors.New("bus: missing exchange")
+			return
 		}
-		inst, instErr = adapterCtor(cfg)
+		if adapterCtor == nil {
+			instErr = errors.New("bus: no adapter registered")
+			return
+		}
+		var err error
+		inst, err = adapterCtor(cfg)
+		if err != nil {
+			instErr = fmt.Errorf("bus: connect: %w", err)
+			inst = nil
+		}
 	})
 	return inst, instErr
 }
