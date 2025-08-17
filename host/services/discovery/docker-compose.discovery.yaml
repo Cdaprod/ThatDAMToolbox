@@ -31,7 +31,7 @@ services:
   # ────────────────────────────────────────────────────────────────────────────
   thatdamtoolbox-discovery-orchestrator:
     extends:
-      service: discovery
+      service: thatdamtoolbox-discovery
     container_name: thatdamtoolbox-discovery-orchestrator
     profiles: ["orchestrator"]
     environment:
