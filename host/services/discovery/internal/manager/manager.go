@@ -77,6 +77,17 @@ func New() *DiscoveryManager {
 	return dm
 }
 
+// composeCmd returns an exec.Cmd for docker-compose or 'docker compose'.
+func composeCmd(args ...string) (*exec.Cmd, error) {
+	if path, err := exec.LookPath("docker-compose"); err == nil {
+		return exec.Command(path, args...), nil
+	}
+	if path, err := exec.LookPath("docker"); err == nil {
+		return exec.Command(path, append([]string{"compose"}, args...)...), nil
+	}
+	return nil, fmt.Errorf("docker-compose: executable not found")
+}
+
 func (dm *DiscoveryManager) Start() error {
 	printBanner()
 
@@ -349,27 +360,34 @@ func (dm *DiscoveryManager) checkTailscalePeer(dnsName string) {
 }
 
 func (dm *DiscoveryManager) decideMode() {
-	dm.mutex.RLock()
-	serverCount := len(dm.discoveredServers)
-	dm.mutex.RUnlock()
+        dm.mutex.RLock()
+        serverCount := len(dm.discoveredServers)
+        dm.mutex.RUnlock()
 
-	if serverCount == 0 {
-		dm.mode = ModeServer
-		logx.L.Info("no existing servers found - becoming server")
+        if serverCount == 0 {
+                // Verify docker-compose availability before assuming server mode
+                if cmd, err := composeCmd("--version"); err != nil {
+                        logx.L.Warn("docker-compose unavailable - defaulting to proxy mode", "err", err)
+                        dm.mode = ModeProxy
+                } else if err = cmd.Run(); err != nil {
+                        logx.L.Warn("docker-compose check failed - defaulting to proxy mode", "err", err)
+                        dm.mode = ModeProxy
+                } else {
+                        dm.mode = ModeServer
+                        logx.L.Info("no existing servers found - becoming server")
+                        dm.advertiseService()
+                }
+        } else {
+                dm.mode = ModeProxy
+                logx.L.Info("found existing servers - becoming camera-proxy", "count", serverCount)
 
-		// Start advertising our service
-		dm.advertiseService()
-	} else {
-		dm.mode = ModeProxy
-		logx.L.Info("found existing servers - becoming camera-proxy", "count", serverCount)
-
-		// Display discovered servers
-		dm.mutex.RLock()
-		for nodeID, info := range dm.discoveredServers {
-			logx.L.Info("existing server", "id", nodeID, "host", info.Host, "port", info.Port)
-		}
-		dm.mutex.RUnlock()
-	}
+                // Display discovered servers
+                dm.mutex.RLock()
+                for nodeID, info := range dm.discoveredServers {
+                        logx.L.Info("existing server", "id", nodeID, "host", info.Host, "port", info.Port)
+                }
+                dm.mutex.RUnlock()
+        }
 
 	// Update service info
 	hostname, _ := os.Hostname()
@@ -437,26 +455,37 @@ func (dm *DiscoveryManager) advertiseSerfLeadership() {
 }
 
 func (dm *DiscoveryManager) startServices() error {
-	switch dm.mode {
-	case ModeServer:
-		return dm.startServerMode()
-	case ModeProxy:
-		return dm.startProxyMode()
-	default:
-		return fmt.Errorf("unknown mode: %s", dm.mode)
-	}
+        switch dm.mode {
+        case ModeServer:
+                if err := dm.startServerMode(); err != nil {
+                        if strings.Contains(err.Error(), "docker-compose") {
+                                logx.L.Warn("server mode failed, falling back to proxy", "err", err)
+                                dm.mode = ModeProxy
+                                return dm.startProxyMode()
+                        }
+                        return err
+                }
+                return nil
+        case ModeProxy:
+                return dm.startProxyMode()
+        default:
+                return fmt.Errorf("unknown mode: %s", dm.mode)
+        }
 }
 
 func (dm *DiscoveryManager) startServerMode() error {
 	logx.L.Info("starting server mode")
 
 	// Launch docker-compose with server profile
-	cmd := exec.Command("docker-compose",
+	cmd, err := composeCmd(
 		"-f", "docker-compose.yaml",
 		"--profile", "server",
 		"up", "-d",
-		"capture-daemon", "rabbitmq", "video-api", "video-web", "gw")
-
+		"capture-daemon", "rabbitmq", "video-api", "video-web", "gw",
+	)
+	if err != nil {
+		return fmt.Errorf("failed to start server services: %w", err)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -495,10 +524,10 @@ func (dm *DiscoveryManager) startProxyMode() error {
 	os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", targetServer.Host))
 
 	// Launch camera-proxy
-	cmd := exec.Command("docker-compose",
-		"-f", "docker-compose.yaml",
-		"up", "-d", "camera-proxy")
-
+	cmd, err := composeCmd("-f", "docker-compose.yaml", "up", "-d", "camera-proxy")
+	if err != nil {
+		return fmt.Errorf("failed to start camera-proxy: %w", err)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
