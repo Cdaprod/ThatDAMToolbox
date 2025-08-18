@@ -15,7 +15,7 @@ RUN set -eux; \
     chmod +x /mc
 
 # ── Stage 2: MinIO server + our entrypoint + mc ─────────────────────────
-FROM minio/minio:latest
+FROM minio/minio:RELEASE.2024-03-15T01-07-19Z
 # Copy minio client
 COPY --from=mcget /mc /usr/bin/mc
 # Copy our bootstrapper
