@@ -28,21 +28,15 @@ proxy_buffering off;
 proxy_cache off;
 EOF
 
-# defaults for envsubst (keep in sync with compose)
-if [ -n "${UPSTREAM:-}" ]; then
-  API_HOST="${UPSTREAM%:*}"
-  API_PORT="${UPSTREAM##*:}"
-fi
-: ${API_HOST:=video-api}
-: ${API_PORT:=8080}
-: ${API_GW_HOST:=api-gateway}
-: ${API_GW_PORT:=8081}
-: ${WEB_HOST:=video-web}
-: ${WEB_PORT:=3000}
+# derive upstream host/port with sane defaults
+UPSTREAM="${UPSTREAM:-api-gateway:8080}"
+UPSTREAM_HOST="${UPSTREAM_HOST:-${HOST:-${UPSTREAM%%:*}}}"
+UPSTREAM_PORT="${UPSTREAM_PORT:-${PORT:-${UPSTREAM##*:}}}"
+export UPSTREAM_HOST UPSTREAM_PORT
 
 # render the template into the real nginx.conf
-envsubst '${API_HOST} ${API_PORT} ${API_GW_HOST} ${API_GW_PORT} ${WEB_HOST} ${WEB_PORT}' \
-  < /etc/nginx/nginx.tmpl > /etc/nginx/nginx.conf
+envsubst '${UPSTREAM_HOST} ${UPSTREAM_PORT}' \
+  < /etc/nginx/templates/gw.tmpl > /etc/nginx/nginx.conf
 
 exec nginx -g 'daemon off;'
 

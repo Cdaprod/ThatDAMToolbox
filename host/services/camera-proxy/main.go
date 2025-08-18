@@ -6,17 +6,17 @@
 //
 // Environment variables:
 //
-//	PROXY_PORT           - listening port (default 8000)
-//	BACKEND_URL          - backend address to proxy (default http://localhost:8080)
-//	FRONTEND_URL         - frontend address to proxy (default http://localhost:3000)
-//	CAPTURE_DAEMON_URL   - optional capture-daemon address
-//	CAPTURE_DAEMON_TOKEN - bearer token for capture-daemon requests
-//	TLS_CERT_FILE        - serve HTTPS using this certificate
-//	TLS_KEY_FILE         - key for TLS_CERT_FILE
+//		PROXY_PORT           - listening port (default 8000)
+//	     BACKEND_URL          - backend address to proxy (default http://api-gateway:8080)
+//		FRONTEND_URL         - frontend address to proxy (default http://localhost:3000)
+//		CAPTURE_DAEMON_URL   - optional capture-daemon address
+//		CAPTURE_DAEMON_TOKEN - bearer token for capture-daemon requests
+//		TLS_CERT_FILE        - serve HTTPS using this certificate
+//		TLS_KEY_FILE         - key for TLS_CERT_FILE
 //
 // Example:
 //
-//	PROXY_PORT=8000 BACKEND_URL=http://localhost:8080 \
+//	PROXY_PORT=8000 BACKEND_URL=http://api-gateway:8080 \
 //	FRONTEND_URL=http://localhost:3000 CAPTURE_DAEMON_URL=http://localhost:9000 \
 //	./camera-proxy
 package main
@@ -684,7 +684,7 @@ func main() {
 
 	// Configuration from environment variables
 	proxyPort := getEnv("PROXY_PORT", "8000")
-	backendAddr := getEnv("BACKEND_URL", "http://localhost:8080")
+	backendAddr := getEnv("BACKEND_URL", "http://api-gateway:8080")
 	frontendAddr := getEnv("FRONTEND_URL", "http://localhost:3000")
 
 	// Create device proxy
