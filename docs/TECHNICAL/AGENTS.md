@@ -1,5 +1,7 @@
 # **That DAM Toolbox – Engineering & Agent Guide**
 
+## 👉 Dont wander -- just fleshes out scaffolding. 👈
+
 *Last updated: 2025-08-06 · Maintainer: **David Cannan (@Cdaprod)***
 
 ### Repository URL: [Cdaprod/ThatDAMToolbox](https://github.com/Cdaprod/ThatDAMToolbox)
