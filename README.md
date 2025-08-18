@@ -44,6 +44,22 @@ A comprehensive Digital Asset Management (DAM) system that combines traditional 
 
 ### System Architecture
 
+#### In our system:
+- Ring of capture-daemon nodes = the core distributed file system ring
+- Camera-proxy peers = the peripheral components that interface with cameras and feed into the ring
+
+#### The camera-proxies are peers because they:
+1. Interface with the core system but aren’t part of the main ring structure
+2. Have specialized roles (camera interfacing) rather than general distributed storage duties
+3. Connect to/communicate with the ring nodes rather than being ring participants themselves
+
+#### In distributed systems terminology, this would be described as:
+- Core ring nodes (capture-daemon DFS nodes)
+- Edge peers or proxy peers (camera-proxy components)
+
+This is a common pattern where you have a core distributed system (your DFS ring) with specialized peripheral components (camera proxies) that act as data ingress points. The proxies are peers to each other and to the system, but they’re not full participants in the ring consensus/storage mechanism.
+So "camera-proxy peers" is the most systems-design-accurate description for those components in your architecture.​​​​​​​​​​​​​​​​
+
 ```
 Browser  →  FastAPI  →  Database
               ↘︎  Worker Queue → ML Workers (AI/ffmpeg)
@@ -153,35 +169,7 @@ This topology ensures that each container has direct, read-write access to the s
 
 The core innovation of this DAM system is its multi-level video understanding:
 
-#### Latest
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant UI as Browser
-  participant GW as api-gateway
-  participant API as video-api
-  participant MQ as RabbitMQ
-  participant W1 as worker L1
-  participant W2 as worker L2
-  participant W3 as worker L3
-  participant VS as Vector store
-  
-  Note over UI: User adds asset/folder into UI
-  UI->>GW: POST /embedding/videos/ingest
-  GW->>API: Forward request
-  API->>VS: Store L0 (ingest + basic metadata)
-  API->>MQ: Publish jobs for L1, L2, L3
-  MQ->>W1: L1 task
-  W1->>VS: Write L1 vectors
-  MQ->>W2: L2 task
-  W2->>VS: Write L2 segments
-  MQ->>W3: L3 task
-  W3->>VS: Write L3 semantics
-  API-->>UI: 202 Accepted (id)
-``` 
-
-#### Legacy
+#### Latest Depiction
 
 ```mermaid
 sequenceDiagram
@@ -212,11 +200,106 @@ sequenceDiagram
 
 ---
 
-## System Architecture Details
+## Distributed Capture Network Topology
+### 🐳 Docker Compose Service Topology
 
-### Application Stack
+
+Our camera proxy peer provides video for straight away use.
+Our capture daemon does two things with a one provided (video capture):
+- Captures the full quality to media store (recording)
+- Presents itself live (live-preview pre-recording)
+
+One frontend is always available either by means of:
+- full scale web-app browswer
+- camera proxy peer's embedded browser viewer (not full web-app still frontend none the less)
+
+camera proxies are ephemeral and stateless
+capture daemon aims to be stateless at its core with persistent state
 
 #### Latest
+
+```mermaid
+flowchart TB
+  subgraph EDGE["Edge Layer - Camera Proxy Peers"]
+    direction LR
+    P1["camera-proxy-1<br/>ephemeral/stateless<br/>direct video provision"]
+    P2["camera-proxy-2<br/>ephemeral/stateless<br/>direct video provision"] 
+    P3["camera-proxy-N<br/>ephemeral/stateless<br/>direct video provision"]
+    
+    P1 -.-> EV1["embedded viewer"]
+    P2 -.-> EV2["embedded viewer"]
+    P3 -.-> EV3["embedded viewer"]
+  end
+
+  subgraph CORE["Core Ring - Capture Daemon DFS Nodes"]
+    direction TB
+    CD1["capture-daemon-1<br/>stateless core + persistent state<br/>• record to media store<br/>• live preview service"]
+    CD2["capture-daemon-2<br/>stateless core + persistent state<br/>• record to media store<br/>• live preview service"]
+    CD3["capture-daemon-3<br/>stateless core + persistent state<br/>• record to media store<br/>• live preview service"]
+    
+    CD1 <-.-> CD2
+    CD2 <-.-> CD3  
+    CD3 <-.-> CD1
+  end
+
+  subgraph FRONTEND["Frontend Access Patterns"]
+    WEB["Full Web App<br/>Browser Interface"]
+    EMBED["Embedded Viewers<br/>camera-proxy local"]
+  end
+
+  subgraph STORAGE["Persistent Storage"]
+    MEDIA["Media Store<br/>(full quality recordings)"]
+    LIVE["Live Preview Service<br/>(preprocessed streams)"]
+  end
+
+  subgraph CLOUD["ThatDAMPlatform Cloud"]
+    GW["API Gateway"]
+    SFU["Live SFU (WHIP/WHEP)"]
+    APP["Web Dashboard"]
+  end
+
+  %% Edge to Core data flows
+  P1 -->|video ingress| CD1
+  P2 -->|video ingress| CD2
+  P3 -->|video ingress| CD3
+  
+  %% Core ring distributed storage
+  CD1 --> MEDIA
+  CD2 --> MEDIA
+  CD3 --> MEDIA
+  
+  %% Core ring live services
+  CD1 --> LIVE
+  CD2 --> LIVE
+  CD3 --> LIVE
+  
+  %% Frontend access paths
+  WEB --> CORE
+  EV1 & EV2 & EV3 --> EMBED
+  
+  %% Cloud integration
+  CORE -->|record & ingest| GW
+  P1 & P2 & P3 -->|WHIP publish| SFU
+  APP -->|HTTPS| GW
+  APP -->|WHEP view| SFU
+  WEB <-.-> APP
+  
+  classDef edge fill:#FFE0E0,stroke:#D32F2F,stroke-width:2px
+  classDef core fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+  classDef frontend fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+  classDef storage fill:#E8F5E8,stroke:#388E3C,stroke-width:2px
+  classDef cloud fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+  
+  class P1,P2,P3 edge
+  class CD1,CD2,CD3 core
+  class WEB,EMBED,EV1,EV2,EV3 frontend
+  class MEDIA,LIVE storage
+  class GW,SFU,APP cloud
+``` 
+
+---
+
+#### Legacy v0.1.0
 
 ```mermaid
 flowchart LR
@@ -282,8 +365,9 @@ flowchart LR
   class MQ,STORE,NGX,VIEW infra;
 ```
 
+---
 
-#### Legacy
+#### Legacy v0.0.0
 
 ```mermaid
 graph RL
