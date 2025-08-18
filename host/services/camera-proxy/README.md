@@ -21,6 +21,17 @@ docker run -p 8000:8000 camera-proxy
 docker compose -f host/services/camera-proxy/docker-compose.camera-proxy.yaml --profile camera-proxy up
 ```
 
+### Viewer
+
+The image bundles a small web viewer served at `/viewer/`:
+
+```bash
+curl -I http://localhost:8000/viewer/
+# or open http://localhost:8000/viewer/ in a browser
+```
+
+The static files live under `/srv/viewer` inside the container. Override `VIEWER_DIR` to serve a different directory.
+
 ## Remote deployment
 
 Build for older ARM boards by targeting `linux/arm/v6` and setting `GOARM=6`:
@@ -50,6 +61,7 @@ docker run -p 8000:8000 \
 - `TLS_CERT_FILE`/`TLS_KEY_FILE` – serve HTTPS using these credentials
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC (optional)
 - `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
+- `VIEWER_DIR` – path to static viewer files served at `/viewer/` (default `/srv/viewer`)
 
 ### Logging
 
