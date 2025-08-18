@@ -39,19 +39,19 @@ WORKDIR /app
 # build reusable player package
 COPY docker/packages/player/ ./packages/player/
 RUN --mount=type=cache,target=/root/.npm \
-    sh -ceu '\\
-      cd packages/player; \\
-      npm ci || npm install; \\
-      npm run build \\
+    sh -ceu '\
+      cd packages/player; \
+      npm ci || npm install; \
+      npm run build \
     '
 
 # build proxy-viewer depending on player
 COPY docker/proxy-viewer/ ./proxy-viewer/
 RUN --mount=type=cache,target=/root/.npm \
-    sh -ceu '\\
-      cd proxy-viewer; \\
-      npm ci || npm install; \\
-      npm run build \\
+    sh -ceu '\
+      cd proxy-viewer; \
+      npm ci || npm install; \
+      npm run build \
     '
 
 # ── runtime (needs ffmpeg, v4l2 utils for device probing)
@@ -70,4 +70,3 @@ EXPOSE 8000
 ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
 ENV VIEWER_DIR=/srv/viewer
 ENTRYPOINT ["/entrypoint.sh"]
-
