@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	supervisor "github.com/Cdaprod/ThatDamToolbox/host/services/shared/supervisor"
 	"github.com/hashicorp/mdns"
 	"github.com/hashicorp/serf/serf"
 )
@@ -514,94 +515,28 @@ func (dm *DiscoveryManager) startServices() error {
 
 func (dm *DiscoveryManager) startServerMode() error {
 	logx.L.Info("starting server mode")
-
-	// Launch docker-compose with server profile
-	cmd, err := composeCmd(
-		"-f", "docker-compose.yaml",
-		"--profile", "server",
-		"up", "-d",
-		"capture-daemon", "rabbitmq", "video-api", "video-web", "gw",
-	)
+	dp, err := supervisor.FetchPlan(dm.ctx, map[string]string{"node_id": dm.nodeID, "role_hint": "server"})
 	if err != nil {
-		return fmt.Errorf("failed to start server services: %w", err)
+		return fmt.Errorf("fetch plan: %w", err)
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to start server services: %w", err)
+	a := NewApplier(dp.Executor)
+	if err := a.Apply(dm.ctx, dp); err != nil {
+		return fmt.Errorf("apply plan: %w", err)
 	}
-
-	logx.L.Info("server infrastructure started")
-
-	// Monitor services
-	go dm.monitorServerServices()
-
 	return nil
 }
 
 func (dm *DiscoveryManager) startProxyMode() error {
-	logx.L.Info("starting camera-proxy mode")
-
-	leaderFile := os.Getenv("LEADER_FILE")
-	if leaderFile == "" {
-		leaderFile = "/run/discovery/leader.env"
+	logx.L.Info("starting proxy mode")
+	dp, err := supervisor.FetchPlan(dm.ctx, map[string]string{"node_id": dm.nodeID, "role_hint": "proxy"})
+	if err != nil {
+		return fmt.Errorf("fetch plan: %w", err)
 	}
-
-	for {
-		var host string
-		var port int
-
-		// Select a server to connect to
-		dm.mutex.RLock()
-		for _, server := range dm.discoveredServers {
-			host = server.Host
-			port = server.Port
-			break // Use first available server
-		}
-		dm.mutex.RUnlock()
-
-		// Fallback to leader file if no discovered servers
-		if host == "" {
-			if info, err := readLeaderFile(leaderFile); err == nil {
-				host = info.Host
-				port = info.Port
-				logx.L.Info("using leader file", "host", host, "port", port)
-			}
-		}
-
-		if host != "" {
-			logx.L.Info("connecting to server", "host", host, "port", port)
-
-			os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", host, port))
-			os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", host))
-			os.Setenv("UPSTREAM_HOST", host)
-			os.Setenv("UPSTREAM_PORT", fmt.Sprintf("%d", port))
-			os.Setenv("ROLE", "agent")
-
-			cmd, err := composeCmd("-f", "docker-compose.yaml", "up", "-d", "camera-proxy")
-			if err != nil {
-				return fmt.Errorf("failed to start camera-proxy: %w", err)
-			}
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("failed to start camera-proxy: %w", err)
-			}
-
-			logx.L.Info("camera proxy started")
-			return nil
-		}
-
-		logx.L.Warn("no server available, retrying", "interval", "10s")
-		select {
-		case <-time.After(10 * time.Second):
-			continue
-		case <-dm.ctx.Done():
-			return dm.ctx.Err()
-		}
+	a := NewApplier(dp.Executor)
+	if err := a.Apply(dm.ctx, dp); err != nil {
+		return fmt.Errorf("apply plan: %w", err)
 	}
+	return nil
 }
 
 func (dm *DiscoveryManager) monitorServerServices() {

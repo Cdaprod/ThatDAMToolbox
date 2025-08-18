@@ -24,6 +24,18 @@ go run ./cmd/supervisor/main.go -addr :8070
 - `GET  /v1/bootstrap/profile`
 - `GET  /v1/leader`
 
+### DesiredPlan example
+
+```json
+{
+  "version": 1,
+  "node": "n1",
+  "apps": [
+    {"name": "media-api", "kind": "go", "cwd": "/host/services/media-api", "command": ["./media-api"], "env": {"PORT": "8080"}}
+  ]
+}
+```
+
 ## Catalog
 
 ```go
