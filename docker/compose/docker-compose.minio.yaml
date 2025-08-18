@@ -14,8 +14,9 @@ services:
       MINIO_ROOT_USER:     minio
       MINIO_ROOT_PASSWORD: minio123
 
-      # Create multiple buckets in one env (space/comma separated)
-      MINIO_BOOTSTRAP_BUCKETS: "media weaviate-backups"
+        # Buckets to bootstrap
+        MINIO_BUCKET_MEDIA: "media"
+        MINIO_BUCKET_WEAVIATE_BACKUPS: "weaviate-backups"
 
       # Make media bucket publicly readable (optional)
       MINIO_MEDIA_PUBLIC: "true"
@@ -48,4 +49,4 @@ services:
       timeout: 5s
       retries: 3
     restart: unless-stopped
-    networks: [damnet]
+      networks: [damnet]
