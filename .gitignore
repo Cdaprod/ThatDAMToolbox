@@ -158,6 +158,10 @@ host/releases/
 !/docker/web-app/tsconfig.test.json
 !/docker/rabbitmq/definitions.json
 !/docker/weaviate/schema.json
+!/docker/proxy-viewer/package.json
+!/docker/proxy-viewer/tsconfig.json
+!/docker/packages/player/package.json
+!/docker/packages/player/tsconfig.json
 
 /public/design-token-styles/**
 /docs/GIT-APPLY/**

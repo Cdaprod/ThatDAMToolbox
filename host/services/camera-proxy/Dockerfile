@@ -42,6 +42,7 @@ COPY host/services/camera-proxy/entrypoint.sh /entrypoint.sh
 COPY host/services/shared/entrypoint-snippet.sh /opt/shared/entrypoint-snippet.sh
 RUN chmod +x /entrypoint.sh /opt/shared/entrypoint-snippet.sh
 COPY --from=builder /out/camera-proxy /usr/local/bin/camera-proxy
+COPY docker/proxy-viewer/dist /srv/viewer
 EXPOSE 8000
 ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
 ENTRYPOINT ["/entrypoint.sh"]

@@ -1,19 +1,22 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"os/exec"
-	"strings"
-	"testing"
+       "bytes"
+       "context"
+       "encoding/json"
+       "io"
+       "net/http"
+       "net/http/httptest"
+       "os"
+       "os/exec"
+       "path/filepath"
+       "strings"
+       "testing"
 
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
-	"github.com/pion/webrtc/v3"
+       "github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
+       "github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+       "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
+       "github.com/pion/webrtc/v3"
 )
 
 // TestDiscoverDevicesIncludesDaemon ensures capture-daemon devices are merged.
@@ -206,6 +209,27 @@ func TestDebugV4L2(t *testing.T) {
 	if len(out.Kept) != 1 || out.Kept[0].Node != "/dev/video19" {
 		t.Fatalf("unexpected response: %+v", out)
 	}
+}
+
+// TestViewerServed verifies static viewer files are served from VIEWER_DIR.
+func TestViewerServed(t *testing.T) {
+       dir := t.TempDir()
+       if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("ok"), 0o644); err != nil {
+               t.Fatalf("write file: %v", err)
+       }
+       t.Setenv("VIEWER_DIR", dir)
+       dp, _ := NewDeviceProxy("http://b", "http://f")
+       srv := httptest.NewServer(dp.setupRoutes())
+       defer srv.Close()
+       resp, err := http.Get(srv.URL + "/viewer/index.html")
+       if err != nil {
+               t.Fatalf("request failed: %v", err)
+       }
+       defer resp.Body.Close()
+       b, _ := io.ReadAll(resp.Body)
+       if string(b) != "ok" {
+               t.Fatalf("unexpected body: %s", b)
+       }
 }
 
 // TestIceServers parses ICE_SERVERS env variable.
