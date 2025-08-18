@@ -4,11 +4,17 @@
 
 This discovery service intelligently determines whether to become a “central server” (running capture-daemon + all infrastructure) or a “camera-proxy” (connecting to existing server) based on network environment discovery.
 
+### Requirements
+
+- Docker Compose v2 (`docker-compose` or `docker compose` plugin) is required to launch the server stack.
+- To run without Docker Compose, force proxy mode by setting `ROLE=agent` or starting the binary with `--role agent`.
+
 ### Development
 
 ```bash
 # run service
 go run ./cmd/discovery
+# stop with Ctrl+C
 
 # run tests
 go test ./...

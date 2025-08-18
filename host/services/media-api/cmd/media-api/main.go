@@ -12,9 +12,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
+	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/media-api/pkg/handlers"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 )
 
 func main() {
@@ -40,6 +45,12 @@ func serve(args []string) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v2/health", handlers.Health)
+	deps := handlers.Deps{Cat: newMemCatalog(), BS: storage.NewFS(envStr("DATA_DIR", "./data"))}
+	mux.HandleFunc("GET /v1/folders", deps.ListFolders)
+	mux.HandleFunc("GET /v1/assets", deps.ListAssets)
+	mux.HandleFunc("GET /v1/assets/{id}", deps.GetAsset)
+	mux.HandleFunc("GET /v1/bytes", deps.Bytes)
+	mux.HandleFunc("POST /v1/catalog/upsert", deps.UpsertAsset)
 	srv := &http.Server{Addr: *addr, Handler: mux}
 
 	go func() {
@@ -54,3 +65,115 @@ func serve(args []string) {
 		log.Fatal(err)
 	}
 }
+
+func envStr(k, d string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return d
+}
+
+// memCatalog is a minimal in-memory catalog used for development.
+type memCatalog struct {
+	mu       sync.RWMutex
+	byID     map[string]catalog.Asset
+	byFolder map[string][]string
+}
+
+func newMemCatalog() *memCatalog {
+	return &memCatalog{byID: make(map[string]catalog.Asset), byFolder: make(map[string][]string)}
+}
+
+func (m *memCatalog) Upsert(a catalog.Asset) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if old, ok := m.byID[a.ID]; ok && old.Folder != a.Folder {
+		ids := m.byFolder[old.Folder]
+		for i, id := range ids {
+			if id == old.ID {
+				m.byFolder[old.Folder] = append(ids[:i], ids[i+1:]...)
+				break
+			}
+		}
+	}
+	m.byID[a.ID] = a
+	list := m.byFolder[a.Folder]
+	found := false
+	for _, id := range list {
+		if id == a.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		list = append(list, a.ID)
+	}
+	m.byFolder[a.Folder] = list
+	return nil
+}
+
+func (m *memCatalog) GetByID(id string) (catalog.Asset, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	a, ok := m.byID[id]
+	return a, ok
+}
+
+func (m *memCatalog) ListByFolder(folder string, page, size int) ([]catalog.Asset, int) {
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 {
+		size = 50
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	ids := m.byFolder[folder]
+	total := len(ids)
+	start := (page - 1) * size
+	if start >= total {
+		return nil, total
+	}
+	end := start + size
+	if end > total {
+		end = total
+	}
+	out := make([]catalog.Asset, 0, end-start)
+	for _, id := range ids[start:end] {
+		out = append(out, m.byID[id])
+	}
+	return out, total
+}
+
+func (m *memCatalog) ListFolders(prefix string) []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []string
+	for f := range m.byFolder {
+		if prefix == "" || strings.HasPrefix(f, prefix) {
+			out = append(out, f)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func (m *memCatalog) Delete(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.byID[id]
+	if !ok {
+		return nil
+	}
+	delete(m.byID, id)
+	ids := m.byFolder[a.Folder]
+	for i, v := range ids {
+		if v == id {
+			m.byFolder[a.Folder] = append(ids[:i], ids[i+1:]...)
+			break
+		}
+	}
+	return nil
+}
+
+var _ catalog.Catalog = (*memCatalog)(nil)

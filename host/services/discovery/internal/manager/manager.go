@@ -1,12 +1,14 @@
 package manager
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -75,6 +77,54 @@ func New() *DiscoveryManager {
 	}
 
 	return dm
+}
+
+type leaderInfo struct {
+	Host string
+	Port int
+}
+
+// readLeaderFile parses a dotenv-style file for HOST and PORT values.
+func readLeaderFile(path string) (leaderInfo, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return leaderInfo{}, err
+	}
+	defer f.Close()
+
+	var info leaderInfo
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "HOST=") {
+			info.Host = strings.TrimPrefix(line, "HOST=")
+		} else if strings.HasPrefix(line, "PORT=") {
+			if p, err := strconv.Atoi(strings.TrimPrefix(line, "PORT=")); err == nil {
+				info.Port = p
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return leaderInfo{}, err
+	}
+	if info.Host == "" || info.Port == 0 {
+		return leaderInfo{}, fmt.Errorf("invalid leader file")
+	}
+	return info, nil
+}
+
+// composeCmd returns an exec.Cmd for docker-compose or 'docker compose'.
+func composeCmd(args ...string) (*exec.Cmd, error) {
+	if path, err := exec.LookPath("docker-compose"); err == nil {
+		return exec.Command(path, args...), nil
+	}
+	if path, err := exec.LookPath("docker"); err == nil {
+		return exec.Command(path, append([]string{"compose"}, args...)...), nil
+	}
+	return nil, fmt.Errorf("docker-compose: executable not found")
 }
 
 func (dm *DiscoveryManager) Start() error {
@@ -354,11 +404,18 @@ func (dm *DiscoveryManager) decideMode() {
 	dm.mutex.RUnlock()
 
 	if serverCount == 0 {
-		dm.mode = ModeServer
-		logx.L.Info("no existing servers found - becoming server")
-
-		// Start advertising our service
-		dm.advertiseService()
+		// Verify docker-compose availability before assuming server mode
+		if cmd, err := composeCmd("--version"); err != nil {
+			logx.L.Warn("docker-compose unavailable - defaulting to proxy mode", "err", err)
+			dm.mode = ModeProxy
+		} else if err = cmd.Run(); err != nil {
+			logx.L.Warn("docker-compose check failed - defaulting to proxy mode", "err", err)
+			dm.mode = ModeProxy
+		} else {
+			dm.mode = ModeServer
+			logx.L.Info("no existing servers found - becoming server")
+			dm.advertiseService()
+		}
 	} else {
 		dm.mode = ModeProxy
 		logx.L.Info("found existing servers - becoming camera-proxy", "count", serverCount)
@@ -439,7 +496,15 @@ func (dm *DiscoveryManager) advertiseSerfLeadership() {
 func (dm *DiscoveryManager) startServices() error {
 	switch dm.mode {
 	case ModeServer:
-		return dm.startServerMode()
+		if err := dm.startServerMode(); err != nil {
+			if strings.Contains(err.Error(), "docker-compose") {
+				logx.L.Warn("server mode failed, falling back to proxy", "err", err)
+				dm.mode = ModeProxy
+				return dm.startProxyMode()
+			}
+			return err
+		}
+		return nil
 	case ModeProxy:
 		return dm.startProxyMode()
 	default:
@@ -451,12 +516,15 @@ func (dm *DiscoveryManager) startServerMode() error {
 	logx.L.Info("starting server mode")
 
 	// Launch docker-compose with server profile
-	cmd := exec.Command("docker-compose",
+	cmd, err := composeCmd(
 		"-f", "docker-compose.yaml",
 		"--profile", "server",
 		"up", "-d",
-		"capture-daemon", "rabbitmq", "video-api", "video-web", "gw")
-
+		"capture-daemon", "rabbitmq", "video-api", "video-web", "gw",
+	)
+	if err != nil {
+		return fmt.Errorf("failed to start server services: %w", err)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -475,39 +543,65 @@ func (dm *DiscoveryManager) startServerMode() error {
 func (dm *DiscoveryManager) startProxyMode() error {
 	logx.L.Info("starting camera-proxy mode")
 
-	// Select a server to connect to
-	var targetServer ServiceInfo
-	dm.mutex.RLock()
-	for _, server := range dm.discoveredServers {
-		targetServer = server
-		break // Use first available server
-	}
-	dm.mutex.RUnlock()
-
-	if targetServer.NodeID == "" {
-		return fmt.Errorf("no server available for proxy connection")
+	leaderFile := os.Getenv("LEADER_FILE")
+	if leaderFile == "" {
+		leaderFile = "/run/discovery/leader.env"
 	}
 
-	logx.L.Info("connecting to server", "id", targetServer.NodeID, "host", targetServer.Host, "port", targetServer.Port)
+	for {
+		var host string
+		var port int
 
-	// Set environment variables for proxy
-	os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", targetServer.Host, targetServer.Port))
-	os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", targetServer.Host))
+		// Select a server to connect to
+		dm.mutex.RLock()
+		for _, server := range dm.discoveredServers {
+			host = server.Host
+			port = server.Port
+			break // Use first available server
+		}
+		dm.mutex.RUnlock()
 
-	// Launch camera-proxy
-	cmd := exec.Command("docker-compose",
-		"-f", "docker-compose.yaml",
-		"up", "-d", "camera-proxy")
+		// Fallback to leader file if no discovered servers
+		if host == "" {
+			if info, err := readLeaderFile(leaderFile); err == nil {
+				host = info.Host
+				port = info.Port
+				logx.L.Info("using leader file", "host", host, "port", port)
+			}
+		}
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+		if host != "" {
+			logx.L.Info("connecting to server", "host", host, "port", port)
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to start camera-proxy: %w", err)
+			os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", host, port))
+			os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", host))
+			os.Setenv("UPSTREAM_HOST", host)
+			os.Setenv("UPSTREAM_PORT", fmt.Sprintf("%d", port))
+			os.Setenv("ROLE", "agent")
+
+			cmd, err := composeCmd("-f", "docker-compose.yaml", "up", "-d", "camera-proxy")
+			if err != nil {
+				return fmt.Errorf("failed to start camera-proxy: %w", err)
+			}
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to start camera-proxy: %w", err)
+			}
+
+			logx.L.Info("camera proxy started")
+			return nil
+		}
+
+		logx.L.Warn("no server available, retrying", "interval", "10s")
+		select {
+		case <-time.After(10 * time.Second):
+			continue
+		case <-dm.ctx.Done():
+			return dm.ctx.Err()
+		}
 	}
-
-	logx.L.Info("camera proxy started")
-	return nil
 }
 
 func (dm *DiscoveryManager) monitorServerServices() {
