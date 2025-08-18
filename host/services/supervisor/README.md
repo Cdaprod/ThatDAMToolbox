@@ -24,6 +24,13 @@ go run ./cmd/supervisor/main.go -addr :8070
 - `GET  /v1/bootstrap/profile`
 - `GET  /v1/leader`
 
+## Catalog
+
+```go
+rt := reconcile.BuildIndex()
+cat := rt.Catalog()
+```
+
 ## Tests
 
 ```bash
