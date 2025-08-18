@@ -11,12 +11,16 @@ services:
     network_mode: host
     restart: unless-stopped
     environment:
+      ROLE: agent
+      UPSTREAM_HOST: api-gateway
+      UPSTREAM_PORT: "8080"
       DISCOVERY_BACKEND: ${DISCOVERY_BACKEND:-auto}     # auto|mdns|serf
       SERVICE_NAME: ${SERVICE_NAME:-thatdam}
       SERVICE_PORT: ${SERVICE_PORT:-8080}
       DISCOVERY_HTTP_PORT: ${DISCOVERY_HTTP_PORT:-9999}
       LEADER_FILE: ${LEADER_FILE:-/run/discovery/leader.env}
       LOG_FORMAT: text
+      DISCOVERY_ORCHESTRATE: "false"
     volumes:
       - discovery-run:/run/discovery
     healthcheck:

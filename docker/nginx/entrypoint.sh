@@ -29,6 +29,10 @@ proxy_cache off;
 EOF
 
 # defaults for envsubst (keep in sync with compose)
+if [ -n "${UPSTREAM:-}" ]; then
+  API_HOST="${UPSTREAM%:*}"
+  API_PORT="${UPSTREAM##*:}"
+fi
 : ${API_HOST:=video-api}
 : ${API_PORT:=8080}
 : ${API_GW_HOST:=api-gateway}
@@ -41,3 +45,4 @@ envsubst '${API_HOST} ${API_PORT} ${API_GW_HOST} ${API_GW_PORT} ${WEB_HOST} ${WE
   < /etc/nginx/nginx.tmpl > /etc/nginx/nginx.conf
 
 exec nginx -g 'daemon off;'
+

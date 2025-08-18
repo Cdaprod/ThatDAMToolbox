@@ -9,6 +9,7 @@ set -Eeuo pipefail
 : "${LEADER_FILE:=/run/discovery/leader.env}"
 : "${SERVICE_PORT:=8080}"
 : "${ROLE:=auto}"
+: "${UPSTREAM:=${API_GATEWAY_ADDR:-api-gateway:8080}}"
 
 if [ -f "$LEADER_FILE" ]; then
   # shellcheck disable=SC1090
@@ -29,5 +30,6 @@ if [ "$ROLE" = "auto" ]; then
   fi
 fi
 
-export ROLE UPSTREAM_HOST UPSTREAM_PORT SERVICE_PORT
-echo "[entrypoint] ROLE=$ROLE UPSTREAM=${UPSTREAM_HOST:-}:${UPSTREAM_PORT:-} SERVICE_PORT=$SERVICE_PORT"
+export ROLE UPSTREAM UPSTREAM_HOST UPSTREAM_PORT SERVICE_PORT
+echo "[entrypoint] ROLE=$ROLE UPSTREAM=${UPSTREAM:-} HOST=${UPSTREAM_HOST:-} PORT=${UPSTREAM_PORT:-} SERVICE_PORT=$SERVICE_PORT"
+

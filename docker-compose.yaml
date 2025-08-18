@@ -103,7 +103,7 @@ services:
       dockerfile: Dockerfile
     image: cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
-    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
+    entrypoint: ["/bin/bash","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
     restart: unless-stopped
     depends_on:
@@ -111,6 +111,11 @@ services:
       - video-web
       - video-api
       - thatdamtoolbox-discovery
+    environment:
+      UPSTREAM_HOST: api-gateway
+      UPSTREAM_PORT: "8080"
+      UPSTREAM: api-gateway:8080
+      SERVICE_PORT: "8080"
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
     # ports: ["80:80"]
@@ -228,14 +233,16 @@ services:
     # If your Docker host blocks some ioctls, flip this on as a last resort:
     # privileged: true
     environment:
-      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
-      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
-      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
-      OVERLAY_HUB_URL: "http://overlay-hub:8090"
-      CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
-      CAPTURE_DAEMON_TOKEN: "devtoken"
-      ICE_SERVERS: "stun:stun.l.google.com:19302"
-      FFMPEG_HWACCEL: ""  # e.g. "cuda -hwaccel_device 0" when using NV encoders
+      EVENT_BROKER_URL: "${EVENT_BROKER_URL:-amqp://video:video@rabbitmq:5672/}"
+      NEXT_PUBLIC_LOGIN_URL: "${NEXT_PUBLIC_LOGIN_URL:-https://idp.example.com/login}"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "${NEXT_PUBLIC_PLAUSIBLE_DOMAIN:-example.com}"
+      OVERLAY_HUB_URL: "${OVERLAY_HUB_URL:-http://overlay-hub:8090}"
+      CAPTURE_DAEMON_URL: "${CAPTURE_DAEMON_URL:-http://capture-daemon:9000}"
+      CAPTURE_DAEMON_TOKEN: "${CAPTURE_DAEMON_TOKEN:-devtoken}"
+      ICE_SERVERS: "${ICE_SERVERS:-stun:stun.l.google.com:19302}"
+      FFMPEG_HWACCEL: "${FFMPEG_HWACCEL:-}"
+      UPSTREAM_HOST: "${UPSTREAM_HOST:-api-gateway}"
+      UPSTREAM_PORT: "${UPSTREAM_PORT:-8080}"
     # Health is OK even with 0 devices; your app serves /healthz regardless.
     healthcheck:
       test: ["CMD","curl","-fsS","http://127.0.0.1:8000/health"]
@@ -294,6 +301,10 @@ services:
       SUPERVISOR_API_KEY: "changeme"
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       EVENT_PREFIX: "overlay"
+      BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      BROKER_EXCHANGE: "events"
+      BROKER_QUEUE: "supervisor"
+      BROKER_KIND: "direct"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8070/health"]
       interval: 10s
@@ -372,8 +383,8 @@ services:
   video-api:
     build:
       context: .
-      dockerfile: Dockerfile            # Multi-arch build
-    image: cdaprod/video:${IMAGE_TAG:-dev}
+      dockerfile: docker/video-api/Dockerfile            # Multi-arch build
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
     # --- Networking (host-mode exposes 8080) ---
@@ -435,7 +446,6 @@ services:
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
     # --- Storage mounts ------------------------
-    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
       - discovery-run:/run/discovery:ro
@@ -471,7 +481,7 @@ services:
   # 4b. optional CLI job
   ########################################################################
   video-cli:
-    image: cdaprod/video:${IMAGE_TAG:-dev}
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-cli-ephemeral
     networks: [damnet]
     profiles: [hydrate-backend, cli]
@@ -548,6 +558,7 @@ services:
     ports:
       - "3001:3000"
     networks: [damnet]
+    profiles: [web-site]
     environment:
       NODE_ENV: development
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"

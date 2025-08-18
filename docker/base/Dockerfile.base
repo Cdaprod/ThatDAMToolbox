@@ -1,0 +1,95 @@
+# -----------------------------------------------------------------------------
+# Universal Base (Debian bookworm-slim)
+# - No language runtime (Python/Node/Go) to stay universal
+# - Common CLI tools, tini/gosu, locales, non-root user "appuser"
+# - Safe default environment (no app code)
+# Build targets:
+#   - base      → cdaprod/base:bookworm
+#   - devshell  → cdaprod/base:devshell (adds oh-my-zsh + dev UX)
+# -----------------------------------------------------------------------------
+
+FROM debian:bookworm-slim AS base
+LABEL maintainer="cdaprod.dev" \
+      org.opencontainers.image.title="cdaprod/base" \
+      org.opencontainers.image.description="Universal base for Python/Node/Go services" \
+      org.opencontainers.image.version="0.1.0"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TERM=xterm-256color \
+    SHELL=/bin/bash
+
+# Core OS + developer-friendly basics (no language toolchains)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates curl wget git gnupg \
+      tini gosu \
+      bash bash-completion zsh locales tmux \
+      htop less tree ripgrep fd-find fzf jq \
+      neovim unzip sqlite3 \
+      net-tools iputils-ping lsof strace inxi \
+      software-properties-common apt-transport-https \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Locale
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
+ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
+
+# Non-root user used by all descendant images
+RUN useradd -ms /bin/zsh appuser && \
+    mkdir -p /workspace && chown -R appuser:appuser /workspace
+
+WORKDIR /workspace
+USER root
+
+# Default entrypoint uses tini; CMD intentionally empty for descendants
+ENTRYPOINT ["tini","--"]
+
+# -----------------------------------------------------------------------------
+# Devshell flavor (optional) -- image target: devshell
+# Adds Oh My Zsh and developer ergonomics; keep it separate to avoid
+# bloating the minimal base used in production services.
+# -----------------------------------------------------------------------------
+FROM base AS devshell
+# Install oh-my-zsh and popular plugins for appuser
+RUN su - appuser -c '\
+  set -e; \
+  sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; \
+  git clone https://github.com/zsh-users/zsh-autosuggestions      ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions; \
+  git clone https://github.com/zsh-users/zsh-syntax-highlighting  ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting; \
+  git clone https://github.com/zsh-users/zsh-completions          ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions; \
+  sed -i "s/ZSH_THEME=\\"robbyrussell\\"/ZSH_THEME=\\"agnoster\\"/" ~/.zshrc; \
+  sed -i "s/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-completions docker docker-compose python pip fzf tmux)/" ~/.zshrc; \
+  { \
+    echo ""; \
+    echo "# Enhanced zsh configuration"; \
+    echo "export HISTSIZE=10000"; \
+    echo "export HISTFILESIZE=20000"; \
+    echo "export SAVEHIST=10000"; \
+    echo "setopt HIST_IGNORE_DUPS HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_SAVE_NO_DUPS SHARE_HISTORY APPEND_HISTORY INC_APPEND_HISTORY"; \
+    echo "export EDITOR=nvim"; \
+    echo "export VISUAL=nvim"; \
+    echo "alias ll=\\"ls -alF\\""; \
+    echo "alias la=\\"ls -A\\""; \
+    echo "alias l=\\"ls -CF\\""; \
+    echo "alias vim=nvim"; \
+    echo "alias vi=nvim"; \
+    echo "alias cat=bat"; \
+    echo "alias find=fd"; \
+    echo "alias grep=rg"; \
+    echo "alias top=htop"; \
+    echo "alias cls=clear"; \
+    echo "alias ..=\\"cd ..\\""; \
+    echo "alias ...=\\"cd ../..\\""; \
+    echo "alias ....=\\"cd ../../..\\""; \
+    echo "alias ~=\\"cd ~\\""; \
+    echo "alias reload=\\"source ~/.zshrc\\""; \
+    echo ""; \
+    echo "# FZF configuration"; \
+    echo "export FZF_DEFAULT_COMMAND=\\"fd --type f --hidden --follow --exclude .git\\""; \
+    echo "export FZF_CTRL_T_COMMAND=\\"$FZF_DEFAULT_COMMAND\\""; \
+    echo "export FZF_ALT_C_COMMAND=\\"fd --type d --hidden --follow --exclude .git\\""; \
+    echo "autoload -U compinit && compinit"; \
+  } >> ~/.zshrc; \
+  mkdir -p ~/.config/nvim; \
+  printf "set number relativenumber\nset expandtab tabstop=4 shiftwidth=4\nsyntax on\n" > ~/.config/nvim/init.vim \
+'
