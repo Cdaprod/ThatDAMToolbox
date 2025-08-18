@@ -36,6 +36,8 @@ var adapterCtor func(Config) (Bus, error)
 func SetAdapter(fn func(Config) (Bus, error)) { adapterCtor = fn }
 
 // Connect initialises the singleton bus connection.
+// It returns an error if the broker URL or exchange is missing,
+// if no adapter has been registered, or if the adapter cannot connect.
 func Connect(ctx context.Context, cfg Config) (Bus, error) {
 	once.Do(func() {
 		if cfg.URL == "" {

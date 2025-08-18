@@ -1,0 +1,19 @@
+{
+  "name": "proxy-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "preact": "^10.19.3",
+    "preact-router": "^4.1.2",
+    "@thatdamtoolbox/player": "file:../packages/player"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.8.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0"
+  }
+}
