@@ -1,6 +1,7 @@
 # **That DAM Toolbox – Engineering & Agent Guide**
 
 ## 👉 Dont wander -- just fleshes out scaffolding. 👈
+## Also! keep an eye on /docs/TODO/ or /docs/TECHNICAL for further details—also...align in TECHNICAL/
 
 *Last updated: 2025-08-06 · Maintainer: **David Cannan (@Cdaprod)***
 
