@@ -1,0 +1,12 @@
+services:
+  verdaccio:
+    image: verdaccio/verdaccio:5
+    container_name: cda-verdaccio
+    ports: ["4873:4873"]
+    environment:
+      - VERDACCIO_APPDIR=/verdaccio
+    volumes:
+      - ../verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+      - ../data/verdaccio:/verdaccio/storage
+    restart: unless-stopped
+networks: { default: { name: damnet } }

@@ -1,0 +1,29 @@
+{
+  "name": "@cdaprod/design-tokens",
+  "version": "0.3.2",
+  "private": true,
+  "type": "module",
+  "sideEffects": [
+    "dist/**/*.css",
+    "tokens.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./tokens.css": "./tokens.css",
+    "./preset": "./tailwind-preset.js"
+  },
+  "files": ["dist", "tokens.css", "tailwind-preset.js", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node ./scripts/cjs.js",
+    "type-check": "tsc -p tsconfig.build.json --noEmit",
+    "test": "node -e \"console.log('tokens ok')\"",
+    "publish:local": "npm publish --registry http://localhost:4873"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

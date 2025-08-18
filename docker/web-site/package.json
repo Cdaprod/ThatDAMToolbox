@@ -1,7 +1,6 @@
 {
-  "name": "thatdamtoolbox-website",
+  "name": "thatdamtoolbox-web-site",
   "private": true,
-  "version": "0.1.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,6 +9,7 @@
     "postinstall": "node -e \"try{require('child_process').execSync('npx --yes next telemetry disable',{stdio:'ignore'})}catch{}\""
   },
   "dependencies": {
+    "@cdaprod/design-tokens": "^0.3.2",
     "amqplib": "^0.10.3",
     "next": "^14.2.10",
     "react": "^18.3.1",

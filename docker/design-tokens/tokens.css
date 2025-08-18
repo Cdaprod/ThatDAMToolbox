@@ -1,0 +1,28 @@
+:root{
+  --color-bg: 255 255 255;
+  --color-fg: 17 24 39;
+  --color-muted: 107 114 128;
+  --color-accent: 37 99 235;
+  --glass-bg: 255 255 255 / 0.6;
+  --glass-border: 255 255 255 / 0.3;
+
+  --gutter-sm: .75rem; --gutter-md: 1rem; --gutter-lg: 1.5rem;
+  --section-pad-y: 4rem; --section-pad-y-lg: 6rem;
+
+  --container-xs: 20rem; --container-sm: 32rem; --container-md: 42rem; --container-lg: 64rem; --container-xl: 80rem;
+  --grid-unit: 8px;
+
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 20px;
+  --shadow-glass: 0 8px 24px rgba(0,0,0,.12);
+
+  --ease-standard: cubic-bezier(.2,0,0,1);
+  --dur-fast: 120ms; --dur-med: 220ms; --dur-slow: 360ms;
+}
+[data-theme="dark"]{
+  --color-bg: 3 7 18; --color-fg: 241 245 249; --color-muted: 148 163 184; --color-accent: 59 130 246;
+  --glass-bg: 30 41 59 / .5; --glass-border: 255 255 255 / .12;
+}
+@layer base{
+  html,body{height:100%}
+  body{color: rgb(var(--color-fg)); background-color: rgb(var(--color-bg));}
+}

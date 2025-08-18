@@ -824,8 +824,12 @@ release binaries, and installs them to `/usr/local/bin`.
 git clone https://github.com/Cdaprod/ThatDAMToolbox.git
 cd ThatDAMToolbox
 
+
 # Build Go service images (run from repo root)
 docker compose build overlay-hub supervisor runner
+
+# install workspace dependencies
+npm install
 
 # Build and run with Docker Compose
 docker compose up -d

@@ -17,6 +17,8 @@ include:
   - path: ./docker/compose/docker-compose.minio.yaml
     #### Golang Host Services
   - path: ./host/services/discovery/docker-compose.discovery.yaml
+  #- path: ./docker/compose/docker-compose.registry.yaml
+  #- path: ./docker/compose/docker-compose.discovery.yaml
 
 
 ########################################################################
