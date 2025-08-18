@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────
-# Postgres (Weaviate’s vector index)
+# Postgres (for Weaviate)
 # ──────────────────────────────────────────────────────────────
 services:
   postgres:
@@ -9,10 +9,16 @@ services:
       POSTGRES_USER:      weaviate
       POSTGRES_PASSWORD:  weaviate
       POSTGRES_DB:        weaviate
-    ports: ["5432:5432"]
-    volumes: ["./data/postgres:/var/lib/postgresql/data"]
+      PGDATA:             /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/weaviate/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD","pg_isready","-U","weaviate"]
-      interval: 30s
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks: [damnet]
