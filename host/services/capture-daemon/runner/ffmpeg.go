@@ -21,7 +21,6 @@ import (
 // Deps groups external services required for ingest.
 type Deps struct {
 	BlobStore storage.BlobStore
-	Catalog   catalog.Catalog
 }
 
 // Config holds the parameters for a single device capture loop.
@@ -173,9 +172,6 @@ func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 				if deps.BlobStore != nil {
 					asset, err := ingestRecording(deps, outFile)
 					if err == nil {
-						if deps.Catalog != nil {
-							_ = deps.Catalog.Upsert(asset)
-						}
 						broker.Publish("asset.ingested", asset)
 					}
 				}

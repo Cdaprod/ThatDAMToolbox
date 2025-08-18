@@ -18,9 +18,17 @@ curl -s http://localhost:8080/v1/folders
 
 ### Preview worker
 
-To generate placeholder previews for ingested assets, the API can run a small
-worker that listens for `asset.ingested` events and writes a `poster.jpg` under
+To generate placeholder previews for ingested assets, run the API with a worker
+that listens for `asset.ingested` events and writes a `poster.jpg` under
 `derived/poster.jpg/..`.
+
+```
+export BLOB_STORE_ROOT=/tmp/blobs
+export PREVIEW_WORKER=1
+go run ./cmd/media-api serve --addr :8080
+```
+
+For unit tests:
 
 ```
 export BROKER_URL=inproc

@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -45,12 +46,22 @@ func serve(args []string) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v2/health", handlers.Health)
-	deps := handlers.Deps{Cat: newMemCatalog(), BS: storage.NewFS(envStr("DATA_DIR", "./data"))}
+	rootDir := envStr("BLOB_STORE_ROOT", "./data")
+	deps := handlers.Deps{Cat: newMemCatalog(), BS: storage.NewFS(rootDir)}
 	mux.HandleFunc("GET /v1/folders", deps.ListFolders)
 	mux.HandleFunc("GET /v1/assets", deps.ListAssets)
 	mux.HandleFunc("GET /v1/assets/{id}", deps.GetAsset)
 	mux.HandleFunc("GET /v1/bytes", deps.Bytes)
 	mux.HandleFunc("POST /v1/catalog/upsert", deps.UpsertAsset)
+	if os.Getenv("PREVIEW_WORKER") == "1" {
+		go func() {
+			if err := handlers.StartPreviewWorker(context.Background(), storage.NewFS(rootDir)); err != nil {
+				log.Printf("preview worker: %v", err)
+			} else {
+				log.Printf("preview worker started")
+			}
+		}()
+	}
 	srv := &http.Server{Addr: *addr, Handler: mux}
 
 	go func() {
