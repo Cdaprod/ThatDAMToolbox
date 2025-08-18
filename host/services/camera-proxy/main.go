@@ -637,7 +637,7 @@ func (dp *DeviceProxy) handleDebugV4L2(w http.ResponseWriter, r *http.Request) {
 
 // setupRoutes configures the proxy routes
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
-	mux := http.NewServeMux()
+        mux := http.NewServeMux()
 
 	// Health endpoints
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -659,14 +659,19 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	mux.HandleFunc("/api/devices", dp.enhanceDeviceResponse)
 	mux.HandleFunc("/devices", dp.enhanceDeviceResponse)
 
-	// Debug endpoint for V4L2 discovery
-	mux.HandleFunc("/debug/v4l2", dp.handleDebugV4L2)
+       // Debug endpoint for V4L2 discovery
+       mux.HandleFunc("/debug/v4l2", dp.handleDebugV4L2)
 
-	// Default proxy to backend for all other requests
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		proxy := dp.createReverseProxy(dp.backendURL)
-		proxy.ServeHTTP(w, r)
-	})
+       // Serve embedded viewer static files
+       viewerDir := getEnv("VIEWER_DIR", "/srv/viewer")
+       fs := http.FileServer(http.Dir(viewerDir))
+       mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
+
+       // Default proxy to backend for all other requests
+       mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+               proxy := dp.createReverseProxy(dp.backendURL)
+               proxy.ServeHTTP(w, r)
+       })
 
 	return mux
 }
