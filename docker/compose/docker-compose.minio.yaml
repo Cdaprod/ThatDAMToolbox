@@ -5,7 +5,8 @@ services:
   minio:
     # Uses your custom image & entrypoint living in ./docker/minio
     build:
-      context: ./docker/minio
+      context: ../../
+      dockerfile: docker/minio/Dockerfile
     image: thatdamtoolbox-minio:local
     container_name: thatdamtoolbox-minio
     command: ["server", "/data", "--console-address", ":9001"]
