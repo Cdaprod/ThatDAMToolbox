@@ -360,34 +360,34 @@ func (dm *DiscoveryManager) checkTailscalePeer(dnsName string) {
 }
 
 func (dm *DiscoveryManager) decideMode() {
-        dm.mutex.RLock()
-        serverCount := len(dm.discoveredServers)
-        dm.mutex.RUnlock()
+	dm.mutex.RLock()
+	serverCount := len(dm.discoveredServers)
+	dm.mutex.RUnlock()
 
-        if serverCount == 0 {
-                // Verify docker-compose availability before assuming server mode
-                if cmd, err := composeCmd("--version"); err != nil {
-                        logx.L.Warn("docker-compose unavailable - defaulting to proxy mode", "err", err)
-                        dm.mode = ModeProxy
-                } else if err = cmd.Run(); err != nil {
-                        logx.L.Warn("docker-compose check failed - defaulting to proxy mode", "err", err)
-                        dm.mode = ModeProxy
-                } else {
-                        dm.mode = ModeServer
-                        logx.L.Info("no existing servers found - becoming server")
-                        dm.advertiseService()
-                }
-        } else {
-                dm.mode = ModeProxy
-                logx.L.Info("found existing servers - becoming camera-proxy", "count", serverCount)
+	if serverCount == 0 {
+		// Verify docker-compose availability before assuming server mode
+		if cmd, err := composeCmd("--version"); err != nil {
+			logx.L.Warn("docker-compose unavailable - defaulting to proxy mode", "err", err)
+			dm.mode = ModeProxy
+		} else if err = cmd.Run(); err != nil {
+			logx.L.Warn("docker-compose check failed - defaulting to proxy mode", "err", err)
+			dm.mode = ModeProxy
+		} else {
+			dm.mode = ModeServer
+			logx.L.Info("no existing servers found - becoming server")
+			dm.advertiseService()
+		}
+	} else {
+		dm.mode = ModeProxy
+		logx.L.Info("found existing servers - becoming camera-proxy", "count", serverCount)
 
-                // Display discovered servers
-                dm.mutex.RLock()
-                for nodeID, info := range dm.discoveredServers {
-                        logx.L.Info("existing server", "id", nodeID, "host", info.Host, "port", info.Port)
-                }
-                dm.mutex.RUnlock()
-        }
+		// Display discovered servers
+		dm.mutex.RLock()
+		for nodeID, info := range dm.discoveredServers {
+			logx.L.Info("existing server", "id", nodeID, "host", info.Host, "port", info.Port)
+		}
+		dm.mutex.RUnlock()
+	}
 
 	// Update service info
 	hostname, _ := os.Hostname()
@@ -455,22 +455,22 @@ func (dm *DiscoveryManager) advertiseSerfLeadership() {
 }
 
 func (dm *DiscoveryManager) startServices() error {
-        switch dm.mode {
-        case ModeServer:
-                if err := dm.startServerMode(); err != nil {
-                        if strings.Contains(err.Error(), "docker-compose") {
-                                logx.L.Warn("server mode failed, falling back to proxy", "err", err)
-                                dm.mode = ModeProxy
-                                return dm.startProxyMode()
-                        }
-                        return err
-                }
-                return nil
-        case ModeProxy:
-                return dm.startProxyMode()
-        default:
-                return fmt.Errorf("unknown mode: %s", dm.mode)
-        }
+	switch dm.mode {
+	case ModeServer:
+		if err := dm.startServerMode(); err != nil {
+			if strings.Contains(err.Error(), "docker-compose") {
+				logx.L.Warn("server mode failed, falling back to proxy", "err", err)
+				dm.mode = ModeProxy
+				return dm.startProxyMode()
+			}
+			return err
+		}
+		return nil
+	case ModeProxy:
+		return dm.startProxyMode()
+	default:
+		return fmt.Errorf("unknown mode: %s", dm.mode)
+	}
 }
 
 func (dm *DiscoveryManager) startServerMode() error {
@@ -504,39 +504,47 @@ func (dm *DiscoveryManager) startServerMode() error {
 func (dm *DiscoveryManager) startProxyMode() error {
 	logx.L.Info("starting camera-proxy mode")
 
-	// Select a server to connect to
-	var targetServer ServiceInfo
-	dm.mutex.RLock()
-	for _, server := range dm.discoveredServers {
-		targetServer = server
-		break // Use first available server
+	for {
+		// Select a server to connect to
+		var targetServer ServiceInfo
+		dm.mutex.RLock()
+		for _, server := range dm.discoveredServers {
+			targetServer = server
+			break // Use first available server
+		}
+		dm.mutex.RUnlock()
+
+		if targetServer.NodeID != "" {
+			logx.L.Info("connecting to server", "id", targetServer.NodeID, "host", targetServer.Host, "port", targetServer.Port)
+
+			// Set environment variables for proxy
+			os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", targetServer.Host, targetServer.Port))
+			os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", targetServer.Host))
+
+			// Launch camera-proxy
+			cmd, err := composeCmd("-f", "docker-compose.yaml", "up", "-d", "camera-proxy")
+			if err != nil {
+				return fmt.Errorf("failed to start camera-proxy: %w", err)
+			}
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to start camera-proxy: %w", err)
+			}
+
+			logx.L.Info("camera proxy started")
+			return nil
+		}
+
+		logx.L.Warn("no server available, retrying", "interval", "10s")
+		select {
+		case <-time.After(10 * time.Second):
+			continue
+		case <-dm.ctx.Done():
+			return dm.ctx.Err()
+		}
 	}
-	dm.mutex.RUnlock()
-
-	if targetServer.NodeID == "" {
-		return fmt.Errorf("no server available for proxy connection")
-	}
-
-	logx.L.Info("connecting to server", "id", targetServer.NodeID, "host", targetServer.Host, "port", targetServer.Port)
-
-	// Set environment variables for proxy
-	os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", targetServer.Host, targetServer.Port))
-	os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", targetServer.Host))
-
-	// Launch camera-proxy
-	cmd, err := composeCmd("-f", "docker-compose.yaml", "up", "-d", "camera-proxy")
-	if err != nil {
-		return fmt.Errorf("failed to start camera-proxy: %w", err)
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to start camera-proxy: %w", err)
-	}
-
-	logx.L.Info("camera proxy started")
-	return nil
 }
 
 func (dm *DiscoveryManager) monitorServerServices() {

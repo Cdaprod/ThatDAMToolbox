@@ -1,10 +1,12 @@
 package manager
 
 import (
-        "os"
-        "testing"
+	"context"
+	"os"
+	"testing"
+	"time"
 
-        "github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 )
 
 // TestDetectDiscoveryBackendDefault ensures we default to mDNS when no env hints are set.
@@ -29,23 +31,36 @@ func TestDetectDiscoveryBackendOverride(t *testing.T) {
 
 // TestComposeCmdMissing ensures a clear error when docker-compose is not found.
 func TestComposeCmdMissing(t *testing.T) {
-        orig := os.Getenv("PATH")
-        os.Setenv("PATH", "")
-        t.Cleanup(func() { os.Setenv("PATH", orig) })
-        if _, err := composeCmd("up"); err == nil {
-                t.Fatalf("expected error when docker-compose is missing")
-        }
+	orig := os.Getenv("PATH")
+	os.Setenv("PATH", "")
+	t.Cleanup(func() { os.Setenv("PATH", orig) })
+	if _, err := composeCmd("up"); err == nil {
+		t.Fatalf("expected error when docker-compose is missing")
+	}
 }
 
 // TestDecideModeNoCompose forces proxy mode when docker-compose is unavailable.
 func TestDecideModeNoCompose(t *testing.T) {
-        orig := os.Getenv("PATH")
-        os.Setenv("PATH", "")
-        t.Cleanup(func() { os.Setenv("PATH", orig) })
-        logx.Init(logx.Config{})
-        dm := New()
-        dm.decideMode()
-        if dm.mode != ModeProxy {
-                t.Fatalf("expected %s, got %s", ModeProxy, dm.mode)
-        }
+	orig := os.Getenv("PATH")
+	os.Setenv("PATH", "")
+	t.Cleanup(func() { os.Setenv("PATH", orig) })
+	logx.Init(logx.Config{})
+	dm := New()
+	dm.decideMode()
+	if dm.mode != ModeProxy {
+		t.Fatalf("expected %s, got %s", ModeProxy, dm.mode)
+	}
+}
+
+// TestStartProxyModeWaits ensures proxy mode waits for a server rather than exiting immediately.
+func TestStartProxyModeWaits(t *testing.T) {
+	logx.Init(logx.Config{})
+	dm := New()
+	errCh := make(chan error, 1)
+	go func() { errCh <- dm.startProxyMode() }()
+	time.Sleep(50 * time.Millisecond)
+	dm.cancel()
+	if err := <-errCh; err != context.Canceled {
+		t.Fatalf("expected context canceled, got %v", err)
+	}
 }
