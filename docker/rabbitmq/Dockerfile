@@ -1,5 +1,5 @@
 # Use the official RabbitMQ image with the management UI baked in
-FROM rabbitmq:3.9-management
+FROM rabbitmq:3.13-management
 
 # Enable the Prometheus plugin (for /metrics) and any other you wish
 # (removed: rabbitmq_peer_discovery_classic_config)
