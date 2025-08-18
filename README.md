@@ -869,13 +869,15 @@ results = indexer.search("sunset beach")
 
 ### Upstream Configuration
 
-Set `UPSTREAM` to a `host:port` pair so services know where to reach the API gateway:
+The gateway falls back to `127.0.0.1:8080` when no upstream is specified. Override
+`UPSTREAM` (or `UPSTREAM_HOST`/`UPSTREAM_PORT`) to point elsewhere:
 
 ```bash
-export UPSTREAM=api-gateway:8080
+export UPSTREAM=127.0.0.1:8080
 ```
 
-The entrypoint automatically splits this into `UPSTREAM_HOST` and `UPSTREAM_PORT`.
+The entrypoint automatically splits this into `UPSTREAM_HOST` and `UPSTREAM_PORT`
+and fails fast if the host cannot be resolved.
 
 ### Web Interface
 

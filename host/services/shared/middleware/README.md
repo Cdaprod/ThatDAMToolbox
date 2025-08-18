@@ -1,8 +1,30 @@
-I’ll show you Go middleware examples for different layers of your architecture. Here are practical implementations:​​​​​​​​​​​​​​ 
+I’ll show you Go middleware examples for different layers of your architecture. Here are practical implementations:​​​​​​​​​​​​​​
 
 (See the files in this directory)​
 
 Now let me show you how to wire these middleware together in a practical application:​​​​​​​​​​​​​​​ (See the file at [api-gateway](/host/services/api-gateway/cmd/main.go).
+
+## JWT Authentication
+
+The backend middleware verifies JSON Web Tokens signed with a shared secret.
+Set the secret via the `JWT_SECRET` environment variable:
+
+```bash
+export JWT_SECRET="change-me"
+```
+
+Tokens must include `sub`, `username`, `role` and an `exp` claim. Requests with invalid or expired tokens are rejected with HTTP 401.
+Minimal token creation example:
+
+```go
+token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+    "sub": "123",
+    "username": "alice",
+    "role": "user",
+    "exp": time.Now().Add(time.Hour).Unix(),
+})
+signed, _ := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+```
 
 ## Key Differences by Layer:
 
