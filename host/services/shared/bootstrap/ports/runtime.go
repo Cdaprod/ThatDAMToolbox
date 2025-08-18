@@ -14,6 +14,7 @@ type UnitSpec struct {
 	Name    string            // logical name of the unit
 	Command []string          // command and args
 	Env     map[string]string // environment variables
+	Restart string            // restart policy: "always"|"on-failure"|"no"
 }
 
 // UnitState reports the status of a service unit.

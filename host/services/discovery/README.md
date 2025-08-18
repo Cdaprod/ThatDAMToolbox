@@ -2,12 +2,12 @@
 
 🚀 **Enterprise-grade auto-discovery for PaaS/IaaS/SaaS deployment**
 
-This discovery service intelligently determines whether to become a “central server” (running capture-daemon + all infrastructure) or a “camera-proxy” (connecting to existing server) based on network environment discovery.
+This discovery service intelligently determines whether to become a “central server” or a “camera-proxy”. It now requests a
+DesiredPlan from the supervisor and applies it using built-in runtimes instead of docker-compose.
 
 ### Requirements
 
-- Docker Compose v2 (`docker-compose` or `docker compose` plugin) is required to launch the server stack.
-- To run without Docker Compose, force proxy mode by setting `ROLE=agent` or starting the binary with `--role agent`.
+- Supervisor URL and credentials via `SUPERVISOR_URL`/`SUPERVISOR_API_KEY`
 
 ### Development
 
