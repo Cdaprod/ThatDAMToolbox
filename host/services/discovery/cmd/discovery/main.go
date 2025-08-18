@@ -2,7 +2,8 @@ package main
 
 import (
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
 	"github.com/Cdaprod/ThatDAMToolbox/host/services/discovery/internal/manager"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
@@ -23,17 +24,15 @@ func main() {
 
 	dm := manager.New()
 
-	go func() {
-		time.Sleep(time.Hour)
-		dm.Stop()
-	}()
-
 	if err := dm.Start(); err != nil {
 		logx.L.Error("failed to start discovery service", "err", err)
 		os.Exit(1)
 	}
 
-	select {}
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+	dm.Stop()
 }
 
 func getEnv(key, def string) string {

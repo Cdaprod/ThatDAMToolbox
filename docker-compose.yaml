@@ -233,14 +233,16 @@ services:
     # If your Docker host blocks some ioctls, flip this on as a last resort:
     # privileged: true
     environment:
-      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
-      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
-      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
-      OVERLAY_HUB_URL: "http://overlay-hub:8090"
-      CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
-      CAPTURE_DAEMON_TOKEN: "devtoken"
-      ICE_SERVERS: "stun:stun.l.google.com:19302"
-      FFMPEG_HWACCEL: ""  # e.g. "cuda -hwaccel_device 0" when using NV encoders
+      EVENT_BROKER_URL: "${EVENT_BROKER_URL:-amqp://video:video@rabbitmq:5672/}"
+      NEXT_PUBLIC_LOGIN_URL: "${NEXT_PUBLIC_LOGIN_URL:-https://idp.example.com/login}"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "${NEXT_PUBLIC_PLAUSIBLE_DOMAIN:-example.com}"
+      OVERLAY_HUB_URL: "${OVERLAY_HUB_URL:-http://overlay-hub:8090}"
+      CAPTURE_DAEMON_URL: "${CAPTURE_DAEMON_URL:-http://capture-daemon:9000}"
+      CAPTURE_DAEMON_TOKEN: "${CAPTURE_DAEMON_TOKEN:-devtoken}"
+      ICE_SERVERS: "${ICE_SERVERS:-stun:stun.l.google.com:19302}"
+      FFMPEG_HWACCEL: "${FFMPEG_HWACCEL:-}"
+      UPSTREAM_HOST: "${UPSTREAM_HOST:-api-gateway}"
+      UPSTREAM_PORT: "${UPSTREAM_PORT:-8080}"
     # Health is OK even with 0 devices; your app serves /healthz regardless.
     healthcheck:
       test: ["CMD","curl","-fsS","http://127.0.0.1:8000/health"]

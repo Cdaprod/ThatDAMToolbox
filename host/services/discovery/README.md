@@ -14,6 +14,7 @@ This discovery service intelligently determines whether to become a “central s
 ```bash
 # run service
 go run ./cmd/discovery
+# stop with Ctrl+C
 
 # run tests
 go test ./...
