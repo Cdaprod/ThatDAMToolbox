@@ -7,6 +7,7 @@ toolchain go1.24.3
 require (
 	github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
 	github.com/charmbracelet/log v0.4.2
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.5.0
 	github.com/muesli/termenv v0.16.0
 	github.com/quic-go/quic-go v0.40.0

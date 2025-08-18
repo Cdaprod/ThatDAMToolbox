@@ -174,13 +174,41 @@ def create_params_from_dict(action: str, data: Dict[str, Any]) -> CommandParams:
 
 # ─── Command Implementations ─────────────────────────
 # stats and recent can just return built-in types (dict or list[dict])
-@register("transcode", help="HW-transcode to H.264 or HEVC")
+@register("transcode", help="Transcode to H.264 or HEVC")
 def cmd_transcode(args):
+    """Transcode ``src`` → ``dst`` using VC7 if available.
+
+    Falls back to a CPU-based ffmpeg transcode when VideoCore VII is absent.
+
+    Example:
+        video transcode --src in.mov --dst out.mp4 --codec h264
+    """
+
+    import sys
+    from pathlib import Path
     from . import hwaccel
-    if not hwaccel.has_vc7():
-        print("No VideoCore VII detected – falling back is TODO.")
-        return
-    hwaccel.transcode_hw(args.src, args.dst, vcodec=args.codec)
+    from .core.transcode import transcode_sw
+
+    src = Path(args.src)
+    dst = Path(args.dst)
+    codec = getattr(args, "codec", "h264")
+
+    if codec not in {"h264", "hevc"}:
+        print(f"Unsupported codec: {codec}", file=sys.stderr)
+        sys.exit(1)
+    if not src.is_file():
+        print(f"Source file not found: {src}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        if hwaccel.has_vc7():
+            hwaccel.transcode_hw(str(src), str(dst), vcodec=codec)
+        else:
+            # Fallback to software transcoder when VC7 is missing.
+            transcode_sw(str(src), str(dst), vcodec=codec)
+    except Exception as e:  # pragma: no cover - generic safety net
+        print(f"Transcode failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
 @register("thumbnails", help="GPU thumbnail sheet generator")
 def cmd_thumbs(args):
