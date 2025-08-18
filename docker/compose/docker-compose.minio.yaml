@@ -14,9 +14,9 @@ services:
       MINIO_ROOT_USER:     minio
       MINIO_ROOT_PASSWORD: minio123
 
-        # Buckets to bootstrap
-        MINIO_BUCKET_MEDIA: "media"
-        MINIO_BUCKET_WEAVIATE_BACKUPS: "weaviate-backups"
+      # Buckets to bootstrap
+      MINIO_BUCKET_MEDIA: "media"
+      MINIO_BUCKET_WEAVIATE_BACKUPS: "weaviate-backups"
 
       # Make media bucket publicly readable (optional)
       MINIO_MEDIA_PUBLIC: "true"
