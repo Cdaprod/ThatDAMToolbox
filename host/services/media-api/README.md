@@ -16,6 +16,17 @@ go run ./cmd/media-api serve --addr :8080
 curl -s http://localhost:8080/v1/folders
 ```
 
+### Preview worker
+
+To generate placeholder previews for ingested assets, the API can run a small
+worker that listens for `asset.ingested` events and writes a `poster.jpg` under
+`derived/poster.jpg/..`.
+
+```
+export BROKER_URL=inproc
+go test ./pkg/handlers -run PreviewWorker -v
+```
+
 ## Tests
 
 ```bash

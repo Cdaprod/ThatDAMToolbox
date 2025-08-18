@@ -12,7 +12,17 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ingest"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
+	"github.com/google/uuid"
 )
+
+// Deps groups external services required for ingest.
+type Deps struct {
+	BlobStore storage.BlobStore
+	Catalog   catalog.Catalog
+}
 
 // Config holds the parameters for a single device capture loop.
 type Config struct {
@@ -59,7 +69,7 @@ func buildInputArgs(cfg Config) []string {
 // RunCaptureLoop continuously records video from the device using ffmpeg,
 // saves to MP4, and broadcasts status via the broker.
 // Supports configurable MP4 output and HLS preview via env flags.
-func RunCaptureLoop(ctx context.Context, cfg Config) error {
+func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 	enableMP4 := strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "true")
 	enableHLS := strings.EqualFold(os.Getenv("ENABLE_HLS_PREVIEW"), "true")
 
@@ -160,6 +170,15 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 				}
 			} else {
 				fails = 0
+				if deps.BlobStore != nil {
+					asset, err := ingestRecording(deps, outFile)
+					if err == nil {
+						if deps.Catalog != nil {
+							_ = deps.Catalog.Upsert(asset)
+						}
+						broker.Publish("asset.ingested", asset)
+					}
+				}
 			}
 		}
 
@@ -175,6 +194,40 @@ func RunCaptureLoop(ctx context.Context, cfg Config) error {
 		case <-time.After(cfg.RetryDelay):
 		}
 	}
+}
+
+// ingestRecording moves file at path into the blob store and returns a catalog asset.
+func ingestRecording(deps Deps, path string) (catalog.Asset, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return catalog.Asset{}, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return catalog.Asset{}, err
+	}
+	key, hash, _, err := ingest.PutIfAbsent(deps.BlobStore, f)
+	f.Close()
+	if err != nil {
+		return catalog.Asset{}, err
+	}
+	indexKey, _ := ingest.WriteIndex(deps.BlobStore, hash, 0)
+	host, _ := os.Hostname()
+	a := catalog.Asset{
+		ID:         uuid.NewString(),
+		Key:        key,
+		Size:       info.Size(),
+		Hash:       hash,
+		MIME:       "video/mp4",
+		Folder:     "recordings",
+		CreatedAt:  time.Now().UTC(),
+		SourceNode: host,
+		OriginPath: path,
+		Labels:     map[string]string{"index_key": indexKey},
+	}
+	_ = os.Remove(path)
+	return a, nil
 }
 
 // buildOutputFilename constructs a timestamped filename under cfg.OutDir.
