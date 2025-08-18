@@ -21,6 +21,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 )
 
 const (
@@ -137,6 +138,10 @@ func main() {
 
 	// 8. Main API server (devices, recordings, previews, etc.)
 	reg := registry.NewRegistry()
+	var deps runner.Deps
+	if root := os.Getenv("BLOB_STORE_ROOT"); root != "" {
+		deps.BlobStore = storage.NewFS(root)
+	}
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, reg)
 	api.RegisterFeatureRoutes(mux, cfg)
@@ -204,7 +209,7 @@ func main() {
 						ctxLoop, cl := context.WithCancel(ctx)
 						reg.RegisterStopFunc(id, cl)
 						go func(id string, cfg runner.Config) {
-							if err := runner.RunCaptureLoop(ctxLoop, cfg); err != nil {
+							if err := runner.RunCaptureLoop(ctxLoop, cfg, deps); err != nil {
 								lg.WithComponent("runner").Error("runner error", "device", id, "err", err)
 							}
 						}(id, c)

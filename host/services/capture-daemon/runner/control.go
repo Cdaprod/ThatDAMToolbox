@@ -23,7 +23,7 @@ func StartRunner(device string) RunnerControl {
 		}()
 
 		// Run until ctx is canceled
-		_ = RunCaptureLoop(ctx, DefaultConfig(device))
+		_ = RunCaptureLoop(ctx, DefaultConfig(device), Deps{})
 	}()
 
 	return RunnerControl{StopChan: stop}

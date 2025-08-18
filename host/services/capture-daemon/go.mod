@@ -7,6 +7,7 @@ toolchain go1.24.3
 require (
 	github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0
 	github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
+	github.com/google/uuid v1.6.0
 	github.com/pion/webrtc/v3 v3.2.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/rabbitmq/amqp091-go v1.10.0
@@ -18,7 +19,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pion/datachannel v1.5.5 // indirect
@@ -50,7 +50,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

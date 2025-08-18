@@ -59,6 +59,19 @@ For OBS or any HLS client, add a media source pointing to:
 http://localhost:9000/preview/<device>/index.m3u8
 ```
 
+## CAS ingest
+
+Recordings can be deduplicated and stored by hash. Set `BLOB_STORE_ROOT` to a
+writable directory and the runner will move each finished MP4 into a
+content‑addressable path (`blobs/sha256/..`). An `asset.ingested` event is
+published with the catalog metadata, and a tiny seek index is written under
+`indexes/<hash>.json`.
+
+```
+export BLOB_STORE_ROOT=/tmp/blobs
+go run ./cmd/capture-daemon
+```
+
 Additional runtime options:
 
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC negotiation.
