@@ -142,7 +142,7 @@ services:
     build:
       context: ./docker/rabbitmq
       dockerfile: Dockerfile
-    image: cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}   # was rabbitmq:3.13-alpine
+    image: cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}   # was rabbitmq:3.13-management
     container_name: thatdamtoolbox-rabbitmq
     restart: unless-stopped
     networks: [damnet]

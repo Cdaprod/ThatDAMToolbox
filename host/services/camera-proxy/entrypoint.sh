@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # entrypoint.sh - Camera proxy startup with discovery
 # Example: /entrypoint.sh
-set -euo pipefail
+set -eu
 # shellcheck disable=SC1091
 . /opt/shared/entrypoint-snippet.sh
 
@@ -16,9 +16,9 @@ UPSTREAM_PORT="${UPSTREAM_PORT:-${UPSTREAM##*:}}"
 : "${UPSTREAM_HOST:=api-gateway}"
 : "${UPSTREAM_PORT:=8080}"
 
-cmd=(/usr/local/bin/camera-proxy)
+set -- /usr/local/bin/camera-proxy "$@"
 if [ "$ROLE" = "agent" ]; then
-  cmd+=(--server "http://${UPSTREAM_HOST}:${UPSTREAM_PORT}")
+  set -- "$@" --server "http://${UPSTREAM_HOST}:${UPSTREAM_PORT}"
 fi
 
-exec "${cmd[@]}"
+exec "$@"

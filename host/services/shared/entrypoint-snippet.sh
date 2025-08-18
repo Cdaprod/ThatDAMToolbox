@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # entrypoint-snippet.sh - shared logic for server/agent role detection
 # Usage:
 #   source /opt/shared/entrypoint-snippet.sh
 # Example:
 #   . /opt/shared/entrypoint-snippet.sh && echo "$ROLE"
-set -Eeuo pipefail
+set -eu
 
 : "${LEADER_FILE:=/run/discovery/leader.env}"
 : "${SERVICE_PORT:=8080}"

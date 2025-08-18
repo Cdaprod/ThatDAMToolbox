@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true
+  },
+  "include": ["src"]
+}

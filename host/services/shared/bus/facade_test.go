@@ -74,3 +74,25 @@ func TestConnectNoAdapter(t *testing.T) {
 		t.Fatal("expected error when no adapter registered")
 	}
 }
+
+func TestConnectMissingURL(t *testing.T) {
+	reset()
+	t.Setenv("BROKER_URL", "")
+	t.Setenv("EVENT_BROKER_URL", "")
+	adapterCtor = newMockBus
+	cfg := Config{Exchange: "events"}
+	if _, err := Connect(context.Background(), cfg); err == nil {
+		t.Fatal("expected error for missing broker URL")
+	}
+}
+
+func TestConnectMissingExchange(t *testing.T) {
+	reset()
+	t.Setenv("BROKER_EXCHANGE", "")
+	t.Setenv("AMQP_EXCHANGE", "")
+	adapterCtor = newMockBus
+	cfg := Config{URL: "amqp://test"}
+	if _, err := Connect(context.Background(), cfg); err == nil {
+		t.Fatal("expected error for missing exchange")
+	}
+}
