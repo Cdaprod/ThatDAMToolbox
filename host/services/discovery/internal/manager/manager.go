@@ -1,12 +1,14 @@
 package manager
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -75,6 +77,43 @@ func New() *DiscoveryManager {
 	}
 
 	return dm
+}
+
+type leaderInfo struct {
+	Host string
+	Port int
+}
+
+// readLeaderFile parses a dotenv-style file for HOST and PORT values.
+func readLeaderFile(path string) (leaderInfo, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return leaderInfo{}, err
+	}
+	defer f.Close()
+
+	var info leaderInfo
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "HOST=") {
+			info.Host = strings.TrimPrefix(line, "HOST=")
+		} else if strings.HasPrefix(line, "PORT=") {
+			if p, err := strconv.Atoi(strings.TrimPrefix(line, "PORT=")); err == nil {
+				info.Port = p
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return leaderInfo{}, err
+	}
+	if info.Host == "" || info.Port == 0 {
+		return leaderInfo{}, fmt.Errorf("invalid leader file")
+	}
+	return info, nil
 }
 
 // composeCmd returns an exec.Cmd for docker-compose or 'docker compose'.
@@ -504,24 +543,42 @@ func (dm *DiscoveryManager) startServerMode() error {
 func (dm *DiscoveryManager) startProxyMode() error {
 	logx.L.Info("starting camera-proxy mode")
 
+	leaderFile := os.Getenv("LEADER_FILE")
+	if leaderFile == "" {
+		leaderFile = "/run/discovery/leader.env"
+	}
+
 	for {
+		var host string
+		var port int
+
 		// Select a server to connect to
-		var targetServer ServiceInfo
 		dm.mutex.RLock()
 		for _, server := range dm.discoveredServers {
-			targetServer = server
+			host = server.Host
+			port = server.Port
 			break // Use first available server
 		}
 		dm.mutex.RUnlock()
 
-		if targetServer.NodeID != "" {
-			logx.L.Info("connecting to server", "id", targetServer.NodeID, "host", targetServer.Host, "port", targetServer.Port)
+		// Fallback to leader file if no discovered servers
+		if host == "" {
+			if info, err := readLeaderFile(leaderFile); err == nil {
+				host = info.Host
+				port = info.Port
+				logx.L.Info("using leader file", "host", host, "port", port)
+			}
+		}
 
-			// Set environment variables for proxy
-			os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", targetServer.Host, targetServer.Port))
-			os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", targetServer.Host))
+		if host != "" {
+			logx.L.Info("connecting to server", "host", host, "port", port)
 
-			// Launch camera-proxy
+			os.Setenv("CAPTURE_DAEMON_URL", fmt.Sprintf("http://%s:%d", host, port))
+			os.Setenv("EVENT_BROKER_URL", fmt.Sprintf("amqp://video:video@%s:5672/", host))
+			os.Setenv("UPSTREAM_HOST", host)
+			os.Setenv("UPSTREAM_PORT", fmt.Sprintf("%d", port))
+			os.Setenv("ROLE", "agent")
+
 			cmd, err := composeCmd("-f", "docker-compose.yaml", "up", "-d", "camera-proxy")
 			if err != nil {
 				return fmt.Errorf("failed to start camera-proxy: %w", err)

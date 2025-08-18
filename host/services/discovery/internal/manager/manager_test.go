@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -62,5 +63,44 @@ func TestStartProxyModeWaits(t *testing.T) {
 	dm.cancel()
 	if err := <-errCh; err != context.Canceled {
 		t.Fatalf("expected context canceled, got %v", err)
+	}
+}
+
+// TestStartProxyModeLeaderFile verifies proxy mode uses leader.env when no servers are discovered.
+func TestStartProxyModeLeaderFile(t *testing.T) {
+	logx.Init(logx.Config{})
+	dm := New()
+
+	tmp := t.TempDir()
+
+	// Write leader.env
+	leader := filepath.Join(tmp, "leader.env")
+	if err := os.WriteFile(leader, []byte("HOST=testhost\nPORT=9999\n"), 0o644); err != nil {
+		t.Fatalf("write leader file: %v", err)
+	}
+	os.Setenv("LEADER_FILE", leader)
+	t.Cleanup(func() { os.Unsetenv("LEADER_FILE") })
+
+	// Stub docker compose
+	docker := filepath.Join(tmp, "docker")
+	if err := os.WriteFile(docker, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write stub docker: %v", err)
+	}
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", tmp)
+	t.Cleanup(func() { os.Setenv("PATH", origPath) })
+
+	if err := dm.startProxyMode(); err != nil {
+		t.Fatalf("startProxyMode returned error: %v", err)
+	}
+
+	if got := os.Getenv("CAPTURE_DAEMON_URL"); got != "http://testhost:9999" {
+		t.Fatalf("expected CAPTURE_DAEMON_URL http://testhost:9999, got %s", got)
+	}
+	if os.Getenv("UPSTREAM_HOST") != "testhost" || os.Getenv("UPSTREAM_PORT") != "9999" {
+		t.Fatalf("upstream vars not set: %s:%s", os.Getenv("UPSTREAM_HOST"), os.Getenv("UPSTREAM_PORT"))
+	}
+	if os.Getenv("ROLE") != "agent" {
+		t.Fatalf("ROLE not set to agent: %s", os.Getenv("ROLE"))
 	}
 }
