@@ -181,8 +181,8 @@ host/releases/
 # ------------------------------------------------------------------
 !data/**/module.cfg
 
-# Ignore accidental brace-named files from code snippets
-{*,*}
+# Ignore accidental brace-named files from code snippets, e.g. `{foo,bar}`
+\{*,*\}
 
 /public/design-token-styles/**
 !/public/service-dashboards/**
