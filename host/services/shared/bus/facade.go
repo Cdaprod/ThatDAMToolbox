@@ -58,6 +58,10 @@ func Connect(ctx context.Context, cfg Config) (Bus, error) {
 			instErr = errors.New("bus: missing exchange")
 			return
 		}
+		if adapterCtor == nil {
+			instErr = errors.New("bus: no adapter registered")
+			return
+		}
 		var err error
 		inst, err = adapterCtor(cfg)
 		if err != nil {

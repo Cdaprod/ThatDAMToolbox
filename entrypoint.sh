@@ -9,6 +9,12 @@ if [ -f /opt/shared/entrypoint-snippet.sh ]; then
   . /opt/shared/entrypoint-snippet.sh
 fi
 
+# Derive UPSTREAM_HOST and UPSTREAM_PORT from UPSTREAM if not already set
+if [[ -z "${UPSTREAM_HOST:-}" && -n "${UPSTREAM:-}" ]]; then
+  IFS=':' read -r UPSTREAM_HOST UPSTREAM_PORT <<< "${UPSTREAM}"
+  export UPSTREAM_HOST UPSTREAM_PORT
+fi
+
 if [ "${ROLE:-server}" = "agent" ]; then
   export EVENT_BROKER_URL="${EVENT_BROKER_URL:-amqp://video:video@${UPSTREAM_HOST}:${UPSTREAM_PORT:-5672}/}"
   UPSTREAM_ARG=(--upstream "http://${UPSTREAM_HOST}:${UPSTREAM_PORT:-8080}")
