@@ -6,7 +6,7 @@ Below is a drop-in, "works-everywhere" gateway package that serves as the front 
 
 ## What it does
 
-- **Reverse proxy** – Routes requests to video-api (port 8080), api-gateway (port 8081) and video-web (port 3000)
+- **Reverse proxy** – Routes requests to video-api (port 8080), api-gateway (port 8080) and video-web (port 3000)
 - **Static serving** – Falls back to Next.js static export if present in `/usr/share/nginx/html`
 - **WebSocket support** – Handles `/ws/` upgrades for real-time features
 - **Stream optimization** – Unbuffered proxying for `/stream/` endpoints
@@ -179,7 +179,7 @@ EOF
 : ${API_HOST:=video-api}
 : ${API_PORT:=8080}
 : ${API_GW_HOST:=api-gateway}
-: ${API_GW_PORT:=8081}
+: ${API_GW_PORT:=8080}
 : ${WEB_HOST:=video-web}
 : ${WEB_PORT:=3000}
 
@@ -258,7 +258,7 @@ services:
 |`API_HOST`|`video-api`|Hostname/IP for the Python API service  |
 |`API_PORT`|`8080`     |Port for the Python API service         |
 |`API_GW_HOST`|`api-gateway`|Hostname/IP for the Go API gateway |
-|`API_GW_PORT`|`8081`     |Port for the Go API gateway           |
+|`API_GW_PORT`|`8080`     |Port for the Go API gateway           |
 |`WEB_HOST`|`video-web`|Hostname/IP for the frontend web service|
 |`WEB_PORT`|`3000`     |Port for the frontend web service       |
 

@@ -2,11 +2,16 @@
 package middleware
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
+
+	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 // Helper functions
@@ -50,10 +55,35 @@ func getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
+type jwtClaims struct {
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	jwt.RegisteredClaims
+}
+
 func validateJWT(token, secret string) (*User, error) {
-	// TODO: Implement proper JWT validation
-	// This is a placeholder for now
-	return &User{ID: "user123", Username: "testuser", Role: "user"}, nil
+	if secret == "" {
+		secret = os.Getenv("JWT_SECRET")
+	}
+	if secret == "" {
+		return nil, errors.New("jwt secret not configured")
+	}
+
+	claims := &jwtClaims{}
+	parsed, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+			return nil, fmt.Errorf("unexpected signing method: %s", t.Header["alg"])
+		}
+		return []byte(secret), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		return nil, err
+	}
+	if !parsed.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	return &User{ID: claims.Subject, Username: claims.Username, Role: claims.Role}, nil
 }
 
 func proxyToPythonBackend(w http.ResponseWriter, r *http.Request, backendURL, prefix string) {
