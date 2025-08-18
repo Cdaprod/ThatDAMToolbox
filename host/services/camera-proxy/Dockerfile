@@ -32,18 +32,42 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     GOOS=$TARGETOS GOARCH=$TARGETARCH go build -v -o /out/camera-proxy .
 
+# ── viewer builder (player + proxy-viewer)
+FROM node:20-alpine AS viewer-builder
+WORKDIR /app
+
+# build reusable player package
+COPY docker/packages/player/ ./packages/player/
+RUN --mount=type=cache,target=/root/.npm \
+    sh -ceu '\\
+      cd packages/player; \\
+      npm ci || npm install; \\
+      npm run build \\
+    '
+
+# build proxy-viewer depending on player
+COPY docker/proxy-viewer/ ./proxy-viewer/
+RUN --mount=type=cache,target=/root/.npm \
+    sh -ceu '\\
+      cd proxy-viewer; \\
+      npm ci || npm install; \\
+      npm run build \\
+    '
+
 # ── runtime (needs ffmpeg, v4l2 utils for device probing)
 FROM alpine:3.20
 ARG VERSION
 LABEL org.opencontainers.image.version=$VERSION
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates ffmpeg v4l-utils usbutils
+RUN apk add --no-cache bash ca-certificates ffmpeg v4l-utils usbutils
 COPY host/services/camera-proxy/entrypoint.sh /entrypoint.sh
 COPY host/services/shared/entrypoint-snippet.sh /opt/shared/entrypoint-snippet.sh
 RUN chmod +x /entrypoint.sh /opt/shared/entrypoint-snippet.sh
 COPY --from=builder /out/camera-proxy /usr/local/bin/camera-proxy
-COPY docker/proxy-viewer/dist /srv/viewer
+# Static viewer bundle
+COPY --from=viewer-builder /app/proxy-viewer/dist /srv/viewer
 EXPOSE 8000
 ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
+ENV VIEWER_DIR=/srv/viewer
 ENTRYPOINT ["/entrypoint.sh"]
 
