@@ -148,6 +148,38 @@
     <div class="category">
       <h2>🐹 Golang Services</h2>
       <div class="services-grid">
+        <div class="service-card" data-service="discovery">
+          <div class="card-preview"><!-- intentionally blank --></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Discovery</div>
+              <div class="status-indicator status-checking" id="status-discovery"></div>
+            </div>
+            <div class="service-port">Port: 9999</div>
+            <div class="service-description">Service discovery and orchestration</div>
+            <div class="service-actions">
+              <button class="action-btn btn-health" onclick="checkHealth('discovery','/preview/discovery/health')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-discovery"></div>
+          </div>
+        </div>
+
+        <div class="service-card" data-service="capture-daemon">
+          <div class="card-preview"><!-- intentionally blank --></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Capture Daemon</div>
+              <div class="status-indicator status-checking" id="status-capture-daemon"></div>
+            </div>
+            <div class="service-port">Port: 9000</div>
+            <div class="service-description">Device scanner and recorder</div>
+            <div class="service-actions">
+              <button class="action-btn btn-health" onclick="checkHealth('capture-daemon','/preview/capture-daemon/devices')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-capture-daemon"></div>
+          </div>
+        </div>
+
         <div class="service-card" data-service="camera-proxy">
           <div class="card-preview"><iframe src="/preview/camera-proxy/" loading="lazy"></iframe></div>
           <div class="overlay">
@@ -179,6 +211,38 @@
               <button class="action-btn btn-health" onclick="checkHealth('overlay-hub','/preview/overlay-hub/healthz')">💊 Health</button>
             </div>
             <div class="health-details" id="health-overlay-hub"></div>
+          </div>
+        </div>
+
+        <div class="service-card" data-service="supervisor">
+          <div class="card-preview"><!-- intentionally blank --></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Supervisor</div>
+              <div class="status-indicator status-checking" id="status-supervisor"></div>
+            </div>
+            <div class="service-port">Port: 8070</div>
+            <div class="service-description">Control-plane API for desired state</div>
+            <div class="service-actions">
+              <button class="action-btn btn-health" onclick="checkHealth('supervisor','/preview/supervisor/health')">💊 Health</button>
+            </div>
+            <div class="health-details" id="health-supervisor"></div>
+          </div>
+        </div>
+
+        <div class="service-card" data-service="runner">
+          <div class="card-preview"><!-- intentionally blank --></div>
+          <div class="overlay">
+            <div class="service-header">
+              <div class="service-name">Runner</div>
+              <div class="status-indicator status-checking" id="status-runner"></div>
+            </div>
+            <div class="service-port">No exposed ports</div>
+            <div class="service-description">Executes workloads from supervisor plans</div>
+            <div class="service-actions">
+              <button class="action-btn btn-health" onclick="markOnline('runner','Container service (limited)')">📋 Check Status</button>
+            </div>
+            <div class="health-details" id="health-runner"></div>
           </div>
         </div>
 
@@ -218,25 +282,42 @@
       </div>
     </div>
 
-    <!-- Python Services -->
-    <div class="category">
-      <h2>🐍 Python Services</h2>
-      <div class="services-grid">
-        <div class="service-card" data-service="video-api">
-          <div class="card-preview"><iframe src="/preview/video-api/" loading="lazy"></iframe></div>
-          <div class="overlay">
-            <div class="service-header">
-              <div class="service-name">Video API (FastAPI)</div>
-              <div class="status-indicator status-checking" id="status-video-api"></div>
+      <!-- Python Services -->
+      <div class="category">
+        <h2>🐍 Python Services</h2>
+        <div class="services-grid">
+          <div class="service-card" data-service="video-api">
+            <div class="card-preview"><iframe src="/preview/video-api/" loading="lazy"></iframe></div>
+            <div class="overlay">
+              <div class="service-header">
+                <div class="service-name">Video API (FastAPI)</div>
+                <div class="status-indicator status-checking" id="status-video-api"></div>
+              </div>
+              <div class="service-port">Port: 8080</div>
+              <div class="service-description">Main FastAPI backend with video processing</div>
+              <div class="service-actions">
+                <a class="action-btn btn-primary" href="/preview/video-api/" target="_blank">🐍 Open</a>
+                <a class="action-btn btn-secondary" href="/preview/video-api/docs" target="_blank">📚 Docs</a>
+                <button class="action-btn btn-health" onclick="checkHealth('video-api','/preview/video-api/health')">💊 Health</button>
+              </div>
+              <div class="health-details" id="health-video-api"></div>
             </div>
-            <div class="service-port">Port: 8080</div>
-            <div class="service-description">Main FastAPI backend with video processing</div>
-            <div class="service-actions">
-              <a class="action-btn btn-primary" href="/preview/video-api/" target="_blank">🐍 Open</a>
-              <a class="action-btn btn-secondary" href="/preview/video-api/docs" target="_blank">📚 Docs</a>
-              <button class="action-btn btn-health" onclick="checkHealth('video-api','/preview/video-api/health')">💊 Health</button>
+          </div>
+
+          <div class="service-card" data-service="video-cli">
+            <div class="card-preview"><!-- no preview --></div>
+            <div class="overlay">
+              <div class="service-header">
+                <div class="service-name">Video CLI <span class="profile-indicator">cli</span></div>
+                <div class="status-indicator status-checking" id="status-video-cli"></div>
+              </div>
+              <div class="service-port">No exposed ports</div>
+              <div class="service-description">One-shot CLI job for data hydration</div>
+              <div class="service-actions">
+                <button class="action-btn btn-health" onclick="markOnline('video-cli','Container service (limited)')">📋 Check Status</button>
+              </div>
+              <div class="health-details" id="health-video-cli"></div>
             </div>
-            <div class="health-details" id="health-video-api"></div>
           </div>
         </div>
       </div>
@@ -308,18 +389,23 @@
   <button class="refresh-btn" onclick="refreshAll()" title="Refresh All">🔄</button>
 
   <script>
-    const services = {
-      'gw':            { health: '/',                                      kind:'http' },
-      'rabbitmq':      { health: '/preview/rabbitmq/',                     kind:'http' },
-      'camera-proxy':  { health: '/preview/camera-proxy/healthz',         kind:'http' },
-      'overlay-hub':   { health: '/preview/overlay-hub/healthz',          kind:'http' },
-      'api-gateway':   { health: '/preview/api-gateway/api/health',       kind:'http' },
-      'media-api':     { health: '/preview/media-api/',                    kind:'http' },
-      'video-api':     { health: '/preview/video-api/health',              kind:'http' },
-      'video-web':     { health: '/preview/video-web/api/health',          kind:'http' },
-      'web-site':      { health: '/preview/web-site/api/health',           kind:'http' },
-      'hotspot-installer': { health: null,                                 kind:'container' }
-    };
+      const services = {
+        'gw':            { health: '/',                                      kind:'http' },
+        'rabbitmq':      { health: '/preview/rabbitmq/',                     kind:'http' },
+        'discovery':     { health: '/preview/discovery/health',              kind:'http' },
+        'capture-daemon':{ health: '/preview/capture-daemon/devices',        kind:'http' },
+        'camera-proxy':  { health: '/preview/camera-proxy/healthz',         kind:'http' },
+        'overlay-hub':   { health: '/preview/overlay-hub/healthz',          kind:'http' },
+        'supervisor':    { health: '/preview/supervisor/health',            kind:'http' },
+        'runner':        { health: null,                                    kind:'container' },
+        'api-gateway':   { health: '/preview/api-gateway/api/health',       kind:'http' },
+        'media-api':     { health: '/preview/media-api/',                    kind:'http' },
+        'video-api':     { health: '/preview/video-api/health',              kind:'http' },
+        'video-cli':     { health: null,                                    kind:'container' },
+        'video-web':     { health: '/preview/video-web/api/health',          kind:'http' },
+        'web-site':      { health: '/preview/web-site/api/health',           kind:'http' },
+        'hotspot-installer': { health: null,                                 kind:'container' }
+      };
 
     function markOnline(id,msg){
       const el = document.getElementById(`status-${id}`); el.className='status-indicator status-online';
