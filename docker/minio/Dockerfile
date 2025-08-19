@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.6
 
-# (Optional) let BuildKit set these; we also fall back to uname -m
-ARG TARGETOS
+# Optionally pin MinIO server version; override at build time
+ARG MINIO_VERSION=RELEASE.2024-03-15T01-07-19Z
+# Let BuildKit provide target arch; fall back to uname -m when unset
 ARG TARGETARCH
 
 # ── Stage: fetch MinIO Client (mc) without relying on minio/mc tags ─────────
@@ -19,8 +20,8 @@ RUN set -eux; \
   chmod +x /mc
 
 # ── Stage: MinIO server + your entrypoint + mc ──────────────────────────────
-FROM minio/minio:RELEASE.2024-03-15T01-07-19Z
-# If you’d rather not pin, you can use :latest, but pinning is safer for CI reproducibility.
+FROM minio/minio:${MINIO_VERSION}
+# If you'd rather not pin, you can use :latest, but pinning is safer for CI reproducibility.
 
 # Add the client and entrypoint
 COPY --from=mcget /mc /usr/bin/mc
