@@ -13,6 +13,7 @@ COPY host/services/shared/go.sum            host/services/shared/go.sum
 COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/capture-daemon/go.mod    host/services/capture-daemon/go.mod
 COPY host/services/capture-daemon/go.sum    host/services/capture-daemon/go.sum
+COPY host/shared/go.mod                     host/shared/go.mod
 
 # 2) Create a minimal workspace (ONLY what we’ll copy: capture-daemon + shared)
 #    Avoid copying repo-root go.work which references missing modules.
@@ -27,6 +28,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # 3) Copy sources
 COPY host/services/shared/               host/services/shared/
 COPY host/services/capture-daemon/       host/services/capture-daemon/
+COPY host/shared/                        host/shared/
 
 # 4) Build (module root has main.go)
 WORKDIR /src/host/services/capture-daemon
