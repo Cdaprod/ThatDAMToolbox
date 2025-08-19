@@ -9,9 +9,7 @@
  * Tries to negotiate a WebRTC WHEP session for low-latency preview.
  * Falls back to HLS (`/hwcapture/live/stream.m3u8`) or a demo clip when
  * features are unavailable.
- */
-
-/**
+ *
  * negotiateWHEP posts an SDP offer and returns the answer SDP.
  * Example:
  *   const ans = await negotiateWHEP('/whep/camera1', offer);
