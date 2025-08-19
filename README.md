@@ -565,6 +565,17 @@ docker-compose up -d
 open http://localhost:8080
 ```
 
+### Prepare data directories before launch
+
+Use the platform hook to create required directories with correct
+ownership before starting services:
+
+```bash
+scripts/run_with_dirs.sh /var/lib/thatdamtoolbox/db /var/lib/thatdamtoolbox/media -- docker-compose up -d
+```
+
+The helper invokes `ensure-dirs`, making the operation idempotent.
+
 ### Manual Installation
 
 ```bash
