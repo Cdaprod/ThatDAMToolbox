@@ -9,6 +9,7 @@
   },
   "include": [
     "src/components/__tests__/**/*.tsx",
+    "src/components/modals/__tests__/**/*.tsx",
     "src/hooks/__tests__/**/*.tsx",
     "src/providers/__tests__/**/*.tsx",
     "src/lib/__tests__/**/*.ts",
