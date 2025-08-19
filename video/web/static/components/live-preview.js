@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const selects  = Array.from(document.querySelectorAll(".capDev"));
   const previews = Array.from(document.querySelectorAll(".prevImg"));
   const btn      = document.getElementById("startAll");
-  let recording  = false;
+  const jobIds   = Array(selects.length).fill(null);
 
   if (!selects.length || !previews.length || !btn) {
     console.error("live-preview.js: Required elements not found.");
@@ -61,29 +61,31 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     btn.disabled = true; // prevent double clicks
-    if (!recording) {
+    const allRecording = jobIds.every(id => id);
+    if (!allRecording) {
       // START
       Promise.all(
         selects.map((sel, idx) =>
-          fetch("/hwcapture/record/start", {
+          fetch(`/hwcapture/record?device=${encodeURIComponent(sel.value)}&fname=cam${idx + 1}.mp4`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              device: sel.value,
-              output: `cam${idx + 1}.mp4`
-            })
+          }).then(r => {
+            if (!r.ok) throw new Error("start failed");
+            return r.json();
+          }).then(data => {
+            jobIds[idx] = data.job;
+            return true;
           })
         )
       )
-      .then((results) => {
-        if (results.some(r => !r.ok)) throw new Error("Failed to start one or more recordings");
-        recording = true;
+      .then(() => {
+        if (jobIds.some(id => !id)) throw new Error("Failed to start one or more recordings");
         btn.textContent = "⏹ Stop both";
         btn.classList.add("recording");
       })
       .catch((err) => {
         alert("Could not start recording: " + err.message);
         console.error("live-preview.js:", err);
+        jobIds.fill(null);
       })
       .finally(() => {
         btn.disabled = false;
@@ -91,17 +93,15 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       // STOP
       Promise.all(
-        selects.map((sel) =>
-          fetch("/hwcapture/record/stop", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ device: sel.value })
+        jobIds.map((job) =>
+          fetch(`/hwcapture/record/${job}`, {
+            method: "DELETE",
           })
         )
       )
       .then((results) => {
         if (results.some(r => !r.ok)) throw new Error("Failed to stop one or more recordings");
-        recording = false;
+        jobIds.fill(null);
         btn.textContent = "▶ Start both";
         btn.classList.remove("recording");
       })
