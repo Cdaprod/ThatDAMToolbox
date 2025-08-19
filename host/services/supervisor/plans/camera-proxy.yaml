@@ -1,0 +1,9 @@
+apps:
+  - name: camera-proxy
+    kind: go
+    cwd: /host/services/camera-proxy
+    command: ["./camera-proxy"]
+    env:
+      UPSTREAM_HOST: api-gateway
+      UPSTREAM_PORT: "8080"
+    restart: always

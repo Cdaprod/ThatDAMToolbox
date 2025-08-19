@@ -1,3 +1,5 @@
+//go:build ignore
+
 package platform
 
 // DirEnsurer defines an interface for ensuring directories are present
