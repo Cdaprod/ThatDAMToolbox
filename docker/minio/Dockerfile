@@ -1,17 +1,31 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.6
 
-# Pin versions via build args; override in compose if needed
-ARG MINIO_VERSION=RELEASE.2024-03-15T01-07-19Z
-ARG MC_VERSION=RELEASE.2024-06-20T15-06-08Z
+# (Optional) let BuildKit set these; we also fall back to uname -m
+ARG TARGETOS
+ARG TARGETARCH
 
-# ── Stage: fetch MinIO Client (mc) for the *target* platform ────────────
-FROM --platform=$TARGETPLATFORM minio/mc:${MC_VERSION} AS mcget
-# mc binary is at /usr/bin/mc
+# ── Stage: fetch MinIO Client (mc) without relying on minio/mc tags ─────────
+FROM --platform=$BUILDPLATFORM alpine:3.20 AS mcget
+ARG TARGETARCH
+RUN apk add --no-cache ca-certificates wget
+RUN set -eux; \
+  arch="${TARGETARCH:-$(uname -m)}"; \
+  case "$arch" in \
+    arm64|aarch64) mc_arch=arm64 ;; \
+    amd64|x86_64)  mc_arch=amd64 ;; \
+    *)             mc_arch=amd64 ;; \
+  esac; \
+  wget -O /mc "https://dl.min.io/client/mc/release/linux-${mc_arch}/mc"; \
+  chmod +x /mc
 
-# ── Final: MinIO server + entrypoint + mc ───────────────────────────────
-FROM minio/minio:${MINIO_VERSION}
-COPY --from=mcget /usr/bin/mc /usr/bin/mc
-COPY --chmod=0755 entrypoint.sh /entrypoint.sh
+# ── Stage: MinIO server + your entrypoint + mc ──────────────────────────────
+FROM minio/minio:RELEASE.2024-03-15T01-07-19Z
+# If you’d rather not pin, you can use :latest, but pinning is safer for CI reproducibility.
+
+# Add the client and entrypoint
+COPY --from=mcget /mc /usr/bin/mc
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["server","/data","--console-address",":9001"]
