@@ -258,7 +258,7 @@ C) System-level knobs (compose & host)
 /docker-compose.yaml (snippets)
 
 services:
-  web-app:
+  video-web:
     deploy:
       resources:
         limits: { cpus: '0.80', memory: 768M }
@@ -266,6 +266,11 @@ services:
     environment:
       - NODE_OPTIONS=--max-old-space-size=512
       - UV_THREADPOOL_SIZE=8
+    volumes:
+      - ./docker/web-app:/app:cached
+      - video-web-node_modules:/app/node_modules
+      - video-web-next:/app/.next
+      - video-web-npm:/root/.npm
 
   camera-proxy:
     deploy:
