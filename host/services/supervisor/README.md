@@ -22,6 +22,8 @@ SUPERVISOR_URL=http://localhost:8070 RUNNER_EXECUTOR=docker \
 - `POLICY_REQUIRE_AUTH_FOR_BOOTSTRAP`
 - `JWKS_URL` (JWKS endpoint for JWT validation)
 - `SUPERVISOR_API_KEY` (static fallback)
+- `BUS_KIND` (e.g. `amqp` for RabbitMQ)
+- `BROKER_URL` (AMQP connection string)
 
 ## Endpoints (partial)
 
