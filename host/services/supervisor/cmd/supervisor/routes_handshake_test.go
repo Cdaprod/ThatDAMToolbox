@@ -55,3 +55,38 @@ func TestNodesPlanPolicy(t *testing.T) {
 		t.Fatalf("unexpected plan: %#v", dp)
 	}
 }
+
+// TestNodesPlanTemplateSelection verifies template selection based on capabilities.
+func TestNodesPlanTemplateSelection(t *testing.T) {
+	policy = envpolicy.EnvPolicy{AllowAnonymousProxy: true}
+
+	// camera-proxy chosen when role_hint empty and video_devices >= 1
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/nodes/plan", strings.NewReader(`{"node_id":"n1","capabilities":{"video_devices":1}}`))
+	nodesPlan(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	var dp plan.DesiredPlan
+	if err := json.NewDecoder(rr.Body).Decode(&dp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(dp.Apps) != 1 || dp.Apps[0].Name != "camera-proxy" {
+		t.Fatalf("expected camera-proxy plan, got %#v", dp.Apps)
+	}
+
+	// server plan chosen when role_hint == server
+	rr = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/v1/nodes/plan", strings.NewReader(`{"node_id":"n1","role_hint":"server"}`))
+	nodesPlan(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	dp = plan.DesiredPlan{}
+	if err := json.NewDecoder(rr.Body).Decode(&dp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(dp.Apps) < 2 || dp.Apps[0].Name != "media-api" {
+		t.Fatalf("expected server plan, got %#v", dp.Apps)
+	}
+}

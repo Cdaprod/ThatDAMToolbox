@@ -33,6 +33,15 @@ SUPERVISOR_URL=http://localhost:8070 RUNNER_EXECUTOR=docker \
 - `GET  /v1/bootstrap/profile`
 - `GET  /v1/leader`
 
+## Plan Selection
+
+`POST /v1/nodes/plan` loads YAML templates from `./plans`:
+
+- `server.yaml` when `role_hint` is `server`.
+- `camera-proxy.yaml` when `role_hint` is empty and the node reports `capabilities.video_devices >= 1`.
+
+Each template defines the app `env`, `ports`, and `after` settings.
+
 ### DesiredPlan example
 
 ```json
