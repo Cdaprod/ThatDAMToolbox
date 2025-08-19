@@ -1,19 +1,38 @@
 services:
   web-site:
     build:
-      context: ./docker/web-site
+      context: ../../docker/web-site
+      dockerfile: Dockerfile
+      target: development
     image: cdaprod/web-site:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-web-site
-    restart: unless-stopped
-    env_file:
-      - ./docker/web-site/.env           # or mount secrets in your preferred way
-    environment:
-      NODE_ENV: production
-      # You can also override here in CI or host:
-      # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+    platform: linux/arm64
     ports:
-      - "3000:3000"
+      - "3001:3000"
     networks: [damnet]
+    profiles: [web-site]
+    environment:
+      NODE_ENV: development
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+    volumes:
+      - ../../docker/web-site:/app:cached
+      - web-site-node_modules:/app/node_modules
+      - web-site-next:/app/.next
+      - web-site-npm:/root/.npm
+    entrypoint: ["/bin/sh","-c","chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 networks:
   damnet:
     external: true

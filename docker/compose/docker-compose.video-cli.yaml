@@ -1,0 +1,15 @@
+services:
+  video-cli:
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-video-cli-ephemeral
+    networks: [damnet]
+    profiles: [hydrate-backend, cli]
+    entrypoint: ["python", "-m", "video"]
+    command: ["scan", "--root", "/data/_INCOMING", "--workers", "1"]
+    volumes:
+      - /mnt/b/Video/thatdamtoolbox:/data:rw
+      - /mnt/b/Video/_INCOMING:/data/_INCOMING:rw
+      - db_wal:/var/lib/thatdamtoolbox/db:rw
+    restart: "no"
+    depends_on:
+      - video-api

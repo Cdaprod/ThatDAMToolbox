@@ -6,7 +6,7 @@ services:
     build:
       context: ../../
       dockerfile: docker/video-api/Dockerfile            # Multi-arch build
-    image: cdaprod/video:${IMAGE_TAG:-dev}
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
     # --- Networking (host-mode exposes 8080) ---
@@ -70,17 +70,17 @@ services:
     # --- Storage mounts ------------------------
     entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
     volumes:
-      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ../../host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
       - discovery-run:/run/discovery:ro
       # __ 1) your SMB-mounted data (media, previews, etc.)__
-      - "${DATA_ROOT:-./data}:/data:rw"
+      - "${DATA_ROOT:-../../data}:/data:rw"
       # __2) incoming staging dir__
-      - "${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw"
+      - "${INCOMING_ROOT:-../../incoming}:/data/_INCOMING:rw"
       # __3) local-only WAL DB__
       - db_wal:/var/lib/thatdamtoolbox/db:rw
       # __4) Live source for hot-reload (dev only)__
       - /dev:/dev:rw,rshared
-      - ./video:/video:rw
+      - ../../video:/video:rw
     restart: unless-stopped
     depends_on:
       - capture-daemon
@@ -98,7 +98,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-
-volumes:
-  discovery-run:                    # Exists in root /docker-compose.yaml
-    external: true
