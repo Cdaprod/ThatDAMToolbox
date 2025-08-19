@@ -2,6 +2,7 @@
 import React from 'react';
 import { Shaders, Node, GLSL } from 'gl-react';
 import { Surface } from 'gl-react-dom';
+import { overlaySurfaceStyle } from '@/styles/theme';
 
 const shaders = Shaders.create({
   focusPeaking: {
@@ -46,10 +47,7 @@ interface Props {
 const FocusPeakingOverlay: React.FC<Props> = ({ texture, resolution, enabled }) => {
   if (!enabled || !texture) return null;
   return (
-    <Surface
-      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-      pixelRatio={window.devicePixelRatio}
-    >
+    <Surface style={overlaySurfaceStyle} pixelRatio={window.devicePixelRatio}>
       <Node shader={shaders.focusPeaking} uniforms={{ t: texture, resolution }} />
     </Surface>
   );

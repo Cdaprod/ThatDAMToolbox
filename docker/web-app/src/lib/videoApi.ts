@@ -1,9 +1,10 @@
 // lib/videoApi.ts
-import { apiUrl } from './networkConfig';
+import { apiUrl } from './networkConfig'
+import type { Asset } from './apiAssets'
 
 /* ---------- helpers ---------- */
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), { next: { revalidate: 0 }, ...init });
+  const res = await fetch(apiUrl(path), { next: { revalidate: 0 }, ...init } as any);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
@@ -29,9 +30,14 @@ export const videoApi = {
   motionExtract: (payload: MotionExtractPayload) =>
     postJson<MotionJob>('/motion/extract', payload),
 
+  /* ffmpeg console */
+  ffmpegRun: (payload: { command: string; output?: string }) =>
+    postJson<{ output: string }>('/ffmpeg/run', payload),
+
   /* hardware capture helpers */
   listDevices: () => getJson<Device[]>('/hwcapture/devices'),
   witnessStart: (req: WitnessReq) => postJson<{}>('/hwcapture/witness_record', req),
+  vectorSearch: (q: string) => getJson<Asset[]>(`/vector-search?q=${encodeURIComponent(q)}`),
 };
 
 /* ---------- (very) skinny DTOs ---------- */

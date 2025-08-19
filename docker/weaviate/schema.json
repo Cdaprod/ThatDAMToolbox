@@ -3,7 +3,7 @@
     {
       “class”: “VideoAsset”,
       “description”: “A single digital video or media asset (raw or processed)”,
-      “vectorizer”: “none”,  // Switch to “text2vec-openai” if you want semantic search
+      “vectorizer”: “none”,  
       “properties”: [
         { “name”: “filename”,         “dataType”: [“string”], “description”: “Full asset filename” },
         { “name”: “originalPath”,     “dataType”: [“string”], “description”: “Original path at ingest” },

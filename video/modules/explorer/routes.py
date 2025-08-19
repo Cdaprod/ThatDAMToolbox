@@ -17,7 +17,6 @@ from pathlib import Path
 
 # --- Logging setup ----------------------------------------------------------
 log = logging.getLogger("video.explorer")
-log.setLevel(logging.INFO)          # DEBUG for extra verbosity during dev
 
 router = APIRouter(prefix="/explorer", tags=["explorer"])
 

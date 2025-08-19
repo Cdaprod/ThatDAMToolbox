@@ -1,0 +1,181 @@
+name: CI-Test-Changed-Services
+
+on:
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "docker/**"
+      - "!docker/compose/**"
+      - "docker/compose/**"
+      - "docker-compose.y*ml"
+      - "host/services/**"
+      - "**/go.*"
+      - "**/*.go"
+      - "**/*.ts"
+      - "**/*.py"
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed:          ${{ steps.set.outputs.changed }}
+      list:             ${{ steps.set.outputs.changed_services }}
+      compose_changed:  ${{ steps.set.outputs.compose_changed }}
+      compose_files:    ${{ steps.set.outputs.compose_files }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Ensure jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - id: set
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA=$(git merge-base origin/${{ github.base_ref }} HEAD)
+
+          MODIFIED_SERVICES=$(
+            git diff --name-only "$BASE_SHA" HEAD -- 'docker/*' 'host/services/**' \
+            | awk -F/ '$1=="docker"{print $2} $1=="host"&&$2=="services"{print $3}' \
+            | sort -u
+          )
+
+          if [ -z "$MODIFIED_SERVICES" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "changed_services=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            jq -nc --arg m "$MODIFIED_SERVICES" '$m|split("\n")|map(select(length>0))' \
+              | { read json; echo "changed_services=$json" >> "$GITHUB_OUTPUT"; }
+          fi
+
+          COMPOSE_FILES=$(
+            git diff --name-only "$BASE_SHA" HEAD -- 'docker-compose.y*ml' 'docker/compose/**'
+          )
+          if [ -z "$COMPOSE_FILES" ]; then
+            echo "compose_changed=false" >> "$GITHUB_OUTPUT"
+            echo "compose_files=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "compose_changed=true" >> "$GITHUB_OUTPUT"
+            jq -nc --arg m "$COMPOSE_FILES" '$m|split("\n")|map(select(length>0))' \
+              | { read json; echo "compose_files=$json" >> "$GITHUB_OUTPUT"; }
+          fi
+
+  test-services:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.23.x' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '18' }   # align with Dockerfile
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Install generic lint deps
+        run: |
+          set -e
+          sudo apt-get update
+          HADOLINT_VERSION="v2.12.0"
+          curl -sSL "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o hadolint
+          sudo install -m 0755 hadolint /usr/local/bin/hadolint
+          pip install pytest
+          npm i -g eslint
+
+      - name: Lint & unit-test ${{ matrix.service }}
+        shell: bash
+        run: |
+          set -e
+          SVC="${{ matrix.service }}"
+          DOCKER_DIR="docker/$SVC"
+          HOST_DIR="host/services/$SVC"
+
+          if [ -d "$DOCKER_DIR" ]; then
+            pushd "$DOCKER_DIR" >/dev/null
+            if [ -f Dockerfile ]; then
+              hadolint --failure-threshold error Dockerfile
+              docker build -t "local/$SVC:ci" .
+            else
+              echo "ℹ️  $DOCKER_DIR has no Dockerfile; skipping hadolint/build"
+            fi
+
+            if compgen -G "*.py" > /dev/null || compgen -G "**/*.py" > /dev/null; then
+              pytest -q
+            fi
+
+            if [ -f package.json ]; then
+              npm ci || npm install
+              npm test --if-present
+            fi
+            popd >/dev/null
+          else
+            echo "ℹ️  No docker dir for $SVC; skipping container lint/build"
+          fi
+
+          if [ -d "$HOST_DIR" ] && [ -f "$HOST_DIR/go.mod" ]; then
+            echo "🧪 go test $HOST_DIR/..."
+            go test "$HOST_DIR/..." -v -race -shuffle=on -count=1 || {
+              [[ $? -eq 1 && "$(go list "$HOST_DIR/...")" == "" ]] && \
+                echo "ℹ️  No Go packages to test in $HOST_DIR; ignoring" || exit 1
+            }
+          fi
+
+  compose-smoke:
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.changed == 'true' ||
+      needs.detect-changes.outputs.compose_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Ensure jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Pre-build changed services (if any)
+        shell: bash
+        run: |
+          for svc in $(echo '${{ needs.detect-changes.outputs.list }}' | jq -r '.[]'); do
+            [ -d "docker/$svc" ] && docker build -q -t "local/$svc:ci" "docker/$svc" || true
+          done
+
+      - name: Compose up (all layers)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1
+
+          # Default envs for CI
+          if [ -f .github/ci/.env ]; then
+            set -a; source .github/ci/.env; set +a
+          fi
+
+          ROOT="-f docker-compose.yaml"
+          [ -f docker-compose.yml ] && ROOT="-f docker-compose.yml"
+
+          LAYERS=""
+          if ls docker/compose/docker-compose.*.y*ml >/dev/null 2>&1; then
+            LAYERS=$(ls docker/compose/docker-compose.*.y*ml | xargs printf -- '-f %s ')
+          fi
+
+          echo "Using: $ROOT $LAYERS"
+          docker compose $ROOT $LAYERS up -d --remove-orphans --wait
+          docker compose $ROOT $LAYERS ps --format table
+
+      - name: Basic health checks (best-effort)
+        run: |
+          set -e
+          curl -fsS http://localhost:8080/health || echo "⚠️ api health missing"
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans

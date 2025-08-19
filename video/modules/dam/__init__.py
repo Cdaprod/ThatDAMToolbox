@@ -10,7 +10,8 @@ Adds:
 • Exports core singletons/services/entrypoints for re-use
 """
 
-from video.config import register_module_paths, DATA_DIR
+from video.config import DATA_DIR
+from video.paths import register_module_paths
 
 __version__ = "1.0.0"
 __author__ = "DAM System"

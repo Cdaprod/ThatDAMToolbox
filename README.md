@@ -1,12 +1,13 @@
-![](video/web/static/favicon/android-chrome-512x512.png)
+![](/public/favicon/android-chrome-512x512.png)
 
-# Media Indexer & DAM Toolbox
+#  ThatDAM (Digital Asset Management)
+## A Hybrid-Cloud Media Indexer & Asset Acquisition Platform
 
 [![CI-Build-and-Publish](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-build-and-publish.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-build-and-publish.yml)
 [![Generate NodeProp Configuration](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-nodeprop-config.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-nodeprop-config.yml)
 [![Generate Docker Compose Diagram](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-docker-diagram.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-docker-diagram.yml)
 [![Engineer Production Environment](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-engineer-env.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/ci-engineer-env.yml)
-
+[![Create Project Milestones](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-milestones.yml/badge.svg)](https://github.com/Cdaprod/ThatDAMToolbox/actions/workflows/generate-milestones.yml)
 
 <div align="center">
 
@@ -37,15 +38,65 @@
 
 ## Overview
 
+**ThatDAM's** primary identity is as a **Digital Asset Management** platform -- where ingestion (camera, NAS, local drives, etc.) is just one of multiple asset acquisition methods, and the real value is **exploration, categorization, indexing, and hybrid-cloud access**.
+
 A comprehensive Digital Asset Management (DAM) system that combines traditional media indexing with advanced AI-powered video processing. Built for content creators, video professionals, and organizations managing large media libraries.
 
 ### System Architecture
+
+#### In our system:
+- Ring of capture-daemon nodes = the core distributed file system ring
+- Camera-proxy peers = the peripheral components that interface with cameras and feed into the ring
+
+#### The camera-proxies are peers because they:
+1. Interface with the core system but aren’t part of the main ring structure
+2. Have specialized roles (camera interfacing) rather than general distributed storage duties
+3. Connect to/communicate with the ring nodes rather than being ring participants themselves
+
+#### In distributed systems terminology, this would be described as:
+- Core ring nodes (capture-daemon DFS nodes)
+- Edge peers or proxy peers (camera-proxy components)
+
+This is a common pattern where you have a core distributed system (your DFS ring) with specialized peripheral components (camera proxies) that act as data ingress points. The proxies are peers to each other and to the system, but they’re not full participants in the ring consensus/storage mechanism.
+So "camera-proxy peers" is the most systems-design-accurate description for those components in your architecture.​​​​​​​​​​​​​​​​
 
 ```
 Browser  →  FastAPI  →  Database
               ↘︎  Worker Queue → ML Workers (AI/ffmpeg)
               ↘︎  /data Volume → Raw Media Assets
 ```
+
+```mermaid
+flowchart TD
+  %% Minimal ThatDAMPlatform topology (Mermaid 11.5.0 safe)
+
+  subgraph EDGE["On‑prem / Edge"]
+    DEV["/dev/video* (camera)"]
+    CAP["capture-daemon"]
+    PROXY["camera-proxy"]
+  end
+
+  subgraph CLOUD["ThatDAMPlatform Cloud"]
+    GW["API Gateway"]
+    SFU["Live SFU (WHIP/WHEP)"]
+    APP["Web App (Dashboard)"]
+  end
+
+  %% Device -> Edge services
+  DEV --> CAP
+  DEV --> PROXY
+
+  %% Edge -> Cloud
+  CAP -->|record & ingest| GW
+  PROXY -->|enumerate/forward| GW
+  PROXY -->|WHIP publish| SFU
+
+  %% Client access
+  APP -->|HTTPS| GW
+  APP -->|WHEP view| SFU
+``` 
+
+See [Control Plane Bootstrapping](docs/TECHNICAL/BOOTSTRAP_ARCHITECTURE.md) for node roles and environment reconcile.
 
 ## Table of Contents
 
@@ -118,6 +169,8 @@ This topology ensures that each container has direct, read-write access to the s
 
 The core innovation of this DAM system is its multi-level video understanding:
 
+#### Latest Depiction
+
 ```mermaid
 sequenceDiagram
     participant UI as Browser
@@ -127,7 +180,7 @@ sequenceDiagram
     participant DAM as /api/embedding router
     participant Store as VectorStorage
 
-    Note over UI,JS: User drops a folder into web UI
+    Note over UI: User drops a folder into web UI
     JS->>Scan: POST /scan?dir=/media/batch1
     Scan->>Scan: Walk dir, find foo.mp4
     Scan->>API: POST /api/embedding/videos/ingest {path:"/media/batch1/foo.mp4"}
@@ -147,9 +200,174 @@ sequenceDiagram
 
 ---
 
-## System Architecture Details
+## Distributed Capture Network Topology
+### 🐳 Docker Compose Service Topology
 
-### Application Stack
+
+Our camera proxy peer provides video for straight away use.
+Our capture daemon does two things with a one provided (video capture):
+- Captures the full quality to media store (recording)
+- Presents itself live (live-preview pre-recording)
+
+One frontend is always available either by means of:
+- full scale web-app browswer
+- camera proxy peer's embedded browser viewer (not full web-app still frontend none the less)
+
+camera proxies are ephemeral and stateless
+capture daemon aims to be stateless at its core with persistent state
+
+#### Latest
+
+```mermaid
+flowchart TB
+  subgraph EDGE["Edge Layer - Camera Proxy Peers"]
+    direction LR
+    P1["camera-proxy-1<br/>ephemeral/stateless<br/>direct video provision"]
+    P2["camera-proxy-2<br/>ephemeral/stateless<br/>direct video provision"] 
+    P3["camera-proxy-N<br/>ephemeral/stateless<br/>direct video provision"]
+    
+    P1 -.-> EV1["embedded viewer"]
+    P2 -.-> EV2["embedded viewer"]
+    P3 -.-> EV3["embedded viewer"]
+  end
+
+  subgraph CORE["Core Ring - Capture Daemon DFS Nodes"]
+    direction TB
+    CD1["capture-daemon-1<br/>stateless core + persistent state<br/>• record to media store<br/>• live preview service"]
+    CD2["capture-daemon-2<br/>stateless core + persistent state<br/>• record to media store<br/>• live preview service"]
+    CD3["capture-daemon-3<br/>stateless core + persistent state<br/>• record to media store<br/>• live preview service"]
+    
+    CD1 <-.-> CD2
+    CD2 <-.-> CD3  
+    CD3 <-.-> CD1
+  end
+
+  subgraph FRONTEND["Frontend Access Patterns"]
+    WEB["Full Web App<br/>Browser Interface"]
+    EMBED["Embedded Viewers<br/>camera-proxy local"]
+  end
+
+  subgraph STORAGE["Persistent Storage"]
+    MEDIA["Media Store<br/>(full quality recordings)"]
+    LIVE["Live Preview Service<br/>(preprocessed streams)"]
+  end
+
+  subgraph CLOUD["ThatDAMPlatform Cloud"]
+    GW["API Gateway"]
+    SFU["Live SFU (WHIP/WHEP)"]
+    APP["Web Dashboard"]
+  end
+
+  %% Edge to Core data flows
+  P1 -->|video ingress| CD1
+  P2 -->|video ingress| CD2
+  P3 -->|video ingress| CD3
+  
+  %% Core ring distributed storage
+  CD1 --> MEDIA
+  CD2 --> MEDIA
+  CD3 --> MEDIA
+  
+  %% Core ring live services
+  CD1 --> LIVE
+  CD2 --> LIVE
+  CD3 --> LIVE
+  
+  %% Frontend access paths
+  WEB --> CORE
+  EV1 & EV2 & EV3 --> EMBED
+  
+  %% Cloud integration
+  CORE -->|record & ingest| GW
+  P1 & P2 & P3 -->|WHIP publish| SFU
+  APP -->|HTTPS| GW
+  APP -->|WHEP view| SFU
+  WEB <-.-> APP
+  
+  classDef edge fill:#FFE0E0,stroke:#D32F2F,stroke-width:2px
+  classDef core fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+  classDef frontend fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+  classDef storage fill:#E8F5E8,stroke:#388E3C,stroke-width:2px
+  classDef cloud fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+  
+  class P1,P2,P3 edge
+  class CD1,CD2,CD3 core
+  class WEB,EMBED,EV1,EV2,EV3 frontend
+  class MEDIA,LIVE storage
+  class GW,SFU,APP cloud
+``` 
+
+---
+
+#### Legacy v0.1.0
+
+```mermaid
+flowchart LR
+  %% Groups
+  subgraph INPUT["Input Sources"]
+    USB["USB cameras\n/dev/video*"]
+    IP["IP cameras"]
+    SCREEN["Screen capture"]
+  end
+
+  subgraph HOST["Host Services"]
+    CAPTURE["capture-daemon\nrecording + device control"]
+    PROXY["camera-proxy\nenumerate & proxy"]
+    AGENT["camera-agent\nedge push producer"]
+    DISC["discovery\nmDNS / Serf / Tailscale"]
+  end
+
+  subgraph LIVE["Live Distribution"]
+    SFU["mini-SFU\nWHIP publish / WHEP play\npass-through"]
+  end
+
+  subgraph BACKEND["Backend Services"]
+    GW["api-gateway"]
+    VIA["video-api"]
+    MIA["media-api"]
+  end
+
+  subgraph INFRA["Infrastructure"]
+    MQ["RabbitMQ"]
+    STORE["Media storage"]
+    NGX["Nginx / HTTP entry"]
+    VIEW["Viewers (browsers / players)"]
+  end
+
+  %% Paths
+  USB --> CAPTURE
+  USB --> PROXY
+  IP  --> PROXY
+  SCREEN --> CAPTURE
+
+  PROXY --> GW
+  AGENT --> GW
+
+  CAPTURE -- "WHIP" --> SFU
+  AGENT   -- "WHIP" --> SFU
+  VIEW    -- "WHEP" --> SFU
+
+  CAPTURE --> STORE
+  CAPTURE --> MQ
+  MQ --> VIA
+  VIA --> STORE
+  GW --> VIA
+  GW --> MIA
+  NGX --> GW
+
+  %% Styles (keep to safe properties)
+  classDef svc fill:#ECF3FF,stroke:#1E88E5,stroke-width:1px;
+  classDef live fill:#FFF3E0,stroke:#FB8C00,stroke-width:1px;
+  classDef infra fill:#E8F5E9,stroke:#43A047,stroke-width:1px;
+
+  class CAPTURE,PROXY,AGENT,DISC,GW,VIA,MIA svc;
+  class SFU live;
+  class MQ,STORE,NGX,VIEW infra;
+```
+
+---
+
+#### Legacy v0.0.0
 
 ```mermaid
 graph RL
@@ -419,6 +637,45 @@ All services share common middleware for authentication, rate limiting, logging,
 
 ### System Flow
 
+#### Latest
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant D as discovery
+  participant P as publisher (capture-daemon or camera-agent)
+  participant CP as camera-proxy
+  participant G as api-gateway
+  participant S as mini-SFU (WHIP/WHEP)
+  participant V as viewers
+  participant MQ as RabbitMQ
+  participant B as video-api
+  participant ST as storage
+
+  D->>D: Probe mDNS / Serf / Tailscale
+  alt No gateway found
+    D->>P: Select SERVER mode (enable capture + infra)
+  else Gateway present
+    D->>CP: Select PROXY mode (enumerate & proxy)
+  end
+
+  par Live distribution
+    P--)S: WHIP publish (H.264 pass-through)
+    V--)S: WHEP subscribe
+    S--)V: Stream to viewers
+  and Archival + AI
+    P->>ST: Write master files (ProRes/FFV1)
+    P->>MQ: Emit capture.* events
+    MQ->>B: Enqueue L1–L3 jobs
+    B->>ST: Thumbnails / previews / metadata
+  end
+
+  CP->>G: /api/devices, /stream
+  G->>B: Route API calls
+``` 
+
+#### Legacy
+
 ```mermaid
 graph TB
     subgraph "Client Layer"
@@ -544,6 +801,15 @@ sequenceDiagram
 
 ## Installation
 
+### Quick Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Cdaprod/ThatDAMToolbox/main/scripts/install.sh | sudo bash
+```
+
+The script auto-detects the Raspberry Pi architecture, downloads the latest
+release binaries, and installs them to `/usr/local/bin`.
+
 ### Prerequisites
 
 - Python 3.8+
@@ -558,8 +824,11 @@ sequenceDiagram
 git clone https://github.com/Cdaprod/ThatDAMToolbox.git
 cd ThatDAMToolbox
 
+# Build Go service images (run from repo root)
+docker compose build overlay-hub supervisor runner
+
 # Build and run with Docker Compose
-docker-compose up -d
+docker compose up -d
 
 # Access the web interface
 open http://localhost:8080
@@ -608,6 +877,18 @@ recent_media = indexer.get_recent()
 # Search content
 results = indexer.search("sunset beach")
 ```
+
+### Upstream Configuration
+
+The gateway falls back to `127.0.0.1:8080` when no upstream is specified. Override
+`UPSTREAM` (or `UPSTREAM_HOST`/`UPSTREAM_PORT`) to point elsewhere:
+
+```bash
+export UPSTREAM=127.0.0.1:8080
+```
+
+The entrypoint automatically splits this into `UPSTREAM_HOST` and `UPSTREAM_PORT`
+and fails fast if the host cannot be resolved.
 
 ### Web Interface
 
@@ -683,22 +964,27 @@ GET /jobs/{job_id}/status
 - [x] **Stock Video Curation** - Rating and licensing workflows
 - [x] **AI Batch Metadata Packaging** - XML/CSV sidecar generation
 - [x] **Bulk Stock Platform Publishing** - Automated distribution
+- [x] **Abstract Base Models & Artifact Factory** - Domain modeling framework
+- [x] **Vanilla Frontend Browser API** - Card-based web interface
+- [x] **Next.js Frontend** - Production Ready Web Browser App
+- [x] **Network Media Sync** - SMB/NAS/cloud integration
+- [x] **Deep Media Probe** - Advanced codec and EXIF analysis 
+- [x] **Websocket + WebRTC** - Frontend implmentation
+- [x] **Realtime Overlays** - False Color, Zebras, Focus Peaking
+- [x] **Monitor Multiple Cameras** - Indexes devices & hot plug/swap persistent
+- [x] **Web App Video Results** - Mjpeg preview of feeds in browser api endpoint 
 
 #### 🚧 In Progress
 
-- [ ] **Abstract Base Models & Artifact Factory** - Domain modeling framework
-- [ ] **Vanilla Frontend Browser API** - Card-based web interface
-- [ ] **Next.js Frontend** - Production Ready Web Browser App
-- [ ] **Network Media Sync** - SMB/NAS/cloud integration
-- [ ] **Deep Media Probe** - Advanced codec and EXIF analysis 
-- [ ] **Websocket + WebRTC** - Frontend implmentation
-- [ ] **Realtime Overlays** - False Color, Zebras, Focus Peaking
-- [ ] **Monitor Multiple Cameras** - Indexes devices & hot plug/swap persistent
-- [ ] **Web App Video Results** - Mjpeg preview of feeds in browser api endpoint 
+- [ ] **Frontend Web Site** - Decoupled from any "apps"
+- [ ] **Refactor FastAPI to Golang** - See [media-app](/host/services/media-app)
+- [ ] **Platform as a Service implementation** - Users, JWT, Systems, Etc
+- [ ] 
+
 #### 📋 Planned
 
 - [ ] **Audio-Waveform Sync** - Multi-cam align ent
-- [ ] **Speech-to-Text + Captions * - Advanced transcription
+- [ ] **Speech-to-Text + Captions** - Advanced transcription
 - [ ] **Batch Media → Blender Integration** - Dire t scene injection
 - [ ] **Dialogue/Music Separation** - AI-powere  audio processing
 - [ ] **End-to-End Media Lifecycle** - Comp ete workflow automation

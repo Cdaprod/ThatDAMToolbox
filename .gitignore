@@ -8,6 +8,9 @@ __pycache__/
 *.pyo
 *.pyd
 
+# ---- Golang ----
+**vendor**
+
 # ---- Notebooks ----
 *.ipynb_checkpoints/
 notebooks/*.ipynb_checkpoints/
@@ -19,6 +22,7 @@ notebooks/*.ipynb_checkpoints/
 *.env
 example.env
 !.env.example
+!/.github/ci/.env
 
 # ---- OS Junk ----
 .DS_Store
@@ -35,7 +39,7 @@ ehthumbs.db
 *.sublime-project
 
 # ---- Build & Dist ----
-build/
+#build/
 dist/
 *.log
 *.tmp
@@ -115,13 +119,16 @@ secrets.json
 *.pem
 *.key
 *.crt
+!docker/nginx/dev.key
+!docker/nginx/dev.crt
 
 # ---- Misc ----
 # If you have generated or temporary files, add patterns here
+video/modules/*/module.cfg
 *clipboard*
-*.disabled
+*disabled*
 host/releases/
-go.sum
+#go.sum
 /sqlite
 
 # GitVersion cache
@@ -130,27 +137,74 @@ go.sum
 # ---- Uncomment to ignore these if needed ----
 # /scripts/cli.py
 # /scripts/processor.disabled
+
+# ------------------------------------------------------------------
+# Legacy Favicon Version (see further in ignore below)
+# ------------------------------------------------------------------
 !/video/web/static/favicon/photo.png
-
 !/video/web/static/favicon/thatdamtoolbox-icon.png
-
 !/video/web/static/favicon/favicon-32x32.png
-
 !/video/web/static/favicon/favicon-16x16.png
-
 !/video/web/static/favicon/apple-touch-icon.png
-
 !/video/web/static/favicon/android-chrome-512x512.png
-
 !/video/web/static/favicon/android-chrome-192x192.png
 
+# ------------------------------------------------------------------
+# JSON normaly ignored so specified here if tracked
+# ------------------------------------------------------------------
 !/docker/web-app/package.json
-
+!/docker/web-site/package.json
 !/docker/web-app/tsconfig.json
-
+!/docker/web-app/tsconfig.test.json
 !/docker/rabbitmq/definitions.json
-
 !/docker/weaviate/schema.json
+!/docker/proxy-viewer/package.json
+!/docker/proxy-viewer/tsconfig.json
+!/docker/packages/player/package.json
+!/docker/packages/player/tsconfig.json
 
 /public/design-token-styles/**
 /docs/GIT-APPLY/**
+
+# ---- Node ----
+**/node_modules/
+
+!/docker/web-app/public/demo/bars720p30.mp4
+
+# ------------------------------------------------------------------
+# Generated at run-time by Python modules – we never want these
+# committed.  They only ever show up inside the `video/` tree.
+# ------------------------------------------------------------------
+/video/**/module.cfg          # ignore every module.cfg under video/
+
+# ------------------------------------------------------------------
+# BUT keep the hand-written demo configs that live in the data area
+# (e.g. /data/modules/dam/module.cfg).  By _not_ matching `data/`
+# we automatically keep them, but if you already had a broader rule
+# earlier (like `**/module.cfg`) you can whitelist them explicitly:
+# ------------------------------------------------------------------
+!data/**/module.cfg
+
+# Ignore accidental brace-named files from code snippets, e.g. `{foo,bar}`
+\{*,*\}
+
+/public/design-token-styles/**
+!/public/service-dashboards/**
+
+# ------------------------------------------------------------------
+# Latest Iteration of Logo
+# ------------------------------------------------------------------
+!/public/favicon/android-chrome-512x512.png
+
+# ------------------------------------------------------------------
+# Canary deployment in dev via compose (docker/compose/v2-canary)
+# ------------------------------------------------------------------
+!/docker/compose/v2-canary/.canary.env
+
+# ------------------------------------------------------------------
+# (DEV-ONLY) DO NOT HAVE IN PRODUCTION ENVIRONMENTS (DEVONLY)
+# ServiceDashboard.html for in dev observability on the fly
+# served from docker/web-app => docker/nginx 
+# ------------------------------------------------------------------
+!/docker/web-app/build/ServiceDashboard.html
+!/docker/web-app/build/*

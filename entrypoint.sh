@@ -3,6 +3,25 @@
 # Flexible, environment-aware runtime wrapper for the Video / DAM toolbox
 set -euo pipefail
 
+# Optional discovery role resolution
+if [ -f /opt/shared/entrypoint-snippet.sh ]; then
+  # shellcheck disable=SC1091
+  . /opt/shared/entrypoint-snippet.sh
+fi
+
+# Derive UPSTREAM_HOST and UPSTREAM_PORT from UPSTREAM if not already set
+if [[ -z "${UPSTREAM_HOST:-}" && -n "${UPSTREAM:-}" ]]; then
+  IFS=':' read -r UPSTREAM_HOST UPSTREAM_PORT <<< "${UPSTREAM}"
+  export UPSTREAM_HOST UPSTREAM_PORT
+fi
+
+if [ "${ROLE:-server}" = "agent" ]; then
+  export EVENT_BROKER_URL="${EVENT_BROKER_URL:-amqp://video:video@${UPSTREAM_HOST}:${UPSTREAM_PORT:-5672}/}"
+  UPSTREAM_ARG=(--upstream "http://${UPSTREAM_HOST}:${UPSTREAM_PORT:-8080}")
+else
+  UPSTREAM_ARG=()
+fi
+
 # ---------------------------------------------------------------------------
 # Environment-based path configuration
 # ---------------------------------------------------------------------------
@@ -87,13 +106,17 @@ log "🚀 Starting application..."
 if [[ $# -eq 0 ]]; then
   # Default: serve API
   log "No command specified, starting API server"
-  run_as_appuser python -m video serve --host 0.0.0.0 --port 8080
+  run_as_appuser python -m video serve --host 0.0.0.0 --port "${SERVICE_PORT:-8080}" "${UPSTREAM_ARG[@]}"
 else
   case "$1" in
     serve|scan|stats)
       sub=$1; shift
       log "Running video command: $sub $*"
-      run_as_appuser python -m video "$sub" "$@"
+      if [[ "$sub" = "serve" ]]; then
+        run_as_appuser python -m video serve --host 0.0.0.0 --port "${SERVICE_PORT:-8080}" "${UPSTREAM_ARG[@]}" "$@"
+      else
+        run_as_appuser python -m video "$sub" "$@"
+      fi
       ;;
     *)
       # Fallthrough: run arbitrary command (e.g. bash)

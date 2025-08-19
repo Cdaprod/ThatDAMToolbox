@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThatDAMPlatform – Immersive Landing Demo</title>
+    <style>
+        /* Reset and basic typography */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(ellipse at center, #101020 0%, #050509 100%);
+            color: #fff;
+            perspective: 1500px;
+            perspective-origin: 50% 50%;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        /* Infinite 3D background plane */
+        .infinite-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            transform-style: preserve-3d;
+            animation: canvasSpin 240s linear infinite;
+        }
+        @keyframes canvasSpin {
+            from { transform: rotateX(3deg) rotateY(0deg) rotateZ(0deg); }
+            to   { transform: rotateX(3deg) rotateY(360deg) rotateZ(2deg); }
+        }
+        .background-grid {
+            position: absolute;
+            width: 400vw;
+            height: 400vh;
+            top: -150vh;
+            left: -150vw;
+            background:
+                linear-gradient(90deg, rgba(14,165,233,0.1) 1px, transparent 1px),
+                linear-gradient(0deg, rgba(14,165,233,0.1) 1px, transparent 1px),
+                radial-gradient(circle at 20% 20%, rgba(168,85,247,0.05) 0%, transparent 60%),
+                radial-gradient(circle at 80% 80%, rgba(236,72,153,0.05) 0%, transparent 60%);
+            background-size: 80px 80px, 80px 80px, 600px 600px, 600px 600px;
+            transform: translateZ(-1000px) rotateX(85deg);
+            animation: gridDrift 10s ease-in-out infinite alternate;
+        }
+        @keyframes gridDrift {
+            from { opacity: 0.3; transform: translateZ(-1000px) rotateX(85deg) translateY(0px); }
+            to   { opacity: 0.7; transform: translateZ(-1000px) rotateX(85deg) translateY(-150px); }
+        }
+
+        /* Particle field */
+        .floating-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: rise 20s linear infinite;
+        }
+        .particle.small { width: 2px; height: 2px; background: rgba(14,165,233,0.8); }
+        .particle.medium { width: 3px; height: 3px; background: rgba(168,85,247,0.6); }
+        .particle.large { width: 5px; height: 5px; background: rgba(236,72,153,0.5); }
+        @keyframes rise {
+            0% {
+                transform: translateZ(-1500px) translateY(120vh) translateX(var(--x));
+                opacity: 0;
+            }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% {
+                transform: translateZ(300px) translateY(-150vh) translateX(var(--x));
+                opacity: 0;
+            }
+        }
+
+        /* Content container */
+        .content-container {
+            position: relative;
+            z-index: 100;
+            transform-style: preserve-3d;
+            width: 100%;
+            padding-top: 12vh;
+        }
+        .logo {
+            position: fixed;
+            top: clamp(20px, 4vh, 60px);
+            left: clamp(20px, 4vw, 60px);
+            z-index: 200;
+            font-size: clamp(1.4rem, 3vw, 2rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, #0ea5e9, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(14,165,233,0.5);
+            transform: translateZ(200px);
+        }
+
+        /* Section styling */
+        .glass-section {
+            position: relative;
+            backdrop-filter: blur(25px) saturate(160%);
+            background: rgba(10, 10, 25, 0.7);
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 10px 30px rgba(14,165,233,0.15);
+            max-width: min(92vw, 900px);
+            margin: clamp(80px, 20vh, 150px) auto;
+            padding: clamp(32px, 6vw, 64px);
+            transform-style: preserve-3d;
+            transition: transform 0.7s ease, box-shadow 0.5s ease;
+        }
+        .glass-section:hover {
+            transform: translateZ(40px) scale(1.02);
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 15px 40px rgba(14,165,233,0.25);
+            border-color: rgba(14,165,233,0.2);
+            background: rgba(14,14,30,0.8);
+        }
+        .glass-section::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(14,165,233,0.4) 20%, rgba(168,85,247,0.4) 50%, rgba(236,72,153,0.4) 80%, transparent);
+        }
+
+        /* Section offsets for depth */
+        .hero-section { transform: translateZ(250px) rotateX(-3deg); }
+        .features-section { transform: translateZ(180px) rotateY(-4deg); }
+        .tech-section { transform: translateZ(120px) rotateY(4deg); }
+        .cta-section { transform: translateZ(200px) rotateX(2deg); }
+
+        /* Typographic styles */
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #0ea5e9, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 80px rgba(14,165,233,0.3);
+            margin-bottom: clamp(24px, 5vh, 40px);
+        }
+        h2 {
+            font-size: clamp(1.6rem, 5vw, 3rem);
+            color: #0ea5e9;
+            margin-bottom: clamp(16px, 4vh, 32px);
+            font-weight: 700;
+            text-shadow: 0 0 50px rgba(14,165,233,0.4);
+        }
+        h3 {
+            font-size: clamp(1.2rem, 3.5vw, 2rem);
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #fff;
+        }
+        p {
+            font-size: clamp(1rem, 2.2vw, 1.4rem);
+            line-height: 1.7;
+            margin-bottom: clamp(16px, 4vh, 28px);
+            color: rgba(255,255,255,0.85);
+        }
+        .highlight { color: #0ea5e9; font-weight: 700; }
+
+        .feature-list {
+            list-style: none;
+            display: grid;
+            gap: clamp(12px, 2vw, 20px);
+            padding: 0;
+        }
+        .feature-list li {
+            background: rgba(14,165,233,0.05);
+            border-left: 4px solid #0ea5e9;
+            padding: clamp(12px, 2vw, 20px) clamp(20px, 4vw, 32px);
+            border-radius: 14px;
+            position: relative;
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+        .feature-list li:hover {
+            background: rgba(14,165,233,0.1);
+            transform: translateX(8px);
+        }
+        .feature-list li::before {
+            content: '▶';
+            position: absolute;
+            left: clamp(8px, 2vw, 16px);
+            color: #0ea5e9;
+            animation: pulse 3s infinite;
+            font-size: 0.8em;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 28vw, 220px), 1fr));
+            gap: clamp(12px, 3vw, 24px);
+            margin-top: clamp(20px, 4vh, 36px);
+        }
+        .tech-item {
+            background: rgba(14,165,233,0.08);
+            border: 1px solid rgba(14,165,233,0.2);
+            border-radius: 20px;
+            padding: clamp(20px, 4vw, 32px);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.4s ease, background 0.4s ease;
+        }
+        .tech-item:hover {
+            background: rgba(14,165,233,0.15);
+            transform: translateY(-6px) scale(1.03);
+            border-color: rgba(14,165,233,0.4);
+            box-shadow: 0 15px 40px rgba(14,165,233,0.25);
+        }
+        .tech-item::before {
+            content: '';
+            position: absolute;
+            top: -60%;
+            left: -60%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(14,165,233,0.1), transparent);
+            animation: swirl 6s linear infinite;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tech-item:hover::before { opacity: 1; }
+        @keyframes swirl {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #0ea5e9, #a855f7);
+            border: none;
+            border-radius: 60px;
+            padding: clamp(16px, 3vw, 24px) clamp(32px, 6vw, 56px);
+            color: #fff;
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 20px 40px rgba(14,165,233,0.4);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 25px 60px rgba(14,165,233,0.6);
+            background: linear-gradient(135deg, #0ea5e9, #ec4899);
+        }
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transition: left 0.5s;
+        }
+        .cta-button:hover::before { left: 100%; }
+
+        /* Navigation dots */
+        .nav-dots {
+            position: fixed;
+            right: clamp(20px, 4vw, 40px);
+            top: 50%;
+            transform: translateY(-50%) translateZ(300px);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.4s ease, background 0.4s ease;
+        }
+        .nav-dot.active {
+            background: #0ea5e9;
+            transform: scale(1.3);
+            box-shadow: 0 0 20px rgba(14,165,233,0.8);
+            border-color: rgba(14,165,233,0.4);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body { perspective: 1000px; }
+            .glass-section { margin: clamp(60px, 15vh, 100px) auto; padding: 24px; }
+            .hero-section, .features-section, .tech-section, .cta-section { transform: translateZ(100px); }
+            .nav-dots { display: none; }
+            .logo { position: relative; top: 0; left: 0; transform: none; text-align: center; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="infinite-canvas">
+        <div class="background-grid"></div>
+        <div class="floating-particles"></div>
+    </div>
+
+    <div class="content-container">
+        <div class="logo">ThatDAMPlatform</div>
+
+        <div class="nav-dots">
+            <div class="nav-dot active"></div>
+            <div class="nav-dot"></div>
+            <div class="nav-dot"></div>
+            <div class="nav-dot"></div>
+        </div>
+
+        <section class="glass-section hero-section">
+            <h1>ThatDAMPlatform</h1>
+            <p>An immersive <span class="highlight">digital asset management</span> experience designed to replace traditional camera monitors, streaming software and wireless transmitters with a browser‑native solution. Build your production workflow on a foundation of edge computing and 3D spatial exploration.</p>
+            <p>Turn an <span class="highlight">iPhone 16 Pro Max</span> or similar device into a professional monitor and capture device with integrated asset explorer, multi‑device orchestration and cloud‑native storage.</p>
+        </section>
+
+        <section class="glass-section features-section">
+            <h2>Core Features</h2>
+            <ul class="feature-list">
+                <li>Replace Atomos Ninja V and other dedicated field recorders</li>
+                <li>Built‑in OBS‑like streaming and recording capabilities</li>
+                <li>Restream directly to multiple destinations from a browser</li>
+                <li>Low‑latency wireless transmission via WebRTC overlay</li>
+                <li>Interactive 3D spatial asset explorer interface</li>
+                <li>Aggregate multiple devices into a single view</li>
+                <li>Cloud‑native storage with optional local caching</li>
+                <li>No native apps required – works on any modern browser</li>
+            </ul>
+        </section>
+
+        <section class="glass-section tech-section">
+            <h2>Technology Stack</h2>
+            <p>This platform runs across <span class="highlight">PaaS, SaaS and IaaS</span>, providing a backbone for digital media creators, production teams and enterprise media operations.</p>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <h3>Browser Native</h3>
+                    <p>Zero installations – everything runs in the browser</p>
+                </div>
+                <div class="tech-item">
+                    <h3>Real‑Time Sync</h3>
+                    <p>Orchestrate multiple devices with millisecond precision</p>
+                </div>
+                <div class="tech-item">
+                    <h3>3D Interface</h3>
+                    <p>Spatial exploration of your media assets</p>
+                </div>
+                <div class="tech-item">
+                    <h3>Cloud Storage</h3>
+                    <p>Eliminate physical media with cloud‑first storage</p>
+                </div>
+                <div class="tech-item">
+                    <h3>AI Processing</h3>
+                    <p>Automatic tagging and scene detection with ML</p>
+                </div>
+                <div class="tech-item">
+                    <h3>Edge Computing</h3>
+                    <p>Local‑first architecture for low latency and privacy</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-section cta-section">
+            <h2>Ready to Transform Your Workflow?</h2>
+            <p>Join early access and help shape the future of unified media production. Experience the ease of integrated capture, monitoring, restreaming and asset management right in your browser.</p>
+            <button class="cta-button" onclick="window.open('mailto:contact@thatdamplatform.com?subject=Early%20Access%20Request', '_blank')">Request Early Access</button>
+        </section>
+    </div>
+
+    <script>
+        // Create floating particles with random horizontal positions and durations
+        function createParticles() {
+            const container = document.querySelector('.floating-particles');
+            const particleCount = Math.min(100, Math.floor(window.innerWidth / 10));
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                const sizeRand = Math.random();
+                if (sizeRand < 0.5) particle.className = 'particle small';
+                else if (sizeRand < 0.8) particle.className = 'particle medium';
+                else particle.className = 'particle large';
+                const randomX = (Math.random() - 0.5) * 400;
+                particle.style.setProperty('--x', randomX + 'px');
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        // Observer to update active nav dot on scroll
+        function setupObserver() {
+            const sections = document.querySelectorAll('.glass-section');
+            const navDots = document.querySelectorAll('.nav-dot');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const index = Array.from(sections).indexOf(entry.target);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (navDots[index]) navDots[index].classList.add('active');
+                    }
+                });
+            }, { threshold: 0.5 });
+            sections.forEach(section => observer.observe(section));
+            navDots.forEach((dot, idx) => {
+                dot.addEventListener('click', () => {
+                    sections[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            });
+        }
+
+        // Mouse movement tilt effect for desktop
+        function setupMouseTilt() {
+            const canvas = document.querySelector('.infinite-canvas');
+            let targetX = 0, targetY = 0;
+            let mouseX = 0, mouseY = 0;
+            document.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+                mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+            });
+            function animateTilt() {
+                targetX += (mouseX - targetX) * 0.05;
+                targetY += (mouseY - targetY) * 0.05;
+                if (canvas && window.innerWidth > 768) {
+                    canvas.style.transform = `rotateY(${targetX * 4}deg) rotateX(${targetY * -4}deg)`;
+                }
+                requestAnimationFrame(animateTilt);
+            }
+            animateTilt();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            setupObserver();
+            setupMouseTilt();
+        });
+        window.addEventListener('resize', () => {
+            // regenerate particles for new dimensions
+            const container = document.querySelector('.floating-particles');
+            container.innerHTML = '';
+            createParticles();
+        });
+    </script>
+</body>
+</html>

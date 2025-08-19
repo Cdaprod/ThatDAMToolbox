@@ -2,7 +2,7 @@
 
 #### Author: David Cannan
 
-A lightweight Python agent that turns any device with a camera into a remote video source for the That DAM Toolbox system. The agent automatically discovers gateways via mDNS, registers itself, and streams JPEG frames over WebSocket.
+A lightweight Python agent that turns any device with a camera into a remote video source for the That DAM Toolbox system. The agent automatically discovers gateways via mDNS, registers itself, and streams either JPEG frames over WebSocket or a full WebRTC feed depending on configuration.
 
 ⸻
 
@@ -10,7 +10,7 @@ A lightweight Python agent that turns any device with a camera into a remote vid
 
 - **Auto-discovery** – Finds That DAM Toolbox gateways advertising `_thatdam._tcp` via mDNS
 - **Self-registration** – Registers with the gateway and persists credentials locally
-- **Video streaming** – Captures frames from `/dev/video*` and streams over WebSocket
+- **Video streaming** – Captures frames from `/dev/video*` and streams over WebSocket or WebRTC
 - **Persistent config** – Saves registration info to `/data/agent.yaml` for reconnects
 - **Resilient reconnection** – Exponential backoff reconnection with clean shutdown
 - **Minimal footprint** – Runs anywhere Python + OpenCV can run
@@ -39,15 +39,16 @@ docker/camera-agent/
 1. **Fetch well-known** – Get registration token from `/.well-known/thatdam.json`
 1. **Register device** – POST to `/api/devices/register` with device info
 1. **Persist credentials** – Save device ID and gateway info locally
-1. **Start streaming** – Connect to WebSocket and begin frame transmission
+1. **Start streaming** – Connect to WebSocket or serve WebRTC depending on `STREAM_MODE`
 
 ### Video Pipeline
 
 ```
 Camera → OpenCV → JPEG encode → Base64 → WebSocket → Gateway → Video API
+Camera → OpenCV → WebRTC track → Browser
 ```
 
-The agent captures frames at configurable resolution/FPS, encodes as JPEG with quality=80, base64 encodes for JSON transport, and sends over WebSocket with timestamp metadata.
+The agent captures frames at configurable resolution/FPS. In `ws-jpeg` mode it encodes JPEG with quality=80, base64 encodes for JSON transport, and sends over WebSocket with timestamp metadata. In `webrtc` mode frames are delivered as a native WebRTC video track.
 
 ⸻
 
@@ -63,6 +64,7 @@ The agent captures frames at configurable resolution/FPS, encodes as JPEG with q
 |`FRAME_W`         |`640`     |Frame width in pixels                  |
 |`FRAME_H`         |`360`     |Frame height in pixels                 |
 |`FPS`             |`10`      |Frames per second                      |
+|`STREAM_MODE`     |`ws-jpeg` |`ws-jpeg` or `webrtc` streaming mode    |
 |`GATEWAY_URL`     |(none)    |Static gateway override (bypasses mDNS)|
 
 ### Persistent Configuration
@@ -86,6 +88,8 @@ This allows the agent to reconnect without re-registering after restarts.
 ```bash
 cd docker/camera-agent
 docker build -t camera-agent:latest .
+# build for Raspberry Pi Zero 2 W
+docker buildx build --platform linux/arm/v7 -t camera-agent:pi .
 ```
 
 ### Run standalone
@@ -98,8 +102,11 @@ docker run -d \
   -e DEVICE_SERIAL=pi-kitchen-cam \
   -e FRAME_W=1280 \
   -e FRAME_H=720 \
+  -e STREAM_MODE=ws-jpeg \
   camera-agent:latest
 ```
+
+Set `STREAM_MODE=webrtc` to expose a WebRTC endpoint at `http://<host>:8081/webrtc`.
 
 ### Run with compose
 

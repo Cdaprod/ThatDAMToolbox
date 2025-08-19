@@ -1,0 +1,79 @@
+name: Create Project Milestones
+
+on:
+  push:
+    paths:
+      - '.github/workflows/generate-milestones.yml'
+  workflow_dispatch:
+
+jobs:
+  create-milestones:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Enable Debug Logging
+        run: echo "ACTIONS_RUNNER_DEBUG=true" >> $GITHUB_ENV
+
+      - name: Create Milestone for 🛠️ Project Initialization
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🛠️ Project Initialization", "state": "open", "description": "Foundation layer - Initializing the project."}'
+
+      - name: Create Milestone for 🧪 Planning and Setup
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🧪 Planning and Setup", "state": "open", "description": "Initial stage focused on defining project scope, requirements, and setting up basic project infrastructure."}'
+
+      - name: Create Milestone for 🧬 Feature Development
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🧬 Feature Development", "state": "open", "description": "Stage for building and implementing core project features and functionality."}'
+
+      - name: Create Milestone for 🎯 Prototype and Validation
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🎯 Prototype and Validation", "state": "open", "description": "Creating a prototype for validation, testing the feasibility, and refining key project aspects."}'
+
+      - name: Create Milestone for 🛠️ Refinement and Optimization
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🛠️ Refinement and Optimization", "state": "open", "description": "Focusing on refining features and optimizing performance before staging."}'
+
+      - name: Create Milestone for 🧪 Staging and Testing
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🧪 Staging and Testing", "state": "open", "description": "Setting up the staging environment for final tests and quality assurance before release."}'
+
+      - name: Create Milestone for 🎉 Public Release
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🎉 Public Release", "state": "open", "description": "Launching the project to the public and ensuring stable deployment."}'
+
+      - name: Create Milestone for 🎯 Post-Release and Maintenance
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/milestones \
+          -d '{"title": "🎯 Post-Release and Maintenance", "state": "open", "description": "Ongoing maintenance, bug fixes, and feature improvements after public release."}'

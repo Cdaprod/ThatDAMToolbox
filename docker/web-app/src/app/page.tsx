@@ -2,17 +2,14 @@
 'use client';
 
 import ToolCard from '@/components/ToolCard';
-import { dashboardTools, useIntelligentLayout } from '@/components/dashboardTools';
+import { dashboardTools } from '@/components/dashboardTools';
+import { useIntelligentLayout } from '@/hooks/useIntelligentLayout';
+import { gridStyle } from '@/styles/theme';
 
 export default function HomePage() {
   const { layoutGroups, focusedTool, setFocusedTool } = useIntelligentLayout(dashboardTools);
 
   const handleFocus = (toolId: string) => setFocusedTool(toolId);
-
-  // Shared grid style
-  const gridStyle = {
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  };
 
   return (
     <section className="w-full h-full flex flex-col items-center">

@@ -22,7 +22,7 @@ Thumbs.db
 #  Host layer golang
 ###############################
 host/releases/
-go.sum
+/go.sum
 
 ###############################
 #  Python artefacts
@@ -105,3 +105,4 @@ Dockerfile*
 docker-compose*.yml
 docker-compose*.yaml
 .dockerignore                # (this file itself is ignored automatically)
+!host/services/**/Dockerfile

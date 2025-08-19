@@ -1,12 +1,32 @@
-// /host/services/camera-proxy/main.go
+// Package main starts the camera-proxy service.
+//
+// The proxy discovers local camera devices and relays them to a capture-daemon
+// using WebRTC. If negotiation with the daemon fails the proxy falls back to
+// serving an MJPEG stream directly.
+//
+// Environment variables:
+//
+//		PROXY_PORT           - listening port (default 8000)
+//	     BACKEND_URL          - backend address to proxy (default http://api-gateway:8080)
+//		FRONTEND_URL         - frontend address to proxy (default http://localhost:3000)
+//		CAPTURE_DAEMON_URL   - optional capture-daemon address
+//		CAPTURE_DAEMON_TOKEN - bearer token for capture-daemon requests
+//		TLS_CERT_FILE        - serve HTTPS using this certificate
+//		TLS_KEY_FILE         - key for TLS_CERT_FILE
+//
+// Example:
+//
+//	PROXY_PORT=8000 BACKEND_URL=http://api-gateway:8080 \
+//	FRONTEND_URL=http://localhost:3000 CAPTURE_DAEMON_URL=http://localhost:9000 \
+//	./camera-proxy
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -17,8 +37,45 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
+	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
 	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
+
+var (
+	version   = "dev"
+	ffmpegCmd = exec.CommandContext
+)
+
+// hwAccelArgs returns additional ffmpeg arguments from FFMPEG_HWACCEL.
+func hwAccelArgs() []string {
+	if v := os.Getenv("FFMPEG_HWACCEL"); v != "" {
+		return strings.Fields(v)
+	}
+	return nil
+}
+
+// iceServers parses ICE_SERVERS as a comma-separated list of URLs.
+func iceServers() []webrtc.ICEServer {
+	v := os.Getenv("ICE_SERVERS")
+	if v == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make([]webrtc.ICEServer, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		out = append(out, webrtc.ICEServer{URLs: []string{p}})
+	}
+	return out
+}
 
 // DeviceInfo represents camera device information
 type DeviceInfo struct {
@@ -30,12 +87,17 @@ type DeviceInfo struct {
 
 // DeviceProxy manages camera device virtualization and proxying
 type DeviceProxy struct {
-	devices       map[string]*DeviceInfo
-	mutex         sync.RWMutex
-	backendURL    *url.URL
-	frontendURL   *url.URL
-	upgrader      websocket.Upgrader
-	deviceStreams map[string]*exec.Cmd
+	devices      map[string]*DeviceInfo
+	mutex        sync.RWMutex
+	backendURL   *url.URL
+	frontendURL  *url.URL
+	upgrader     websocket.Upgrader
+	daemonURL    string
+	daemonToken  string
+	probeKept    []v4l2probe.Device
+	probeDropped []v4l2probe.Device
+	usbSeen      map[string]struct{}
+	ignoredSeen  map[string]struct{}
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -50,13 +112,28 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		return nil, fmt.Errorf("invalid frontend URL: %v", err)
 	}
 
+	allow := strings.Split(getEnv("ALLOWED_ORIGINS", ""), ",")
 	return &DeviceProxy{
-		devices:       make(map[string]*DeviceInfo),
-		backendURL:    backendURL,
-		frontendURL:   frontendURL,
-		deviceStreams: make(map[string]*exec.Cmd),
+		devices:     make(map[string]*DeviceInfo),
+		backendURL:  backendURL,
+		frontendURL: frontendURL,
+		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
+		daemonToken: getEnv("CAPTURE_DAEMON_TOKEN", ""),
+		usbSeen:     make(map[string]struct{}),
+		ignoredSeen: make(map[string]struct{}),
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
+			CheckOrigin: func(r *http.Request) bool {
+				if len(allow) == 1 && allow[0] == "" {
+					return true
+				}
+				origin := r.Header.Get("Origin")
+				for _, a := range allow {
+					if strings.TrimSpace(a) == origin {
+						return true
+					}
+				}
+				return false
+			},
 		},
 	}, nil
 }
@@ -66,136 +143,81 @@ func (dp *DeviceProxy) discoverDevices() error {
 	dp.mutex.Lock()
 	defer dp.mutex.Unlock()
 
-	// Clear existing devices
+	prev := dp.devices
 	dp.devices = make(map[string]*DeviceInfo)
 
-	// Scan for V4L2 devices
-	pattern := "/dev/video*"
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return fmt.Errorf("failed to scan devices: %v", err)
-	}
-
-	for _, devicePath := range matches {
-		if info, err := dp.getDeviceInfo(devicePath); err == nil {
-			dp.devices[devicePath] = info
-			log.Printf("Discovered device: %s (%s)", info.Name, info.Path)
+	mergedFromDaemon := 0
+	if dp.daemonURL != "" {
+		req, _ := http.NewRequest(http.MethodGet, dp.daemonURL+"/devices", nil)
+		if dp.daemonToken != "" {
+			req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+		}
+		if resp, err := httpClient.Do(req); err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			var daemonDevs []map[string]any
+			if json.NewDecoder(resp.Body).Decode(&daemonDevs) == nil {
+				for _, d := range daemonDevs {
+					id, _ := d["id"].(string)
+					name, _ := d["name"].(string)
+					if id == "" {
+						continue
+					}
+					key := "daemon:" + id
+					dp.devices[key] = &DeviceInfo{Path: key, Name: name, IsAvailable: true}
+					mergedFromDaemon++
+				}
+			}
 		}
 	}
 
-	// Also scan for USB cameras that might not be mounted
+	devs, err := scanner.ScanAll()
+	if err != nil {
+		logx.L.Error("device scan failed", "err", err)
+	}
+	for _, d := range devs {
+		if _, exists := dp.devices[d.Path]; exists {
+			continue
+		}
+		dp.devices[d.Path] = &DeviceInfo{
+			Path:         d.Path,
+			Name:         d.Name,
+			IsAvailable:  true,
+			Capabilities: d.Capabilities,
+		}
+		if _, seen := prev[d.Path]; !seen {
+			logx.L.Info("device discovered", "name", d.Name, "path", d.Path)
+		}
+	}
+
+	for k, d := range prev {
+		if _, ok := dp.devices[k]; !ok {
+			logx.L.Info("device removed", "name", d.Name, "path", d.Path)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	opt := v4l2probe.DefaultOptions()
+	dp.probeKept, dp.probeDropped, _ = v4l2probe.Discover(ctx, opt)
+	for _, d := range dp.probeDropped {
+		if _, logged := dp.ignoredSeen[d.Node]; !logged {
+			logx.L.Info("ignoring device", "node", d.Node, "name", d.Name, "caps", d.Caps, "reason", d.Kind)
+			dp.ignoredSeen[d.Node] = struct{}{}
+		}
+	}
+
 	dp.scanUSBCameras()
 
+	if mergedFromDaemon == 0 && len(devs) == 0 {
+		return fmt.Errorf("no devices discovered from daemon or local probe")
+	}
 	return nil
 }
 
-// getDeviceInfo retrieves detailed information about a camera device
-func (dp *DeviceProxy) getDeviceInfo(devicePath string) (*DeviceInfo, error) {
-	// Check if device exists and is accessible
-	if _, err := os.Stat(devicePath); err != nil {
-		return nil, err
-	}
+var httpClient = &http.Client{Timeout: 5 * time.Second}
 
-	info := &DeviceInfo{
-		Path:         devicePath,
-		Name:         filepath.Base(devicePath),
-		IsAvailable:  true,
-		Capabilities: make(map[string]interface{}),
-	}
-
-	// Get device capabilities using v4l2-ctl
-	if caps, err := dp.getV4L2Capabilities(devicePath); err == nil {
-		info.Capabilities = caps
-		// Extract a more friendly name if available
-		if name, ok := caps["card"].(string); ok && name != "" {
-			info.Name = name
-		}
-	}
-
-	return info, nil
-}
-
-// getV4L2Capabilities gets device capabilities
-func (dp *DeviceProxy) getV4L2Capabilities(devicePath string) (map[string]interface{}, error) {
-	caps := make(map[string]interface{})
-
-	// Get device info
-	cmd := exec.Command("v4l2-ctl", "--device", devicePath, "--info")
-	output, err := cmd.Output()
-	if err != nil {
-		return caps, err
-	}
-
-	// Parse v4l2-ctl output
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ":") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(strings.ToLower(parts[0]))
-				value := strings.TrimSpace(parts[1])
-				caps[key] = value
-			}
-		}
-	}
-
-	// Get supported formats
-	cmd = exec.Command("v4l2-ctl", "--device", devicePath, "--list-formats-ext")
-	if output, err := cmd.Output(); err == nil {
-		caps["formats"] = dp.parseFormats(string(output))
-	}
-
-	return caps, nil
-}
-
-// parseFormats parses v4l2-ctl format output
-func (dp *DeviceProxy) parseFormats(output string) []map[string]interface{} {
-	var formats []map[string]interface{}
-	lines := strings.Split(output, "\n")
-	
-	var currentFormat map[string]interface{}
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "[") && strings.Contains(line, "]") {
-			if currentFormat != nil {
-				formats = append(formats, currentFormat)
-			}
-			currentFormat = make(map[string]interface{})
-			// Extract format name
-			if start := strings.Index(line, "]"); start != -1 {
-				formatName := strings.TrimSpace(line[start+1:])
-				if colon := strings.Index(formatName, ":"); colon != -1 {
-					currentFormat["name"] = strings.TrimSpace(formatName[:colon])
-					currentFormat["description"] = strings.TrimSpace(formatName[colon+1:])
-				}
-			}
-		} else if strings.Contains(line, "Size:") && currentFormat != nil {
-			// Parse resolution and frame rates
-			currentFormat["resolutions"] = dp.parseResolutions(line)
-		}
-	}
-	
-	if currentFormat != nil {
-		formats = append(formats, currentFormat)
-	}
-	
-	return formats
-}
-
-// parseResolutions parses resolution information
-func (dp *DeviceProxy) parseResolutions(line string) []string {
-	var resolutions []string
-	// Simple resolution parsing - can be enhanced
-	if strings.Contains(line, "x") {
-		parts := strings.Split(line, " ")
-		for _, part := range parts {
-			if strings.Contains(part, "x") && len(strings.Split(part, "x")) == 2 {
-				resolutions = append(resolutions, part)
-			}
-		}
-	}
-	return resolutions
-}
+// remaining helper functions removed: detailed capability parsing now lives in
+// shared scanners.
 
 // scanUSBCameras looks for USB cameras that might need initialization
 func (dp *DeviceProxy) scanUSBCameras() {
@@ -208,27 +230,174 @@ func (dp *DeviceProxy) scanUSBCameras() {
 
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
-		if strings.Contains(strings.ToLower(line), "camera") ||
-		   strings.Contains(strings.ToLower(line), "video") ||
-		   strings.Contains(strings.ToLower(line), "webcam") {
-			log.Printf("Found USB camera: %s", strings.TrimSpace(line))
+		l := strings.TrimSpace(line)
+		lower := strings.ToLower(l)
+		if lower == "" {
+			continue
+		}
+		if strings.Contains(lower, "camera") ||
+			strings.Contains(lower, "video") ||
+			strings.Contains(lower, "webcam") {
+			if _, seen := dp.usbSeen[l]; !seen {
+				logx.L.Info("found usb camera", "path", l)
+				dp.usbSeen[l] = struct{}{}
+			}
 		}
 	}
+}
+
+// registerWithDaemon posts local device metadata to the capture-daemon.
+func (dp *DeviceProxy) registerWithDaemon(ctx context.Context) error {
+	if dp.daemonURL == "" {
+		return nil
+	}
+
+	hostname, _ := os.Hostname()
+	dp.mutex.RLock()
+	var devs []*DeviceInfo
+	for _, d := range dp.devices {
+		if !strings.HasPrefix(d.Path, "daemon:") {
+			devs = append(devs, d)
+		}
+	}
+	dp.mutex.RUnlock()
+
+	payload := map[string]any{
+		"proxy_id": hostname,
+		"devices":  devs,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, dp.daemonURL+"/register", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if dp.daemonToken != "" {
+		req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	return nil
+}
+
+// negotiateWithDaemon performs the SDP offer/answer exchange.
+func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
+	if _, err := pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
+		return err
+	}
+	offer, err := pc.CreateOffer(nil)
+	if err != nil {
+		return err
+	}
+	gather := webrtc.GatheringCompletePromise(pc)
+	if err := pc.SetLocalDescription(offer); err != nil {
+		return err
+	}
+	<-gather
+	body, err := json.Marshal(map[string]any{"sdp": pc.LocalDescription()})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, dp.daemonURL+"/webrtc/offer", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if dp.daemonToken != "" {
+		req.Header.Set("Authorization", "Bearer "+dp.daemonToken)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var ans struct {
+		SDP webrtc.SessionDescription `json:"sdp"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&ans); err != nil {
+		return err
+	}
+	return pc.SetRemoteDescription(ans.SDP)
+}
+
+// streamFromFFmpeg launches ffmpeg and forwards H264 samples to track.
+func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample) error {
+	args := append(hwAccelArgs(), "-f", "v4l2", "-i", device,
+		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+		"-g", "30", "-keyint_min", "30", "-sc_threshold", "0",
+		"-f", "h264", "pipe:1")
+	cmd := ffmpegCmd(ctx, "ffmpeg", args...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	buf := make([]byte, 1<<20)
+	frameDur := time.Second / 15
+	for {
+		n, err := stdout.Read(buf)
+		if err != nil {
+			if err == io.EOF || ctx.Err() != nil {
+				return nil
+			}
+			return err
+		}
+		data := make([]byte, n)
+		copy(data, buf[:n])
+		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur})
+	}
+}
+
+// streamWebRTC starts a WebRTC relay to the capture-daemon.
+func (dp *DeviceProxy) streamWebRTC(ctx context.Context, device string) error {
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers()})
+	if err != nil {
+		return err
+	}
+	track, err := webrtc.NewTrackLocalStaticSample(
+		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264},
+		"video", "camera-proxy",
+	)
+	if err != nil {
+		return err
+	}
+	if _, err = pc.AddTrack(track); err != nil {
+		return err
+	}
+	if err := dp.negotiateWithDaemon(pc); err != nil {
+		return err
+	}
+	go func() {
+		_ = dp.streamFromFFmpeg(ctx, device, track)
+		pc.Close()
+	}()
+	return nil
 }
 
 // createReverseProxy creates a reverse proxy to the backend service
 func (dp *DeviceProxy) createReverseProxy(target *url.URL) *httputil.ReverseProxy {
 	proxy := httputil.NewSingleHostReverseProxy(target)
-	
-	// Customize the director to modify requests
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
+		origHost := req.Host
 		originalDirector(req)
-		req.Host = target.Host
-		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Forwarded-Host", origHost)
+		req.Header.Set("X-Forwarded-Proto", getEnv("FORWARDED_PROTO", "http"))
+		req.Header.Set("X-Forwarded-For", req.RemoteAddr)
 		req.Header.Set("X-Device-Proxy", "true")
 	}
-
 	return proxy
 }
 
@@ -276,20 +445,29 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Create FFmpeg stream for the device
-	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+	if strings.HasPrefix(devicePath, "daemon:") {
+		raw := strings.TrimPrefix(devicePath, "daemon:")
+		target := fmt.Sprintf("%s/preview/%s/index.m3u8", dp.daemonURL, url.PathEscape(filepath.Base(raw)))
+		http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Try WebRTC relay first
+	if err := dp.streamWebRTC(r.Context(), devicePath); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "webrtc"})
+		return
+	}
+
+	// Fallback to MJPEG stream
+	const boundary = "frame"
+	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary="+boundary)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "close")
 
-	cmd := exec.Command("ffmpeg",
-		"-f", "v4l2",
-		"-i", devicePath,
-		"-vf", "scale=640:480",
-		"-r", "15", // 15 FPS
-		"-f", "mjpeg",
-		"-q:v", "5",
-		"pipe:1",
-	)
+	args := append(hwAccelArgs(), "-f", "v4l2", "-i", devicePath,
+		"-vf", "scale=640:480", "-r", "15", "-f", "mjpeg", "-q:v", "5", "pipe:1")
+	cmd := ffmpegCmd(r.Context(), "ffmpeg", args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -307,7 +485,6 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		cmd.Wait()
 	}()
 
-	// Stream frames
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
@@ -319,19 +496,20 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		n, err := stdout.Read(buffer)
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("Stream read error: %v", err)
+				logx.L.Error("stream read error", "err", err)
 			}
 			break
 		}
 
-		// Write MJPEG frame boundary and data
-		fmt.Fprintf(w, "\r\n--frame\r\n")
-		fmt.Fprintf(w, "Content-Type: image/jpeg\r\n")
-		fmt.Fprintf(w, "Content-Length: %d\r\n\r\n", n)
-		w.Write(buffer[:n])
+		io.WriteString(w, "--"+boundary+"\r\n")
+		io.WriteString(w, "Content-Type: image/jpeg\r\n")
+		io.WriteString(w, fmt.Sprintf("Content-Length: %d\r\n\r\n", n))
+		if _, err := w.Write(buffer[:n]); err != nil {
+			break
+		}
+		io.WriteString(w, "\r\n")
 		flusher.Flush()
 
-		// Check if client disconnected
 		select {
 		case <-r.Context().Done():
 			return
@@ -345,7 +523,7 @@ func (dp *DeviceProxy) handleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 	// Upgrade connection
 	clientConn, err := dp.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		logx.L.Error("websocket upgrade failed", "err", err)
 		return
 	}
 	defer clientConn.Close()
@@ -358,7 +536,7 @@ func (dp *DeviceProxy) handleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 
 	backendConn, _, err := websocket.DefaultDialer.Dial(backendURL, nil)
 	if err != nil {
-		log.Printf("Backend WebSocket connection failed: %v", err)
+		logx.L.Error("backend websocket connection failed", "err", err)
 		return
 	}
 	defer backendConn.Close()
@@ -373,7 +551,7 @@ func (dp *DeviceProxy) proxyWebSocketMessages(from, to *websocket.Conn, directio
 	for {
 		messageType, data, err := from.ReadMessage()
 		if err != nil {
-			log.Printf("WebSocket read error (%s): %v", direction, err)
+			logx.L.Error("websocket read error", "direction", direction, "err", err)
 			break
 		}
 
@@ -383,7 +561,7 @@ func (dp *DeviceProxy) proxyWebSocketMessages(from, to *websocket.Conn, directio
 		}
 
 		if err := to.WriteMessage(messageType, data); err != nil {
-			log.Printf("WebSocket write error (%s): %v", direction, err)
+			logx.L.Error("websocket write error", "direction", direction, "err", err)
 			break
 		}
 	}
@@ -419,9 +597,10 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	// Initial discovery
 	if err := dp.discoverDevices(); err != nil {
-		log.Printf("Initial device discovery failed: %v", err)
+		logx.L.Error("initial device discovery failed", "err", err)
+	} else {
+		_ = dp.registerWithDaemon(ctx)
 	}
 
 	for {
@@ -430,66 +609,126 @@ func (dp *DeviceProxy) startPeriodicDiscovery(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := dp.discoverDevices(); err != nil {
-				log.Printf("Device discovery failed: %v", err)
+				logx.L.Error("device discovery failed", "err", err)
+			} else {
+				_ = dp.registerWithDaemon(ctx)
 			}
 		}
 	}
 }
 
+// handleDebugV4L2 exposes the last V4L2 discovery result.
+//
+// Example:
+//
+//	curl http://localhost:8000/debug/v4l2
+func (dp *DeviceProxy) handleDebugV4L2(w http.ResponseWriter, r *http.Request) {
+	dp.mutex.RLock()
+	out := struct {
+		Kept    []v4l2probe.Device `json:"kept"`
+		Dropped []v4l2probe.Device `json:"dropped"`
+	}{Kept: dp.probeKept, Dropped: dp.probeDropped}
+	dp.mutex.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		http.Error(w, "encode failed", http.StatusInternalServerError)
+	}
+}
+
 // setupRoutes configures the proxy routes
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
-	mux := http.NewServeMux()
+        mux := http.NewServeMux()
+
+	// Health endpoints
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "ok")
+	})
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "ok")
+	})
 
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)
-	
+
 	// WebSocket proxy for control messages
 	mux.HandleFunc("/ws/", dp.handleWebSocketProxy)
-	
+
 	// Enhanced device API endpoints
 	mux.HandleFunc("/api/devices", dp.enhanceDeviceResponse)
 	mux.HandleFunc("/devices", dp.enhanceDeviceResponse)
-	
-	// Default proxy to backend for all other requests
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		proxy := dp.createReverseProxy(dp.backendURL)
-		proxy.ServeHTTP(w, r)
-	})
+
+       // Debug endpoint for V4L2 discovery
+       mux.HandleFunc("/debug/v4l2", dp.handleDebugV4L2)
+
+       // Serve embedded viewer static files
+       viewerDir := getEnv("VIEWER_DIR", "/srv/viewer")
+       fs := http.FileServer(http.Dir(viewerDir))
+       mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
+
+       // Default proxy to backend for all other requests
+       mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+               proxy := dp.createReverseProxy(dp.backendURL)
+               proxy.ServeHTTP(w, r)
+       })
 
 	return mux
 }
 
 func main() {
+	logx.Init(logx.Config{
+		Service: "camera-proxy",
+		Version: version,
+		Level:   getEnv("LOG_LEVEL", "info"),
+		Format:  getEnv("LOG_FORMAT", "auto"),
+		Caller:  getEnv("LOG_CALLER", "short"),
+		Time:    getEnv("LOG_TIME", "rfc3339ms"),
+		NoColor: os.Getenv("LOG_NO_COLOR") == "1",
+	})
+
 	// Configuration from environment variables
 	proxyPort := getEnv("PROXY_PORT", "8000")
-	backendAddr := getEnv("BACKEND_URL", "http://localhost:8080")
+	backendAddr := getEnv("BACKEND_URL", "http://api-gateway:8080")
 	frontendAddr := getEnv("FRONTEND_URL", "http://localhost:3000")
 
 	// Create device proxy
 	proxy, err := NewDeviceProxy(backendAddr, frontendAddr)
 	if err != nil {
-		log.Fatalf("Failed to create device proxy: %v", err)
+		logx.L.Error("failed to create device proxy", "err", err)
+		os.Exit(1)
 	}
 
 	// Start device discovery
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go proxy.startPeriodicDiscovery(ctx)
+	startOverlay(ctx)
 
 	// Setup routes
 	handler := proxy.setupRoutes()
 
 	// Start proxy server
-	log.Printf("Camera Device Proxy starting on port %s", proxyPort)
-	log.Printf("Proxying to backend: %s", backendAddr)
-	log.Printf("Serving frontend: %s", frontendAddr)
-	
+	logx.L.Info("service starting", "port", proxyPort)
+	logx.L.Info("proxying to backend", "backend", backendAddr)
+	logx.L.Info("serving frontend", "frontend", frontendAddr)
+
 	server := &http.Server{
 		Addr:    ":" + proxyPort,
 		Handler: handler,
 	}
-
-	log.Fatal(server.ListenAndServe())
+	cert := getEnv("TLS_CERT_FILE", "")
+	key := getEnv("TLS_KEY_FILE", "")
+	if cert != "" && key != "" {
+		if err := server.ListenAndServeTLS(cert, key); err != nil {
+			logx.L.Error("server failed", "err", err)
+			os.Exit(1)
+		}
+	}
+	if err := server.ListenAndServe(); err != nil {
+		logx.L.Error("server failed", "err", err)
+		os.Exit(1)
+	}
 }
 
 // getEnv gets environment variable with default value

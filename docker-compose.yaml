@@ -1,7 +1,22 @@
+
 ########################################################################
 # Root "/docker-compose.yaml"
 ########################################################################
 name: thatdamtoolbox
+
+# Set IMAGE_TAG to control cdaprod image tags (default: dev)
+
+
+########################################################################
+# Optionally Included Infra-Grade Services
+########################################################################
+include:
+    #### Infra Provided Services
+  - path: ./docker/compose/docker-compose.postgres.yaml
+  - path: ./docker/compose/docker-compose.weaviate.yaml
+  - path: ./docker/compose/docker-compose.minio.yaml
+    #### Golang Host Services
+  - path: ./host/services/discovery/docker-compose.discovery.yaml
 
 
 ########################################################################
@@ -14,10 +29,60 @@ networks:
 
 services:
   ########################################################################
+  # Auth: Bridge (cloud/on-prem flip) + optional Keycloak
+  ########################################################################
+  auth-bridge:
+    build:
+      context: .
+      dockerfile: docker/auth-bridge/Dockerfile
+    image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-auth
+    networks: [damnet]
+    ports: ["8081:8081"]
+    # Pick provider at runtime: "auth0" or "keycloak"
+    environment:
+      OIDC_PROVIDER: "${OIDC_PROVIDER:-auth0}"
+      # Auth0 defaults (ignored if provider=keycloak)
+      OIDC_ISSUER: "${AUTH0_ISSUER:-https://example.us.auth0.com/}"
+      OIDC_CLIENT_ID: "${AUTH0_CLIENT_ID:-changeme}"
+      OIDC_CLIENT_SECRET: "${AUTH0_CLIENT_SECRET:-changeme}"
+      OIDC_SCOPES: "openid profile email"
+      AUTH_REDIRECT_BASE: "${AUTH_REDIRECT_BASE:-http://localhost:8081}"
+      AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:-localhost}"
+      AUTH_ALLOWED_ORIGINS: "${AUTH_ALLOWED_ORIGINS:-http://localhost:3000}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    profiles: ["auth0","keycloak"]  # available in both profiles
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: thatdamtoolbox-keycloak
+    networks: [damnet]
+    ports: ["8089:8080"]
+    environment:
+      KEYCLOAK_ADMIN: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: "admin"
+    # Guard: only run when provider=keycloak (otherwise exit fast/no-op)
+    command: ["sh","-lc","[ \"$${OIDC_PROVIDER:-auth0}\" = keycloak ] || { echo 'Keycloak disabled'; exit 0; }; exec /opt/keycloak/bin/kc.sh start-dev --import-realm"]
+    volumes:
+      - ./seeds/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    profiles: ["keycloak"]  # only appears when keycloak profile is active
+
+  ########################################################################
   # 0. one-shot host configurator (runs only with `--profile setup`)
   ########################################################################
   hotspot-installer:
-    image: thatdam-hotspot-installer:latest     # the image with setup.sh
+    image: thatdam-hotspot-installer:${IMAGE_TAG:-dev}     # the image with setup.sh
     privileged: true                            # needs NET_ADMIN, etc.
     network_mode: host                          # touches wlan0 directly
     profiles: ["setup"]                         # ← won’t start in the main stack
@@ -28,40 +93,48 @@ services:
         target: dam_token                       # → /run/secrets/dam_token
     restart: "no"                               # it exits after writing configs
 
+
   ########################################################################
   # 1. public front-door (owns :80 / :443 on the Pi)
   ########################################################################
-  gw:
+  gateway:
     build:
       context: ./docker/nginx
       dockerfile: Dockerfile
+    image: cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
+    entrypoint: ["/bin/bash","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
     network_mode: host             # owns :80 / :443 on the Pi
-    # profiles: ["gateway"]
     restart: unless-stopped
     depends_on:
-      - video-api
+      - api-gateway
       - video-web
-
+      - video-api
+      - thatdamtoolbox-discovery
+    environment:
+      UPSTREAM_HOST: api-gateway
+      UPSTREAM_PORT: "8080"
+      UPSTREAM: api-gateway:8080
+      SERVICE_PORT: "8080"
     # If you choose bridge mode instead, comment network_mode and add:
     # networks: [damnet]
     # ports: ["80:80"]
-
-    environment:
-      # host-net → talk to services via 127.0.0.1
-      API_HOST: "127.0.0.1"
-      API_PORT: "8080"
-      WEB_HOST: "127.0.0.1"
-      WEB_PORT: "3000"
-
     volumes:
-      # allow you to override nginx.tmpl without rebuilding
-      - ./docker/nginx/nginx.tmpl:/etc/nginx/nginx.tmpl:ro
+      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ./docker/nginx/entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/web-app/build:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
-      
+
+
   ########################################################################
   # 2. infrastructure services
   ########################################################################
@@ -69,7 +142,7 @@ services:
     build:
       context: ./docker/rabbitmq
       dockerfile: Dockerfile
-    image: cdaprod/thatdamtoolbox-rabbitmq   # was rabbitmq:3.13-alpine
+    image: cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}   # was rabbitmq:3.13-management
     container_name: thatdamtoolbox-rabbitmq
     restart: unless-stopped
     networks: [damnet]
@@ -89,26 +162,35 @@ services:
 
 
   ########################################################################
-  # 3. capture daemon (needs /dev + v4l2, so bridge is fine)
+  # 3a. Golang- capture daemon (needs /dev + v4l2, so bridge is fine)
   ########################################################################
   capture-daemon:
     build:
       context: .
       dockerfile: host/services/capture-daemon/Dockerfile
-    image: cdaprod/video-capture-daemon:latest    # Can omit for local dev, keep for registry pushes
+    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}    # Can omit for local dev, keep for registry pushes
     container_name: thatdamtoolbox-capture-daemon
     networks: [damnet]
     init: false
     privileged: true                        # Needed for /dev and v4l2
     pid: host
+    ports:
+      - "${CAPTURE_DAEMON_HOST_PORT:-19000}:9000"
     environment:
-     AMQP_URL: "amqp://video:video@rabbitmq:5672/"
-     REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
-     CAPTURE_OUTDIR: "/records"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+      OVERLAY_HUB_URL: "http://overlay-hub:8090"
+      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"  # Or your actual registry/repo URL
+      CAPTURE_OUTDIR: "/records"
+      AUTH_TOKEN: "devtoken"
+      ICE_SERVERS: "stun:stun.l.google.com:19302"       # Optional STUN/TURN list
+      FFMPEG_HWACCEL: ""                                # e.g. "cuda -hwaccel_device 0"
     volumes:
       - /dev:/dev
       - /lib/modules:/lib/modules:ro
       - ./data/modules/hwcapture/records:/records   # Adjust to your persistent record dir
+      - discovery-run:/run/discovery:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:9000/devices"]
       interval: 10s
@@ -117,16 +199,192 @@ services:
     restart: unless-stopped
     depends_on:
       - rabbitmq
+      - overlay-hub
+      - thatdamtoolbox-discovery
 
 
   ########################################################################
-  # 4. FastAPI back-end (mapped => reachable on host :8080)
+  # 3b. Golang - camera proxy  (device-agnostic + hot-plug)
+  ########################################################################
+  camera-proxy:
+    build:
+      context: .
+      dockerfile: host/services/camera-proxy/Dockerfile
+    image: cdaprod/camera-proxy:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-camera-proxy
+    networks: [damnet]
+    ports: ["8000:8000"]
+    # Device-agnostic, hot-plug capable:
+    # - Mount the whole /dev so new /dev/video* nodes appear without restart
+    # - Open cgroup rules for V4L2 (+DRM if you later use HW accel)
+    # - No fixed `devices:` mapping, so it's idempotent on hosts with 0 cameras
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ./host/services/camera-proxy/entrypoint.sh:/entrypoint.sh:ro
+      - discovery-run:/run/discovery:ro
+      - /dev:/dev:rw,rshared
+    device_cgroup_rules:
+      - "c 81:* rmw"     # video4linux (/dev/video*)
+      - "c 226:* rmw"    # DRM (/dev/dri/*) -- safe to keep for future HW accel
+    # Optional: drop this if you don't care about container user groups
+    group_add:
+      - video
+    # If your Docker host blocks some ioctls, flip this on as a last resort:
+    # privileged: true
+    environment:
+      EVENT_BROKER_URL: "${EVENT_BROKER_URL:-amqp://video:video@rabbitmq:5672/}"
+      NEXT_PUBLIC_LOGIN_URL: "${NEXT_PUBLIC_LOGIN_URL:-https://idp.example.com/login}"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "${NEXT_PUBLIC_PLAUSIBLE_DOMAIN:-example.com}"
+      OVERLAY_HUB_URL: "${OVERLAY_HUB_URL:-http://overlay-hub:8090}"
+      CAPTURE_DAEMON_URL: "${CAPTURE_DAEMON_URL:-http://capture-daemon:9000}"
+      CAPTURE_DAEMON_TOKEN: "${CAPTURE_DAEMON_TOKEN:-devtoken}"
+      ICE_SERVERS: "${ICE_SERVERS:-stun:stun.l.google.com:19302}"
+      FFMPEG_HWACCEL: "${FFMPEG_HWACCEL:-}"
+      UPSTREAM_HOST: "${UPSTREAM_HOST:-api-gateway}"
+      UPSTREAM_PORT: "${UPSTREAM_PORT:-8080}"
+    # Health is OK even with 0 devices; your app serves /healthz regardless.
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - overlay-hub
+      - thatdamtoolbox-discovery
+
+
+  ########################################################################
+  # 3c. Golang - overlay hub
+  ########################################################################
+  overlay-hub:
+    build:
+      context: .
+      dockerfile: host/services/overlay-hub/Dockerfile
+    image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-overlay-hub
+    networks: [damnet]
+    ports: ["8090:8090"]
+    environment:
+      JWKS_URL: "http://api-gateway:8080/.well-known/jwks.json"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "waiting for JWKS at http://api-gateway:8080/.well-known/jwks.json"
+        until wget -qO- http://api-gateway:8080/.well-known/jwks.json >/dev/null 2>&1; do
+          sleep 2
+        done
+        exec /app/overlay-hub
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+
+
+  supervisor:
+    build:
+      context: .
+      dockerfile: host/services/supervisor/Dockerfile
+    image: cdaprod/supervisor:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-supervisor
+    networks: [damnet]
+    ports: ["8070:8070"]
+    environment:
+      SUPERVISOR_API_KEY: "changeme"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      EVENT_PREFIX: "overlay"
+      BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      BROKER_EXCHANGE: "events"
+      BROKER_QUEUE: "supervisor"
+      BROKER_KIND: "direct"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8070/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+
+  runner:
+    build:
+      context: .
+      dockerfile: host/services/runner/Dockerfile
+    image: cdaprod/runner:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-runner
+    networks: [damnet]
+    environment:
+      SUPERVISOR_URL: "http://supervisor:8070"
+    depends_on:
+      - supervisor
+    healthcheck:
+      test: ["CMD", "sh", "-c", "pgrep runner >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+
+  ########################################################################
+  # 3d. Golang - host api gateway
+  ########################################################################
+  api-gateway:
+    build:
+      context: .
+      dockerfile: host/services/api-gateway/Dockerfile
+    image: cdaprod/api-gateway:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-api-gateway
+    networks: [damnet]
+    ports: ["8085:8080"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+
+  ########################################################################
+  # 3e. Golang - host media api (video-api v2)
+  ########################################################################
+  media-api:
+    profiles: ["media-api"]
+    build:
+      context: .
+      dockerfile: host/services/media-api/Dockerfile
+    image: cdaprod/media-api:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-media-api
+    networks: [damnet]
+    ports: ["8081:8080"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+    depends_on:
+      - rabbitmq
+
+
+  ########################################################################
+  # 4a. FastAPI back-end (mapped => reachable on host :8080)
   ########################################################################
   video-api:
     build:
       context: .
-      dockerfile: Dockerfile            # Multi-arch build
-    image: cdaprod/video:dev
+      dockerfile: docker/video-api/Dockerfile            # Multi-arch build
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
     # --- Networking (host-mode exposes 8080) ---
@@ -181,12 +439,16 @@ services:
       # VIDEO_STORAGE:  "sqlite"                      # Default (no env needed)
       # VIDEO_STORAGE:  "faiss"                       # Use Faiss vector index
       # VIDEO_STORAGE:  "weaviate"                    # Use Weaviate backend
-      # WEAVIATE_URL:   "http://localhost:8081"        # For Weaviate backend:
-      # MINIO_ENDPOINT: "http://localhost:9000"   # Optional if your code needs it
+      WEAVIATE_URL:   "http://localhost:8082"         # For Weaviate backend:
+      MINIO_ENDPOINT: "http://localhost:9000"         # Optional if your code needs it
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
     # --- Storage mounts ------------------------
     volumes:
+      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - discovery-run:/run/discovery:ro
       # __ 1) your SMB-mounted data (media, previews, etc.)__
       - "${DATA_ROOT:-./data}:/data:rw"
       # __2) incoming staging dir__
@@ -199,6 +461,8 @@ services:
     restart: unless-stopped
     depends_on:
       - capture-daemon
+      - rabbitmq
+      - thatdamtoolbox-discovery
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
@@ -206,53 +470,18 @@ services:
     mem_limit: 1500m
     cpus: 1.0
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:8080/health || exit 1"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-
-  ########################################################################
-  # 5. Next.js dev server (exposed only for dev)
-  ########################################################################
-  video-web:
-    build:
-      context: ./docker/web-app
-      dockerfile: Dockerfile
-      target: development
-    image: cdaprod/video-web:dev
-    container_name: thatdamtoolbox-video-web-app
-    platform: linux/arm64
-    ports:
-      - "3000:3000"
-    networks: [damnet]
-    environment:
-      NODE_ENV: development
-      NEXT_PUBLIC_API_BASE_URL: "http://video-api:8080"
-      NEXT_PUBLIC_WS_URL: "ws://video-api:8080/ws/camera"
-      WATCHPACK_POLLING: "true"
-      CHOKIDAR_USEPOLLING: "true"
-      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
-    volumes:
-      - ./docker/web-app:/app:rw
-      - /app/node_modules           # Anonymous volume, container owns it
-      - /app/.next                  # Anonymous volume, container owns it
-    depends_on:
-      - video-api
-    restart: unless-stopped
-    mem_limit: 512m
-    cpus: 0.5
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 20s
 
 
   ########################################################################
-  # 6. optional CLI job
+  # 4b. optional CLI job
   ########################################################################
   video-cli:
-    image: cdaprod/video:dev
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-cli-ephemeral
     networks: [damnet]
     profiles: [hydrate-backend, cli]
@@ -268,7 +497,90 @@ services:
     restart: "no"
     depends_on:
       - video-api
-      
+
+
+  ########################################################################
+  # 5a. Next.js Web App Server (exposed only for dev)
+  ########################################################################
+  video-web:
+    build:
+      context: ./docker/web-app
+      dockerfile: Dockerfile
+      target: development
+    image: cdaprod/video-web:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-video-web-app
+    platform: linux/arm64
+    ports:
+      - "3000:3000"
+    networks: [damnet]
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_BASE_URL: "http://video-api:8080"
+      NEXT_PUBLIC_WS_URL: "ws://video-api:8080/ws/camera"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+    volumes:
+      - ./docker/web-app:/app:rw
+      - /app/node_modules           # Anonymous volume, container owns it
+      - /app/.next                  # Anonymous volume, container owns it
+      - discovery-run:/run/discovery:ro
+    group_add:
+      - "video"
+    device_cgroup_rules:
+      - 'c 81:* rmw'
+    depends_on:
+      - video-api
+      - thatdamtoolbox-discovery
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+
+  ########################################################################
+  # 5b. Next.js Web Site Server (exposed only for dev)
+  ########################################################################
+  web-site:
+    build:
+      context: ./docker/web-site
+      dockerfile: Dockerfile
+      target: development
+    image: cdaprod/web-site:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-web-site
+    platform: linux/arm64
+    ports:
+      - "3001:3000"
+    networks: [damnet]
+    profiles: [web-site]
+    environment:
+      NODE_ENV: development
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+    volumes:
+      - ./docker/web-site:/app:rw
+      - /app/node_modules
+      - /app/.next
+    entrypoint: ["/bin/sh","-c","chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+
 ########################################################################
 # (Optional) hotspot-installer secrets
 ########################################################################
@@ -285,4 +597,6 @@ secrets:
 volumes:
   db_wal:
     driver: local
-  rabbitmq_data: 
+  rabbitmq_data:
+  discovery-run:
+    name: ${COMPOSE_PROJECT_NAME:-thatdamtoolbox}_discovery-run

@@ -1,0 +1,407 @@
+<!--
+  Services Dashboard
+  This page lists all services defined in the provided docker‑compose
+  configuration and any included Compose files (PostgreSQL, Weaviate,
+  MinIO).  Each section corresponds to the numbered group in the YAML.
+
+  A simple JavaScript routine attempts to contact each service’s
+  advertised HTTP endpoint to determine if it is reachable.  Because
+  many of these services are containerised behind a bridge network on
+  your Docker host (192.168.0.22), the status checks are best effort
+  only.  They use a `fetch` request with `mode: "no‑cors"`; a failed
+  network connection will mark the service as DOWN, while any
+  response (even if opaque due to CORS) is considered UP.
+
+  To view a service’s web interface, click its link.  For services
+  without a browser interface (e.g. databases or daemons), the
+  dashboard still shows their status so you know they are running.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>That D.A.M. Toolbox – Service Status</title>
+  <style>
+    :root {
+      --bg: #f9fafb;
+      --fg: #0a0a0a;
+      --card-bg: #ffffff;
+      --border: #e5e7eb;
+      --up: #22c55e;
+      --down: #ef4444;
+      --unknown: #f59e0b;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      margin: 0;
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+    }
+    section {
+      margin-top: 2rem;
+    }
+    h2 {
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+    .services {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .card header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.875rem;
+    }
+    .status-indicator {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      background: var(--unknown);
+    }
+    .status.up .status-indicator { background: var(--up); }
+    .status.down .status-indicator { background: var(--down); }
+    .status.unknown .status-indicator { background: var(--unknown); }
+    a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .description {
+      font-size: 0.875rem;
+      color: #374151;
+    }
+  </style>
+</head>
+<body>
+  <h1>That D.A.M. Toolbox – Service Dashboard</h1>
+  <p>Below is a consolidated view of all services defined in your Docker
+  Compose configuration.  Click the service name to open its user
+  interface (where applicable).  Status indicators will turn green
+  when the service is reachable, red if the connection fails, and
+  orange for unknown or non‑HTTP services.</p>
+
+  <!-- Section 0: Setup / Host Configurator -->
+  <section id="setup">
+    <h2>0. Setup / Host Configurator</h2>
+    <div class="services">
+      <div class="card" id="hotspot-installer-card">
+        <header>
+          <strong>hotspot‑installer</strong>
+          <span class="status unknown" id="hotspot-installer-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">One‑shot container used only during setup to
+        configure host Wi‑Fi hotspots.  This service only runs when
+        invoked with the <code>--profile setup</code> flag and exits
+        immediately after writing configuration.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 1: Public Front Door -->
+  <section id="gateway">
+    <h2>1. Public Front Door</h2>
+    <div class="services">
+      <div class="card" id="gw-card">
+        <header>
+          <a href="http://192.168.0.22" target="_blank" rel="noopener">gw</a>
+          <span class="status unknown" id="gw-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Nginx gateway fronting all web services on
+        the host.  It binds to ports 80/443 and proxies requests to
+        other containers.  Access the toolbox at <code>http://192.168.0.22</code>
+        or <code>https://192.168.0.22</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: Infrastructure Services -->
+  <section id="infrastructure">
+    <h2>2. Infrastructure Services</h2>
+    <div class="services">
+      <div class="card" id="rabbitmq-card">
+        <header>
+          <a href="http://192.168.0.22:15672" target="_blank" rel="noopener">rabbitmq</a>
+          <span class="status unknown" id="rabbitmq-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Message broker for asynchronous events and
+        streaming.  The management UI is exposed on port 15672.</p>
+      </div>
+      <div class="card" id="postgres-card">
+        <header>
+          <strong>postgres</strong>
+          <span class="status unknown" id="postgres-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Relational database service included via
+        <code>docker-compose.postgres.yaml</code>.  PostgreSQL typically
+        listens on port 5432.  There is no built‑in web UI, but this
+        entry lets you monitor its availability.</p>
+      </div>
+      <div class="card" id="weaviate-card">
+        <header>
+          <a href="http://192.168.0.22:8080" target="_blank" rel="noopener">weaviate</a>
+          <span class="status unknown" id="weaviate-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Vector search engine provided by the
+        Weaviate container.  The GraphQL API is typically available on
+        port 8080.</p>
+      </div>
+      <div class="card" id="minio-card">
+        <header>
+          <a href="http://192.168.0.22:9001" target="_blank" rel="noopener">minio</a>
+          <span class="status unknown" id="minio-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Object storage service.  The web console is
+        usually exposed on port 9001, while the S3 API lives on
+        port 9000.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: Golang Services (Capture & Control) -->
+  <section id="golang-services">
+    <h2>3. Capture &amp; Control Services</h2>
+    <div class="services">
+      <div class="card" id="capture-daemon-card">
+        <header>
+          <strong>capture‑daemon</strong>
+          <span class="status unknown" id="capture-daemon-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Golang daemon that captures video from
+        hardware devices (/dev/video*).  Runs in a privileged container;
+        there is no external HTTP interface on the host, so only its
+        health can be inferred from the Docker API.</p>
+      </div>
+      <div class="card" id="camera-proxy-card">
+        <header>
+          <a href="http://192.168.0.22:8000" target="_blank" rel="noopener">camera‑proxy</a>
+          <span class="status unknown" id="camera-proxy-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Device‑agnostic proxy for cameras and
+        capture devices.  Hot‑plugs and forwards requests to the
+        capture daemon.  Health endpoint: <code>/healthz</code> on
+        port 8000.</p>
+      </div>
+      <div class="card" id="overlay-hub-card">
+        <header>
+          <a href="http://192.168.0.22:8090" target="_blank" rel="noopener">overlay‑hub</a>
+          <span class="status unknown" id="overlay-hub-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Hub that manages overlay channels and
+        provides WebSocket services.  Health endpoint: <code>/healthz</code>
+        on port 8090.</p>
+      </div>
+      <div class="card" id="api-gateway-card">
+        <header>
+          <a href="http://192.168.0.22:8085" target="_blank" rel="noopener">api‑gateway</a>
+          <span class="status unknown" id="api-gateway-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Host API gateway that authenticates
+        requests and exposes the That D.A.M. API on port 8085.  Health
+        endpoint: <code>/api/health</code>.</p>
+      </div>
+      <div class="card" id="media-api-card">
+        <header>
+          <a href="http://192.168.0.22:8081" target="_blank" rel="noopener">media‑api</a>
+          <span class="status unknown" id="media-api-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Video media API (v2).  This service runs
+        only when its profile is enabled.  Exposed on port 8081.
+        Health checks are implemented at <code>/api/health</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: Video Services -->
+  <section id="video-services">
+    <h2>4. Video API &amp; Jobs</h2>
+    <div class="services">
+      <div class="card" id="video-api-card">
+        <header>
+          <a href="http://192.168.0.22:8080" target="_blank" rel="noopener">video‑api</a>
+          <span class="status unknown" id="video-api-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">FastAPI video back‑end that processes
+        recordings, previews and machine‑learning tasks.  Exposed on
+        port 8080.  Health endpoint: <code>/health</code>.</p>
+      </div>
+      <div class="card" id="video-cli-card">
+        <header>
+          <strong>video‑cli</strong>
+          <span class="status unknown" id="video-cli-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">One‑off CLI job used to scan incoming
+        directories.  It runs via the <code>video-cli</code> service
+        profile and exits when the job is complete.  Not exposed via
+        HTTP.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5: Web Interfaces -->
+  <section id="web-interfaces">
+    <h2>5. Web Applications</h2>
+    <div class="services">
+      <div class="card" id="video-web-card">
+        <header>
+          <a href="http://192.168.0.22:3000" target="_blank" rel="noopener">video‑web</a>
+          <span class="status unknown" id="video-web-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Next.js development server for the video
+        web application.  Exposed on port 3000.  Health endpoint:
+        <code>/api/health</code>.</p>
+      </div>
+      <div class="card" id="web-site-card">
+        <header>
+          <a href="http://192.168.0.22:3001" target="_blank" rel="noopener">web‑site</a>
+          <span class="status unknown" id="web-site-status">
+            <span class="status-indicator"></span>
+            <span class="status-text">Unknown</span>
+          </span>
+        </header>
+        <p class="description">Next.js development server for the
+        marketing web site.  Exposed on port 3001.  Health endpoint:
+        <code>/api/health</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Array of service definitions.  Each entry contains a unique id,
+    // a URL that should be reachable over HTTP, and a flag to
+    // indicate whether the service provides a browser UI.  When
+    // `ui` is false the link above is replaced by bold text.
+    const services = [
+      { id: 'gw', url: 'http://192.168.0.22' },
+      { id: 'rabbitmq', url: 'http://192.168.0.22:15672' },
+      { id: 'postgres', url: 'http://192.168.0.22:5432' },
+      { id: 'weaviate', url: 'http://192.168.0.22:8080' },
+      { id: 'minio', url: 'http://192.168.0.22:9001' },
+      { id: 'capture-daemon', url: null },
+      { id: 'camera-proxy', url: 'http://192.168.0.22:8000/healthz' },
+      { id: 'overlay-hub', url: 'http://192.168.0.22:8090/healthz' },
+      { id: 'api-gateway', url: 'http://192.168.0.22:8085/api/health' },
+      { id: 'media-api', url: 'http://192.168.0.22:8081/api/health' },
+      { id: 'video-api', url: 'http://192.168.0.22:8080/health' },
+      { id: 'video-cli', url: null },
+      { id: 'video-web', url: 'http://192.168.0.22:3000/api/health' },
+      { id: 'web-site', url: 'http://192.168.0.22:3001/api/health' },
+      { id: 'hotspot-installer', url: null }
+    ];
+
+    function updateStatus(id, state) {
+      const statusElem = document.getElementById(id + '-status');
+      const textElem = statusElem.querySelector('.status-text');
+      statusElem.classList.remove('up', 'down', 'unknown');
+      if (state === 'up') {
+        statusElem.classList.add('up');
+        textElem.textContent = 'Up';
+      } else if (state === 'down') {
+        statusElem.classList.add('down');
+        textElem.textContent = 'Down';
+      } else {
+        statusElem.classList.add('unknown');
+        textElem.textContent = 'Unknown';
+      }
+    }
+
+    function checkService(service) {
+      if (!service.url) {
+        // Not exposed over HTTP; mark as unknown and bail.
+        updateStatus(service.id, 'unknown');
+        return;
+      }
+      // Attempt to fetch the service.  Use no‑cors so that even
+      // services without proper CORS headers can be contacted.  We
+      // interpret any resolved promise as an indicator that the host
+      // accepted the TCP connection, regardless of HTTP status.  A
+      // rejected promise implies the service is down.
+      fetch(service.url, { method: 'GET', mode: 'no-cors' })
+        .then(() => {
+          updateStatus(service.id, 'up');
+        })
+        .catch(() => {
+          updateStatus(service.id, 'down');
+        });
+    }
+
+    function refreshAll() {
+      services.forEach(service => checkService(service));
+    }
+
+    // Kick off a status check on page load and refresh every 30 seconds.
+    window.addEventListener('load', () => {
+      refreshAll();
+      setInterval(refreshAll, 30000);
+    });
+  </script>
+</body>
+</html>

@@ -6,12 +6,13 @@ Below is a drop-in, "works-everywhere" gateway package that serves as the front 
 
 ## What it does
 
-- **Reverse proxy** – Routes requests to video-api (port 8080) and video-web (port 3000)
+- **Reverse proxy** – Routes requests to video-api (port 8080), api-gateway (port 8080) and video-web (port 3000)
 - **Static serving** – Falls back to Next.js static export if present in `/usr/share/nginx/html`
 - **WebSocket support** – Handles `/ws/` upgrades for real-time features
 - **Stream optimization** – Unbuffered proxying for `/stream/` endpoints
 - **Dual-mode networking** – Works with both `host` and `bridge` network modes
 - **Template-driven** – Runtime configuration via environment variables
+- **HTTPS ready** – Ships with a self-signed development certificate
 
 ⸻
 
@@ -98,7 +99,7 @@ http {
 
 ### Companion snippets
 
-The entrypoint creates these reusable configuration snippets:
+The entrypoint creates these reusable configuration snippets if they are missing to avoid read-only volume errors:
 
 **proxy_defaults.conf**
 
@@ -115,8 +116,8 @@ proxy_cache_bypass $http_upgrade;
 ```nginx
 proxy_http_version 1.1;
 proxy_set_header Upgrade $http_upgrade;
-proxy_Set_header Connection "Upgrade";
-proxy_Set_header Host $host;
+proxy_set_header Connection "Upgrade";
+proxy_set_header Host $host;
 ```
 
 **proxy_nobuf.conf**
@@ -152,8 +153,8 @@ ENTRYPOINT ["/entrypoint.sh"]
 #!/usr/bin/env bash
 set -e
 
-# write snippet files once
-cat >/etc/nginx/proxy_defaults.conf <<'EOF'
+# create snippet files only if missing
+[ -f /etc/nginx/proxy_defaults.conf ] || cat >/etc/nginx/proxy_defaults.conf <<'EOF'
 proxy_http_version 1.1;
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection $http_connection;
@@ -161,21 +162,29 @@ proxy_set_header Host $host;
 proxy_cache_bypass $http_upgrade;
 EOF
 
-cat >/etc/nginx/proxy_ws.conf <<'EOF'
+[ -f /etc/nginx/proxy_ws.conf ] || cat >/etc/nginx/proxy_ws.conf <<'EOF'
 proxy_http_version 1.1;
 proxy_set_header Upgrade $http_upgrade;
-proxy_Set_header Connection "Upgrade";
-proxy_Set_header Host $host;
+proxy_set_header Connection "Upgrade";
+proxy_set_header Host $host;
 EOF
 
-cat >/etc/nginx/proxy_nobuf.conf <<'EOF'
+[ -f /etc/nginx/proxy_nobuf.conf ] || cat >/etc/nginx/proxy_nobuf.conf <<'EOF'
 proxy_pass_request_headers on;
 proxy_buffering off;
 proxy_cache off;
 EOF
 
+# defaults for envsubst
+: ${API_HOST:=video-api}
+: ${API_PORT:=8080}
+: ${API_GW_HOST:=api-gateway}
+: ${API_GW_PORT:=8080}
+: ${WEB_HOST:=video-web}
+: ${WEB_PORT:=3000}
+
 # render the template
-envsubst '${API_HOST} ${API_PORT} ${WEB_HOST} ${WEB_PORT}' \
+envsubst '${API_HOST} ${API_PORT} ${API_GW_HOST} ${API_GW_PORT} ${WEB_HOST} ${WEB_PORT}' \
   < /etc/nginx/nginx.tmpl > /etc/nginx/nginx.conf
 
 exec nginx -g 'daemon off;'
@@ -246,8 +255,10 @@ services:
 
 |Variable  |Default    |Description                             |
 |----------|-----------|----------------------------------------|
-|`API_HOST`|`video-api`|Hostname/IP for the backend API service |
-|`API_PORT`|`8080`     |Port for the backend API service        |
+|`API_HOST`|`video-api`|Hostname/IP for the Python API service  |
+|`API_PORT`|`8080`     |Port for the Python API service         |
+|`API_GW_HOST`|`api-gateway`|Hostname/IP for the Go API gateway |
+|`API_GW_PORT`|`8080`     |Port for the Go API gateway           |
 |`WEB_HOST`|`video-web`|Hostname/IP for the frontend web service|
 |`WEB_PORT`|`3000`     |Port for the frontend web service       |
 
@@ -260,10 +271,13 @@ services:
 
 The gateway routes requests as follows:
 
-- **`/health`** → `video_api/health` (health checks)
+- **`/health`** → `video_api/health` (Python API health)
+- **`/gw/health`** → `api_gateway/health` (Go API health)
 - **`/api/*`** → `video_api` (REST API endpoints)
 - **`/ws/*`** → `video_api` (WebSocket connections)
 - **`/stream/*`** → `video_api` (unbuffered streaming)
+- **`/gw/*`** → `api_gateway` (Go API gateway)
+- **`/gw/ws/*`** → `api_gateway` (Go gateway WebSockets)
 - **`/*`** → Static files first, then fallback to `video_web`
 
 ### Static + SSR hybrid
@@ -288,6 +302,22 @@ docker compose up -d gw
 - **Local**: http://localhost
 - **Network**: http://your-pi.local (via mDNS)
 - **Hotspot**: http://thatdamtoolbox.local or http://192.168.42.1
+
+## 8 ↦ Development TLS
+
+The repository includes `dev.crt` and `dev.key`, a self-signed certificate for development use.
+
+Mounted into the container at `/etc/nginx/dev.crt` and `/etc/nginx/dev.key`, they enable HTTPS on port 443.
+
+To regenerate the certificate pair:
+
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout docker/nginx/dev.key -out docker/nginx/dev.crt \
+  -subj "/CN=localhost"
+```
+
+Restart the gateway after replacing the certificates.
 
 ### Update configuration without rebuild
 

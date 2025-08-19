@@ -1,0 +1,52 @@
+# ──────────────────────────────────────────────────────────────
+# Object-store (MinIO)
+# ──────────────────────────────────────────────────────────────
+services:
+  minio:
+    # Uses your custom image & entrypoint living in ./docker/minio
+    build:
+      context: ../../
+      dockerfile: docker/minio/Dockerfile
+    image: thatdamtoolbox-minio:local
+    container_name: thatdamtoolbox-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER:     minio
+      MINIO_ROOT_PASSWORD: minio123
+
+      # Buckets to bootstrap
+      MINIO_BUCKET_MEDIA: "media"
+      MINIO_BUCKET_WEAVIATE_BACKUPS: "weaviate-backups"
+
+      # Make media bucket publicly readable (optional)
+      MINIO_MEDIA_PUBLIC: "true"
+
+      # Optional CORS for media bucket (single-line JSON)
+      # MINIO_MEDIA_CORS_JSON: >-
+      #   [{"AllowedMethods":["GET","HEAD"],
+      #     "AllowedOrigins":["*"],
+      #     "AllowedHeaders":["*"],
+      #     "ExposeHeaders":["ETag"],
+      #     "MaxAgeSeconds":300}]
+
+      # Webhook (kept from your previous setup)
+      MINIO_NOTIFY_WEBHOOK_ENABLE_primary: "on"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_primary: "http://webhook:5000/events"
+      MINIO_NOTIFY_WEBHOOK_AUTH_TOKEN_primary: ""
+
+      # Optional: one non-root service account for local dev
+      # (fine to keep; in prod, prefer per-service credentials)
+      MINIO_SVC_ACCESS_KEY:  thatdam_app
+      MINIO_SVC_SECRET_KEY:  thatdam_app_secret
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # MinIO Console
+    volumes:
+      - ./docker/minio/data:/data
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:9000/minio/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks: [damnet]

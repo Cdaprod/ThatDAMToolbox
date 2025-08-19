@@ -1,0 +1,23 @@
+worker_processes  1;
+events { worker_connections  1024; }
+
+http {
+  sendfile on;
+  upstream video_api {
+    server ${UPSTREAM_HOST}:${UPSTREAM_PORT};
+  }
+
+  server {
+    listen 80;
+    location / {
+      proxy_pass http://video_api;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /health {
+      return 200 "ok";
+      add_header Content-Type text/plain;
+    }
+  }
+}

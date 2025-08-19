@@ -8,19 +8,11 @@ import React, {
   useState,
   useMemo,
 } from 'react';
-import { bus }            from '@/lib/eventBus';
-import { createAsset }    from '@/lib/apiAssets';
+import { bus } from '../lib/eventBus';
+import { createAsset, listAssets, listFolders, moveAssets, deleteAssets, Asset, FolderNode } from '../lib/apiAssets';
 import { useCapture }     from './CaptureContext'; // to get timecode, overlays, etc
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  listAssets,
-  listFolders,
-  moveAssets,
-  deleteAssets,
-  Asset,
-  FolderNode,
-} from '@/lib/apiAssets';
-import { videoApi } from '@/lib/videoApi'; // assumes you add a vectorSearch endpoint here
+import { videoApi } from '../lib/videoApi'; // assumes you add a vectorSearch endpoint here
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Filters {
@@ -35,6 +27,7 @@ interface Filters {
 interface AssetCtx {
   assets: Asset[];                   // raw list
   folders: FolderNode[];             // raw folder tree
+  foldersLoading: boolean;
   view: Asset[];                     // filtered or vector results
   filters: Filters;
   setFilters: (upd: Partial<Filters>) => void;
@@ -45,7 +38,7 @@ interface AssetCtx {
 }
 
 // ─── Context & Hook ────────────────────────────────────────────────────
-const AssetCtx = createContext<AssetCtx | null>(null);
+export const AssetCtx = createContext<AssetCtx | null>(null);
 export const useAssets = () => {
   const ctx = useContext(AssetCtx);
   if (!ctx) throw new Error('useAssets must be inside <AssetProvider>');
@@ -66,7 +59,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
 
-  const { data: folders = [] } = useQuery({
+  const { data: folders = [], isLoading: foldersLoading } = useQuery({
     queryKey: ['folders'],
     queryFn: listFolders,
     staleTime: 60_000,
@@ -129,6 +122,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
   const value: AssetCtx = {
     assets,
     folders,
+    foldersLoading,
     view,
     filters,
     setFilters: upd => {
@@ -136,8 +130,8 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
       setFilters(prev => ({ ...prev, ...upd }));
     },
     vectorSearch,
-    move: (ids, toPath) => moveMut.mutateAsync({ assetIds: ids, toPath }),
-    remove: ids => deleteMut.mutateAsync(ids),
+    move: (ids, toPath) => moveMut.mutateAsync({ ids, toPath }).then(() => {}),
+    remove: ids => deleteMut.mutateAsync(ids).then(() => {}),
     refresh: refetchAssets,
   };
   
@@ -156,9 +150,9 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
 
   // whenever the backend tells us "recording has stopped," create a new DAM asset
   React.useEffect(() => {
-    const handleStop = (data: { file: string }) => {
+    const handleStop = (data: { file?: string }) => {
       const payload = {
-        filename:      data.file,
+        filename:      data.file ?? 'unknown',
         device:        selectedDevice,
         codec:         selectedCodec,
         resolution:    `${deviceInfo.width}x${deviceInfo.height}`,
@@ -171,7 +165,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
       };
 
       createAsset(payload)
-        .then(() => qc.invalidateQueries(['assets']))
+        .then(() => qc.invalidateQueries({ queryKey: ['assets'] }))
         .catch(err => console.error('Failed to create asset:', err));
     };
 

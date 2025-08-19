@@ -1,0 +1,9 @@
+services:
+  api-gateway:
+    image: ${REGISTRY:-localhost}/api-gateway:${VERSION:-dev}
+    profiles: ["api-gateway"]
+    environment:
+      LOG_FORMAT: text
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+

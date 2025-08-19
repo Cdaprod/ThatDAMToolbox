@@ -1,0 +1,19 @@
+services:
+  web-site:
+    build:
+      context: ./docker/web-site
+    image: cdaprod/web-site:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-web-site
+    restart: unless-stopped
+    env_file:
+      - ./docker/web-site/.env           # or mount secrets in your preferred way
+    environment:
+      NODE_ENV: production
+      # You can also override here in CI or host:
+      # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+    ports:
+      - "3000:3000"
+    networks: [damnet]
+networks:
+  damnet:
+    external: true

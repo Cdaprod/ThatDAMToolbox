@@ -3,94 +3,65 @@
 # Folder layout inside the image
 # ┌─ /app
 # │   ├─ node_modules     ← installed once during build
-# │   └─ src/             ← your application source (bind-mount in dev)
+# │   ├─ public           ← static assets
+# │   ├─ start.js         ← standalone server entrypoint
+# │   └─ .next            ← output of `npm run build`
 # └───────────────────────────────────────────────────────────────────────────
 
-##############################################################################
-# Stage 0 ▸ Base image (common for all other stages)
-##############################################################################
+# Stage 0 ▸ Base image
 FROM node:18-alpine AS base
-# Everything below /app
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=development
 
-##############################################################################
-# Stage 1 ▸ Install dependencies only once
-##############################################################################
+# Stage 1 ▸ deps
 FROM base AS deps
+# hadolint ignore=DL3018
+RUN apk add --no-cache bash curl ca-certificates
 
-# native addons sometimes need this
-RUN apk add --no-cache libc6-compat
-
-# copy only manifest / lock-files
+# copy only manifests
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
-# install *strictly* from whichever lock-file is present
-RUN \
+# SC2015 fix: no "A && B || C" fallthroughs; use explicit branching
+RUN set -euo pipefail; \
   if [ -f yarn.lock ]; then \
-        echo "🧶  Installing with yarn…" && yarn install --frozen-lockfile ;\
+    echo "🧶 Installing with yarn…"; yarn install --frozen-lockfile; \
   elif [ -f package-lock.json ]; then \
-        echo "📦  Installing with npm ci…" && npm ci \
-     || (echo '⚠️  npm ci failed – falling back to npm install' && npm install) ;\
+    echo "📦 Installing with npm ci…"; \
+    if ! npm ci; then \
+      echo "⚠️ npm ci failed – falling back to npm install"; npm install; \
+    fi; \
   elif [ -f pnpm-lock.yaml ]; then \
-        echo "📦  Installing with pnpm…" && corepack enable pnpm && pnpm install --frozen-lockfile ;\
+    echo "📦 Installing with pnpm…"; corepack enable pnpm; pnpm install --frozen-lockfile; \
   else \
-        echo '⚠️  No lockfile found – running npm install' && npm install ;\
+    echo "⚠️ No lockfile found – running npm install"; npm install; \
   fi
 
-##############################################################################
-# Stage 2 ▸ Development image  (hot-reload, bind-mount source)
-##############################################################################
+# Stage 2 ▸ dev
 FROM base AS development
-# keep runtime deps in /app/node_modules
 COPY --from=deps /app/node_modules /app/node_modules
-
-# source lives in a dedicated folder that we will bind-mount
 WORKDIR /app
 COPY . .
-
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+CMD ["npm","run","dev"]
 
-##############################################################################
-# Stage 3 ▸ Build the production artefacts
-##############################################################################
+# Stage 3 ▸ builder
 FROM base AS builder
-# bring in deps + source
 COPY --from=deps /app/node_modules /app/node_modules
-WORKDIR /app/src
+WORKDIR /app
 COPY . .
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
-# generate static /.next output (respect NEXT_PUBLIC_* env vars at build time)
-RUN npm run build
-
-##############################################################################
-# Stage 4 ▸ Lightweight runtime image
-##############################################################################
+# Stage 4 ▸ production
 FROM node:18-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# non-root user for safety
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser  --system --uid 1001 --ingroup nodejs nextjs
-
-# copy your standalone next server (or build) + start.js entrypoint
-COPY --from=builder /app/src/.next       ./.next
-COPY --from=builder /app/src/start.js    ./start.js
-
-# make sure the folder exists, then copy serviceUp.js
-RUN mkdir -p ./src/lib
-COPY --from=builder /app/src/lib/serviceUp.js ./src/lib/serviceUp.js
-
-# copy node_modules, public, etc
-COPY --from=deps    /app/node_modules  ./node_modules
-COPY --from=builder /app/src/public    ./public
-
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nextjs
+COPY --from=builder /app/.next        ./.next
+COPY --from=builder /app/start.js     ./start.js
+COPY --from=deps    /app/node_modules ./node_modules
+COPY --from=builder /app/public       ./public
 USER nextjs:nodejs
 EXPOSE 3000
-
-# Next 14 standalone server (inside .next) works out of the box
-CMD ["node", "start.js", "start"]
+CMD ["node","start.js","start"]

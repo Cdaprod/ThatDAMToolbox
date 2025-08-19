@@ -1,0 +1,13 @@
+name: thatdamtoolbox-capture
+services:
+  capture-daemon:
+    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-capture-daemon
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/video0:/dev/video0
+    volumes:
+      - ./data:/data
+    environment:
+      CAPTURE_NODE_ID: "${HOSTNAME}"
