@@ -25,9 +25,13 @@ MINIO_MEDIA_PUBLIC="${MINIO_MEDIA_PUBLIC:-false}"
 MINIO_MEDIA_CORS_JSON="${MINIO_MEDIA_CORS_JSON:-}"
 
 # ──────────────────────────────────────────────────────────────
-# Start MinIO server in the background (pass through CMD args)
+# Start MinIO server in the background as the "minio" user
 # ──────────────────────────────────────────────────────────────
-/usr/bin/minio "$@" >/proc/1/fd/1 2>/proc/1/fd/2 &
+if [[ $(id -u) -eq 0 ]]; then
+  su-exec minio /usr/bin/minio "$@" >/proc/1/fd/1 2>/proc/1/fd/2 &
+else
+  /usr/bin/minio "$@" >/proc/1/fd/1 2>/proc/1/fd/2 &
+fi
 MINIO_PID=$!
 
 # ──────────────────────────────────────────────────────────────
