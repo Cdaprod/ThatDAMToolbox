@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import logging
 import time
+import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import (
     APIRouter,
@@ -29,6 +30,9 @@ from video.config      import WEB_UPLOADS as _FALLBACK_WU
 log    = logging.getLogger("video.uploader")
 router = APIRouter(prefix="/api/v1/upload", tags=["upload"])
 
+# job_id → {status, filename, progress, error?}
+UPLOAD_JOBS: Dict[str, Dict[str, Any]] = {}
+
 # ───────────────────────────── staging dir ──────────────────────────────
 try:
     WEB_UPLOADS: Path = get_module_path("uploader", "staging")
@@ -44,50 +48,73 @@ def _stamp(req: Request) -> str:
     return f"{req.method} {req.url.path}"
 
 
+def _ingest(paths: List[Path], job_id: str, batch: Optional[str]) -> None:
+    """Run ingest and update job progress."""
+    try:
+        ingest_files(paths, batch_name=batch)
+        UPLOAD_JOBS[job_id].update({"status": "done", "progress": 1.0})
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("ingest failed for %s", job_id)
+        UPLOAD_JOBS[job_id].update({"status": "error", "error": str(exc)})
+
+
 # ─────────────────────────── endpoint ───────────────────────────────────
-@router.post("/", summary="Upload 1–N files (async ingest)")
+@router.post("/", summary="Upload file (async ingest)")
 async def upload_batch(
     request: Request,
     bg: BackgroundTasks,
-    files: List[UploadFile] = File(...),
-    batch: Optional[str]    = Form(None),
+    file: UploadFile = File(...),
+    batch: Optional[str] = Form(None),
 ) -> dict:
     """
     Workflow
     ────────
-    1. Stream each *UploadFile* into the staging folder.
-    2. Queue `ingest_files()` (background) which moves + hashes + DB-registers.
-    3. Return immediately with a *queued* JSON payload.
+    1. Stream the *UploadFile* into the staging folder.
+    2. Queue `_ingest()` which moves + hashes + DB-registers.
+    3. Return immediately with a *job_id* JSON payload.
     """
-    if not files:
-        raise HTTPException(400, "no files sent")
+    if not file:
+        raise HTTPException(400, "no file sent")
 
-    saved: list[Path] = []
+    job_id = uuid.uuid4().hex
     t0 = time.perf_counter()
 
-    # ── 1) persist uploads --------------------------------------------------
-    for f in files:
-        tgt = WEB_UPLOADS / f.filename
-        try:
-            with tgt.open("wb") as out:
-                while chunk := await f.read(1 << 20):       # 1 MiB chunks
-                    out.write(chunk)
-            saved.append(tgt)
-            log.debug("⬆ %s → %s (%s bytes)", f.filename, tgt, tgt.stat().st_size)
-        finally:
-            await f.close()
+    # ── 1) persist upload ---------------------------------------------------
+    tgt = WEB_UPLOADS / file.filename
+    try:
+        with tgt.open("wb") as out:
+            while chunk := await file.read(1 << 20):  # 1 MiB chunks
+                out.write(chunk)
+        log.debug("⬆ %s → %s (%s bytes)", file.filename, tgt, tgt.stat().st_size)
+    finally:
+        await file.close()
+
+    UPLOAD_JOBS[job_id] = {
+        "status": "queued",
+        "filename": file.filename,
+        "progress": 0.0,
+    }
 
     # ── 2) schedule ingest --------------------------------------------------
-    bg.add_task(ingest_files, saved, batch_name=batch)
+    bg.add_task(_ingest, [tgt], job_id, batch)
     elapsed = (time.perf_counter() - t0) * 1000
     log.info(
-        "%s → staged %d file(s) (batch=%s) in %.1f ms – queued ingest",
-        _stamp(request), len(saved), batch, elapsed,
+        "%s → staged %s (batch=%s) in %.1f ms – queued ingest job=%s",
+        _stamp(request), file.filename, batch, elapsed, job_id,
     )
 
     # ── 3) instant API response --------------------------------------------
     return {
         "status": "queued",
-        "batch":  batch,
-        "files":  [p.name for p in saved],
+        "job_id": job_id,
+        "filename": file.filename,
     }
+
+
+@router.get("/{job_id}", summary="Upload progress")
+async def upload_status(job_id: str) -> dict:
+    """Return current status for *job_id*."""
+    job = UPLOAD_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "job not found")
+    return job
