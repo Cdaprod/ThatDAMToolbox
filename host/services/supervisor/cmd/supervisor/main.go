@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
+	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	envpolicy "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/policy/envpolicy"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
@@ -105,6 +106,7 @@ var (
 	apiKey      string
 	jwks        *keyfunc.JWKS
 	eventPrefix string
+	busEnabled  bool
 )
 
 func main() {
@@ -140,8 +142,13 @@ func main() {
 		}
 	}
 
+	if strings.EqualFold(os.Getenv("BUS_KIND"), "amqp") {
+		busamqp.Register()
+	}
 	if _, err := bus.Connect(context.Background(), bus.Config{}); err != nil {
-		logx.L.Error("bus connection failed", "err", err)
+		logx.L.Warn("event bus disabled", "err", err)
+	} else {
+		busEnabled = true
 	}
 
 	go func() {
@@ -243,6 +250,9 @@ func heartbeatHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func publishEvent(action string, a Agent) {
+	if !busEnabled {
+		return
+	}
 	_ = bus.Publish(eventPrefix+"."+action, map[string]any{"action": action, "agent": a})
 }
 

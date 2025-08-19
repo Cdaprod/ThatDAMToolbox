@@ -301,6 +301,7 @@ services:
       SUPERVISOR_API_KEY: "changeme"
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       EVENT_PREFIX: "overlay"
+      BUS_KIND: "amqp"
       BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       BROKER_EXCHANGE: "events"
       BROKER_QUEUE: "supervisor"
