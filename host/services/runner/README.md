@@ -2,6 +2,8 @@
 
 A small agent that fetches plans from the supervisor and applies them deterministically.
 
+Provisioning steps are covered in the [Provisioning Quickstart](../../../docs/provisioning.md).
+
 ## Usage
 
 ```bash

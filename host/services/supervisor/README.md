@@ -2,6 +2,8 @@
 
 Control-plane service for agent registration, plans, and environment bootstrapping.
 
+For a quick provisioning walkthrough, see [Provisioning Quickstart](../../../docs/provisioning.md).
+
 ## Usage
 
 ```bash

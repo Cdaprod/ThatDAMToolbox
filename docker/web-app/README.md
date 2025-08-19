@@ -2,6 +2,8 @@
 
 Create these files in your `/web-app` directory:
 
+For provisioning the full stack, follow the [Provisioning Quickstart](../../docs/provisioning.md).
+
 ## Core Configuration Files
 
 ```
