@@ -201,13 +201,12 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /**
- * Load the big DAM-Explorer bundle *after* main content is interactive.
+ * Load the DAM Explorer component after the main content is interactive.
  *  – requestIdleCallback → will wait until browser is idle
  *  – if not supported, falls back to a 500 ms timeout
  */
 function mountDamExplorer () {
   // dynamic `import()` returns a promise; code is fetched on-demand
-  //import('/static/components/dam-explorer.js').then(mod => {
   import('/static/components/dam-explorer.js').then(mod => {
     // The default export is the React component
     const React        = mod.__react__       // re-exported helper

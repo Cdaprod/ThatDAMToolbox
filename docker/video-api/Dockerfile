@@ -3,26 +3,13 @@
 ##############################################################################
 
 ########################################
-# Stage 0 – Build the React ESM bundle #
+# Stage 0 – Prepare the Explorer asset #
 ########################################
 FROM node:18-alpine AS frontend-build
 WORKDIR /build
 
-RUN npm install --location=global esbuild
-
-# copy raw component
-COPY video/web/static/components/dam-explorer.js ./src/
-
-# bundle → dam-explorer.bundle.js (ES2022, minified)
-# --- in the frontend-build stage ---
-RUN esbuild ./src/dam-explorer.js \
-    --bundle \
-    --loader:.js=jsx \
-    --loader:.json=json \
-    --outfile=dam-explorer.bundle.js \
-    --format=esm \
-    --target=es2022 \
-    --minify
+# copy raw component (served as-is)
+COPY video/web/static/components/dam-explorer.js ./dam-explorer.js
 
 ############################
 # Stage 1 – Base OS image  #
@@ -199,9 +186,9 @@ WORKDIR /
 # Prepend our venv to PATH so "python -m video" picks up all deps
 ENV PATH="/thatdamtoolbox/venv/bin:${PATH}"
 
-# Bring in your React bundle in exactly the same place
+# Bring in your React component in exactly the same place
 COPY --from=frontend-build \
-     /build/dam-explorer.bundle.js \
+     /build/dam-explorer.js \
      /thatdamtoolbox/video/web/static/components/
 
 # 5) Runtime‐only ENV overrides
