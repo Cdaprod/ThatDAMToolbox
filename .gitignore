@@ -158,6 +158,7 @@ host/releases/
 !/docker/web-app/tsconfig.json
 !/docker/web-app/tsconfig.test.json
 !/docker/rabbitmq/definitions.json
+docker/rabbitmq/data/
 !/docker/weaviate/schema.json
 !/docker/proxy-viewer/package.json
 !/docker/proxy-viewer/tsconfig.json
