@@ -2,6 +2,8 @@
 
 Transparent proxy exposing host cameras to containerized services.
 
+For provisioning instructions, see [Provisioning Quickstart](../../../docs/provisioning.md).
+
 ## Capture sources
 
 [capture-daemon](../capture-daemon/README.md) can ingest streams from both

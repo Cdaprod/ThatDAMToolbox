@@ -679,6 +679,12 @@ const CameraMonitor: React.FC = () => {
             >
               ▶ PLAY
             </button>
+            <button
+              onClick={() => openModal("provision-device")}
+              className="w-full p-2 mb-1 bg-gradient-to-br from-gray-600 to-gray-700 border border-gray-500 rounded text-white text-xs cursor-pointer transition-all duration-200 hover:from-gray-500 hover:to-gray-600 hover:-translate-y-0.5"
+            >
+              Provision Device
+            </button>
           </div>
 
           {/* Monitoring Tools */}

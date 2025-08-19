@@ -4,6 +4,7 @@ import { createContext, useContext, useState, ReactNode, Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react';
 import CameraMonitorModal from '@/components/modals/CameraMonitorModal';
 import DAMExplorerModal   from '@/components/modals/DAMExplorerModal';
+import ProvisionDeviceModal from '@/components/modals/ProvisionDeviceModal';
 
 type ToolKey =
   | 'camera-monitor'
@@ -12,6 +13,7 @@ type ToolKey =
   | 'motion'
   | 'live'
   | 'witness'
+  | 'provision-device'
   | null;
 
 interface ModalCtx {
@@ -33,6 +35,8 @@ export default function ModalProvider({ children }: { children: ReactNode }) {
         return <CameraMonitorModal open onClose={closeModal} />;
       case 'dam-explorer':
         return <DAMExplorerModal open onClose={closeModal} />;
+      case 'provision-device':
+        return <ProvisionDeviceModal open onClose={closeModal} />;
       /* add other compact modals here */
       default:
         return null;
