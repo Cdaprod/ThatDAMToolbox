@@ -1,0 +1,35 @@
+services:
+  camera-proxy:
+    image: cdaprod/camera-proxy:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-camera-proxy
+    networks: [damnet]
+    ports: ["8000:8000"]
+    volumes:
+      - discovery-run:/run/discovery:ro
+      - /dev:/dev:rw,rshared
+    device_cgroup_rules:
+      - "c 81:* rmw"
+      - "c 226:* rmw"
+    group_add: ["video"]
+    environment:
+      EVENT_BROKER_URL: "${EVENT_BROKER_URL:-amqp://video:video@rabbitmq:5672/}"
+      NEXT_PUBLIC_LOGIN_URL: "${NEXT_PUBLIC_LOGIN_URL:-https://idp.example.com/login}"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "${NEXT_PUBLIC_PLAUSIBLE_DOMAIN:-example.com}"
+      OVERLAY_HUB_URL: "${OVERLAY_HUB_URL:-http://overlay-hub:8090}"
+      CAPTURE_DAEMON_URL: "${CAPTURE_DAEMON_URL:-http://capture-daemon:9000}"
+      CAPTURE_DAEMON_TOKEN: "${CAPTURE_DAEMON_TOKEN:-devtoken}"
+      ICE_SERVERS: "${ICE_SERVERS:-stun:stun.l.google.com:19302}"
+      FFMPEG_HWACCEL: "${FFMPEG_HWACCEL:-}"
+      UPSTREAM_HOST: "${UPSTREAM_HOST:-api-gateway}"
+      UPSTREAM_PORT: "${UPSTREAM_PORT:-8080}"
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - overlay-hub
+      - thatdamtoolbox-discovery

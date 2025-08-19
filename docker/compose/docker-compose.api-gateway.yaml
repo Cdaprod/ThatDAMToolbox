@@ -1,0 +1,18 @@
+services:
+  api-gateway:
+    image: cdaprod/api-gateway:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-api-gateway
+    networks: [damnet]
+    ports: ["8085:8080"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped

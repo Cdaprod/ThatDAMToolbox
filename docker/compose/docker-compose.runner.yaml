@@ -1,0 +1,15 @@
+services:
+  runner:
+    image: cdaprod/runner:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-runner
+    networks: [damnet]
+    environment:
+      SUPERVISOR_URL: "http://supervisor:8070"
+    depends_on:
+      - supervisor
+    healthcheck:
+      test: ["CMD", "sh", "-c", "pgrep runner >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped

@@ -1,0 +1,23 @@
+services:
+  supervisor:
+    image: cdaprod/supervisor:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-supervisor
+    networks: [damnet]
+    ports: ["8070:8070"]
+    environment:
+      SUPERVISOR_API_KEY: "changeme"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      EVENT_PREFIX: "overlay"
+      BUS_KIND: "amqp"
+      BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      BROKER_EXCHANGE: "events"
+      BROKER_QUEUE: "supervisor"
+      BROKER_KIND: "direct"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8070/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: thatdamtoolbox-weaviate_pg
+    environment:
+      POSTGRES_USER: weaviate
+      POSTGRES_PASSWORD: weaviate
+      POSTGRES_DB: weaviate
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../../docker/weaviate/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD","pg_isready","-U","weaviate"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks: [damnet]

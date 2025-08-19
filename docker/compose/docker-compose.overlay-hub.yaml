@@ -1,0 +1,22 @@
+services:
+  overlay-hub:
+    image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-overlay-hub
+    networks: [damnet]
+    ports: ["8090:8090"]
+    environment:
+      JWKS_URL: "http://api-gateway:8080/.well-known/jwks.json"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "waiting for JWKS at http://api-gateway:8080/.well-known/jwks.json"
+        until wget -qO- http://api-gateway:8080/.well-known/jwks.json >/dev/null 2>&1; do
+          sleep 2
+        done
+        exec /app/overlay-hub
+    depends_on:
+      - api-gateway
+    restart: unless-stopped

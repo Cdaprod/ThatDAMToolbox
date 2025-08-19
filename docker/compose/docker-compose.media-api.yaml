@@ -1,0 +1,11 @@
+services:
+  media-api:
+    profiles: ["media-api"]
+    image: cdaprod/media-api:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-media-api
+    networks: [damnet]
+    ports: ["8081:8080"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+    depends_on:
+      - rabbitmq
