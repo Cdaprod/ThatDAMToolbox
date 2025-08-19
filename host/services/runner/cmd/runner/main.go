@@ -7,12 +7,18 @@ package main
 //     go run ./host/services/runner/cmd/runner
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
+	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/runner/internal/executor"
@@ -37,16 +43,27 @@ func main() {
 
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
+	claimToken := os.Getenv("CLAIM_TOKEN")
+	roleHint := os.Getenv("ROLE_HINT")
+	labels := os.Getenv("LABELS")
 	for {
-		if applyOnce(ctx, nodeID, exec, store) {
+		if applyOnce(ctx, nodeID, exec, store, claimToken, roleHint, labels) {
 			_ = supervisor.Heartbeat(ctx, nodeID)
 		}
 		<-ticker.C
 	}
 }
 
-func applyOnce(ctx context.Context, nodeID string, exec executor.Executor, st state.Store) bool {
-	dp, err := fetchDesired(ctx, nodeID)
+func applyOnce(ctx context.Context, nodeID string, exec executor.Executor, st state.Store, claimToken, roleHint, labels string) bool {
+	caps := capabilities()
+	prev, err := st.LoadGeneration(nodeID)
+	firstBoot := err != nil || prev == ""
+	if firstBoot && claimToken != "" {
+		if err := fulfillClaim(ctx, claimToken, nodeID, caps); err != nil {
+			logx.L.Warn("claim fulfill", "err", err)
+		}
+	}
+	dp, err := fetchDesired(ctx, nodeID, roleHint, labels, caps)
 	if err != nil {
 		logx.L.Warn("desired fetch failed", "err", err)
 		return false
@@ -58,7 +75,6 @@ func applyOnce(ctx context.Context, nodeID string, exec executor.Executor, st st
 	}
 	dp.Apps = ordered
 	h := hash(dp)
-	prev, _ := st.LoadGeneration(nodeID)
 	if prev == h {
 		logx.L.Debug("no drift", "node", nodeID, "gen", h)
 		return true
@@ -74,8 +90,16 @@ func applyOnce(ctx context.Context, nodeID string, exec executor.Executor, st st
 	return true
 }
 
-func fetchDesired(ctx context.Context, nodeID string) (plan.DesiredPlan, error) {
-	return supervisor.FetchPlan(ctx, map[string]string{"node_id": nodeID})
+func fetchDesired(ctx context.Context, nodeID, roleHint, labels string, caps capabilityInfo) (plan.DesiredPlan, error) {
+	req := map[string]any{"node_id": nodeID}
+	if roleHint != "" {
+		req["role_hint"] = roleHint
+	}
+	if labels != "" {
+		req["labels"] = labels
+	}
+	req["capabilities"] = caps
+	return supervisor.FetchPlan(ctx, req)
 }
 
 func hash(dp plan.DesiredPlan) string {
@@ -131,4 +155,67 @@ func orderApps(apps []plan.AppSpec) ([]plan.AppSpec, error) {
 		return nil, errors.New("dependency cycle detected")
 	}
 	return ordered, nil
+}
+
+// capabilityInfo describes local hardware hints sent to supervisor or claims.
+type capabilityInfo struct {
+	VideoDevices []string `json:"video_devices,omitempty"`
+	GPU          []string `json:"gpu,omitempty"`
+}
+
+// capabilities enumerates /dev/video* and basic GPU hints.
+// Example:
+//
+//	info := capabilities()
+//	fmt.Println(info.VideoDevices)
+func capabilities() capabilityInfo {
+	vids, _ := filepath.Glob("/dev/video*")
+	gpus := []string{}
+	filepath.WalkDir("/dev", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if strings.HasPrefix(filepath.Base(p), "nvidia") || strings.HasPrefix(filepath.Base(p), "dri") {
+			gpus = append(gpus, p)
+		}
+		return nil
+	})
+	return capabilityInfo{VideoDevices: vids, GPU: gpus}
+}
+
+// fulfillClaim posts a claim token for node to the supervisor if configured.
+// Example:
+//
+//	_ = fulfillClaim(ctx, "token", "node1", capabilities())
+func fulfillClaim(ctx context.Context, token, nodeID string, info capabilityInfo) error {
+	baseURL := os.Getenv("SUPERVISOR_URL")
+	if baseURL == "" {
+		return nil
+	}
+	payload := map[string]any{"token": token, "node_id": nodeID, "info": info}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/claims/fulfill", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	if t := os.Getenv("SUPERVISOR_TOKEN"); t != "" {
+		req.Header.Set("Authorization", "Bearer "+t)
+	} else if k := os.Getenv("SUPERVISOR_API_KEY"); k != "" {
+		req.Header.Set("X-API-Key", k)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	hc := &http.Client{Timeout: 5 * time.Second}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		io.CopyN(io.Discard, resp.Body, 1024)
+		return fmt.Errorf("claim fulfill: %s", resp.Status)
+	}
+	return nil
 }
