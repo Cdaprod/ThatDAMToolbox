@@ -34,69 +34,12 @@ VIDEO_PROCESSED_ROOT=${VIDEO_PROCESSED_ROOT:-${VIDEO_DATA_DIR}/_PROCESSED}
 VIDEO_PREVIEW_ROOT=${VIDEO_PREVIEW_ROOT:-${VIDEO_DATA_DIR}/previews}
 VIDEO_LOG_DIR=${VIDEO_LOG_DIR:-${VIDEO_DATA_DIR}/logs}
 
-# Extract the database directory from the full path
-VIDEO_DB_DIR=$(dirname "$VIDEO_DB_PATH")
-
-# Build data directories array from environment variables
-declare -a DATA_DIRS=(
-  "$VIDEO_DB_DIR"
-  "${VIDEO_DATA_DIR}/tmp"
-  "$VIDEO_MEDIA_ROOT"
-  "$VIDEO_PROCESSED_ROOT"
-  "$VIDEO_PREVIEW_ROOT"
-  "$VIDEO_LOG_DIR"
-  "${VIDEO_DATA_DIR}/_INCOMING"
-)
-
-# Add cache directories if specified
-[[ -n "${XDG_CACHE_HOME:-}" ]] && DATA_DIRS+=("$XDG_CACHE_HOME")
-[[ -n "${HF_HOME:-}" ]] && DATA_DIRS+=("$HF_HOME")
-[[ -n "${TORCH_HOME:-}" ]] && DATA_DIRS+=("$TORCH_HOME")
-
-# ---------------------------------------------------------------------------
-# Extra module-specific data roots
-# ---------------------------------------------------------------------------
-MODULES_ROOT=${MODULES_ROOT:-/data/modules}
-
-# Explicit DAM sub-folders we know the app will touch
-declare -a DAM_DIRS=(
-  "${MODULES_ROOT}/dam/cache"
-  "${MODULES_ROOT}/dam/embeddings"
-  "${MODULES_ROOT}/dam/manifests"
-  "${MODULES_ROOT}/dam/previews"
-)
-
-# Append to the master list
-DATA_DIRS+=("${DAM_DIRS[@]}")
-
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
 
 log() {
   echo "[entrypoint] $*" >&2
-}
-
-create_directories() {
-  log "🏗️  Creating required directories..."
-  for d in "${DATA_DIRS[@]}"; do
-    if [[ ! -d "$d" ]]; then
-      log "Creating directory: $d"
-      mkdir -p "$d"
-    fi
-  done
-}
-
-fix_perms() {
-  log "🔧 Fixing permissions..."
-  for d in "${DATA_DIRS[@]}"; do
-    if [[ -d "$d" ]]; then
-      log "Setting ownership for: $d"
-      chown -R appuser:appuser "$d" 2>/dev/null || {
-        log "⚠️  Could not change ownership of $d (continuing anyway)"
-      }
-    fi
-  done
 }
 
 run_as_appuser() {
@@ -154,20 +97,10 @@ if [[ "${VIDEO_DEBUG_BOOT:-0}" == "1" ]]; then
   check_environment
 fi
 
-# 1) Create directories (can be done as any user)
-create_directories
-
-# 2) Fix permissions (root only)
-if [[ $(id -u) == 0 ]]; then
-  fix_perms
-else
-  log "🔒 Not running as root, skipping permission fix"
-fi
-
-# 3) Initial scan if media directory is empty
+# Initial scan if media directory is empty
 initial_scan
 
-# 4) Main command dispatch
+# Main command dispatch
 log "🚀 Starting application..."
 
 if [[ $# -eq 0 ]]; then
