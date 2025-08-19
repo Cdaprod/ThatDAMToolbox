@@ -3,10 +3,13 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/supervisor/plan"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
+	"gopkg.in/yaml.v3"
 )
 
 // Handshake route handlers with basic policy enforcement.
@@ -37,8 +40,11 @@ func nodesPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		NodeID   string `json:"node_id"`
-		RoleHint string `json:"role_hint"`
+		NodeID       string `json:"node_id"`
+		RoleHint     string `json:"role_hint"`
+		Capabilities struct {
+			VideoDevices int `json:"video_devices"`
+		} `json:"capabilities"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
@@ -48,46 +54,38 @@ func nodesPlan(w http.ResponseWriter, r *http.Request) {
 	resp.Version = 1
 	resp.Node = req.NodeID
 
-	if req.RoleHint == "server" {
-		resp.Apps = []plan.AppSpec{
-			{
-				Name: "media-api", Kind: "go",
-				Cwd:     "/host/services/media-api",
-				Command: []string{"./media-api"},
-				Env:     map[string]string{"PORT": "8080"},
-				Ports:   []int{8080},
-				Restart: "always",
-				Health:  &plan.HealthCheck{HTTP: "http://127.0.0.1:8080/health", IntervalSec: 5, TimeoutSec: 30},
-			},
-			{
-				Name: "video-web", Kind: "nextjs",
-				Cwd: "/web/video",
-				Build: &plan.BuildSpec{
-					Kind:     plan.BuildNextJS,
-					Strategy: "standalone",
-					Command:  []string{"npm", "ci"},
-					OutDir:   ".next/standalone",
-					Env:      map[string]string{"NEXT_TELEMETRY_DISABLED": "1"},
-				},
-				Command: []string{"node", ".next/standalone/server.js"},
-				Env:     map[string]string{"PORT": "3000"},
-				Ports:   []int{3000},
-				After:   []string{"media-api"},
-				Restart: "always",
-				Health:  &plan.HealthCheck{HTTP: "http://127.0.0.1:3000/health", IntervalSec: 5, TimeoutSec: 60},
-			},
+	switch {
+	case req.RoleHint == "server":
+		if resp.Apps, err = loadPlanTemplate("server"); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-	} else {
-		resp.Apps = []plan.AppSpec{{
-			Name: "camera-proxy", Kind: "go",
-			Cwd:     "/host/services/camera-proxy",
-			Command: []string{"./camera-proxy"},
-			Env:     map[string]string{"UPSTREAM_HOST": "api-gateway", "UPSTREAM_PORT": "8080"},
-			Restart: "always",
-		}}
+	case req.RoleHint == "" && req.Capabilities.VideoDevices >= 1:
+		if resp.Apps, err = loadPlanTemplate("camera-proxy"); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// loadPlanTemplate reads a YAML plan template from ./plans and returns its apps.
+// Example: loadPlanTemplate("server")
+func loadPlanTemplate(name string) ([]plan.AppSpec, error) {
+	var out struct {
+		Apps []plan.AppSpec `yaml:"apps"`
+	}
+	_, file, _, _ := runtime.Caller(0)
+	p := filepath.Join(filepath.Dir(file), "..", "..", "plans", name+".yaml")
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return out.Apps, nil
 }
 
 func nodesHeartbeat(w http.ResponseWriter, r *http.Request) {

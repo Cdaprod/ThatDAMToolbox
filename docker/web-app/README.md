@@ -279,3 +279,9 @@ Recording is controlled via simple HTTP calls:
 curl -X POST http://<host>/daemon/record/start
 curl -X POST http://<host>/daemon/record/stop
 ```
+
+## Provisioning a Device
+
+1. Navigate to **Dashboard → Camera Monitor**.
+2. Click **Provision Device**.
+3. Copy the displayed join command and run it on the target device. The modal watches `/api/claims/{id}/watch` and updates once the device connects.
