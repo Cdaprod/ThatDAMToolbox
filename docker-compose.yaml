@@ -151,6 +151,7 @@ services:
       RABBITMQ_DEFAULT_PASS: video
       RABBITMQ_DEFAULT_VHOST: /
       RABBITMQ_DISK_FREE_LIMIT: 50MB
+      RABBITMQ_FEATURE_FLAGS: classic_mirrored_queue_version
     ports: ["5672:5672", "15672:15672"]   # 15672 optional (management UI)
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
@@ -301,6 +302,7 @@ services:
       SUPERVISOR_API_KEY: "changeme"
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       EVENT_PREFIX: "overlay"
+      BUS_KIND: "amqp"
       BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       BROKER_EXCHANGE: "events"
       BROKER_QUEUE: "supervisor"
@@ -523,9 +525,10 @@ services:
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
     volumes:
-      - ./docker/web-app:/app:rw
-      - /app/node_modules           # Anonymous volume, container owns it
-      - /app/.next                  # Anonymous volume, container owns it
+      - ./docker/web-app:/app:cached
+      - video-web-node_modules:/app/node_modules
+      - video-web-next:/app/.next
+      - video-web-npm:/root/.npm
       - discovery-run:/run/discovery:ro
     group_add:
       - "video"
@@ -565,9 +568,10 @@ services:
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
     volumes:
-      - ./docker/web-site:/app:rw
-      - /app/node_modules
-      - /app/.next
+      - ./docker/web-site:/app:cached
+      - web-site-node_modules:/app/node_modules
+      - web-site-next:/app/.next
+      - web-site-npm:/root/.npm
     entrypoint: ["/bin/sh","-c","chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
     depends_on:
       - rabbitmq
@@ -605,3 +609,15 @@ volumes:
       device: ${RABBITMQ_DATA_PATH:-./docker/rabbitmq/data}
   discovery-run:
     name: ${COMPOSE_PROJECT_NAME:-thatdamtoolbox}_discovery-run
+  video-web-node_modules:
+    driver: local
+  video-web-next:
+    driver: local
+  video-web-npm:
+    driver: local
+  web-site-node_modules:
+    driver: local
+  web-site-next:
+    driver: local
+  web-site-npm:
+    driver: local

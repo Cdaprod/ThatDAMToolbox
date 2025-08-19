@@ -31,6 +31,32 @@ module.exports = {
     ]
   },
 
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/assets/thumbs/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=2592000, immutable' },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=5, s-maxage=60, stale-while-revalidate=120',
+          },
+        ],
+      },
+    ];
+  },
+
   images: {
     domains: ['localhost'],
     unoptimized: process.env.NODE_ENV === 'development',

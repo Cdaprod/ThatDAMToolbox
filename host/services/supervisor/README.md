@@ -8,6 +8,13 @@ Control-plane service for agent registration, plans, and environment bootstrappi
 go run ./cmd/supervisor/main.go -addr :8070
 ```
 
+Then start a runner pointing at the supervisor:
+
+```bash
+SUPERVISOR_URL=http://localhost:8070 RUNNER_EXECUTOR=docker \
+  go run ./host/services/runner/cmd/runner
+```
+
 ## Configuration
 
 - `POLICY_ALLOW_ANONYMOUS_PROXY`
@@ -15,6 +22,8 @@ go run ./cmd/supervisor/main.go -addr :8070
 - `POLICY_REQUIRE_AUTH_FOR_BOOTSTRAP`
 - `JWKS_URL` (JWKS endpoint for JWT validation)
 - `SUPERVISOR_API_KEY` (static fallback)
+- `BUS_KIND` (e.g. `amqp` for RabbitMQ)
+- `BROKER_URL` (AMQP connection string)
 
 ## Endpoints (partial)
 
@@ -31,7 +40,8 @@ go run ./cmd/supervisor/main.go -addr :8070
   "version": 1,
   "node": "n1",
   "apps": [
-    {"name": "media-api", "kind": "go", "cwd": "/host/services/media-api", "command": ["./media-api"], "env": {"PORT": "8080"}}
+    {"name": "rabbitmq", "kind": "docker", "cwd": "./docker/rabbitmq", "command": ["up", "-d"]},
+    {"name": "api-gateway", "kind": "docker", "cwd": "./host/services/api-gateway", "command": ["up", "-d"], "after": ["rabbitmq"]}
   ]
 }
 ```
