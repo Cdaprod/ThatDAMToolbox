@@ -1,0 +1,25 @@
+services:
+  rabbitmq:
+    build:
+      context: ../../docker/rabbitmq
+      dockerfile: Dockerfile
+    image: cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-rabbitmq
+    restart: unless-stopped
+    networks: [damnet]
+    hostname: rabbitmq
+    entrypoint: ["/usr/local/bin/rabbitmq-entrypoint.sh"]
+    environment:
+      RABBITMQ_DEFAULT_USER: video
+      RABBITMQ_DEFAULT_PASS: video
+      RABBITMQ_DEFAULT_VHOST: /
+      RABBITMQ_DISK_FREE_LIMIT: 50MB
+      RABBITMQ_FEATURE_FLAGS: classic_mirrored_queue_version
+    ports: ["5672:5672", "15672:15672"]
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

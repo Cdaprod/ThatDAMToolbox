@@ -1,0 +1,37 @@
+services:
+  gateway:
+    build:
+      context: ../../docker/nginx
+      dockerfile: Dockerfile
+    image: cdaprod/gateway:latest
+    container_name: thatdamtoolbox-gateway
+    entrypoint: ["/bin/bash","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
+    networks: [damnet]
+    ports: ["80:80"]
+    restart: unless-stopped
+    depends_on:
+      - api-gateway
+      - video-web
+      - video-api
+      - thatdamtoolbox-discovery
+    environment:
+      UPSTREAM_HOST: api-gateway
+      UPSTREAM_PORT: "8080"
+      UPSTREAM: api-gateway:8080
+      SERVICE_PORT: "8080"
+    volumes:
+      - ../../host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ../../docker/nginx/entrypoint.sh:/entrypoint.sh:ro
+      - ../../docker/nginx/templates:/etc/nginx/templates:ro
+      - ../../docker/web-app/build:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

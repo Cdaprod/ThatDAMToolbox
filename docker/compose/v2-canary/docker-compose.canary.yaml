@@ -1,0 +1,77 @@
+name: thatdamtoolbox-v2-canary
+
+networks:
+  damnet:
+    name: damnet${NETWORK_SUFFIX:-}
+
+volumes:
+  db_wal:
+    name: ${DB_VOL:-db_wal_canary}
+  rabbitmq_data:
+    name: ${RABBIT_VOL:-rabbitmq_data_canary}
+
+services:
+  rabbitmq:
+    container_name: thatdamtoolbox-rabbitmq-canary
+    ports:
+      - "${RABBITMQ_PORT:-35672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-35673}:15672"
+
+  api-gateway:
+    container_name: thatdamtoolbox-api-gateway-canary
+    ports:
+      - "${API_GATEWAY_PORT:-18080}:8080"
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+
+  media-api:
+    container_name: thatdamtoolbox-media-api-canary
+    ports:
+      - "${MEDIA_API_PORT:-18081}:8080"
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+
+  video-api:
+    container_name: thatdamtoolbox-video-api-canary
+    ports:
+      - "${VIDEO_API_PORT:-18082}:8080"
+    volumes:
+      - "${DATA_ROOT:-./data}:/data:rw"
+      - "${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw"
+      - ${DB_VOL:-db_wal_canary}:/var/lib/thatdamtoolbox/db:rw
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
+
+  video-web:
+    container_name: thatdamtoolbox-video-web-canary
+    ports: ["${VIDEO_WEB_PORT:-13000}:3000"]
+
+  web-site:
+    container_name: thatdamtoolbox-web-site-canary
+    ports: ["${WEB_SITE_PORT:-13001}:3000"]
+
+  capture-daemon:
+    container_name: thatdamtoolbox-capture-daemon-canary
+    ports: ["${CAPTURE_DAEMON_PORT:-19000}:9000"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      OVERLAY_HUB_URL: "http://overlay-hub:8090"
+    volumes:
+      - "${DATA_ROOT:-./data}/modules/hwcapture/records:/records"
+
+  camera-proxy:
+    container_name: thatdamtoolbox-camera-proxy-canary
+    ports: ["${CAMERA_PROXY_PORT:-18000}:8000"]
+    environment:
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      CAPTURE_DAEMON_URL: "http://capture-daemon:9000"
+
+  overlay-hub:
+    container_name: thatdamtoolbox-overlay-hub-canary
+    ports: ["${OVERLAY_HUB_PORT:-18090}:8090"]
+    environment:
+      JWKS_URL: "http://api-gateway:8080/.well-known/jwks.json"
+
+  gw:
+    profiles: ["disabled-in-canary"]

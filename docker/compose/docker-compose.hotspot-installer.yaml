@@ -1,0 +1,12 @@
+services:
+  hotspot-installer:
+    image: thatdam-hotspot-installer:${IMAGE_TAG:-dev}
+    privileged: true
+    network_mode: host
+    profiles: ["setup"]
+    environment:
+      SETUP_TOKEN_FILE: /run/secrets/dam_token
+    secrets:
+      - source: dam_ephemeral_token
+        target: dam_token
+    restart: "no"

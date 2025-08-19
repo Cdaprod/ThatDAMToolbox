@@ -1,0 +1,65 @@
+services:
+  video-api:
+    build:
+      context: ../../
+      dockerfile: docker/video-api/Dockerfile
+    image: cdaprod/video-api:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-video-api
+    platform: linux/arm64
+    networks: [damnet]
+    ports: ["8080:8080"]
+    user: "1000:1000"
+    devices: []
+    device_cgroup_rules:
+      - "c 81:* rmw"
+    group_add: ["44"]
+    cap_add: [SYS_ADMIN]
+    environment:
+      TZ: "America/New_York"
+      VIDEO_MODE: "api"
+      PYTHONWARNINGS: >-
+        ignore::DeprecationWarning,
+        ignore::UserWarning:google.protobuf.runtime_version
+      XDG_CACHE_HOME: /data/cache
+      HF_HOME: /data/cache/huggingface
+      TORCH_HOME: /data/cache/torch
+      UVICORN_WORKERS: "1"
+      VIDEO_FORCE_STDHTTP: "0"
+      VIDEO_DATA_DIR: /data
+      VIDEO_MEDIA_ROOT: /data/media
+      VIDEO_PROCESSED_ROOT: /data/_PROCESSED
+      VIDEO_PREVIEW_ROOT: /data/previews
+      VIDEO_LOG_DIR: /data/logs
+      VIDEO_DB_PATH: /var/lib/thatdamtoolbox/db/live.sqlite3
+      DB_SNAPSHOT_SECS: "120"
+      VIDEO_STORAGE: "auto"
+      VIDEO_DEBUG_BOOT: "0"
+      WEAVIATE_URL: "http://localhost:8082"
+      MINIO_ENDPOINT: "http://localhost:9000"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+      CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
+    entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
+    volumes:
+      - ../../host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - discovery-run:/run/discovery:ro
+      - "${DATA_ROOT:-./data}:/data:rw"
+      - "${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw"
+      - db_wal:/var/lib/thatdamtoolbox/db:rw
+      - /dev:/dev:rw,rshared
+      - ../../video:/video:rw
+    depends_on:
+      - capture-daemon
+      - rabbitmq
+      - thatdamtoolbox-discovery
+    command: ["serve","--host","0.0.0.0","--port","8080"]
+    mem_limit: 1500m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
