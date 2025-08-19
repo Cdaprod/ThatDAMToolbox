@@ -21,6 +21,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/claims"
 	envpolicy "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/policy/envpolicy"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
 	"github.com/MicahParks/keyfunc"
@@ -171,6 +172,11 @@ func main() {
 	mux.HandleFunc("/agents", agentsHandler)
 	mux.HandleFunc("/register", registerHandler)
 	mux.HandleFunc("/heartbeat", heartbeatHandler)
+
+	cs := claims.NewServer(auth)
+	mux.HandleFunc("/api/claims/new", cs.HandleNew)
+	mux.HandleFunc("/api/claims/fulfill", cs.HandleFulfill)
+	mux.HandleFunc("/api/claims/", cs.HandleWatch)
 
 	srv := &http.Server{
 		Addr:              *addr,
