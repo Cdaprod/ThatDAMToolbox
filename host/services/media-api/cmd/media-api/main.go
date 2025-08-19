@@ -21,6 +21,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/media-api/pkg/handlers"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
 
 func main() {
@@ -47,7 +48,8 @@ func serve(args []string) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v2/health", handlers.Health)
 	rootDir := envStr("BLOB_STORE_ROOT", "./data")
-	deps := handlers.Deps{Cat: newMemCatalog(), BS: storage.NewFS(rootDir)}
+	de := platform.NewOSDirEnsurer()
+	deps := handlers.Deps{Cat: newMemCatalog(), BS: storage.NewFS(rootDir, de)}
 	mux.HandleFunc("GET /v1/folders", deps.ListFolders)
 	mux.HandleFunc("GET /v1/assets", deps.ListAssets)
 	mux.HandleFunc("GET /v1/assets/{id}", deps.GetAsset)
@@ -55,7 +57,7 @@ func serve(args []string) {
 	mux.HandleFunc("POST /v1/catalog/upsert", deps.UpsertAsset)
 	if os.Getenv("PREVIEW_WORKER") == "1" {
 		go func() {
-			if err := handlers.StartPreviewWorker(context.Background(), storage.NewFS(rootDir)); err != nil {
+			if err := handlers.StartPreviewWorker(context.Background(), storage.NewFS(rootDir, de), deps.Cat); err != nil {
 				log.Printf("preview worker: %v", err)
 			} else {
 				log.Printf("preview worker started")

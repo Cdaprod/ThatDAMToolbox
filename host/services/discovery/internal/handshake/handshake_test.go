@@ -13,7 +13,12 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
+
+type nopDirEnsurer struct{}
+
+func (nopDirEnsurer) EnsureDirs([]platform.FileSpec) error { return nil }
 
 // helper to read persisted state
 func readState(t *testing.T, dir string) clusterState {
@@ -58,7 +63,7 @@ func TestRunHandshakeRegistersAndAppliesPlan(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := runHandshake(ctx); err != nil {
+	if err := runHandshake(ctx, nopDirEnsurer{}); err != nil {
 		t.Fatalf("runHandshake: %v", err)
 	}
 
@@ -111,7 +116,7 @@ func TestHeartbeatTriggersReRegistration(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := runHandshake(ctx); err != nil {
+	if err := runHandshake(ctx, nopDirEnsurer{}); err != nil {
 		t.Fatalf("runHandshake: %v", err)
 	}
 
@@ -133,10 +138,10 @@ func TestSelfElectLeader(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("DISCOVERY_DATA_DIR", tmp)
 	s := clusterState{NodeID: "n1", Epoch: 1}
-	if err := saveState(s); err != nil {
+	if err := saveState(s, nopDirEnsurer{}); err != nil {
 		t.Fatalf("saveState: %v", err)
 	}
-	if err := selfElectLeader(context.Background()); err != nil {
+	if err := selfElectLeader(context.Background(), nopDirEnsurer{}); err != nil {
 		t.Fatalf("selfElectLeader: %v", err)
 	}
 	st := readState(t, tmp)

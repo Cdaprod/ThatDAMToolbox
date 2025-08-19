@@ -22,6 +22,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
 
 const (
@@ -139,8 +140,9 @@ func main() {
 	// 8. Main API server (devices, recordings, previews, etc.)
 	reg := registry.NewRegistry()
 	var deps runner.Deps
+	deps.DirEnsurer = platform.NewOSDirEnsurer()
 	if root := os.Getenv("BLOB_STORE_ROOT"); root != "" {
-		deps.BlobStore = storage.NewFS(root)
+		deps.BlobStore = storage.NewFS(root, deps.DirEnsurer)
 	}
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, reg)

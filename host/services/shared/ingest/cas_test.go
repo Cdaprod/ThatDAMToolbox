@@ -3,16 +3,29 @@ package ingest
 import (
 	"bytes"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
+
+type testDirEnsurer struct{}
+
+func (testDirEnsurer) EnsureDirs(specs []platform.FileSpec) error {
+	for _, s := range specs {
+		if err := os.MkdirAll(s.Path, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // simpleBlobStore wraps storage.NewFS rooted at tmp.
 func newBS(t *testing.T) storage.BlobStore {
 	t.Helper()
 	dir := t.TempDir()
-	return storage.NewFS(dir)
+	return storage.NewFS(dir, testDirEnsurer{})
 }
 
 func TestPutIfAbsent(t *testing.T) {

@@ -21,7 +21,8 @@ import (
 
 // Deps groups external services required for ingest.
 type Deps struct {
-	BlobStore storage.BlobStore
+	BlobStore  storage.BlobStore
+	DirEnsurer platform.DirEnsurer
 }
 
 // Config holds the parameters for a single device capture loop.
@@ -81,7 +82,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 	// Ensure MP4 output directory
 	uid, gid := os.Getuid(), os.Getgid()
 	if enableMP4 {
-		if err := platform.EnsureDirs([]platform.FileSpec{{Path: cfg.OutDir, UID: uid, GID: gid, Mode: 0o755}}); err != nil {
+		if err := deps.DirEnsurer.EnsureDirs([]platform.FileSpec{{Path: cfg.OutDir, UID: uid, GID: gid, Mode: 0o755}}); err != nil {
 			return fmt.Errorf("failed to ensure output dir %q: %w", cfg.OutDir, err)
 		}
 	}
@@ -89,7 +90,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 	var hlsBase string
 	if enableHLS {
 		hlsBase = filepath.Join(os.TempDir(), "hls", filepath.Base(cfg.Device))
-		if err := platform.EnsureDirs([]platform.FileSpec{{Path: hlsBase, UID: uid, GID: gid, Mode: 0o755}}); err != nil {
+		if err := deps.DirEnsurer.EnsureDirs([]platform.FileSpec{{Path: hlsBase, UID: uid, GID: gid, Mode: 0o755}}); err != nil {
 			log.Printf("[hls] Failed to ensure dir %q: %v", hlsBase, err)
 			enableHLS = false
 		}

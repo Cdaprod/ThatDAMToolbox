@@ -8,13 +8,18 @@ import (
 	indexmem "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/index_mem"
 	storagefs "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/adapters/storage_fs"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
+
+type nopDirEnsurer struct{}
+
+func (nopDirEnsurer) EnsureDirs([]platform.FileSpec) error { return nil }
 
 // TestEngineApply ensures the engine runs all reconcilers idempotently.
 func TestEngineApply(t *testing.T) {
 	ctx := context.Background()
 
-	store, err := storagefs.New(t.TempDir())
+	store, err := storagefs.New(t.TempDir(), nopDirEnsurer{})
 	if err != nil {
 		t.Fatalf("storage: %v", err)
 	}

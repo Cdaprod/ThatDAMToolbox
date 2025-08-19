@@ -12,9 +12,9 @@ import (
 type Store struct{ dir string }
 
 // NewDiskStore creates a disk-backed store.
-func NewDiskStore(dir string) Store {
+func NewDiskStore(dir string, de platform.DirEnsurer) Store {
 	uid, gid := os.Getuid(), os.Getgid()
-	_ = platform.EnsureDirs([]platform.FileSpec{{Path: dir, UID: uid, GID: gid, Mode: 0o755}})
+	_ = de.EnsureDirs([]platform.FileSpec{{Path: dir, UID: uid, GID: gid, Mode: 0o755}})
 	return Store{dir: dir}
 }
 

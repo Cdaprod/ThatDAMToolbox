@@ -3,12 +3,25 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ingest"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
+
+type testDirEnsurer struct{}
+
+func (testDirEnsurer) EnsureDirs(specs []platform.FileSpec) error {
+	for _, s := range specs {
+		if err := os.MkdirAll(s.Path, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 type memCatalog struct{ last catalog.Asset }
 
@@ -21,7 +34,7 @@ func (m *memCatalog) ListFolders(string) []string { return nil }
 func (m *memCatalog) Delete(string) error         { return nil }
 
 func TestPreviewWorker(t *testing.T) {
-	bs := storage.NewFS(t.TempDir())
+	bs := storage.NewFS(t.TempDir(), testDirEnsurer{})
 	key, hash, _, err := ingest.PutIfAbsent(bs, bytes.NewReader([]byte("hello")))
 	if err != nil {
 		t.Fatal(err)
