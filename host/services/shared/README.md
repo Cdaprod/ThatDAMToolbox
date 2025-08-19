@@ -8,7 +8,7 @@ The `storage` package defines a minimal `BlobStore` interface and a filesystem
 implementation.
 
 ```go
-bs := storage.NewFS("/tmp/data")
+bs := storage.NewFS("/tmp/data", platform.NewOSDirEnsurer())
 _ = bs.Put("foo/bar.txt", strings.NewReader("hello"))
 ```
 

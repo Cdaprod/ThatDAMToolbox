@@ -5,9 +5,10 @@ go 1.23.0
 toolchain go1.24.3
 
 require (
-	github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0-00010101000000-000000000000
-	github.com/hashicorp/mdns v1.0.4
-	github.com/hashicorp/serf v0.10.1
+        github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0-00010101000000-000000000000
+        github.com/hashicorp/mdns v1.0.4
+        github.com/hashicorp/serf v0.10.1
+        github.com/Cdaprod/ThatDamToolbox/host/shared v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -46,3 +47,4 @@ require (
 )
 
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared => ../shared
+replace github.com/Cdaprod/ThatDamToolbox/host/shared => ../../shared

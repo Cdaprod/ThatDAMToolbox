@@ -4,7 +4,10 @@ go 1.23.0
 
 toolchain go1.24.3
 
-require github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0-00010101000000-000000000000
+require (
+        github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0-00010101000000-000000000000
+        github.com/Cdaprod/ThatDamToolbox/host/shared v0.0.0-00010101000000-000000000000
+)
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -27,3 +30,4 @@ require (
 )
 
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared => ../shared
+replace github.com/Cdaprod/ThatDamToolbox/host/shared => ../../shared

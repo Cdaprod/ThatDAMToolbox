@@ -20,6 +20,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/supervisor"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/supervisor/plan"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
 
 var version = "dev"
@@ -30,7 +31,7 @@ func main() {
 	nodeID := getenv("RUNNER_NODE_ID", hostname())
 	execKind := getenv("RUNNER_EXECUTOR", "docker")
 	exec := executor.New(execKind)
-	store := state.NewDiskStore(getenv("RUNNER_STATE_DIR", "/var/lib/thatdam/runner"))
+	store := state.NewDiskStore(getenv("RUNNER_STATE_DIR", "/var/lib/thatdam/runner"), platform.NewOSDirEnsurer())
 
 	_ = supervisor.Register(ctx, supervisor.Agent{ID: nodeID, Class: "runner", Version: version})
 

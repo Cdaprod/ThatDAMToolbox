@@ -5,22 +5,28 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
 
 // FS implements BlobStore on the local filesystem.
-type FS struct{ base string }
+type FS struct {
+	base string
+	de   platform.DirEnsurer
+}
 
 // NewFS returns a filesystem-backed store rooted at base.
 // Example:
 //
-//	bs := storage.NewFS("/tmp/data")
-func NewFS(base string) *FS { return &FS{base: base} }
+//	bs := storage.NewFS("/tmp/data", platform.NewOSDirEnsurer())
+func NewFS(base string, de platform.DirEnsurer) *FS { return &FS{base: base, de: de} }
 
 func (f *FS) full(key string) string { return filepath.Join(f.base, filepath.FromSlash(key)) }
 
 func (f *FS) Put(key string, r io.Reader) error {
 	p := f.full(key)
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	uid, gid := os.Getuid(), os.Getgid()
+	if err := f.de.EnsureDirs([]platform.FileSpec{{Path: filepath.Dir(p), UID: uid, GID: gid, Mode: 0o755}}); err != nil {
 		return err
 	}
 	tmp := p + ".part"

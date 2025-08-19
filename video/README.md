@@ -9,6 +9,9 @@ Modular digital‑asset management for ingesting, processing and serving video a
 python -m video scan /path/to/media
 
 # API – start the FastAPI server
+VIDEO_DB_PATH=/tmp/media_index.sqlite3 \
+EVENT_BROKER_URL=amqp://video:video@localhost:5672/ \
+uvicorn video.api.main:app
 ```
 
 ## Layout

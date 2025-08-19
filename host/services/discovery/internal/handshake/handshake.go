@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
 
 // clusterState represents the persisted identity and role of this node.
@@ -33,8 +34,8 @@ var (
 // runHandshake registers the node, fetches the desired plan and starts heartbeats.
 //
 // It is safe to call multiple times; node identity is persisted to cluster.json.
-func runHandshake(ctx context.Context) error {
-	s, err := loadState()
+func runHandshake(ctx context.Context, de platform.DirEnsurer) error {
+	s, err := loadState(de)
 	if err != nil {
 		return err
 	}
@@ -63,12 +64,12 @@ func runHandshake(ctx context.Context) error {
 	}
 	if regResp.NodeID == "" {
 		// Could not reach supervisor; become leader.
-		return selfElectLeader(ctx)
+		return selfElectLeader(ctx, de)
 	}
 
 	stateMu.Lock()
 	state.NodeID = regResp.NodeID
-	if err := saveState(state); err != nil {
+	if err := saveState(state, de); err != nil {
 		stateMu.Unlock()
 		return err
 	}
@@ -81,7 +82,7 @@ func runHandshake(ctx context.Context) error {
 	if err := postJSON(ctx, url+"/v1/nodes/plan", map[string]string{"node_id": state.NodeID}, &plan); err != nil {
 		return err
 	}
-	if err := applyPlan(ctx, plan); err != nil {
+	if err := applyPlan(ctx, plan, de); err != nil {
 		return err
 	}
 	if logx.L != nil {
@@ -92,13 +93,13 @@ func runHandshake(ctx context.Context) error {
 	if interval <= 0 {
 		interval = 30 * time.Second
 	}
-	go sendHeartbeatLoop(ctx, interval)
+	go sendHeartbeatLoop(ctx, interval, de)
 	return nil
 }
 
 // applyPlan persists the plan and would start/stop services to match services[].
 // Service control is intentionally omitted; only state persistence is handled here.
-func applyPlan(ctx context.Context, plan any) error {
+func applyPlan(ctx context.Context, plan any, de platform.DirEnsurer) error {
 	m, _ := plan.(map[string]any)
 
 	stateMu.Lock()
@@ -119,13 +120,13 @@ func applyPlan(ctx context.Context, plan any) error {
 		}
 	}
 
-	return saveState(state)
+	return saveState(state, de)
 }
 
 // sendHeartbeatLoop periodically POSTs to /v1/nodes/heartbeat. On authorization
 // errors it triggers a re-registration and exits, allowing the caller to spawn a
 // new loop.
-func sendHeartbeatLoop(ctx context.Context, interval time.Duration) {
+func sendHeartbeatLoop(ctx context.Context, interval time.Duration, de platform.DirEnsurer) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	url := supervisorURL() + "/v1/nodes/heartbeat"
@@ -150,7 +151,7 @@ func sendHeartbeatLoop(ctx context.Context, interval time.Duration) {
 				logx.L.Debug("heartbeat", "status", resp.StatusCode)
 			}
 			if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound {
-				go func() { _ = runHandshake(ctx) }()
+				go func() { _ = runHandshake(ctx, de) }()
 				return
 			}
 		}
@@ -158,11 +159,11 @@ func sendHeartbeatLoop(ctx context.Context, interval time.Duration) {
 }
 
 // selfElectLeader marks this node as leader and persists the new state.
-func selfElectLeader(ctx context.Context) error {
+func selfElectLeader(ctx context.Context, de platform.DirEnsurer) error {
 	stateMu.Lock()
 	defer stateMu.Unlock()
 
-	s, err := loadState()
+	s, err := loadState(de)
 	if err != nil {
 		return err
 	}
@@ -173,7 +174,7 @@ func selfElectLeader(ctx context.Context) error {
 	s.Role = "leader"
 	s.Epoch++
 	state = s
-	if err := saveState(state); err != nil {
+	if err := saveState(state, de); err != nil {
 		return err
 	}
 	if logx.L != nil {
@@ -217,17 +218,18 @@ func supervisorURL() string {
 	return "http://localhost:8080"
 }
 
-func stateFile() string {
+func stateFile(de platform.DirEnsurer) string {
 	dir := os.Getenv("DISCOVERY_DATA_DIR")
 	if dir == "" {
 		dir = filepath.Join("data", "discovery")
 	}
-	os.MkdirAll(dir, 0o755)
+	uid, gid := os.Getuid(), os.Getgid()
+	_ = de.EnsureDirs([]platform.FileSpec{{Path: dir, UID: uid, GID: gid, Mode: 0o755}})
 	return filepath.Join(dir, "cluster.json")
 }
 
-func loadState() (clusterState, error) {
-	path := stateFile()
+func loadState(de platform.DirEnsurer) (clusterState, error) {
+	path := stateFile(de)
 	b, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -242,8 +244,8 @@ func loadState() (clusterState, error) {
 	return s, nil
 }
 
-func saveState(s clusterState) error {
-	path := stateFile()
+func saveState(s clusterState, de platform.DirEnsurer) error {
+	path := stateFile(de)
 	tmp := path + ".tmp"
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {

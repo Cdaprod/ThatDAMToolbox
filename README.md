@@ -843,7 +843,7 @@ ownership before starting services:
 scripts/run_with_dirs.sh /var/lib/thatdamtoolbox/db /var/lib/thatdamtoolbox/media -- docker-compose up -d
 ```
 
-The helper invokes `ensure-dirs`, making the operation idempotent.
+The helper invokes `ensure-dirs` from `host/shared/platform`, making the operation idempotent.
 
 ### Manual Installation
 

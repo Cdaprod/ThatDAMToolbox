@@ -16,6 +16,17 @@ from .types import Event
 _log = logging.getLogger("event.rabbitmq")
 _log.info("🔔 importing RabbitMQ connector v2 (resilient)")
 
+
+def _install_return_handler(chan: aio_pika.abc.AbstractChannel) -> None:
+    """Silently drop Basic.Return messages regardless of aio-pika version."""
+    cb = lambda *a, **kw: _log.debug("↩️  AMQP return dropped: %r %r", a, kw)
+    if hasattr(chan, "add_on_return_callback"):
+        chan.add_on_return_callback(cb)  # aio-pika ≥9
+    elif hasattr(chan, "set_return_listener"):
+        chan.set_return_listener(cb)     # aio-pika <9
+    else:  # pragma: no cover - unexpected
+        _log.debug("Channel %r lacks return callback hook", chan)
+
 class RabbitMQBus:
     def __init__(self, amqp_url: str, exchange_name: Optional[str] = "events") -> None:
         self._url = amqp_url
@@ -45,7 +56,7 @@ class RabbitMQBus:
             await self._chan.set_qos(prefetch_count=32)
 
             # Drop any broker returns on the floor (defensive; mandatory=False already)
-            self._chan.set_return_listener(lambda *a, **kw: _log.debug("↩️  AMQP return dropped: %r %r", a, kw))
+            _install_return_handler(self._chan)
 
             if self._exchange_name:
                 self._exchange = await self._chan.declare_exchange(
@@ -72,7 +83,7 @@ class RabbitMQBus:
         if not self._chan or self._chan.is_closed:
             self._chan = await self._conn.channel(publisher_confirms=False)
             await self._chan.set_qos(prefetch_count=32)
-            self._chan.set_return_listener(lambda *a, **kw: _log.debug("↩️  AMQP return dropped: %r %r", a, kw))
+            _install_return_handler(self._chan)
             if self._exchange_name:
                 self._exchange = await self._chan.declare_exchange(
                     self._exchange_name, aio_pika.ExchangeType.TOPIC, durable=True
