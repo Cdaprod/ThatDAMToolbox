@@ -12,6 +12,7 @@ COPY host/services/shared/go.sum          host/services/shared/go.sum
 COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/camera-proxy/go.mod    host/services/camera-proxy/go.mod
 COPY host/services/camera-proxy/go.sum    host/services/camera-proxy/go.sum
+COPY host/shared/go.mod                   host/shared/go.mod
 
 # ── minimal workspace (service + shared)
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -25,6 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # ── sources
 COPY host/services/shared/            host/services/shared/
 COPY host/services/camera-proxy/      host/services/camera-proxy/
+COPY host/shared/                     host/shared/
 
 # ── build (main at repo root of module)
 WORKDIR /src/host/services/camera-proxy

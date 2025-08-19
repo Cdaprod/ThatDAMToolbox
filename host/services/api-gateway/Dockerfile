@@ -12,6 +12,7 @@ COPY host/services/shared/go.sum        host/services/shared/go.sum
 COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/api-gateway/go.mod   host/services/api-gateway/go.mod
 COPY host/services/api-gateway/go.sum   host/services/api-gateway/go.sum
+COPY host/shared/go.mod                 host/shared/go.mod
 
 # ── create a minimal workspace (avoid copying repo go.work that includes other modules)
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -25,6 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # ── now bring in sources
 COPY host/services/shared/        host/services/shared/
 COPY host/services/api-gateway/   host/services/api-gateway/
+COPY host/shared/                 host/shared/
 
 WORKDIR /src/host/services/api-gateway
 RUN --mount=type=cache,target=/go/pkg/mod \

@@ -12,6 +12,7 @@ COPY host/services/shared/go.sum          host/services/shared/go.sum
 COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/supervisor/go.mod      host/services/supervisor/go.mod
 COPY host/services/supervisor/go.sum      host/services/supervisor/go.sum
+COPY host/shared/go.mod                   host/shared/go.mod
 
 # workspace
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -25,6 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # sources
 COPY host/services/shared/            host/services/shared/
 COPY host/services/supervisor/        host/services/supervisor/
+COPY host/shared/                     host/shared/
 
 # build (cmd/supervisor is the main package)
 WORKDIR /src/host/services/supervisor

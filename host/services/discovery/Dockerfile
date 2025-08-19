@@ -12,6 +12,7 @@ COPY host/services/shared/go.sum          host/services/shared/go.sum
 COPY host/services/shared/hostcap/v4l2probe/go.mod host/services/shared/hostcap/v4l2probe/go.mod
 COPY host/services/discovery/go.mod       host/services/discovery/go.mod
 COPY host/services/discovery/go.sum       host/services/discovery/go.sum
+COPY host/shared/go.mod                   host/shared/go.mod
 
 # workspace
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -25,6 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # sources
 COPY host/services/shared/               host/services/shared/
 COPY host/services/discovery/            host/services/discovery/
+COPY host/shared/                        host/shared/
 
 # build
 WORKDIR /src/host/services/discovery
