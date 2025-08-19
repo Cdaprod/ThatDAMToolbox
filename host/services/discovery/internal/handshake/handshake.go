@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
 
 // clusterState represents the persisted identity and role of this node.
@@ -222,7 +223,8 @@ func stateFile() string {
 	if dir == "" {
 		dir = filepath.Join("data", "discovery")
 	}
-	os.MkdirAll(dir, 0o755)
+	uid, gid := os.Getuid(), os.Getgid()
+	_ = platform.EnsureDirs([]platform.FileSpec{{Path: dir, UID: uid, GID: gid, Mode: 0o755}})
 	return filepath.Join(dir, "cluster.json")
 }
 

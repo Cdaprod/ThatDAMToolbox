@@ -5,17 +5,19 @@ go 1.23.0
 toolchain go1.24.3
 
 require (
-	github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
-	github.com/charmbracelet/log v0.4.2
-	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/google/uuid v1.5.0
-	github.com/muesli/termenv v0.16.0
-	github.com/quic-go/quic-go v0.40.0
-	github.com/rabbitmq/amqp091-go v1.9.0
-	golang.org/x/term v0.34.0
+        github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
+        github.com/charmbracelet/log v0.4.2
+        github.com/golang-jwt/jwt/v5 v5.3.0
+        github.com/google/uuid v1.5.0
+        github.com/muesli/termenv v0.16.0
+        github.com/quic-go/quic-go v0.40.0
+        github.com/rabbitmq/amqp091-go v1.9.0
+        golang.org/x/term v0.34.0
+        github.com/Cdaprod/ThatDamToolbox/host/shared v0.0.0
 )
 
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe => ./hostcap/v4l2probe
+replace github.com/Cdaprod/ThatDamToolbox/host/shared => ../../shared
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
