@@ -124,8 +124,8 @@ func setDefaults() {
 	viper.SetDefault("server.write_timeout", "30s")
 	viper.SetDefault("server.idle_timeout", "120s")
 
-	// broker
-	viper.SetDefault("broker.url", "amqp://guest:guest@localhost:5672/")
+        // broker
+        viper.SetDefault("broker.url", "amqp://video:video@localhost:5672/")
 	viper.SetDefault("broker.exchange", "capture")
 	viper.SetDefault("broker.connect_timeout", "10s")
 	viper.SetDefault("broker.reconnect_delay", "5s")
