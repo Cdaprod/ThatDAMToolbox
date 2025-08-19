@@ -147,6 +147,7 @@ services:
     restart: unless-stopped
     networks: [damnet]
     hostname: rabbitmq
+    entrypoint: ["/usr/local/bin/rabbitmq-entrypoint.sh"]
     environment:
       RABBITMQ_DEFAULT_USER: video
       RABBITMQ_DEFAULT_PASS: video
