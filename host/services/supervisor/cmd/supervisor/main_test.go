@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 )
 
@@ -42,4 +43,9 @@ func TestRegisterHeartbeat(t *testing.T) {
 	if snap[0].Status != "stale" {
 		t.Fatalf("expected stale, got %s", snap[0].Status)
 	}
+}
+
+func TestPublishEventWithoutBus(t *testing.T) {
+	bus.Close()
+	publishEvent("noop", Agent{ID: "a1"})
 }

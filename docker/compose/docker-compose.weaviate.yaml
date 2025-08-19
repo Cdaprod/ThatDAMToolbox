@@ -52,6 +52,7 @@ services:
     restart: unless-stopped
     networks: [damnet]
 
+
   # Ephemeral schema bootstrapper (runs once; safe to keep in stack)
   weaviate-schema-bootstrap:
     image: python:3.11
@@ -63,7 +64,7 @@ services:
     working_dir: /weaviate
     entrypoint: ["python", "bootstrap-schema.py"]
     environment:
-      WEAVIATE_URL:   "http://weaviate:8080"
-      WEAVIATE_SCHEMA: "schema.json"
+      WEAVIATE_URL: http://weaviate:8080
+      WEAVIATE_SCHEMA: schema.json
     restart: "no"
     networks: [damnet]
