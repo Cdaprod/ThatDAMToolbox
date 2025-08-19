@@ -1,27 +1,17 @@
-# Build arg provided automatically by BuildKit/Compose
-ARG TARGETARCH
+# syntax=docker/dockerfile:1.7
 
-# ── Stage 1: fetch MinIO Client (mc) for the right arch ─────────────────
-FROM alpine:3.20 AS mcget
-ARG TARGETARCH
-RUN apk add --no-cache ca-certificates wget
-RUN set -eux; \
-    case "${TARGETARCH}" in \
-      arm64)  ARCH=arm64  ;; \
-      amd64)  ARCH=amd64  ;; \
-      *)      ARCH=amd64  ;; \
-    esac; \
-    wget -O /mc "https://dl.min.io/client/mc/release/linux-${ARCH}/mc"; \
-    chmod +x /mc
+# Pin versions via build args; override in compose if needed
+ARG MINIO_VERSION=RELEASE.2024-03-15T01-07-19Z
+ARG MC_VERSION=RELEASE.2024-06-20T15-06-08Z
 
-# ── Stage 2: MinIO server + our entrypoint + mc ─────────────────────────
-FROM minio/minio:RELEASE.2024-03-15T01-07-19Z
-# Copy minio client
-COPY --from=mcget /mc /usr/bin/mc
-# Copy our bootstrapper
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# ── Stage: fetch MinIO Client (mc) for the *target* platform ────────────
+FROM --platform=$TARGETPLATFORM minio/mc:${MC_VERSION} AS mcget
+# mc binary is at /usr/bin/mc
 
-# Default CMD still starts minio; our entrypoint wraps it and configures
+# ── Final: MinIO server + entrypoint + mc ───────────────────────────────
+FROM minio/minio:${MINIO_VERSION}
+COPY --from=mcget /usr/bin/mc /usr/bin/mc
+COPY --chmod=0755 entrypoint.sh /entrypoint.sh
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["server","/data","--console-address",":9001"]
