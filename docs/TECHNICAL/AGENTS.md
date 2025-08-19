@@ -362,6 +362,7 @@ Create it in video/core/<helper>.py, add unit tests, and import; never copy-past
 
 - Update this `AGENTS.md` and the affected service’s `README.md` if you introduce new configuration, environment variables, or APIs.
 - All public endpoints and events must be documented in Markdown and code comments.
+- `scripts/install-runner.sh` accepts `--supervisor`, `--executor`, `--claim`, `--role-hint` and `--labels`; see `docs/TECHNICAL/RUNNER.md`.
 
 -----
 

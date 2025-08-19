@@ -8,5 +8,11 @@
 
 Install script example:
 ```bash
-SUPERVISOR_URL=http://localhost:8070 ./scripts/install-runner.sh
+./scripts/install-runner.sh --supervisor http://localhost:8070 \
+  --executor docker \
+  --claim "$(curl -fsSL http://localhost:8070/v1/runner/claim?node_id=$(hostname))" \
+  --role-hint edge --labels gpu
 ```
+
+The script writes its configuration to `/etc/cda/runner.env` and installs a
+systemd unit that sources this file.
