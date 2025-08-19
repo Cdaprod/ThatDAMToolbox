@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
 
 // FSStorage implements ports.ObjectStorage using the local filesystem.
@@ -29,7 +30,8 @@ func New(dir string) (*FSStorage, error) {
 	if dir == "" {
 		return nil, errors.New("dir required")
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	uid, gid := os.Getuid(), os.Getgid()
+	if err := platform.EnsureDirs([]platform.FileSpec{{Path: dir, UID: uid, GID: gid, Mode: 0o755}}); err != nil {
 		return nil, err
 	}
 	return &FSStorage{root: dir}, nil
@@ -37,7 +39,8 @@ func New(dir string) (*FSStorage, error) {
 
 // EnsureBucket creates a directory for the bucket if it does not exist.
 func (f *FSStorage) EnsureBucket(ctx context.Context, name string) error {
-	return os.MkdirAll(filepath.Join(f.root, name), 0o755)
+	uid, gid := os.Getuid(), os.Getgid()
+	return platform.EnsureDirs([]platform.FileSpec{{Path: filepath.Join(f.root, name), UID: uid, GID: gid, Mode: 0o755}})
 }
 
 // EnsureVersioning is a no-op for the filesystem adapter.

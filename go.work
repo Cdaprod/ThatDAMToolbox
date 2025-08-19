@@ -9,6 +9,7 @@ use (
         ./host/services/media-api
         ./host/services/overlay-hub
         ./host/services/supervisor
+        ./host/shared
         ./host/services/shared
         ./host/services/shared/hostcap/v4l2probe
         ./host/services/runner

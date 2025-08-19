@@ -69,22 +69,21 @@ Where this belongs
 Put it below executor and beside your BlobStore/Catalog ports:
 
 host/
-  core/
-    platform/           ← PAL root
-      plan.go           ← desired state model
-      apply.go          ← reconciler (idempotent)
-      drivers/
-        fs/             ← fs://
-        s3minio/        ← s3://
-        pg/             ← pg://
-        weaviate/       ← weav://
-        amqp/           ← amqp://
   services/
     runner/             ← calls platform.Apply(plan) once, then executor.Apply(app)
     supervisor/         ← emits a plan for the node (role-aware)
-  services/shared/
-    storage/port.go     ← BlobStore port (already done)
-    catalog/port.go     ← Catalog port (already done)
+    shared/
+      platform/         ← PAL root
+        plan.go         ← desired state model
+        apply.go        ← reconciler (idempotent)
+        drivers/
+          fs/           ← fs://
+          s3minio/      ← s3://
+          pg/           ← pg://
+          weaviate/     ← weav://
+          amqp/         ← amqp://
+      storage/port.go   ← BlobStore port (already done)
+      catalog/port.go   ← Catalog port (already done)
 
 What it does (capabilities)
 
