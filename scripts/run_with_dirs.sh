@@ -15,7 +15,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 # call ensure-dirs with current uid/gid
-if ! go run ./host/services/shared/platform/cmd/ensure-dirs "${DIRS[@]}"; then
+if ! go run ./host/core/platform/cmd/ensure-dirs "${DIRS[@]}"; then
   echo "directory ensure failed" >&2
   exit 1
 fi

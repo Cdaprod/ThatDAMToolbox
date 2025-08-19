@@ -2,7 +2,7 @@
 //
 // Usage:
 //
-//	go run ./host/services/shared/platform/cmd/ensure-dirs --uid 1000 --gid 16000 --mode 2775 /var/lib/thatdamtoolbox/db /var/lib/thatdamtoolbox/media
+//	go run ./host/core/platform/cmd/ensure-dirs --uid 1000 --gid 16000 --mode 0o2775 /var/lib/thatdamtoolbox/db /var/lib/thatdamtoolbox/media
 //
 // Flags apply to all provided paths. Exits with code 1 on failure.
 package main
@@ -12,7 +12,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/platform"
+	"github.com/Cdaprod/ThatDamToolbox/host/core/platform"
 )
 
 func main() {

@@ -1,9 +1,10 @@
 go 1.23
 
 use (
-	./host/services/api-gateway
-	./host/services/camera-proxy
-	./host/services/capture-daemon
-	./host/services/proxy
-	./host/services/shared
+        ./host/core
+        ./host/services/api-gateway
+        ./host/services/camera-proxy
+        ./host/services/capture-daemon
+        ./host/services/proxy
+        ./host/services/shared
 )
