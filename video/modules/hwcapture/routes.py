@@ -180,11 +180,28 @@ async def hls_segment(segment: str):
 
 @router.post("/record")
 async def start_record(
-    device: str = Query("/dev/video0"),
-    fname: str = Query("capture.mp4"),
-    codec: str = Query("h264"),
+    request: Request,
+    device: str | None = Query(None),
+    fname: str | None = Query(None),
+    codec: str | None = Query(None),
 ):
-    # Store recordings in RECORDS_DIR
+    """Start a hardware encoded recording.
+
+    Accepts either query parameters or a JSON body with ``device``,
+    ``fname`` and optional ``codec`` for convenience.
+
+    Example:
+        curl -X POST '/hwcapture/record?device=/dev/video0&fname=out.mp4'
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    device = device or payload.get("device", "/dev/video0")
+    fname = fname or payload.get("fname", "capture.mp4")
+    codec = codec or payload.get("codec", "h264")
+
     out_path = RECORDS_DIR / fname
     job_id = str(uuid.uuid4())
     rec = HWAccelRecorder(device=device, output_file=str(out_path))
