@@ -135,7 +135,7 @@ services:
       PERSISTENCE_DATA_PATH: /var/lib/weaviate
       ENABLE_MODULES: "backup-s3"
       BACKUP_S3_BUCKET: weaviate-backups
-      BACKUP_S3_ENDPOINT: http://minio:9000
+      BACKUP_S3_ENDPOINT: minio:9000
       BACKUP_S3_ACCESS_KEY_ID: thatdam_app
       BACKUP_S3_SECRET_ACCESS_KEY: thatdam_app_secret
       BACKUP_S3_USE_SSL: "false"

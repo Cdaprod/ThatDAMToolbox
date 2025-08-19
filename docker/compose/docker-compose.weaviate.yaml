@@ -18,10 +18,14 @@ services:
       # Enable S3 backup module (targets MinIO)
       ENABLE_MODULES:                            "backup-s3"
       BACKUP_S3_BUCKET:                          "weaviate-backups"
-      BACKUP_S3_ENDPOINT:                        "http://minio:9000"
+      BACKUP_S3_ENDPOINT:                        "minio:9000"
       BACKUP_S3_ACCESS_KEY_ID:                   "thatdam_app"
       BACKUP_S3_SECRET_ACCESS_KEY:               "thatdam_app_secret"
       BACKUP_S3_USE_SSL:                         "false"
+      AWS_S3_FORCE_PATH_STYLE:                   "true"
+      AWS_ACCESS_KEY_ID:                         "thatdam_app"
+      AWS_SECRET_ACCESS_KEY:                     "thatdam_app_secret"
+      AWS_REGION:                                "us-east-1"
 
       # (Optional) Postgres storage
       POSTGRES_HOST:                             "postgres"
