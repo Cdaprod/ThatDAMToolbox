@@ -21,6 +21,8 @@ RUN set -eux; \
 
 # ── Stage: MinIO server + your entrypoint + mc ──────────────────────────────
 FROM minio/minio:${MINIO_VERSION}
+# Install helper for dropping privileges
+RUN apk add --no-cache su-exec
 # If you'd rather not pin, you can use :latest, but pinning is safer for CI reproducibility.
 
 # Add the client and entrypoint
