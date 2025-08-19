@@ -44,6 +44,15 @@ watch for fulfilment using Server-Sent Events at
 claim is fulfilled. To complete the flow send the ID and token to
 `/api/claims/fulfill`.
 
+## Plan Selection
+
+`POST /v1/nodes/plan` loads YAML templates from `./plans`:
+
+- `server.yaml` when `role_hint` is `server`.
+- `camera-proxy.yaml` when `role_hint` is empty and the node reports `capabilities.video_devices >= 1`.
+
+Each template defines the app `env`, `ports`, and `after` settings.
+
 ### DesiredPlan example
 
 ```json

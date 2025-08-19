@@ -1,0 +1,33 @@
+apps:
+  - name: media-api
+    kind: go
+    cwd: /host/services/media-api
+    command: ["./media-api"]
+    env:
+      PORT: "8080"
+    ports: [8080]
+    restart: always
+    health:
+      http: http://127.0.0.1:8080/health
+      interval_sec: 5
+      timeout_sec: 30
+  - name: video-web
+    kind: nextjs
+    cwd: /web/video
+    build:
+      kind: nextjs
+      strategy: standalone
+      command: ["npm", "ci"]
+      out_dir: .next/standalone
+      env:
+        NEXT_TELEMETRY_DISABLED: "1"
+    command: ["node", ".next/standalone/server.js"]
+    env:
+      PORT: "3000"
+    ports: [3000]
+    after: ["media-api"]
+    restart: always
+    health:
+      http: http://127.0.0.1:3000/health
+      interval_sec: 5
+      timeout_sec: 60
