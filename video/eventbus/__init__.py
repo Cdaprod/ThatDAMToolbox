@@ -55,7 +55,7 @@ def connect(url: str | None = None, exchange: str = "events") -> _AMQPBus:
         url = (
             url
             or os.getenv("EVENT_BROKER_URL")
-            or os.getenv("AMQP_URL", "amqp://guest:guest@localhost/")
+            or os.getenv("AMQP_URL", "amqp://video:video@localhost/")
         )
         exchange = exchange or os.getenv("AMQP_EXCHANGE", "events")
         _bus = _AMQPBus(url, exchange)
