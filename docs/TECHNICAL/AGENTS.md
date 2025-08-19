@@ -118,6 +118,8 @@ This document explains the key principles and details you’ll need to develop a
 
 - Central event broker; services read EVENT_BROKER_URL (fallback AMQP_URL).
 - Default creds: video:video on vhost /.
+- When reusing volumes across upgrades, enable the required classic queue flag:
+  `docker compose run --rm rabbitmq rabbitmqctl enable_feature_flag classic_mirrored_queue_version`
 
 ### nginx
 

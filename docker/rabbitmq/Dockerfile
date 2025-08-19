@@ -11,5 +11,9 @@ RUN rabbitmq-plugins enable --offline rabbitmq_prometheus
 COPY rabbitmq.conf        /etc/rabbitmq/rabbitmq.conf
 COPY definitions.json     /etc/rabbitmq/definitions.json
 
+# Wrapper entrypoint to auto-enable required feature flags
+COPY entrypoint.sh /usr/local/bin/rabbitmq-entrypoint.sh
+RUN chmod +x /usr/local/bin/rabbitmq-entrypoint.sh
+
 # Expose Prometheus metrics port
 EXPOSE 9419
