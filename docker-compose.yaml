@@ -104,7 +104,8 @@ services:
     image: cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
     entrypoint: ["/bin/bash","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
-    network_mode: host             # owns :80 / :443 on the Pi
+    networks: [damnet]
+    ports: ["80:80"]
     restart: unless-stopped
     depends_on:
       - api-gateway
@@ -116,9 +117,6 @@ services:
       UPSTREAM_PORT: "8080"
       UPSTREAM: api-gateway:8080
       SERVICE_PORT: "8080"
-    # If you choose bridge mode instead, comment network_mode and add:
-    # networks: [damnet]
-    # ports: ["80:80"]
     volumes:
       - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
       - ./docker/nginx/entrypoint.sh:/entrypoint.sh:ro
