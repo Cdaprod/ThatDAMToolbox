@@ -18,7 +18,7 @@ import (
 // StartPreviewWorker subscribes to asset.ingested, upserts the asset into the
 // catalog, and writes a tiny poster.jpg.
 //
-// bs := storage.NewFS("/tmp/blobs")
+// bs := storage.NewFS("/tmp/blobs", platform.NewOSDirEnsurer())
 // ctx, cancel := context.WithCancel(context.Background())
 // defer cancel()
 // StartPreviewWorker(ctx, bs, cat)

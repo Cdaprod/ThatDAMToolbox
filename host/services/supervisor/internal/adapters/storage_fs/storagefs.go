@@ -23,24 +23,25 @@ import (
 // FSStorage implements ports.ObjectStorage using the local filesystem.
 type FSStorage struct {
 	root string
+	de   platform.DirEnsurer
 }
 
 // New creates a new FSStorage rooted at dir, creating it if necessary.
-func New(dir string) (*FSStorage, error) {
+func New(dir string, de platform.DirEnsurer) (*FSStorage, error) {
 	if dir == "" {
 		return nil, errors.New("dir required")
 	}
 	uid, gid := os.Getuid(), os.Getgid()
-	if err := platform.EnsureDirs([]platform.FileSpec{{Path: dir, UID: uid, GID: gid, Mode: 0o755}}); err != nil {
+	if err := de.EnsureDirs([]platform.FileSpec{{Path: dir, UID: uid, GID: gid, Mode: 0o755}}); err != nil {
 		return nil, err
 	}
-	return &FSStorage{root: dir}, nil
+	return &FSStorage{root: dir, de: de}, nil
 }
 
 // EnsureBucket creates a directory for the bucket if it does not exist.
 func (f *FSStorage) EnsureBucket(ctx context.Context, name string) error {
 	uid, gid := os.Getuid(), os.Getgid()
-	return platform.EnsureDirs([]platform.FileSpec{{Path: filepath.Join(f.root, name), UID: uid, GID: gid, Mode: 0o755}})
+	return f.de.EnsureDirs([]platform.FileSpec{{Path: filepath.Join(f.root, name), UID: uid, GID: gid, Mode: 0o755}})
 }
 
 // EnsureVersioning is a no-op for the filesystem adapter.

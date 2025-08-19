@@ -3,11 +3,17 @@ package state
 import (
 	"os"
 	"testing"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
+
+type nopDirEnsurer struct{}
+
+func (nopDirEnsurer) EnsureDirs([]platform.FileSpec) error { return nil }
 
 func TestStoreRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	st := NewDiskStore(dir)
+	st := NewDiskStore(dir, nopDirEnsurer{})
 	if err := st.SaveGeneration("node1", "abc"); err != nil {
 		t.Fatalf("save: %v", err)
 	}
@@ -33,7 +39,7 @@ func TestSanitize(t *testing.T) {
 func TestStoreCreatesDir(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/sub"
-	st := NewDiskStore(path)
+	st := NewDiskStore(path, platform.NewOSDirEnsurer())
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("dir not created: %v", err)
 	}

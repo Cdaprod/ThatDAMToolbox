@@ -17,6 +17,18 @@ import (
 	"os"
 )
 
+// DirEnsurer ensures directories exist with the specified ownership and mode.
+type DirEnsurer interface {
+	EnsureDirs([]FileSpec) error
+}
+
+// NewOSDirEnsurer returns a DirEnsurer backed by the local filesystem.
+func NewOSDirEnsurer() DirEnsurer { return osDirEnsurer{} }
+
+type osDirEnsurer struct{}
+
+func (osDirEnsurer) EnsureDirs(specs []FileSpec) error { return EnsureDirs(specs) }
+
 // FileSpec describes a directory to ensure.
 type FileSpec struct {
 	Path string      // absolute path to directory

@@ -6,12 +6,25 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
+
+type testDirEnsurer struct{}
+
+func (testDirEnsurer) EnsureDirs(specs []platform.FileSpec) error {
+	for _, s := range specs {
+		if err := os.MkdirAll(s.Path, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // TestFS exercises basic BlobStore operations.
 func TestFS(t *testing.T) {
 	dir := t.TempDir()
-	bs := NewFS(dir)
+	bs := NewFS(dir, testDirEnsurer{})
 	key := "a/b.txt"
 	if err := bs.Put(key, bytes.NewBufferString("hi")); err != nil {
 		t.Fatal(err)
