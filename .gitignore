@@ -58,6 +58,7 @@ dist/
 *.tar
 *.tar.gz
 data/
+!/docker/weaviate/data/
 
 # ---- Metadata/output folders ----
 /metadata/

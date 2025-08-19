@@ -35,8 +35,10 @@ services:
     volumes:
       - ./docker/weaviate/data/weaviate:/var/lib/weaviate
     depends_on:
-      - minio
-      - postgres
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD","wget","-qO-","http://localhost:8080/v1/.well-known/ready"]
       interval: 10s
@@ -50,7 +52,8 @@ services:
   weaviate-schema-bootstrap:
     image: python:3.11
     depends_on:
-      - weaviate
+      weaviate:
+        condition: service_healthy
     volumes:
       - ./docker/weaviate:/weaviate:ro
     working_dir: /weaviate
