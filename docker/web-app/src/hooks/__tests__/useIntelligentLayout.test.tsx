@@ -4,6 +4,7 @@ import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { computeLayoutGroups, useIntelligentLayout } from '../useIntelligentLayout'
 import type { DashboardTool } from '@/components/dashboardTools'
+import { dashboardTools } from '../../components/dashboardTools'
 
 const sample: DashboardTool[] = [
   {
@@ -35,4 +36,11 @@ test('provides focus setter', () => {
   renderToString(<Test />)
   assert.equal(hook.focusedTool, null)
   assert.equal(typeof hook.setFocusedTool, 'function')
+})
+
+test('works with dashboardTools record', () => {
+  assert.doesNotThrow(() => {
+    const groups = computeLayoutGroups(Object.values(dashboardTools))
+    assert.ok(Array.isArray(groups.primary))
+  })
 })

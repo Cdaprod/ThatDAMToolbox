@@ -7,7 +7,9 @@ import { useIntelligentLayout } from '@/hooks/useIntelligentLayout';
 import { gridStyle } from '@/styles/theme';
 
 export default function HomePage() {
-  const { layoutGroups, focusedTool, setFocusedTool } = useIntelligentLayout(dashboardTools);
+  const { layoutGroups, focusedTool, setFocusedTool } = useIntelligentLayout(
+    Object.values(dashboardTools),
+  );
 
   const handleFocus = (toolId: string) => setFocusedTool(toolId);
 
@@ -30,7 +32,7 @@ export default function HomePage() {
           {layoutGroups.primary.map(tool => (
             <ToolCard
               key={tool.id}
-              href={tool.href}
+              toolId={tool.id}
               size="large"
               onFocus={handleFocus}
             />
@@ -49,11 +51,11 @@ export default function HomePage() {
             {layoutGroups.secondary.map(tool => (
               <ToolCard
                 key={tool.id}
-                href={tool.href}
+                toolId={tool.id}
                 size="medium"
                 isRelated={
                   focusedTool != null &&
-                  dashboardTools.find(t => t.id === focusedTool)!.relatedTools.includes(tool.id)
+                  dashboardTools[focusedTool]?.relatedTools.includes(tool.id)
                 }
                 onFocus={handleFocus}
               />
@@ -73,7 +75,7 @@ export default function HomePage() {
             {layoutGroups.tertiary.map(tool => (
               <ToolCard
                 key={tool.id}
-                href={tool.href}
+                toolId={tool.id}
                 size="small"
                 onFocus={handleFocus}
               />
