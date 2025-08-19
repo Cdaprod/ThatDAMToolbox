@@ -32,6 +32,17 @@ SUPERVISOR_URL=http://localhost:8070 RUNNER_EXECUTOR=docker \
 - `POST /v1/nodes/heartbeat`
 - `GET  /v1/bootstrap/profile`
 - `GET  /v1/leader`
+- `POST /api/claims/new`
+- `GET  /api/claims/{id}/watch`
+- `POST /api/claims/fulfill`
+
+### Claim tokens
+
+`POST /api/claims/new` issues a one-time token and claim ID. Callers may
+watch for fulfilment using Server-Sent Events at
+`/api/claims/{id}/watch`, which emits periodic heartbeats until the
+claim is fulfilled. To complete the flow send the ID and token to
+`/api/claims/fulfill`.
 
 ### DesiredPlan example
 
