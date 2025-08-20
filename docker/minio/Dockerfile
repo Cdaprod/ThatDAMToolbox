@@ -18,15 +18,14 @@ RUN set -eux; \
   wget -O /mc "https://dl.min.io/client/mc/release/linux-${mc_arch}/mc"; \
   chmod +x /mc
 
-# ── Stage: MinIO server + your entrypoint + mc ─────────
+# ── Final: MinIO server + your entrypoint + mc ─────────
 FROM minio/minio:${MINIO_VERSION}
 
-# Add the client and entrypoint
+# Add the client and entrypoint (NOTE: no package installs; base has no package mgr)
 COPY --from=mcget /mc /usr/bin/mc
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# NOTE: Base image has no package manager; health checks use mc
-
+# Force our minimal entrypoint; do NOT source any repo-wide shared entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["server","/data","--console-address",":9001"]

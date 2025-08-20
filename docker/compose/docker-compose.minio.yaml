@@ -1,9 +1,5 @@
-# ──────────────────────────────────────────────────────────────
-# Object-store (MinIO)
-# ──────────────────────────────────────────────────────────────
 services:
   minio:
-    # Uses your custom image & entrypoint living in ./docker/minio
     build:
       context: ../../
       dockerfile: docker/minio/Dockerfile
@@ -32,17 +28,14 @@ services:
       MINIO_NOTIFY_WEBHOOK_ENABLE_primary: "on"
       MINIO_NOTIFY_WEBHOOK_ENDPOINT_primary: "http://webhook:5000/events"
       MINIO_NOTIFY_WEBHOOK_AUTH_TOKEN_primary: ""
-
-      # Optional: one non-root service account for local dev
-      # (fine to keep; in prod, prefer per-service credentials)
       MINIO_SVC_ACCESS_KEY:  thatdam_app
       MINIO_SVC_SECRET_KEY:  thatdam_app_secret
     ports:
-      - "9000:9000"  # S3 API
-      - "9001:9001"  # MinIO Console
+      - "9000:9000"
+      - "9001:9001"
     volumes:
-      - ./docker/minio/data:/data
-    # Healthcheck via `mc` (bundled in the image). `$` must be escaped as `$$`.
+      - ../../docker/minio/data:/data
+    # ✅ mc-based healthcheck: no curl/wget required
     healthcheck:
       test: >
         CMD-SHELL
