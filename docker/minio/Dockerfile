@@ -26,8 +26,7 @@ COPY --from=mcget /mc /usr/bin/mc
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Install curl for healthchecks
-RUN apk add --no-cache curl
+# NOTE: Base image has no package manager; health checks use mc
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["server","/data","--console-address",":9001"]
