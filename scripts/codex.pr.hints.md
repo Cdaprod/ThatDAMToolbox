@@ -5,12 +5,15 @@
 - If unsure which milestone applies, default to `🧬 Feature Development`.
 - Keep `Scope:` listing the components or services touched.
 
+The sync workflow falls back to a `Milestone:` prefix in the PR title if the header line is missing and will automatically create the milestone if it does not already exist.
+
 Example:
 ```
 Milestone: 🧬 Feature Development
 Scope: camera-proxy, web-app
 Linked Issues: #123
 ```
+
 
 When opening a PR, always include these header lines at the top of the PR body:
 

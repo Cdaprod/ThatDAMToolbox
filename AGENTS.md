@@ -29,6 +29,10 @@ Linked Issues: <#issue, #issue>
 
 If unsure, default to **🧬 Feature Development**.
 
+The milestone sync workflow will create a new milestone automatically if the title does not yet exist in the repository. It also falls back to parsing the PR title for a `Milestone:` prefix, though the header block above remains required.
+
+All new scripts or workflows must be idempotent and documented per repository standards.
+
 ### Commit / PR Checklist
 - Change is self-contained & idempotent.
 - No unnecessary files or dependencies added.
