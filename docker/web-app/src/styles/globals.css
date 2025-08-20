@@ -60,11 +60,18 @@ a {
   .ring-theme-accent   { --tw-ring-color:  var(--theme-accent)     !important; }
 
   .bg-surface         { background-color: var(--color-surface) !important; }
+  .bg-surface-alt     { background-color: var(--color-surface-alt) !important; }
   .text-color-muted   { color:            var(--color-muted)  !important; }
   .border-color-border{ border-color:     var(--color-border) !important; }
   .bg-color-primary-bg{ background-color: var(--color-primary-bg) !important; }
   .bg-color-accent-bg { background-color: var(--color-accent-bg)  !important; }
   .border-theme-primary{ border-color:    var(--theme-primary)   !important; }
+
+  .text-on-primary { color: var(--color-text-on-primary) !important; }
+  .text-on-accent  { color: var(--color-text-on-accent)  !important; }
+  .text-on-success { color: var(--color-text-on-success) !important; }
+  .text-on-warning { color: var(--color-text-on-warning) !important; }
+  .text-on-error   { color: var(--color-text-on-error)   !important; }
 
   .text-body    { font-size: var(--text-body);    font-weight: var(--font-weight-regular); }
   .text-heading { font-size: var(--text-heading); font-weight: var(--font-weight-semibold); }
