@@ -23,8 +23,8 @@ services:
   minio:
     build:
       <<: *build-common
-      context: ../../
-      dockerfile: docker/minio/Dockerfile
+      context: ../../docker/minio
+      dockerfile: Dockerfile
     image: thatdamtoolbox-minio:local
     container_name: thatdamtoolbox-minio
     environment:
