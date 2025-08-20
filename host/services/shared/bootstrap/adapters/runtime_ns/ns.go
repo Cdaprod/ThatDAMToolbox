@@ -22,5 +22,5 @@ func (NSRuntime) Stop(ctx context.Context, name string) error { return nil }
 
 // State reports the unit as inactive.
 func (NSRuntime) State(ctx context.Context, name string) (ports.UnitState, error) {
-	return ports.UnitState{Name: name, Active: false}, nil
+	return ports.UnitState{Name: name, Active: false, ExitCode: 0}, nil
 }

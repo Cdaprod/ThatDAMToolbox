@@ -80,7 +80,7 @@ func (rt *ExecRuntime) State(ctx context.Context, name string) (ports.UnitState,
 	rt.mu.Lock()
 	_, ok := rt.procs[name]
 	rt.mu.Unlock()
-	return ports.UnitState{Name: name, Active: ok}, nil
+	return ports.UnitState{Name: name, Active: ok, ExitCode: 0}, nil
 }
 
 func formatEnv(m map[string]string) []string {
