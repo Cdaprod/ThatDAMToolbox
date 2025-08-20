@@ -30,6 +30,7 @@ jobs:
           else
             echo "$body_ms" > /tmp/milestone.txt
           fi
+
           if [[ -s /tmp/milestone.txt ]]; then
             echo "title=$(cat /tmp/milestone.txt)" >> "$GITHUB_OUTPUT"
           else

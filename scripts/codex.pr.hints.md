@@ -13,3 +13,44 @@ Milestone: 🧬 Feature Development
 Scope: camera-proxy, web-app
 Linked Issues: #123
 ```
+
+
+When opening a PR, always include these header lines at the top of the PR body:
+
+Milestone: <EXACT TITLE FROM MILESTONES LIST>
+Scope: <comma-separated components>
+Linked Issues: <#issue, #issue>
+
+### Valid Milestones (copy **exactly**, including emoji):
+- 🛠️ Project Initialization
+- 🧪 Planning and Setup
+- 🧬 Feature Development
+- 🎯 Prototype and Validation
+- 🛠️ Refinement and Optimization
+- 🧪 Staging and Testing
+- 🎉 Public Release
+- 🎯 Post-Release and Maintenance
+
+If unsure, default to **🧬 Feature Development**.
+
+### Commit / PR Checklist
+- Change is self-contained & idempotent.
+- No unnecessary files or dependencies added.
+- Tests added or updated.
+- Docs / OpenAPI / Events updated.
+- Conventional commit message (feat, fix, …).
+- Milestone set from list below.
+
+### 📆 Milestones
+- Assign one of the GitHub milestones below to every PR and mention it in the PR body so Codex can surface the phase in its output.
+    - 🛠️ Project Initialization – Foundation layer - Initializing the project.
+    - 🧪 Planning and Setup – Initial stage focused on defining project scope, requirements, and setting up basic project infrastructure.
+    - 🧬 Feature Development – Stage for building and implementing core project features and functionality.
+    - 🎯 Prototype and Validation – Creating a prototype for validation, testing the feasibility, and refining key project aspects.
+    - 🛠️ Refinement and Optimization – Focusing on refining features and optimizing performance before staging.
+    - 🧪 Staging and Testing – Setting up the staging environment for final tests and quality assurance before release.
+    - 🎉 Public Release – Launching the project to the public and ensuring stable deployment.
+    - 🎯 Post-Release and Maintenance – Ongoing maintenance, bug fixes, and feature improvements after public release.
+
+
+All new scripts or workflows must be idempotent and documented per repository standards.

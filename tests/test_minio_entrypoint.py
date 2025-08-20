@@ -5,6 +5,8 @@ def test_entrypoint_basic():
     assert 'minio server /data --console-address :9001' in content
     assert 'mc alias set' in content
     assert 'mc mb' in content
+    assert 'curl -fSs' in content
+    assert 'wget' not in content
     assert 'su ' not in content
     assert 'chown' not in content
 

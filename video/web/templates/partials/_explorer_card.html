@@ -9,10 +9,10 @@
     import DAMExplorer, {
       __react__     as React,
       __react_dom__ as ReactDOM
-    } from "{{ url_for('static', path='components/dam-explorer.bundle.js') }}";
+    } from "{{ url_for('static', path='components/dam-explorer.js') }}";
 
     const container = document.getElementById('dam-root');
     const root      = ReactDOM.createRoot(container);
     root.render( React.createElement(DAMExplorer) );
-  </script>
-</details>
+    </script>
+  </details>
