@@ -89,6 +89,5 @@ export const dashboardColorClasses: Record<string, string> = {
   motion:           'text-[var(--color-motion)]',
   live:             'text-[var(--color-live)]',
   witness:          'text-[var(--color-witness)]',
-  explorer:         'text-[var(--color-primary)]',
   nodes:            'text-[var(--color-nodes)]',
 };

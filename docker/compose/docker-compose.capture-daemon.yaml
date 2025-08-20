@@ -27,13 +27,14 @@ services:
       dockerfile: host/services/capture-daemon/Dockerfile
     image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-capture-daemon
+    hostname: "thatdam-capture-${HOST_SUFFIX:-local}"
     networks: [damnet]
     init: false
     privileged: true
     pid: host
     ports: ["${CAPTURE_DAEMON_HOST_PORT:-19000}:9000"]
     environment:
-      CAPTURE_NODE_ID: "${HOSTNAME}"
+      CAPTURE_NODE_ID: "${CAPTURE_NODE_ID:-}"
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
