@@ -7,3 +7,5 @@ Scope: Common Go packages and middleware reused by host services.
 - Each subpackage needs focused unit tests and clear docs.
 - Avoid global state; expose explicit constructors and interfaces.
 - Update this file and README when adding new packages.
+- `bus/log` implements an append-only, file-backed bus adapter for
+  Kafka-like sequential I/O.
