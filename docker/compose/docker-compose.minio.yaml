@@ -41,9 +41,13 @@ services:
       - "9000:9000"  # S3 API
       - "9001:9001"  # MinIO Console
     volumes:
-      - ../../docker/minio/data:/data
+      - ./docker/minio/data:/data
+    # Healthcheck via `mc` (bundled in the image). `$` must be escaped as `$$`.
     healthcheck:
-      test: ["CMD","curl","-fsS","http://localhost:9000/minio/health/ready"]
+      test: >
+        CMD-SHELL
+        mc alias set hc http://localhost:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1
+        && mc ls hc >/dev/null 2>&1
       interval: 30s
       timeout: 5s
       retries: 3

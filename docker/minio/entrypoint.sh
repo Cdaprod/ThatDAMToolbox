@@ -32,25 +32,21 @@ MINIO_SVC_SECRET_KEY="${MINIO_SVC_SECRET_KEY:-}"
 /usr/bin/minio server /data --console-address :9001 >/proc/1/fd/1 2>/proc/1/fd/2 &
 MINIO_PID=$!
 
-for i in $(seq 1 60); do
-  if wget -qO- http://127.0.0.1:9000/minio/health/ready >/dev/null 2>&1; then
-    READY=1
-    break
-  fi
-  sleep 1
+tries=0
+until mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+  tries=$((tries+1))
   if ! kill -0 "$MINIO_PID" 2>/dev/null; then
     echo "MinIO exited unexpectedly" >&2
-    wait "$MINIO_PID"
+    wait "$MINIO_PID" || true
     exit 1
   fi
+  if [ "$tries" -gt 60 ]; then
+    echo "Timed out waiting for MinIO readiness" >&2
+    kill "$MINIO_PID" 2>/dev/null || true
+    exit 1
+  fi
+  sleep 1
 done
-if [[ "${READY:-0}" -ne 1 ]]; then
-  echo "Timed out waiting for MinIO readiness" >&2
-  kill "$MINIO_PID" 2>/dev/null || true
-  exit 1
-fi
-
-mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
 
 ensure_bucket() {
   local bucket="$1"

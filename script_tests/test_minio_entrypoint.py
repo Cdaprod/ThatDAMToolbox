@@ -28,10 +28,6 @@ def test_sets_public_cors_and_service_account(tmp_path):
     )
     mc.chmod(0o755)
 
-    wget = tmp_path / "wget"
-    wget.write_text("#!/usr/bin/env bash\nexit 0\n")
-    wget.chmod(0o755)
-
     minio = tmp_path / "minio"
     minio.write_text("#!/usr/bin/env bash\nsleep 0.1\n")
     minio.chmod(0o755)

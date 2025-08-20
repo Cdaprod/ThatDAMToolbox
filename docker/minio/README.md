@@ -11,6 +11,10 @@ This image wraps [MinIO](https://min.io/) and uses `entrypoint.sh` to ensure req
 - `MINIO_MEDIA_CORS_JSON` – JSON array defining a CORS policy applied to the media bucket.
 - `MINIO_SVC_ACCESS_KEY` / `MINIO_SVC_SECRET_KEY` – when both are provided, a service account is created for the root user.
 
+## Notes
+
+- The base `minio/minio` image has no package manager. Readiness and health checks use the bundled `mc` client.
+
 ## Example
 
 ```bash
