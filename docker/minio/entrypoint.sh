@@ -10,6 +10,8 @@
 #     -e MINIO_ROOT_USER=minio \
 #     -e MINIO_ROOT_PASSWORD=minio123 \
 #     -e MINIO_BUCKET_MEDIA=media \
+#     -e MINIO_MEDIA_PUBLIC=true \
+#     -e MINIO_MEDIA_CORS_JSON='[{"AllowedMethods":["GET"],"AllowedOrigins":["*"]}]' \
 #     thatdamtoolbox-minio
 
 set -euo pipefail
@@ -19,6 +21,8 @@ set -euo pipefail
 
 MINIO_BUCKET_MEDIA="${MINIO_BUCKET_MEDIA:-}"
 MINIO_BUCKET_WEAVIATE_BACKUPS="${MINIO_BUCKET_WEAVIATE_BACKUPS:-}"
+MINIO_MEDIA_PUBLIC="${MINIO_MEDIA_PUBLIC:-false}"
+MINIO_MEDIA_CORS_JSON="${MINIO_MEDIA_CORS_JSON:-}"
 
 /usr/bin/minio server /data --console-address :9001 >/proc/1/fd/1 2>/proc/1/fd/2 &
 MINIO_PID=$!
@@ -51,5 +55,16 @@ ensure_bucket() {
 
 ensure_bucket "$MINIO_BUCKET_MEDIA"
 ensure_bucket "$MINIO_BUCKET_WEAVIATE_BACKUPS"
+
+if [[ "$MINIO_MEDIA_PUBLIC" == "true" && -n "$MINIO_BUCKET_MEDIA" ]]; then
+  mc anonymous set download "local/${MINIO_BUCKET_MEDIA}" >/dev/null
+fi
+
+if [[ -n "$MINIO_MEDIA_CORS_JSON" && -n "$MINIO_BUCKET_MEDIA" ]]; then
+  cors_tmp=$(mktemp)
+  printf '%s' "$MINIO_MEDIA_CORS_JSON" > "$cors_tmp"
+  mc cors set "local/${MINIO_BUCKET_MEDIA}" "$cors_tmp" >/dev/null
+  rm -f "$cors_tmp"
+fi
 
 wait "$MINIO_PID"

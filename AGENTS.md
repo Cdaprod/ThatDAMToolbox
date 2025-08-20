@@ -199,9 +199,10 @@ This document explains the key principles and details you’ll need to develop a
 ---
 
 ## Ports & Adapters (optional services are pluggable)
-- ObjectStorage (FS default; MinIO optional)  
-- EventBus (in-proc default; RabbitMQ optional)  
-- VectorIndex (in-mem default; Weaviate optional)  
+- ObjectStorage (FS default; MinIO optional)
+  - MinIO entrypoint supports `MINIO_MEDIA_PUBLIC=true` for public media buckets and `MINIO_MEDIA_CORS_JSON` for custom CORS.
+- EventBus (in-proc default; RabbitMQ optional)
+- VectorIndex (in-mem default; Weaviate optional)
 Discovery selects adapters from env; reconcilers are idempotent and non-destructive.
 
 ---
