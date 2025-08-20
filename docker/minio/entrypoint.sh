@@ -19,8 +19,8 @@ MINIO_PID=$!
 
 # 2) wait for readiness using mc (bundled in the image)
 tries=0
-until mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; \
-   && mc admin info local >/dev/null 2>&1; do
+until mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1 && \
+     mc admin info local >/dev/null 2>&1; do
   tries=$((tries+1))
   if ! kill -0 "$MINIO_PID" 2>/dev/null; then
     echo "MinIO exited unexpectedly" >&2
