@@ -66,6 +66,23 @@ a {
   .bg-color-accent-bg { background-color: var(--color-accent-bg)  !important; }
   .border-theme-primary{ border-color:    var(--theme-primary)   !important; }
 
+  /* Status utilities */
+  .status-success    { background-color: var(--color-success-bg)  !important;
+                       color:            var(--color-success-text)!important;
+                       border-color:     var(--color-success)    !important; }
+  .status-processing { background-color: var(--color-warning-bg)  !important;
+                       color:            var(--color-warning-text)!important;
+                       border-color:     var(--color-warning)    !important; }
+  .status-error      { background-color: var(--color-error-bg)    !important;
+                       color:            var(--color-error-text)  !important;
+                       border-color:     var(--color-error)       !important; }
+  .status-info       { background-color: var(--color-info-bg)     !important;
+                       color:            var(--color-info-text)   !important;
+                       border-color:     var(--color-info)        !important; }
+  .status-default    { background-color: var(--color-surface)     !important;
+                       color:            var(--color-text)        !important;
+                       border-color:     var(--color-border)      !important; }
+
   .text-body    { font-size: var(--text-body);    font-weight: var(--font-weight-regular); }
   .text-heading { font-size: var(--text-heading); font-weight: var(--font-weight-semibold); }
 
@@ -78,4 +95,4 @@ a {
   @apply ring-2 ring-theme-accent;
   background-color: color-mix(in srgb, var(--theme-accent) 10%, transparent);
 }
-.is-active   { @apply bg-gray-200; }
+.is-active   { @apply bg-color-primary-bg; }

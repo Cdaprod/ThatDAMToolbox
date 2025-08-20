@@ -8,13 +8,13 @@ import type { Asset } from './AssetExplorer'
 export const getStatusColor = (status?: Asset['status']) => {
   switch (status) {
     case 'processed':
-      return 'bg-green-100 text-green-800'
+      return 'status-success'
     case 'processing':
-      return 'bg-yellow-100 text-yellow-800'
+      return 'status-processing'
     case 'error':
-      return 'bg-red-100 text-red-800'
+      return 'status-error'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'status-default'
   }
 }
 

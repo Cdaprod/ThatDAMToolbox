@@ -10,3 +10,10 @@ test('StatusBar renders message', () => {
   )
   assert(html.includes('hello'))
 })
+
+test('StatusBar applies status class', () => {
+  const html = renderToString(
+    <StatusBar message="ok" type="success" />
+  )
+  assert(html.includes('status-success'))
+})

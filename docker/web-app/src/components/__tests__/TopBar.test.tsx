@@ -17,6 +17,16 @@ test('TopBar renders sidebar toggle', () => {
   assert.ok(html.includes('Toggle sidebar'))
 })
 
+test('TopBar uses token classes', () => {
+  const html = renderToString(
+    <SidebarProvider>
+      <TopBar />
+    </SidebarProvider>
+  )
+  assert.ok(html.includes('bg-surface'))
+  assert.ok(html.includes('border-color-border'))
+})
+
 test('Sidebar shows titles when expanded', () => {
   const html = renderToString(
     <SidebarProvider initialCollapsed={false}>

@@ -77,10 +77,10 @@ export const batteryLevelStyle = (level: number): CSSProperties => ({
 });
 
 export const statusClasses: Record<'success' | 'error' | 'warning' | 'info', string> = {
-  success: 'bg-green-100 text-green-800 border-green-300',
-  error:   'bg-red-100   text-red-800   border-red-300',
-  warning: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  info:    'bg-blue-100  text-blue-800  border-blue-300',
+  success: 'status-success',
+  error:   'status-error',
+  warning: 'status-processing',
+  info:    'status-info',
 };
 
 export const dashboardColorClasses: Record<string, string> = {

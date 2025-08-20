@@ -244,13 +244,13 @@ const AssetExplorer: React.FC = () => {
   const availableFileTypes = [...new Set(assets.map((asset) => asset.kind))]
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-theme-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="bg-surface border-b border-color-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-gray-900">Asset Explorer</h1>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <h1 className="text-2xl font-bold">Asset Explorer</h1>
+            <div className="flex items-center space-x-2 text-sm text-color-muted">
               <span>{filteredAssets.length} assets</span>
               <span>•</span>
               <span className="max-w-xs truncate">{currentPath}</span>
@@ -271,16 +271,16 @@ const AssetExplorer: React.FC = () => {
             />
 
             {/* View Mode Toggle */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-surface rounded-lg p-1">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-white shadow' : ''}`}
+                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-surface shadow' : ''}`}
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded ${viewMode === 'list' ? 'bg-white shadow' : ''}`}
+                className={`p-2 rounded ${viewMode === 'list' ? 'bg-surface shadow' : ''}`}
               >
                 <List className="w-4 h-4" />
               </button>
@@ -291,13 +291,13 @@ const AssetExplorer: React.FC = () => {
               <button
                 onClick={handleUndo}
                 disabled={undoStack.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                className="p-2 text-color-muted hover:text-theme-primary disabled:opacity-50"
                 title="Undo last action"
               >
                 <Undo2 className="w-4 h-4" />
               </button>
               <button
-                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="p-2 bg-theme-primary text-white rounded-lg hover:bg-color-primary-bg"
                 onClick={() =>
                   showStatus(
                     'Upload functionality would be implemented here',
@@ -315,13 +315,13 @@ const AssetExplorer: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+        <aside className="w-64 bg-surface border-r border-color-border overflow-y-auto">
           <div className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Folders</h3>
+            <h3 className="font-semibold mb-3">Folders</h3>
             {foldersLoading ? (
-              <p className="text-sm text-gray-500">Loading…</p>
+              <p className="text-sm text-color-muted">Loading…</p>
             ) : folders.length === 0 ? (
-              <p className="text-sm text-gray-500">(empty)</p>
+              <p className="text-sm text-color-muted">(empty)</p>
             ) : (
               <FolderTree
                 folders={folders}
@@ -331,8 +331,8 @@ const AssetExplorer: React.FC = () => {
             )}
           </div>
 
-          <div className="p-4 border-t border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-3">Filter by Tags</h3>
+          <div className="p-4 border-t border-color-border">
+            <h3 className="font-semibold mb-3">Filter by Tags</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {availableTags.map((tag) => (
                 <label key={tag} className="flex items-center space-x-2">
@@ -346,16 +346,16 @@ const AssetExplorer: React.FC = () => {
                         setFilterTags((prev) => prev.filter((t) => t !== tag))
                       }
                     }}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-color-border text-theme-primary ring-theme-primary focus:ring-1"
                   />
-                  <span className="text-sm text-gray-700">{tag}</span>
+                  <span className="text-sm">{tag}</span>
                 </label>
               ))}
             </div>
             {filterTags.length > 0 && (
               <button
                 onClick={() => setFilterTags([])}
-                className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+                className="mt-2 text-xs text-theme-primary hover:text-theme-primary"
               >
                 Clear filters
               </button>
@@ -368,9 +368,9 @@ const AssetExplorer: React.FC = () => {
           <div className="p-6">
             {/* Toolbar */}
             {selectedAssets.size > 0 && (
-              <div className="flex items-center justify-between mb-6 bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-6 bg-color-primary-bg p-4 rounded-lg">
                 <div className="flex items-center space-x-4">
-                  <span className="text-sm font-medium text-blue-900">
+                  <span className="text-sm font-medium text-theme-primary">
                     {selectedAssets.size} asset
                     {selectedAssets.size !== 1 ? 's' : ''} selected
                   </span>
@@ -379,13 +379,13 @@ const AssetExplorer: React.FC = () => {
                       onClick={() =>
                         handleDeleteAssets(Array.from(selectedAssets))
                       }
-                      className="flex items-center space-x-1 px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                      className="flex items-center space-x-1 px-3 py-1 status-error rounded hover:opacity-90"
                     >
                       <Trash2 className="w-4 h-4" />
                       <span className="text-sm">Delete</span>
                     </button>
                     <button
-                      className="flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                      className="flex items-center space-x-1 px-3 py-1 bg-surface text-color-muted rounded hover:bg-color-primary-bg"
                       onClick={() =>
                         showStatus(
                           'Move functionality would be implemented here',
@@ -397,7 +397,7 @@ const AssetExplorer: React.FC = () => {
                       <span className="text-sm">Move</span>
                     </button>
                     <button
-                      className="flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                      className="flex items-center space-x-1 px-3 py-1 bg-surface text-color-muted rounded hover:bg-color-primary-bg"
                       onClick={() => setTagging(true)}
                     >
                       <Tag className="w-4 h-4" />
@@ -408,7 +408,7 @@ const AssetExplorer: React.FC = () => {
 
                 <button
                   onClick={clearSelection}
-                  className="text-sm text-gray-600 hover:text-gray-800"
+                  className="text-sm text-color-muted hover:text-theme-primary"
                 >
                   Clear selection
                 </button>
@@ -417,7 +417,7 @@ const AssetExplorer: React.FC = () => {
 
             {/* Processing indicator */}
             {isProcessing && (
-              <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+              <div className="flex items-center space-x-2 text-sm text-color-muted mb-4">
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 <span>Processing...</span>
               </div>
@@ -439,13 +439,13 @@ const AssetExplorer: React.FC = () => {
             {/* Empty state */}
             {filteredAssets.length === 0 && (
               <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
+                <div className="text-color-muted mb-4">
                   <Folder className="w-16 h-16 mx-auto" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium mb-2">
                   No assets found
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-color-muted mb-4">
                   {filters.text || filterTags.length > 0
                     ? 'Try adjusting your search or filters'
                     : 'This folder is empty'}
@@ -455,7 +455,7 @@ const AssetExplorer: React.FC = () => {
                     {filters.text && (
                       <button
                         onClick={() => setFilters({ text: '' })}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        className="px-4 py-2 bg-theme-primary text-white rounded hover:bg-color-primary-bg"
                       >
                         Clear search
                       </button>
@@ -463,7 +463,7 @@ const AssetExplorer: React.FC = () => {
                     {filterTags.length > 0 && (
                       <button
                         onClick={() => setFilterTags([])}
-                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                        className="px-4 py-2 bg-surface text-color-muted rounded hover:bg-color-primary-bg"
                       >
                         Clear filters
                       </button>
@@ -479,9 +479,9 @@ const AssetExplorer: React.FC = () => {
       {/* Preview Modal */}
       {previewAsset && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-60">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xl relative">
+          <div className="bg-surface rounded-lg shadow-lg p-6 w-full max-w-xl relative">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+              className="absolute top-2 right-2 text-color-muted hover:text-theme-primary"
               onClick={() => setPreviewAsset(null)}
             >
               ×
@@ -502,14 +502,14 @@ const AssetExplorer: React.FC = () => {
               />
             )}
             {previewAsset.type === 'document' && (
-              <div className="mb-4 p-4 bg-gray-100 rounded">
+              <div className="mb-4 p-4 bg-surface rounded">
                 <FileText className="w-8 h-8 mb-2" />
-                <div className="text-xs text-gray-700">
+                <div className="text-xs text-color-muted">
                   Document preview unavailable.
                 </div>
               </div>
             )}
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-color-muted">
               <div>
                 <b>Type:</b> {previewAsset.type}
               </div>

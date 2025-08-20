@@ -10,7 +10,7 @@ const AssetExplorer = dynamic(() => import('@/components/DAMExplorer'), {
   ssr: false,
   loading: () => (
     <div className="flex h-72 items-center justify-center">
-      <span className="animate-pulse text-sm text-gray-500">loading…</span>
+      <span className="animate-pulse text-sm text-color-muted">loading…</span>
     </div>
   ),
 });
@@ -41,7 +41,7 @@ export default function ExplorerCard({
         type="button"
         onClick={() => setOpen(true)}
         className={clsx(
-          'group relative w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800',
+          'group relative w-full overflow-hidden rounded-lg border border-color-border bg-surface shadow transition hover:shadow-md',
           isVert ? 'aspect-[3/4]' : 'flex aspect-video items-center',
           className,
         )}
@@ -53,7 +53,7 @@ export default function ExplorerCard({
             isVert ? '' : 'h-full w-1/3',
           )}
         >
-          <FolderOpen className="h-12 w-12 text-blue-600 group-hover:scale-105 transition" />
+          <FolderOpen className="h-12 w-12 text-theme-primary group-hover:scale-105 transition" />
         </div>
 
         {/* label & hint */}
@@ -63,23 +63,23 @@ export default function ExplorerCard({
             isVert ? 'absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/30 p-4' : 'w-2/3 p-6 text-left',
           )}
         >
-          <h3 className="text-base font-semibold text-white drop-shadow-sm dark:text-gray-50">
+          <h3 className="text-base font-semibold text-white drop-shadow-sm">
             {title}
           </h3>
-          <p className="mt-1 line-clamp-2 text-xs text-gray-200 dark:text-gray-300">
+          <p className="mt-1 line-clamp-2 text-xs text-color-muted">
             Browse, search & tag every asset in the DAM – double-tap to multi-select.
           </p>
           {footer && <div className="mt-2">{footer}</div>}
         </div>
 
         {/* subtle arrow */}
-        <ArrowUpRight className="absolute right-2 top-2 h-4 w-4 text-gray-300 group-hover:text-white transition" />
+        <ArrowUpRight className="absolute right-2 top-2 h-4 w-4 text-color-muted group-hover:text-white transition" />
       </button>
 
       {/* full-screen modal with the real explorer */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="relative h-[90vh] w-[95vw] max-w-7xl overflow-hidden rounded-lg bg-white shadow-xl dark:bg-gray-900">
+          <div className="relative h-[90vh] w-[95vw] max-w-7xl overflow-hidden rounded-lg bg-surface shadow-xl">
             {/* close btn */}
             <button
               onClick={() => setOpen(false)}
