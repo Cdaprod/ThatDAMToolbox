@@ -4,8 +4,11 @@ services:
       context: ../../
       dockerfile: docker/auth-bridge/Dockerfile
     image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
-    container_name: thatdamtoolbox-auth
-    networks: [damnet]
+    # (optional) avoid container_name clash with keycloak variant
+    container_name: thatdamtoolbox-auth-auth0
+    networks:
+      damnet:
+        aliases: ["auth-bridge"]
     ports: ["8081:8081"]
     environment:
       OIDC_PROVIDER: "auth0"
