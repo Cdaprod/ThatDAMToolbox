@@ -202,8 +202,13 @@ func main() {
 			case <-t.C:
 				devs, _ := scanner.ScanAll()
 				reg.Update(devs)
-				broker.Publish("capture.device_list", devs)
-				for id, d := range reg.List() {
+				snapshot := reg.List()
+				out := make([]registry.Device, 0, len(snapshot))
+				for _, d := range snapshot {
+					out = append(out, d)
+				}
+				broker.Publish("capture.device_list", out)
+				for id, d := range snapshot {
 					if !reg.HasRunner(id) {
 						c := runner.DefaultConfig(d.Path)
 						c.FPS = cfg.Capture.DefaultFPS

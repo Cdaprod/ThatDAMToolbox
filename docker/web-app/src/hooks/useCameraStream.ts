@@ -17,6 +17,21 @@ interface StreamInfo {
 }
 
 /**
+ * getLocalStream requests the user's webcam via getUserMedia.
+ *
+ * Example:
+ * ```ts
+ * const stream = await getLocalStream();
+ * ```
+ */
+export async function getLocalStream(): Promise<MediaStream> {
+  if (!navigator?.mediaDevices?.getUserMedia) {
+    throw new Error("getUserMedia not supported");
+  }
+  return navigator.mediaDevices.getUserMedia({ video: true });
+}
+
+/**
  * negotiateWHEP posts an SDP offer to the given URL and returns the answer SDP.
  *
  * Example:
@@ -70,8 +85,13 @@ export function useCameraStream(): StreamInfo {
           if (!res.ok) throw new Error("not ok");
           setInfo({ src: "/hwcapture/live/stream.m3u8", fallback: false });
         })
-        .catch(() => {
-          setInfo({ src: "/demo/bars720p30.mp4", fallback: true });
+        .catch(async () => {
+          try {
+            const stream = await getLocalStream();
+            if (!cancelled) setInfo({ stream, fallback: true });
+          } catch {
+            setInfo({ src: "/demo/bars720p30.mp4", fallback: true });
+          }
         })
         .finally(() => clearTimeout(timer));
     }

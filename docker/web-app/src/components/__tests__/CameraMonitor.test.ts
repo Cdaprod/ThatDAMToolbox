@@ -11,3 +11,8 @@ test('mergeDeviceIds deduplicates device ids', () => {
   const result = mergeDeviceIds(['a'], ['a', 'b'])
   assert.deepEqual(result.sort(), ['a', 'b'])
 })
+
+test('mergeDeviceIds merges new ids when list was empty', () => {
+  const result = mergeDeviceIds([], ['x'])
+  assert.deepEqual(result, ['x'])
+})

@@ -33,6 +33,7 @@ from video.paths import get_module_path
 from .hwcapture import HWAccelRecorder
 from .hwcapture import record as cli_record
 from .hwcapture import stream_jpeg_frames
+from .hwcapture import list_video_devices
 
 router = APIRouter(prefix="/hwcapture", tags=["hwcapture"])
 _log = logging.getLogger("video.hwcapture")
@@ -70,19 +71,31 @@ def _mjpeg_generator(cmd: list[str]):
 # ──────────── Endpoints ─────────────
 @router.get("/devices")
 async def devices():
-    """Return capture-daemon's device list.
-
-    The capture-daemon exposes its own `/devices` endpoint which
-    enumerates cameras and capabilities.  We proxy that list so the
-    web app and other consumers see a single authoritative source.
-
-    Example:
-        curl http://localhost:8080/hwcapture/devices
-    """
+    """Aggregate device lists from capture-daemon, camera-proxy and a local scan."""
+    proxy_url = os.getenv("CAMERA_PROXY_URL", "http://localhost:8000")
+    out: list[dict] = []
+    seen: set[str] = set()
     async with httpx.AsyncClient() as client:
-        r = await client.get(f"{_CAPTURE_URL}/devices")
-        r.raise_for_status()
-        return r.json()
+        for url in [f"{_CAPTURE_URL}/devices", f"{proxy_url}/api/devices"]:
+            try:
+                r = await client.get(url)
+                r.raise_for_status()
+                for d in r.json():
+                    path = d.get("path") or d.get("id")
+                    if path and path not in seen:
+                        seen.add(path)
+                        out.append(d)
+            except Exception:  # pragma: no cover - network errors ignored
+                continue
+    try:
+        for d in list_video_devices():
+            path = d.get("path") or d.get("id")
+            if path and path not in seen:
+                seen.add(path)
+                out.append(d)
+    except Exception:  # pragma: no cover - local scan errors ignored
+        pass
+    return out
 
 
 @router.get("/features")
