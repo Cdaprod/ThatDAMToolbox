@@ -5,11 +5,12 @@ import Pair from './routes/Pair';
 import Health from './routes/Health';
 
 function App() {
+  const base = (import.meta.env.BASE_PATH || '/viewer').replace(/\/$/, '');
   return (
     <Router>
-      <Live path="/viewer/live" />
-      <Pair path="/viewer/pair" />
-      <Health path="/viewer/health" />
+      <Live path={`${base}/live`} />
+      <Pair path={`${base}/pair`} />
+      <Health path={`${base}/health`} />
     </Router>
   );
 }
