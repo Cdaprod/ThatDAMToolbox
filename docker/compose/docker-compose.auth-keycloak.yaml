@@ -21,7 +21,7 @@ services:
   auth-bridge:
     build:
       context: ../../
-    dockerfile: docker/auth-bridge/Dockerfile
+      dockerfile: docker/auth-bridge/Dockerfile
     image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-auth
     networks: [damnet]

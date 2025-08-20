@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./docker/weaviate/data/postgres:/var/lib/postgresql/data
+      - ../../docker/weaviate/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD","pg_isready","-U","weaviate"]
       interval: 10s
