@@ -5,18 +5,21 @@
 export const revalidate = 60;
 
 export default async function AssetsPage() {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/explorer/assets?limit=100`,
-  );
-  if (!res.ok) {
-    throw new Error('Failed to fetch assets');
+  try {
+    const res = await fetch("/api/assets?limit=100");
+    if (!res.ok) {
+      throw new Error("Failed to fetch assets");
+    }
+    const data = await res.json();
+    return (
+      <ul>
+        {data.items?.map((item: any) => (
+          <li key={item.id}>{item.name ?? item.id}</li>
+        ))}
+      </ul>
+    );
+  } catch (err) {
+    console.error("Error loading assets", err);
+    return <p>Unable to load assets.</p>;
   }
-  const data = await res.json();
-  return (
-    <ul>
-      {data.items?.map((item: any) => (
-        <li key={item.id}>{item.name ?? item.id}</li>
-      ))}
-    </ul>
-  );
 }
