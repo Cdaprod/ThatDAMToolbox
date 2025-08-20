@@ -280,6 +280,24 @@ curl -X POST http://<host>/daemon/record/start
 curl -X POST http://<host>/daemon/record/stop
 ```
 
+## Tenant routing
+
+Pages are served under a dynamic `[tenant]` segment. Visiting
+`/acme/dashboard` wraps the app in a `TenantProvider` so child components can
+read the current tenant via `useTenant()`.
+
+```tsx
+import { useTenant } from '@/providers/TenantProvider'
+
+export function LinkToAssets() {
+  const tenant = useTenant()
+  return <a href={`/${tenant}/assets`}>Assets</a>
+}
+```
+
+Components and API calls should incorporate this tenant when building URLs so
+backend services can serve tenant‑specific resources or enforce authentication.
+
 ## Provisioning a Device
 
 1. Navigate to **Dashboard → Camera Monitor**.

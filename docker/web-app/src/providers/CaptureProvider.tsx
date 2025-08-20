@@ -2,8 +2,8 @@
 
 import React, { ReactNode, useState, useEffect } from 'react';
 import { CaptureContext, Codec } from './CaptureContext';
-import { bus } from '@/lib/eventBus';
-import { useTimecode } from '@/hooks/useTimecode';
+import { bus } from '../lib/eventBus';
+import { useTimecode } from '../hooks/useTimecode';
 
 export default function CaptureProvider({ children }: { children: ReactNode }) {
 
@@ -11,7 +11,13 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
   const [recording, setRecording] = useState(false);
 
   // 2) Current device & codec
-  const [selectedDevice, setSelectedDevice] = useState<string>('/dev/video0');
+  const [selectedDevice, setSelectedDevice] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const last = window.localStorage.getItem('lastSelectedDevice')
+      if (last) return last
+    }
+    return '/dev/video0'
+  });
   const [selectedCodec, setSelectedCodec]   = useState<Codec>('h264');
 
   // 3) Device capabilities
@@ -71,6 +77,12 @@ export default function CaptureProvider({ children }: { children: ReactNode }) {
       bus.off('recording-status', onRecStatus);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('lastSelectedDevice', selectedDevice)
+    }
+  }, [selectedDevice])
 
   // 9) Expose start/stop controls
   // Start/stop recording via capture-daemon HTTP endpoints.

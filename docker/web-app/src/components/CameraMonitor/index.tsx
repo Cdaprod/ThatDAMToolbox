@@ -278,6 +278,23 @@ const CameraMonitor: React.FC = () => {
   useEffect(() => {
     sendJSON({ action: "list_devices" } as ListDevicesMsg);
 
+    // If the backend never responds, enumerate local devices after 1s and
+    // merge them into allDevicesSeen so the dropdown still lists webcams.
+    const fallbackTimer = setTimeout(async () => {
+      try {
+        const local = await navigator.mediaDevices.enumerateDevices();
+        const ids = local.filter(d => d.kind === 'videoinput').map(d => d.deviceId);
+        setAllDevicesSeen(prev => {
+          if (prev.length > 0) return prev;
+          const merged = mergeDeviceIds(prev, ids);
+          window.localStorage.setItem('cameraDevices', JSON.stringify(merged));
+          return merged;
+        });
+      } catch {
+        /* ignore */
+      }
+    }, 1000);
+
     const handler = (ev: MessageEvent) => {
       try {
         const msg = JSON.parse(ev.data) as InboundMsg | DeviceListEvt;
@@ -327,8 +344,10 @@ const CameraMonitor: React.FC = () => {
     };
 
     window.addEventListener("video-socket-message", handler as any);
-    return () =>
+    return () => {
       window.removeEventListener("video-socket-message", handler as any);
+      clearTimeout(fallbackTimer);
+    };
   }, [sendJSON, selectedDevice]);
 
   // Sync preview settings to the selected device’s capabilities
@@ -345,7 +364,6 @@ const CameraMonitor: React.FC = () => {
 
   const handleDeviceChange = useCallback(
     (device: string) => {
-      window.localStorage.setItem("lastSelectedDevice", device);
       setSelectedDevice(device); // context-driven update
       sendJSON({
         action: "select_stream",

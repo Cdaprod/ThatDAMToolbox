@@ -28,6 +28,16 @@ Serves `/hwcapture/live/stream.m3u8` and `.ts` segments.
 
 POST an SDP offer to `/hwcapture/webrtc` to negotiate a peer connection.  Feature flags are available via `/hwcapture/features`.
 
+## Device aggregation
+
+The `/hwcapture/devices` endpoint merges devices from three sources:
+
+- `CAPTURE_DAEMON_URL` – capture-daemon's `/devices`
+- `CAMERA_PROXY_URL` – camera-proxy's `/api/devices` (default `http://localhost:8000`)
+- a local scan via `list_video_devices()`
+
+Duplicates are removed by device path.
+
 ## Multi‑camera CLI
 
 ```bash

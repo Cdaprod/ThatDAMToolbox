@@ -37,6 +37,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
+	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
@@ -194,6 +196,12 @@ func (dp *DeviceProxy) discoverDevices() error {
 			logx.L.Info("device removed", "name", d.Name, "path", d.Path)
 		}
 	}
+
+	out := make([]DeviceInfo, 0, len(dp.devices))
+	for _, d := range dp.devices {
+		out = append(out, *d)
+	}
+	_ = bus.Publish("capture.device_list", out)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -637,7 +645,7 @@ func (dp *DeviceProxy) handleDebugV4L2(w http.ResponseWriter, r *http.Request) {
 
 // setupRoutes configures the proxy routes
 func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
-        mux := http.NewServeMux()
+	mux := http.NewServeMux()
 
 	// Health endpoints
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -659,19 +667,19 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	mux.HandleFunc("/api/devices", dp.enhanceDeviceResponse)
 	mux.HandleFunc("/devices", dp.enhanceDeviceResponse)
 
-       // Debug endpoint for V4L2 discovery
-       mux.HandleFunc("/debug/v4l2", dp.handleDebugV4L2)
+	// Debug endpoint for V4L2 discovery
+	mux.HandleFunc("/debug/v4l2", dp.handleDebugV4L2)
 
-       // Serve embedded viewer static files
-       viewerDir := getEnv("VIEWER_DIR", "/srv/viewer")
-       fs := http.FileServer(http.Dir(viewerDir))
-       mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
+	// Serve embedded viewer static files
+	viewerDir := getEnv("VIEWER_DIR", "/srv/viewer")
+	fs := http.FileServer(http.Dir(viewerDir))
+	mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
 
-       // Default proxy to backend for all other requests
-       mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-               proxy := dp.createReverseProxy(dp.backendURL)
-               proxy.ServeHTTP(w, r)
-       })
+	// Default proxy to backend for all other requests
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		proxy := dp.createReverseProxy(dp.backendURL)
+		proxy.ServeHTTP(w, r)
+	})
 
 	return mux
 }
@@ -686,6 +694,12 @@ func main() {
 		Time:    getEnv("LOG_TIME", "rfc3339ms"),
 		NoColor: os.Getenv("LOG_NO_COLOR") == "1",
 	})
+
+	busamqp.Register()
+	if _, err := bus.Connect(context.Background(), bus.Config{}); err != nil {
+		logx.L.Warn("bus connect failed", "err", err)
+	}
+	defer bus.Close()
 
 	// Configuration from environment variables
 	proxyPort := getEnv("PROXY_PORT", "8000")
