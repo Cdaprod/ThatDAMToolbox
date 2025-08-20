@@ -26,3 +26,15 @@ assets, _ := c.ListByFolder("recordings", 1, 10)
 The `bootstrap` module provides lightweight service runtime adapters. The
 `runtime_docker` adapter now uses `docker inspect` to populate `UnitState` with
 the container's running status, PID, and exit code.
+
+## Bus
+
+The `bus` package offers a minimal publish/subscribe API with pluggable
+adapters. In addition to the default AMQP adapter, `bus/log` provides a
+file-backed, append-only log for Kafka-like sequential I/O patterns.
+
+```go
+log.Register()
+b, _ := bus.Connect(context.Background(), bus.Config{URL: "/tmp/bus", Exchange: "events"})
+_ = b.Publish("topic", []byte("msg"))
+```
