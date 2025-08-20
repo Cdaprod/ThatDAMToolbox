@@ -16,6 +16,7 @@
     "src/styles/__tests__/**/*.ts",
     "src/context/__tests__/**/*.tsx",
     "src/app/*/dashboard/__tests__/**/*.tsx",
+    "src/app/assets/__tests__/**/*.tsx",
     "src/types/**/*.d.ts",
     "src/components/tools/FFmpegConsole.tsx",
     "src/components/tools/AnalyticsCard.tsx",
