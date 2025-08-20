@@ -12,5 +12,9 @@ services:
     logging: *default-logging
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      BLOB_STORE_ROOT: /data
+    volumes:
+      - "${DATA_ROOT:-./data}:/data:rw"
+      - "${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw"
     depends_on:
       - rabbitmq

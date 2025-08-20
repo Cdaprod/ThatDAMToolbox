@@ -24,8 +24,9 @@ that listens for `asset.ingested` events and writes a `poster.jpg` under
 
 ```
 export BLOB_STORE_ROOT=/tmp/blobs
+export MEDIA_NETWORK_PATHS=/mnt/media1,/mnt/media2
 export PREVIEW_WORKER=1
-go run ./cmd/media-api serve --addr :8080
+go run ./cmd/media-api serve --addr :8080 --scan
 ```
 
 For unit tests:
@@ -34,6 +35,14 @@ For unit tests:
 export BROKER_URL=inproc
 go test ./pkg/handlers -run PreviewWorker -v
 ```
+
+### Configuration
+
+- `BLOB_STORE_ROOT` – primary media root (default `./data`)
+- `MEDIA_NETWORK_PATHS` – comma-separated additional roots to scan
+- `MEDIA_API_CFG` – optional config file with `network_paths=/path1,/path2`
+
+Run the server with `--scan` to index configured roots on startup.
 
 ## Tests
 
