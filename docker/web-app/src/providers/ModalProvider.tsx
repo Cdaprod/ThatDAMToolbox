@@ -9,7 +9,6 @@ import ProvisionDeviceModal from '@/components/modals/ProvisionDeviceModal';
 type ToolKey =
   | 'camera-monitor'
   | 'dam-explorer'
-  | 'explorer'
   | 'motion'
   | 'live'
   | 'witness'

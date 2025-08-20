@@ -51,10 +51,6 @@ web-app/.
 │   │   │   │   └── page.tsx
 │   │   │       ├── dam-explorer
 │   │   │       │   └── page.tsx
-│   │   │       ├── explorer
-│   │   │       │   ├── layered
-│   │   │       │   │   └── page.tsx
-│   │   │       │   └── page.tsx
 │   │   │       ├── ffmpeg
 │   │   │       │   └── page.tsx
 │   │   │       ├── layout.tsx
