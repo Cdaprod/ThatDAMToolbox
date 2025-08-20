@@ -31,7 +31,7 @@ minio server /data --console-address :9001 >/proc/1/fd/1 2>/proc/1/fd/2 &
 MINIO_PID=$!
 
 for i in $(seq 1 60); do
-  if wget -qO- http://127.0.0.1:9000/minio/health/ready >/dev/null 2>&1; then
+  if curl -fSs http://127.0.0.1:9000/minio/health/ready >/dev/null 2>&1; then
     READY=1
     break
   fi
