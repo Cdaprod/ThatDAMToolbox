@@ -1,6 +1,9 @@
 name: Sync PR Milestone
 
 on:
+  push:
+    paths:
+     - '/.github/workflows/pr-milestone-sync.yml'
   pull_request:
     types: [opened, edited, synchronize, reopened, labeled]
   workflow_dispatch: {}
