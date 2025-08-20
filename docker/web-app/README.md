@@ -44,20 +44,21 @@ web-app/.
 │   │   │   │   └── route.ts
 │   │   │   └── schemas
 │   │   │       └── route.ts
-│   │   ├── dashboard
-│   │   │   ├── camera-monitor
+│   │   ├── [tenant]
+│   │   │   └── dashboard
+│   │   │       ├── camera-monitor
 │   │   │   │   ├── layout.tsx
 │   │   │   │   └── page.tsx
-│   │   │   ├── dam-explorer
-│   │   │   │   └── page.tsx
-│   │   │   ├── explorer
-│   │   │   │   ├── layered
-│   │   │   │   │   └── page.tsx
-│   │   │   │   └── page.tsx
-│   │   │   ├── ffmpeg
-│   │   │   │   └── page.tsx
-│   │   │   ├── layout.tsx
-│   │   │   ├── live
+│   │   │       ├── dam-explorer
+│   │   │       │   └── page.tsx
+│   │   │       ├── explorer
+│   │   │       │   ├── layered
+│   │   │       │   │   └── page.tsx
+│   │   │       │   └── page.tsx
+│   │   │       ├── ffmpeg
+│   │   │       │   └── page.tsx
+│   │   │       ├── layout.tsx
+│   │   │       ├── live
 │   │   │   │   └── page.tsx
 │   │   │   ├── motion
 │   │   │   │   └── page.tsx
@@ -176,15 +177,14 @@ web-app/.
 │   ├── logo.svg
 │   └── images/
 ├── App/
-│   ├── page.tsx                 # Root/home page
-│   ├── layout.tsx               # Root layout
-│   └── Dashboard/
-│       ├── page.tsx             # Dashboard overview
-│       ├── CameraMonitor/
-│       │   └── page.tsx         # Fullscreen Camera Monitor
-│       ├── AssetExplorer/
-│       │   └── page.tsx         # Fullscreen Asset Explorer
-│       └── ...                  # (Any other dashboard tools/features)
+│   ├── [tenant]/
+│   │   └── Dashboard/
+│   │       ├── page.tsx             # Dashboard overview
+│   │       ├── CameraMonitor/
+│   │       │   └── page.tsx         # Fullscreen Camera Monitor
+│   │       ├── AssetExplorer/
+│   │       │   └── page.tsx         # Fullscreen Asset Explorer
+│   │       └── ...                  # (Any other dashboard tools/features)
 ├── Components/
 │   ├── CameraMonitor/
 │   ├── DAMApp/

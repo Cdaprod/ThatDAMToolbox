@@ -60,6 +60,9 @@ test('Explorer button triggers dam-explorer modal', async () => {
   modalMod.useModal = origUseModal
   delete require.cache[topBarPath]
 
+  assert.ok(opened)
+})
+
 test('TopBar link includes tenant', () => {
   const html = renderToString(
     <TenantProvider tenant="acme">
