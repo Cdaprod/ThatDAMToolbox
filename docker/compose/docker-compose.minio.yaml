@@ -62,10 +62,11 @@ services:
       test: >
         CMD-SHELL
         mc alias set hc http://localhost:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1
-        && mc ls hc >/dev/null 2>&1
-      interval: 30s
+        && mc admin info hc >/dev/null 2>&1
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 12
+      start_period: 40s
     restart: unless-stopped
     networks: [damnet]
     logging: *default-logging
