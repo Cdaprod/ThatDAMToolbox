@@ -834,6 +834,12 @@ docker compose up -d
 open http://localhost:8080
 ```
 
+To store data under a different host path, override `DATA_ROOT`:
+
+```bash
+DATA_ROOT=/srv/dam-data docker compose -f docker/compose/docker-compose.media-api.yaml up -d
+```
+
 ### Prepare data directories before launch
 
 Use the platform hook to create required directories with correct

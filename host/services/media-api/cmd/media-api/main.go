@@ -18,7 +18,9 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/media-api/pkg/config"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/media-api/pkg/handlers"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/media-api/pkg/indexer"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
@@ -43,13 +45,24 @@ func main() {
 func serve(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	addr := fs.String("addr", ":8080", "HTTP bind address")
+	scan := fs.Bool("scan", false, "scan configured roots before serving")
 	fs.Parse(args)
+
+	de := platform.NewOSDirEnsurer()
+	roots, err := config.GetScanRoots(de)
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	rootDir := roots[0]
+	deps := handlers.Deps{Cat: newMemCatalog(), BS: storage.NewFS(rootDir, de)}
+	if *scan {
+		if err := indexer.Scan(context.Background(), roots, deps.Cat); err != nil {
+			log.Printf("scan: %v", err)
+		}
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v2/health", handlers.Health)
-	rootDir := envStr("BLOB_STORE_ROOT", "./data")
-	de := platform.NewOSDirEnsurer()
-	deps := handlers.Deps{Cat: newMemCatalog(), BS: storage.NewFS(rootDir, de)}
 	mux.HandleFunc("GET /v1/folders", deps.ListFolders)
 	mux.HandleFunc("GET /v1/assets", deps.ListAssets)
 	mux.HandleFunc("GET /v1/assets/{id}", deps.GetAsset)
@@ -77,13 +90,6 @@ func serve(args []string) {
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
-}
-
-func envStr(k, d string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return d
 }
 
 // memCatalog is a minimal in-memory catalog used for development.
