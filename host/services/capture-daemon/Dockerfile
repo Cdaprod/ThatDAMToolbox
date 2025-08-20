@@ -91,4 +91,6 @@ COPY --from=builder /out/capture-daemon /usr/local/bin/capture-daemon
 ENV LOG_FORMAT=json LOG_TIME=rfc3339ms LOG_CALLER=short
 
 EXPOSE 9000
-ENTRYPOINT ["/sbin/tini","-s","--","/usr/local/bin/capture-daemon"]
+# ensure shared snippet is available & sourced before the daemon starts
+COPY host/services/shared/entrypoint-snippet.sh /opt/shared/entrypoint-snippet.sh
+ENTRYPOINT ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && exec /sbin/tini -s -- /usr/local/bin/capture-daemon"]

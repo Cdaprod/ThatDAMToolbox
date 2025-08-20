@@ -30,6 +30,15 @@ if [ "$ROLE" = "auto" ]; then
   fi
 fi
 
+#########################################
+# Node identity normalization (safe default)
+#########################################
+# Prefer explicit envs; else fall back to container runtime hostname.
+hn="$(hostname 2>/dev/null || true)"
+export NODE_ID="${NODE_ID:-${hn:-}}"
+export CAPTURE_NODE_ID="${CAPTURE_NODE_ID:-${NODE_ID}}"
+export SERVICE_NODE_ID="${SERVICE_NODE_ID:-${NODE_ID}}"
+
 export ROLE UPSTREAM UPSTREAM_HOST UPSTREAM_PORT SERVICE_PORT
-echo "[entrypoint] ROLE=$ROLE UPSTREAM=${UPSTREAM:-} HOST=${UPSTREAM_HOST:-} PORT=${UPSTREAM_PORT:-} SERVICE_PORT=$SERVICE_PORT"
+echo "[entrypoint] ROLE=$ROLE UPSTREAM=${UPSTREAM:-} HOST=${UPSTREAM_HOST:-} PORT=${UPSTREAM_PORT:-} SERVICE_PORT=$SERVICE_PORT NODE_ID=$NODE_ID CAPTURE_NODE_ID=$CAPTURE_NODE_ID"
 
