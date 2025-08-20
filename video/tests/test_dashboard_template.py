@@ -17,4 +17,6 @@ def test_dashboard_has_single_mount_point():
     )
 
     assert html.count('id="dam-root"') == 1
+    assert 'id="dam-explorer-section"' in html
+    assert 'id="explorer-section"' not in html
     assert "<dam-explorer" not in html

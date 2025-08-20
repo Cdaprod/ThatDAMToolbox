@@ -10,7 +10,7 @@ module.exports = {
   async rewrites() {
     // anything under /api/video/* → your video-api
     // mjpeg stream URL → your FastAPI `/preview` endpoint
-    // file-explorer → your FastAPI explorer endpoints
+    // DAM Explorer → your FastAPI explorer endpoints
     return [
       {
         source: '/api/video/:path*',
