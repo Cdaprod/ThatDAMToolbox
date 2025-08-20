@@ -1,4 +1,3 @@
-name: thatdamtoolbox-auth-keycloak
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
@@ -10,18 +9,19 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: "admin"
     command: ["start-dev","--import-realm"]
     volumes:
-      - ./seeds/keycloak:/opt/keycloak/data/import:ro
+      - ../../seeds/keycloak:/opt/keycloak/data/import:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
       interval: 10s
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    profiles: ["keycloak"]
 
   auth-bridge:
     build:
-      context: .
-      dockerfile: docker/auth-bridge/Dockerfile
+      context: ../../
+    dockerfile: docker/auth-bridge/Dockerfile
     image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-auth
     networks: [damnet]
@@ -44,8 +44,4 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
-
-networks:
-  damnet:
-    external: true
-
+    profiles: ["keycloak"]

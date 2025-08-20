@@ -9,13 +9,16 @@ services:
     image: cdaprod/video:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
+
     # --- Networking (host-mode exposes 8080) ---
-    # (Depriciated) network_mode: host
+    # (Deprecated) network_mode: host
     networks: [damnet]
-    ports: ["8080:8080"]              # Unneeded in host mode
+    ports: ["8080:8080"]                # Unneeded in host mode
+
     # --- Environment ---------------------------
-    # privileged: true                  # depriciated for security compliance
+    # privileged: true                   # deprecated for security compliance
     user: "1000:1000"
+
     # --- Device permissions & hotplug ----------
     devices: []
       #- /dev/video0:/dev/video0
@@ -28,49 +31,55 @@ services:
       - "44"                            # video group (GID 44 on Pi OS)
     cap_add:
       - SYS_ADMIN                        # only if v4l2 needs ioctl that’s otherwise blocked
+
     environment:
       TZ:               "America/New_York"
       VIDEO_MODE:       "api"
       PYTHONWARNINGS:   >-
-            ignore::DeprecationWarning,
-            ignore::UserWarning:google.protobuf.runtime_version
+        ignore::DeprecationWarning,
+        ignore::UserWarning:google.protobuf.runtime_version
+
       # __cache location so DAM can write__
       XDG_CACHE_HOME:   /data/cache
       HF_HOME:          /data/cache/huggingface
       TORCH_HOME:       /data/cache/torch
+
       UVICORN_WORKERS:        "1"       # dev: 1  •  prod: 4
       VIDEO_FORCE_STDHTTP:    "0"       # 1: Force stdlib HTTP (optional)
+
       # ------------------------------------------------------------------
       # Make ALL mutable data live under one bind-mount ( /data )
       # ------------------------------------------------------------------
-      
       # __override any others if you want–but everything else will fall back into $VIDEO_DATA_DIR:__
       VIDEO_DATA_DIR:         /data
       VIDEO_MEDIA_ROOT:       /data/media
       VIDEO_PROCESSED_ROOT:   /data/_PROCESSED
       VIDEO_PREVIEW_ROOT:     /data/previews
       VIDEO_LOG_DIR:          /data/logs
-      
+
       # ── WAL-only DB lives here (on local volume) ──
       VIDEO_DB_PATH:          /var/lib/thatdamtoolbox/db/live.sqlite3
       DB_SNAPSHOT_SECS:       "120"
       VIDEO_STORAGE:          "auto"
       VIDEO_DEBUG_BOOT:       "0"
-      
+
       # --- Storage backend selector -------------
       # VIDEO_STORAGE:  "sqlite"                      # Default (no env needed)
       # VIDEO_STORAGE:  "faiss"                       # Use Faiss vector index
       # VIDEO_STORAGE:  "weaviate"                    # Use Weaviate backend
       WEAVIATE_URL:   "http://localhost:8082"         # For Weaviate backend:
       MINIO_ENDPOINT: "http://localhost:9000"         # Optional if your code needs it
+
+      # --- Event bus + integrations -------------
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       CAPTURE_REGISTRY_URL: "http://capture-daemon:9000"
+
     # --- Storage mounts ------------------------
     entrypoint: ["/bin/sh","-lc",". /opt/shared/entrypoint-snippet.sh && /entrypoint.sh"]
     volumes:
-      - ./host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
+      - ../../host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
       - discovery-run:/run/discovery:ro
       # __ 1) your SMB-mounted data (media, previews, etc.)__
       - "${DATA_ROOT:-./data}:/data:rw"
@@ -80,16 +89,18 @@ services:
       - db_wal:/var/lib/thatdamtoolbox/db:rw
       # __4) Live source for hot-reload (dev only)__
       - /dev:/dev:rw,rshared
-      - ./video:/video:rw
-    restart: unless-stopped
+      - ../../video:/video:rw
+
     depends_on:
       - capture-daemon
       - rabbitmq
       - thatdamtoolbox-discovery
+
     # --- Entrypoint & Health -------------------
     # entrypoint: ["python", "-m", "video"]
     # command: [stats]                         # CLI command (optional)
     command: ["serve", "--host", "0.0.0.0", "--port", "8080"]
+
     mem_limit: 1500m
     cpus: 1.0
     healthcheck:
@@ -98,7 +109,4 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-
-volumes:
-  discovery-run:                    # Exists in root /docker-compose.yaml
-    external: true
+    restart: unless-stopped

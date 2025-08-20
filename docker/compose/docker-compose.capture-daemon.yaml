@@ -1,0 +1,38 @@
+services:
+  capture-daemon:
+    build:
+      context: ../../
+      dockerfile: host/services/capture-daemon/Dockerfile
+    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-capture-daemon
+    networks: [damnet]
+    init: false
+    privileged: true
+    pid: host
+    ports: ["${CAPTURE_DAEMON_HOST_PORT:-19000}:9000"]
+    environment:
+      CAPTURE_NODE_ID: "${HOSTNAME}"
+      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
+      NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
+      OVERLAY_HUB_URL: "http://overlay-hub:8090"
+      REGISTRY_URL: "docker.io/cdaprod/capture-daemon:latest"
+      CAPTURE_OUTDIR: "/records"
+      AUTH_TOKEN: "devtoken"
+      ICE_SERVERS: "stun:stun.l.google.com:19302"
+      FFMPEG_HWACCEL: ""
+    volumes:
+      - /dev:/dev
+      - /lib/modules:/lib/modules:ro
+      - ../../data/modules/hwcapture/records:/records
+      - discovery-run:/run/discovery:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/devices"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - overlay-hub
+      - thatdamtoolbox-discovery
