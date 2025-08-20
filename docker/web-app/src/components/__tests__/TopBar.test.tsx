@@ -7,6 +7,7 @@ import TopBar from '../TopBar'
 import Sidebar from '../Sidebar'
 import { SidebarProvider } from '../../hooks/useSidebar'
 import MainLayout, { shouldHideSidebar } from '../../app/MainLayout'
+import TenantProvider from '@/providers/TenantProvider'
 
 test('TopBar renders sidebar toggle', () => {
   const html = renderToString(
@@ -28,4 +29,15 @@ test('Sidebar shows titles when expanded', () => {
 
 test('MainLayout shows sidebar on camera monitor route', () => {
   assert.equal(shouldHideSidebar('/dashboard/camera-monitor'), false)
+})
+
+test('TopBar link includes tenant', () => {
+  const html = renderToString(
+    <TenantProvider tenant="acme">
+      <SidebarProvider>
+        <TopBar />
+      </SidebarProvider>
+    </TenantProvider>
+  )
+  assert.ok(html.includes('/acme/dashboard/dam-explorer'))
 })

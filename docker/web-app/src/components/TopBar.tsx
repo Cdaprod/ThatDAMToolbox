@@ -4,9 +4,12 @@
 import clsx from 'clsx'
 import { Menu, X } from 'lucide-react'
 import { useSidebar } from '../hooks/useSidebar'
+import { useTenant } from '@/providers/TenantProvider'
 
 export default function TopBar() {
   const { collapsed, setCollapsed } = useSidebar()
+  const tenant = useTenant()
+  const href = `/${tenant}/dashboard/dam-explorer`
 
   return (
     <header
@@ -31,7 +34,7 @@ export default function TopBar() {
 
       {/* right – placeholder for future buttons */}
       <nav className="flex items-center gap-4">
-        <a href="/dashboard/dam-explorer" className="text-body hover:text-theme-primary">
+        <a href={href} className="text-body hover:text-theme-primary">
           Explorer
         </a>
       </nav>
