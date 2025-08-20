@@ -2,10 +2,9 @@
 
 # Optionally pin MinIO server version; override at build time
 ARG MINIO_VERSION=RELEASE.2024-03-15T01-07-19Z
-# Let BuildKit provide target arch; fall back to uname -m when unset
 ARG TARGETARCH
 
-# ── Stage: fetch MinIO Client (mc) without relying on minio/mc tags ─────────
+# ── Stage: fetch MinIO Client (mc) ─────────
 FROM --platform=$BUILDPLATFORM alpine:3.20 AS mcget
 ARG TARGETARCH
 RUN apk add --no-cache ca-certificates wget
@@ -19,19 +18,16 @@ RUN set -eux; \
   wget -O /mc "https://dl.min.io/client/mc/release/linux-${mc_arch}/mc"; \
   chmod +x /mc
 
-# ── Stage: MinIO server + your entrypoint + mc ──────────────────────────────
+# ── Stage: MinIO server + your entrypoint + mc ─────────
 FROM minio/minio:${MINIO_VERSION}
-# If you'd rather not pin, you can use :latest, but pinning is safer for CI reproducibility.
 
 # Add the client and entrypoint
 COPY --from=mcget /mc /usr/bin/mc
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Install curl for healthchecks and scripting
-RUN apt-get update \
-    && apt-get install -y curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install curl for healthchecks
+RUN apk add --no-cache curl
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["server","/data","--console-address",":9001"]
