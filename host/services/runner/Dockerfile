@@ -4,6 +4,7 @@ FROM golang:${GO_VERSION}-alpine AS builder
 WORKDIR /src
 ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
 COPY host/services/shared/ host/services/shared/
+COPY host/shared/        host/shared/
 COPY host/services/runner/ host/services/runner/
 WORKDIR /src/host/services/runner
 RUN --mount=type=cache,target=/go/pkg/mod \
