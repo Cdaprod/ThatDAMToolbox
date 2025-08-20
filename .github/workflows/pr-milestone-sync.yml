@@ -1,0 +1,112 @@
+name: Sync PR Milestone
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  apply-milestone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract milestone title
+        id: extract
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          # Try body first
+          body_ms=$(echo "$PR_BODY" | awk -F 'Milestone:' 'NF>1{print $2; exit}' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' || true)
+          if [[ -z "$body_ms" ]]; then
+            # Fallback: look for "Milestone:" in the PR title
+            title_ms=$(echo "$PR_TITLE" | awk -F 'Milestone:' 'NF>1{print $2; exit}' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' || true)
+            echo "$title_ms" > /tmp/milestone.txt
+          else
+            echo "$body_ms" > /tmp/milestone.txt
+          fi
+          if [[ -s /tmp/milestone.txt ]]; then
+            echo "title=$(cat /tmp/milestone.txt)" >> "$GITHUB_OUTPUT"
+          else
+            echo "title=" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Found Milestone Title: $(cat /tmp/milestone.txt || echo '<none>')"
+
+      - name: Resolve milestone id by title and assign to PR
+        if: ${{ steps.extract.outputs.title != '' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const prNum = context.payload.pull_request.number;
+            const wanted = core.getInput('title', { required: true });
+            async function findMilestone(title) {
+              for (const state of ['open', 'closed']) {
+                const res = await github.paginate(
+                  github.rest.issues.listMilestones,
+                  { owner, repo, state, per_page: 100 }
+                );
+                const hit = res.find(m => m.title.trim() === title.trim());
+                if (hit) return hit;
+              }
+              return null;
+            }
+            const title = `${wanted}`;
+            let ms = await findMilestone(title);
+            if (!ms) {
+              const created = await github.rest.issues.createMilestone({
+                owner,
+                repo,
+                title,
+                state: 'open'
+              });
+              ms = created.data;
+              core.info(`Created milestone: ${title}`);
+            }
+            await github.rest.issues.update({
+              owner, repo,
+              issue_number: prNum,
+              milestone: ms.number
+            });
+            core.info(`Assigned milestone #${ms.number} "${ms.title}" to PR #${prNum}.`);
+        result-encoding: string
+        with:
+          title: ${{ steps.extract.outputs.title }}
+
+      - name: Comment success (idempotent)
+        if: ${{ steps.extract.outputs.title != '' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const prNum = context.payload.pull_request.number;
+            const body  = context.payload.pull_request.body || '';
+            const match = body.match(/Milestone:\s*(.+)/);
+            const title = match ? match[1].trim() : '<unknown>';
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: prNum,
+              body: `🔗 Milestone synced: **${title}**`
+            });
+
+      - name: Warn if missing
+        if: ${{ steps.extract.outputs.title == '' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const prNum = context.payload.pull_request.number;
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: prNum,
+              body: "⚠️ No `Milestone:` line found in PR body header. Add one exactly matching an existing milestone title."
+            });
