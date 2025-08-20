@@ -20,8 +20,8 @@ def test_minio_volume_mount():
     assert 'curl' not in compose
 
 
+
 def test_minio_dockerfile_no_su_exec():
     dockerfile = Path('docker/minio/Dockerfile').read_text()
     assert 'su-exec' not in dockerfile
     assert 'curl' not in dockerfile
-

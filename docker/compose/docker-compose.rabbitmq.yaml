@@ -17,8 +17,7 @@ services:
       RABBITMQ_FEATURE_FLAGS: classic_mirrored_queue_version
     ports: ["5672:5672", "15672:15672"]
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-      - rabbitmq-logs:/var/log/rabbitmq
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
