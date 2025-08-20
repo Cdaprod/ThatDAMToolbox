@@ -3,7 +3,7 @@ import React from 'react'
 import { Image, Video, FileText } from 'lucide-react'
 import SelectableItem from '../primitives/SelectableItem'
 import { useAssetActions } from '../../tools/dam-explorer/actions'
-import type { Asset } from './AssetExplorer'
+import type { Asset } from './helpers'
 
 export const getStatusColor = (status?: Asset['status']) => {
   switch (status) {

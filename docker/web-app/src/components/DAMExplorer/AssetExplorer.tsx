@@ -17,28 +17,21 @@ import SearchBarExtension, {
   SearchFilters,
 } from '@/components/SearchBarExtension'
 import { useAssets } from '@/providers/AssetProvider'
-import { updateAsset, Asset as ApiAsset } from '@/lib/apiAssets'
+import {
+  Asset,
+  StatusMessage,
+  filterAssets,
+  performVectorSearch,
+  findAssetById,
+  confirmDeletion,
+} from './helpers'
+import { updateAsset } from '@/lib/apiAssets'
 import TagPopover from '@/components/TagPopover'
 import { useSelection } from '@/state/selection'
 import { bus } from '@/lib/eventBus'
 import AssetThumbnail from './AssetThumbnail'
 import FolderTree from './FolderTree'
 import StatusBar from './StatusBar'
-
-export interface Asset extends ApiAsset {
-  type?: 'image' | 'video' | 'document'
-  dimensions?: string
-  duration?: string
-  pages?: number
-  metadata?: Record<string, any>
-  thumbnail?: string
-  status?: 'processed' | 'processing' | 'error' | 'deleted'
-}
-
-export interface StatusMessage {
-  message: string
-  type: 'info' | 'success' | 'error' | 'warning'
-}
 
 interface UndoOperation {
   type: 'move' | 'delete'
@@ -47,9 +40,10 @@ interface UndoOperation {
   toPath?: string
 }
 
+
 // Main Component: AssetExplorer
 const AssetExplorer: React.FC = () => {
-  const { view: rawView, folders, foldersLoading, move, remove, refresh, setFilters, filters } = useAssets()
+  const { view: rawView, folders, foldersLoading, move, remove, refresh, setFilters, filters, vectorSearch } = useAssets()
   const assets = rawView as Asset[]
   const { ids: selectedAssets, clear: clearSelection } = useSelection()
   const [currentPath, setCurrentPath] = useState<string>('')
@@ -118,16 +112,14 @@ const AssetExplorer: React.FC = () => {
   }
 
   const handleDeleteAssets = async (assetIds: string[]) => {
-    if (
-      !confirm(`Are you sure you want to delete ${assetIds.length} asset(s)?`)
-    )
-      return
     setIsProcessing(true)
     try {
-        await remove(assetIds)
+      const ok = await confirmDeletion(assetIds, remove, confirm)
+      if (ok) {
         showStatus(`Deleted ${assetIds.length} asset(s)`, 'warning')
         clearSelection()
         refresh()
+      }
     } catch {
       showStatus('Failed to delete assets', 'error')
     } finally {
@@ -154,61 +146,17 @@ const AssetExplorer: React.FC = () => {
 
   const handleSearch = async (
     query: string,
-    filters?: SearchFilters,
+    filt?: SearchFilters,
   ): Promise<SearchResult[]> => {
     setFilters({ text: query })
-    const lower = query.toLowerCase()
-    const filtered = assets.filter((asset) => {
-      const matchesQuery =
-        asset.name.toLowerCase().includes(lower) ||
-        asset.tags.some((tag) => tag.toLowerCase().includes(lower))
-      const matchesFileType = !filters?.fileType || asset.kind === filters.fileType
-      const matchesTags =
-        !filters?.tags?.length || filters.tags.some((tag) => asset.tags.includes(tag))
-      const matchesDate =
-        (!filters?.dateFrom && !filters?.dateTo) ||
-        ((!filters?.dateFrom ||
-          new Date(asset.createdAt) >= new Date(filters.dateFrom)) &&
-          (!filters?.dateTo || new Date(asset.createdAt) <= new Date(filters.dateTo)))
-      return matchesQuery && matchesFileType && matchesTags && matchesDate
-    })
-
-    return filtered.map((asset) => ({
-      id: asset.id,
-      title: asset.name,
-      subtitle: `${(asset.size / 1_000_000).toFixed(1)} MB • ${asset.tags.join(', ')}`,
-      type: asset.kind,
-      thumbnail: asset.thumbnail,
-      path: asset.path,
-      score: 1.0,
-      metadata: {
-        size: asset.size,
-        created: asset.createdAt,
-        modified: asset.updatedAt,
-        tags: asset.tags,
-      },
-    }))
+    return filterAssets(assets, query, filt)
   }
 
-  const handleVectorSearch = async (
-    query: string,
-  ): Promise<SearchResult[]> => {
-    try {
-      const response = await fetch('/api/vector-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      })
-      const data = await response.json()
-      return data.results || []
-    } catch (error) {
-      console.error('Vector search failed:', error)
-      return []
-    }
-  }
+  const handleVectorSearch = (query: string): Promise<SearchResult[]> =>
+    performVectorSearch(query, vectorSearch, showStatus)
 
   const handleResultSelect = (result: SearchResult) => {
-    const asset = assets.find((a) => a.id === result.id)
+    const asset = findAssetById(assets, result.id)
     if (asset) {
       handlePreview(asset)
     }

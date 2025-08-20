@@ -13,7 +13,7 @@ test('LayeredExplorer renders canvas', () => {
     view: [],
     filters: {},
     setFilters: () => {},
-    vectorSearch: async () => {},
+    vectorSearch: async () => [],
     move: async () => {},
     remove: async () => {},
     refresh: () => {},

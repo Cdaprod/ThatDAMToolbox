@@ -2,7 +2,7 @@
 import React from 'react'
 import { AlertCircle } from 'lucide-react'
 import { statusClasses } from '../../styles/theme'
-import type { StatusMessage } from './AssetExplorer'
+import type { StatusMessage } from './helpers'
 
 interface Props {
   message?: string
@@ -15,7 +15,7 @@ const StatusBar: React.FC<Props> = ({ message, type = 'info', onDismiss }) => {
   if (!message) return null
 
   return (
-    <div className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg border shadow-lg ${statusClasses[type]} z-50`}>
+    <div className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg border shadow-lg ${statusClasses[type as keyof typeof statusClasses]} z-50`}>
       <div className="flex items-center space-x-2">
         <AlertCircle className="w-4 h-4" />
         <span className="text-sm">{message}</span>

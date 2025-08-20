@@ -36,11 +36,17 @@ const THEME_MAP: Record<string, Record<string, string>> = {
   },
 }
 
+export function deriveThemeId(pathname: string) {
+  const segments = pathname.split('/').filter(Boolean)
+  const last = segments.pop()
+  return last && THEME_MAP[last] ? last : 'camera-monitor'
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   useEffect(() => {
-    const id = pathname.split('/')[2] || 'camera-monitor'
+    const id = deriveThemeId(pathname)
     const themeVars = THEME_MAP[id] ?? THEME_MAP['camera-monitor']
     Object.entries(themeVars).forEach(([k, v]) =>
       document.documentElement.style.setProperty(k, v)
