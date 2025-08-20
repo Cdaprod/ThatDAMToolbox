@@ -8,6 +8,7 @@ import TopBar from '../TopBar'
 import Sidebar from '../Sidebar'
 import { SidebarProvider } from '../../hooks/useSidebar'
 import MainLayout, { shouldHideSidebar } from '../../app/MainLayout'
+import TenantProvider from '@/providers/TenantProvider'
 
 test('TopBar renders sidebar toggle', () => {
   const html = renderToString(
@@ -58,4 +59,14 @@ test('Explorer button triggers dam-explorer modal', async () => {
   sidebarMod.useSidebar = origUseSidebar
   modalMod.useModal = origUseModal
   delete require.cache[topBarPath]
+
+test('TopBar link includes tenant', () => {
+  const html = renderToString(
+    <TenantProvider tenant="acme">
+      <SidebarProvider>
+        <TopBar />
+      </SidebarProvider>
+    </TenantProvider>
+  )
+  assert.ok(html.includes('/acme/dashboard/dam-explorer'))
 })

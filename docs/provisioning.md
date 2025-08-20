@@ -31,7 +31,7 @@ Camera Monitor in the web app:
 
 ```bash
 # open in your browser
-http://localhost:3000/dashboard/camera-monitor
+http://localhost:3000/{tenant}/dashboard/camera-monitor
 ```
 
 Once these URLs respond, the camera-proxy is ready.
