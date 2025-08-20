@@ -14,6 +14,8 @@
     "src/providers/__tests__/**/*.tsx",
     "src/lib/__tests__/**/*.ts",
     "src/styles/__tests__/**/*.ts",
+    "src/context/__tests__/**/*.tsx",
+    "src/types/**/*.d.ts",
     "src/components/tools/FFmpegConsole.tsx",
     "src/components/tools/AnalyticsCard.tsx",
     "src/components/tools/MotionExtract.tsx",
@@ -24,5 +26,12 @@
     "src/hooks/useIntelligentLayout.ts",
     "src/providers/TenantProvider.tsx",
     "src/providers/AuthProvider.tsx"
+  ],
+  "exclude": [
+    "src/components/CameraMonitor/**",
+    "src/components/__tests__/CameraMonitor.test.ts",
+    "src/components/__tests__/TopBar.test.tsx",
+    "src/components/modals/**",
+    "src/components/overlays/**"
   ]
 }

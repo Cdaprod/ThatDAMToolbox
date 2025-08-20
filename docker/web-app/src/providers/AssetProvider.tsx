@@ -31,7 +31,7 @@ interface AssetCtx {
   view: Asset[];                     // filtered or vector results
   filters: Filters;
   setFilters: (upd: Partial<Filters>) => void;
-  vectorSearch: (q: string) => Promise<void>;
+  vectorSearch: (q: string) => Promise<Asset[]>;
   move: (ids: string[], toPath: string) => Promise<void>;
   remove: (ids: string[]) => Promise<void>;
   refresh: () => void;
@@ -89,6 +89,7 @@ export default function AssetProvider({ children }: { children: ReactNode }) {
     // your backend must expose something like `videoApi.vectorSearch`
     const hits = await videoApi.vectorSearch(q);
     setVectorResults(hits);
+    return hits;
   };
 
   // 5) compute the "view" list
