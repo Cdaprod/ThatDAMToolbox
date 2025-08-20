@@ -1,15 +1,20 @@
 import { h } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
-import { createPlayer } from '@thatdamtoolbox/player';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
-export default function Player({ source }: { source: string }) {
+export default function Player({
+  source,
+  create,
+}: {
+  source: string;
+  create: (el: HTMLVideoElement, opts: { source: string }) => () => void;
+}) {
   const el = useRef<HTMLVideoElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!el.current) return;
-    const destroy = createPlayer(el.current, { source });
+    const destroy = create(el.current, { source });
     return () => destroy();
-  }, [source]);
+  }, [source, create]);
 
   return <video ref={el} autoplay playsinline class="w-full h-full" />;
 }
