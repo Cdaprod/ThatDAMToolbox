@@ -115,6 +115,11 @@
   --color-text-on-warning: #111827;
   --color-text-on-error  : #ffffff;
 
+  /* Theme colors */
+  --theme-background: #f0f4ff;
+  --theme-primary:    #1e40af;
+  --theme-accent:     #3b82f6;
+
   /* Status colors */
   --color-success-bg:  #dcfce7; /* green-100 */
   --color-success-border: #86efac; /* green-300 */
@@ -150,9 +155,9 @@
   --text-heading: 1.25rem;  /* 20 */
 
   /* Radii */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
