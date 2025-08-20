@@ -19,10 +19,11 @@ type UnitSpec struct {
 
 // UnitState reports the status of a service unit.
 type UnitState struct {
-	Name    string
-	Active  bool
-	Pid     int
-	Message string
+	Name     string
+	Active   bool
+	Pid      int
+	ExitCode int
+	Message  string
 }
 
 // ServiceRuntime abstracts how node services are managed.
