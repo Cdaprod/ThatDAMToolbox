@@ -1,12 +1,14 @@
 services:
   supervisor:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: host/services/supervisor/Dockerfile
     image: cdaprod/supervisor:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-supervisor
     networks: [damnet]
     ports: ["8070:8070"]
+    logging: *default-logging
     environment:
       SUPERVISOR_API_KEY: "changeme"
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"

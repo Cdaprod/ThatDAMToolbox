@@ -4,9 +4,11 @@ services:
   # ────────────────────────────────────────────────────────────────────────────
   thatdamtoolbox-discovery:
     build:
+      <<: *build-common
       # NOTE: this file lives in /docker/compose/, so repo root is ../../
       context: ../../
       dockerfile: host/services/discovery/Dockerfile
+    logging: *default-logging
     image: cdaprod/thatdam-discovery:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-discovery
 

@@ -1,6 +1,7 @@
 services:
   rabbitmq:
     build:
+      <<: *build-common
       context: ../../docker/rabbitmq
       dockerfile: Dockerfile
     image: cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}
@@ -23,3 +24,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *default-logging

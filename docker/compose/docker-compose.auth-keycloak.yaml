@@ -16,10 +16,12 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
     profiles: ["keycloak"]
 
   auth-bridge-keycloak:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: docker/auth-bridge/Dockerfile
     image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
@@ -48,4 +50,5 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    logging: *default-logging
     profiles: ["keycloak"]

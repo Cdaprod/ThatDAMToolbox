@@ -1,11 +1,13 @@
 services:
   runner:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: host/services/runner/Dockerfile
     image: cdaprod/runner:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-runner
     networks: [damnet]
+    logging: *default-logging
     environment:
       SUPERVISOR_URL: "http://supervisor:8070"
     depends_on:

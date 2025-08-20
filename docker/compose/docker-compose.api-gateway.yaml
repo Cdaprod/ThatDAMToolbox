@@ -1,12 +1,14 @@
 services:
   api-gateway:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: host/services/api-gateway/Dockerfile
     image: cdaprod/api-gateway:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-api-gateway
     networks: [damnet]
     ports: ["8085:8080"]
+    logging: *default-logging
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"

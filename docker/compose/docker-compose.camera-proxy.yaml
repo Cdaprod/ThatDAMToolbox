@@ -1,6 +1,7 @@
 services:
   camera-proxy:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: host/services/camera-proxy/Dockerfile
     image: cdaprod/camera-proxy:${IMAGE_TAG:-dev}
@@ -28,6 +29,7 @@ services:
       FFMPEG_HWACCEL: "${FFMPEG_HWACCEL:-}"
       UPSTREAM_HOST: "${UPSTREAM_HOST:-api-gateway}"
       UPSTREAM_PORT: "${UPSTREAM_PORT:-8080}"
+    logging: *default-logging
     healthcheck:
       test: ["CMD","curl","-fsS","http://127.0.0.1:8000/health"]
       interval: 30s

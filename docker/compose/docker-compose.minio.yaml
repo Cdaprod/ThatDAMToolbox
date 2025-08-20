@@ -1,6 +1,7 @@
 services:
   minio:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: docker/minio/Dockerfile
     image: thatdamtoolbox-minio:local
@@ -46,3 +47,4 @@ services:
       retries: 3
     restart: unless-stopped
     networks: [damnet]
+    logging: *default-logging

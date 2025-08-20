@@ -1,6 +1,7 @@
 services:
   auth-bridge:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: docker/auth-bridge/Dockerfile
     image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
@@ -10,6 +11,7 @@ services:
       damnet:
         aliases: ["auth-bridge"]
     ports: ["8081:8081"]
+    logging: *default-logging
     environment:
       OIDC_PROVIDER: "auth0"
       OIDC_ISSUER: "${AUTH0_ISSUER:-https://example.us.auth0.com/}"

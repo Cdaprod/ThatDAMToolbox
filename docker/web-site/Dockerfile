@@ -37,6 +37,14 @@ RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 # ── production (slim runtime) ────────────────────────────────
 FROM node:20-alpine AS production
+ARG VCS_REF
+ARG IMAGE_TAG=dev
+LABEL org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
+      org.opencontainers.image.vendor="Cdaprod" \
+      org.opencontainers.image.title="ThatDAMToolbox - web-site" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.version=$IMAGE_TAG
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

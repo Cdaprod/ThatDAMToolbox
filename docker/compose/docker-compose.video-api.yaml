@@ -4,8 +4,10 @@ services:
   ########################################################################
   video-api:
     build:
+      <<: *build-common
       context: ../../
       dockerfile: docker/video-api/Dockerfile            # Multi-arch build
+    logging: *default-logging
     image: cdaprod/video:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     platform: linux/arm64               # Pi 5; drop for x86-64 dev
