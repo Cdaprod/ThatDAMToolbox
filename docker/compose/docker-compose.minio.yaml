@@ -41,7 +41,7 @@ services:
       - "9000:9000"  # S3 API
       - "9001:9001"  # MinIO Console
     volumes:
-      - ./docker/minio/data:/data
+      - ../../docker/minio/data:/data
     healthcheck:
       test: ["CMD","curl","-fsS","http://localhost:9000/minio/health/ready"]
       interval: 30s

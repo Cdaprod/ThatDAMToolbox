@@ -37,7 +37,7 @@ services:
       # Single-node cluster name
       CLUSTER_HOSTNAME:                          "node1"
     volumes:
-      - ./docker/weaviate/data/weaviate:/var/lib/weaviate
+      - ../../docker/weaviate/data/weaviate:/var/lib/weaviate
     depends_on:
       minio:
         condition: service_healthy
@@ -60,7 +60,7 @@ services:
       weaviate:
         condition: service_healthy
     volumes:
-      - ./docker/weaviate:/weaviate:ro
+      - ../../docker/weaviate:/weaviate:ro
     working_dir: /weaviate
     entrypoint: ["python", "bootstrap-schema.py"]
     environment:
