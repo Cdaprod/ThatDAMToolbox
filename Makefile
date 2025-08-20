@@ -5,6 +5,9 @@
 # CONFIGURATION
 # =============================================================================
 
+# Toggle build mode: override with `MODE=production` for production builds
+MODE ?= development
+
 HOST_SERVICES_DIR := host/services
 
 # ───────── Dynamic Compose layer discovery ─────────
@@ -23,12 +26,19 @@ DOCKER_COMPOSE    = docker compose $(foreach f,$(COMPOSE_FILES),-f $(f))
 GO_BUILD_FLAGS    := -ldflags="-w -s" -a -installsuffix cgo
 CGO_ENABLED       := 0
 
+ifeq ($(MODE),production)
+  GO_BUILD_FLAGS += -trimpath
+endif
+
 SYSTEMD_DIR       := /etc/systemd/system
 BIN_DIR           := /usr/local/bin
 DATA_DIR          := /var/lib/thatdamtoolbox
 MEDIA_DIR         := /var/media/records
 
 DOCKER_IMAGE ?= thatdamtoolbox
+
+# Include infra targets (infra.mk)
+include scripts/make/infra.mk
 
 # =============================================================================
 # MAIN TARGETS
@@ -58,7 +68,7 @@ define run_gitversion
 	    gitversion /config "$(GITVERSION_YML)" -verbosity Warn; \
 	else \
 	    docker run --rm -v "$(REPO_ROOT)":/repo gittools/gitversion:5 /repo \
-	        /config /repo/.github/GitVersion.yml -verbosity Warn; \
+	 /config /repo/.github/GitVersion.yml -verbosity Warn; \
 	fi
 endef
 
@@ -81,7 +91,7 @@ SHORT_SHA := $(shell git rev-parse --short HEAD)
 # =============================================================================
 
 .PHONY: docker-build docker-up docker-down docker-logs docker-restart docker-status \
-        compose-up compose-down compose-logs compose-restart compose-status
+	compose-up compose-down compose-logs compose-restart compose-status
 
 docker-build: ## Build Docker images (conditionally tag with TAG_IMAGE=true)
 	@echo "📦 Building $(DOCKER_IMAGE):latest with VERSION=$(VERSION) and SHA=$(SHORT_SHA)"
@@ -185,41 +195,35 @@ endif
 # Normalize list (drop empties, sort/dedupe)
 WORK_MODULES := $(sort $(strip $(WORK_MODULES)))
 
-# Core services that produce named binaries (install step depends on these paths)
-CORE_GATEWAY_DIR         := $(HOST_SERVICES_DIR)/api-gateway
-CORE_PROXY_DIR           := $(HOST_SERVICES_DIR)/camera-proxy
-CORE_CAPTURE_DAEMON_DIR  := $(HOST_SERVICES_DIR)/capture-daemon
+# Host services and build settings
+HOST_SERVICES := api-gateway camera-proxy capture-daemon
+HOST_SERVICE_DIR_api-gateway := $(HOST_SERVICES_DIR)/api-gateway
+HOST_SERVICE_DIR_camera-proxy := $(HOST_SERVICES_DIR)/camera-proxy
+HOST_SERVICE_DIR_capture-daemon := $(HOST_SERVICES_DIR)/capture-daemon
+HOST_SERVICE_PKG_api-gateway := ./cmd
+HOST_SERVICE_PKG_camera-proxy := .
+HOST_SERVICE_PKG_capture-daemon := .
+HOST_SERVICE_DIRS := $(HOST_SERVICE_DIR_api-gateway) $(HOST_SERVICE_DIR_camera-proxy) $(HOST_SERVICE_DIR_capture-daemon)
 
 # Any other workspace modules get a generic build ./...
 OTHER_MODULES := $(filter-out \
-  $(CORE_GATEWAY_DIR) \
-  $(CORE_PROXY_DIR) \
-  $(CORE_CAPTURE_DAEMON_DIR), \
+  $(HOST_SERVICE_DIRS), \
   $(WORK_MODULES))
 
-.PHONY: build-all build-gateway build-proxy build-capture-daemon install-all \
-        setup-system install-binaries install-services enable-services \
-        go-list go-tidy go-build-rest
+.PHONY: build-all $(addprefix build-,$(HOST_SERVICES)) install-all \
+	setup-system install-binaries install-services enable-services \
+	go-list go-tidy go-build-rest
 
 # Build all Go services:
-# 1) Build named binaries for the three core services (as before)
+# 1) Build named binaries for the core host services
 # 2) Build remaining workspace modules generically (cache warm / ensure compile)
-build-all: build-gateway build-proxy build-capture-daemon go-build-rest
+build-all: $(addprefix build-,$(HOST_SERVICES)) go-build-rest
 
-build-gateway: ## Build API Gateway
-	@echo "🔨 $(CORE_GATEWAY_DIR)"
-	cd "$(CORE_GATEWAY_DIR)" && \
-	CGO_ENABLED="$(CGO_ENABLED)" "$(GO_BIN)" build $(GO_BUILD_FLAGS) -o api-gateway ./cmd
-
-build-proxy: ## Build Camera Proxy
-	@echo "🔨 $(CORE_PROXY_DIR)"
-	cd "$(CORE_PROXY_DIR)" && \
-	CGO_ENABLED="$(CGO_ENABLED)" "$(GO_BIN)" build $(GO_BUILD_FLAGS) -o camera-proxy .
-
-build-capture-daemon: ## Build the capture daemon
-	@echo "🔨 $(CORE_CAPTURE_DAEMON_DIR)"
-	cd "$(CORE_CAPTURE_DAEMON_DIR)" && \
-	CGO_ENABLED="$(CGO_ENABLED)" "$(GO_BIN)" build $(GO_BUILD_FLAGS) -o capture-daemon .
+build-%: ## Build host service %
+	@svc_dir=$(HOST_SERVICE_DIR_$*); \
+	echo "🔨 $$svc_dir"; \
+	cd "$$svc_dir" && \
+	CGO_ENABLED="$(CGO_ENABLED)" "$(GO_BIN)" build $(GO_BUILD_FLAGS) -o $* $(HOST_SERVICE_PKG_$*)
 
 go-build-rest: ## Build remaining workspace modules (generic ./...)
 	@mods="$(OTHER_MODULES)"; \
@@ -269,25 +273,23 @@ setup-system: ## Create users and directories
 
 install-binaries: ## Install all binaries
 	@echo "Installing binaries..."
-	sudo install -m755 $(CORE_GATEWAY_DIR)/api-gateway $(BIN_DIR)/
-	sudo install -m755 $(CORE_PROXY_DIR)/camera-proxy $(BIN_DIR)/
-	sudo install -m755 $(CORE_CAPTURE_DAEMON_DIR)/capture-daemon $(BIN_DIR)/
+	$(foreach svc,$(HOST_SERVICES),sudo install -m755 $(HOST_SERVICE_DIR_$(svc))/$(svc) $(BIN_DIR)/; )
 
 install-services: ## Install systemd services
 	@echo "Installing systemd services..."
-	sudo install -m644 scripts/systemd/*.service $(SYSTEMD_DIR)/ 2>/dev/null || true
+	$(foreach svc,$(HOST_SERVICES),sudo install -m644 scripts/systemd/$(svc).service $(SYSTEMD_DIR)/; )
 	sudo systemctl daemon-reload
 
 enable-services: ## Enable all services
 	@echo "Enabling services..."
-	-sudo systemctl enable api-gateway camera-proxy capture-daemon
+	-sudo systemctl enable $(HOST_SERVICES)
 
 
 # =============================================================================
 # SERVICE MANAGEMENT
 # =============================================================================
 
-SERVICES := api-gateway camera-proxy capture-daemon
+SERVICES := $(HOST_SERVICES)
 
 .PHONY: start stop restart status logs start-% stop-% restart-% status-% logs-%
 
@@ -343,25 +345,10 @@ logs-%: ## Follow logs for a single service (make logs-<name>)
 .PHONY: health test dev-test
 
 health: ## Check system health
-	@echo "=== System Health Check ==="
-	@echo "Camera Proxy:"
-	@curl -s http://localhost:8000/api/devices | jq '.' 2>/dev/null || echo "  ❌ Camera proxy not responding"
-	@echo -e "\nAPI Gateway:"
-	@curl -s http://localhost:8080/api/health | jq '.' 2>/dev/null || echo "  ❌ API gateway not responding"
-	@echo -e "\nDocker Services:"
-	@curl -s http://localhost:8080/health 2>/dev/null && echo "  ✅ Python API healthy" || echo "  ❌ Python API not responding"
-	@curl -s http://localhost:3000/api/health 2>/dev/null && echo "  ✅ Next.js frontend healthy" || echo "  ❌ Next.js frontend not responding"
-	@echo -e "\nStorage:"
-	@df -h $(MEDIA_DIR) 2>/dev/null || echo "  ❌ Media directory not accessible"
-	@echo -e "\nMemory:"
-	@free -h
+	./scripts/health.sh
 
 test: ## Run tests
-	@echo "Running Go tests..."
-	cd $(HOST_SERVICES_DIR)/shared && go test ./... || true
-	cd $(HOST_SERVICES_DIR)/api-gateway && go test ./... || true
-	@echo "Running Python tests..."
-	python -m pytest tests/ -v || true
+	./scripts/test.sh
 
 dev-test: ## Quick development test
 	@echo "Testing service connectivity..."
@@ -375,30 +362,24 @@ dev-test: ## Quick development test
 # DEVELOPMENT MODE
 # =============================================================================
 
-.PHONY: dev-gateway dev-proxy dev-capture dev-docker dev-all
+DEV_CMDS_api-gateway := cd $(HOST_SERVICE_DIR_api-gateway) && ./api-gateway -addr=:8080 -backend-url=http://localhost:8000 -media-dir=./data/media -db-path=./data/db/live.sqlite3
+DEV_CMDS_camera-proxy := cd $(HOST_SERVICE_DIR_camera-proxy) && PROXY_PORT=8000 BACKEND_URL=http://localhost:8080 ./camera-proxy
+DEV_CMDS_capture-daemon := cd $(HOST_SERVICE_DIR_capture-daemon) && ./capture-daemon /dev/video0
 
-dev-gateway: build-gateway ## Run gateway in development mode
-	cd $(HOST_SERVICES_DIR)/api-gateway && \
-	./api-gateway -addr=:8080 -backend-url=http://localhost:8000 -media-dir=./data/media -db-path=./data/db/live.sqlite3
+.PHONY: $(addprefix dev-,$(HOST_SERVICES)) dev-docker dev-all
 
-dev-proxy: build-proxy ## Run proxy in development mode
-	cd $(HOST_SERVICES_DIR)/camera-proxy && \
-	PROXY_PORT=8000 BACKEND_URL=http://localhost:8080 ./camera-proxy
-
-dev-capture: build-capture-daemon ## Run capture daemon in development mode
-	cd $(HOST_SERVICES_DIR)/capture-daemon && \
-	./capture-daemon /dev/video0
+dev-%: build-% ## Run % in development mode
+	$(DEV_CMDS_$*)
 
 dev-docker: ## Run Docker services in development mode
-        $(DOCKER_COMPOSE) up
+	$(DOCKER_COMPOSE) up
 
 dev-all: ## Start everything in development mode
 	@echo "Starting development environment..."
 	$(MAKE) dev-docker &
 	sleep 5
-	$(MAKE) dev-proxy &
-	sleep 2
-	$(MAKE) dev-gateway &
+	$(foreach svc,$(HOST_SERVICES),$(MAKE) dev-$(svc) & sleep 2; )
+	wait
 	@echo "All services starting... Use Ctrl+C to stop"
 
 
@@ -491,66 +472,6 @@ download-report: ## Download GitHub Actions build-report artifact
 	@gh run download --repo $$GITHUB_REPOSITORY --pattern build-report.txt --name build-report
 	@echo "✅ build-report.txt saved"
 	@ls -l build-report.txt
-
-
-# =============================================================================
-# INFRA LAYER BOOTSTRAPPING
-# =============================================================================
-
-# ---- Config ----
-INFRA_COMPOSE        ?= docker/compose/infra.yaml
-INFRA_PROFILE        ?= infra
-INFRA_DOCKER_COMPOSE := docker compose -f "$(INFRA_COMPOSE)" --profile "$(INFRA_PROFILE)"
-
-.PHONY: infra-build infra-up infra-wait infra-bootstrap-weaviate infra-up-all infra-down infra-logs
-
-# ---- Build All Infra Layer Services ----
-infra-build:
-	$(INFRA_DOCKER_COMPOSE) build --pull
-
-# ---- Deploy Infra Layer (up in detached mode) ----
-infra-up:
-	$(INFRA_DOCKER_COMPOSE) up -d --wait --pull always --remove-orphans
-
-# ---- Wait for All Services to be Healthy ----
-# Falls back to "running" if a service has no healthcheck.
-infra-wait:
-	@echo "⏳ Waiting for infra services to be healthy (profile=$(INFRA_PROFILE))..."
-	@$(INFRA_DOCKER_COMPOSE) ps
-	@set -e; \
-	DEADLINE=$$(($(date +%s) + 90)); \
-	while :; do \
-	  all_ok=1; \
-	  for cid in $$($(INFRA_DOCKER_COMPOSE) ps -q); do \
-	    st=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' $$cid 2>/dev/null || echo "unknown"); \
-	    case "$$st" in \
-	      healthy|running) : ;; \
-	      *) all_ok=0 ;; \
-	    esac; \
-	  done; \
-	  [ "$$all_ok" -eq 1 ] && break; \
-	  [ $$(date +%s) -ge $$DEADLINE ] && echo "❌ Timeout waiting for infra health" && exit 1; \
-	  sleep 3; \
-	  $(INFRA_DOCKER_COMPOSE) ps; \
-	done
-	@echo "✅ All infra services healthy!"
-
-# ---- Bootstrap Weaviate (Schema, etc) ----
-infra-bootstrap-weaviate:
-	@echo "🚀 Bootstrapping Weaviate schema..."
-	$(INFRA_DOCKER_COMPOSE) run --rm weaviate-schema-bootstrap
-
-# ---- One-Stop Infra Layer Bringup (build, up, wait, bootstrap) ----
-infra-up-all: infra-build infra-up infra-wait infra-bootstrap-weaviate
-	@echo "🚦 Infra layer fully deployed and bootstrapped."
-
-# ---- Teardown/Cleanup ----
-infra-down:
-	$(INFRA_DOCKER_COMPOSE) down --remove-orphans --volumes
-
-# ---- Logs ----
-infra-logs:
-	$(INFRA_DOCKER_COMPOSE) logs -f
 
 
 # =============================================================================
