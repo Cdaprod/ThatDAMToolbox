@@ -19,15 +19,101 @@
   --search-bar-max-width : var(--container-md);
 
   /* Colors */
-  --color-background: #f7f9fc;
-  --color-surface:    #ffffff;
-  --color-border:     #e5e7eb; /* gray-200 */
-  --color-text:       #1f2937; /* gray-800 */
-  --color-muted:      #6b7280; /* gray-500 */
-  --color-primary:    #3b82f6; /* blue-500 */
-  --color-primary-bg: #eff6ff; /* blue-50 */
-  --color-accent:     #a855f7; /* purple-500 */
-  --color-accent-bg:  #f5f3ff; /* purple-50 */
+  /* Neutral */
+  --color-neutral-0  : #ffffff;
+  --color-neutral-50 : #f7f9fc;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+
+  /* Primary */
+  --color-primary-50 : #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* Accent */
+  --color-accent-50 : #faf5ff;
+  --color-accent-100: #f3e8ff;
+  --color-accent-200: #e9d5ff;
+  --color-accent-300: #d8b4fe;
+  --color-accent-400: #c084fc;
+  --color-accent-500: #a855f7;
+  --color-accent-600: #9333ea;
+  --color-accent-700: #7e22ce;
+  --color-accent-800: #6b21a8;
+  --color-accent-900: #581c87;
+
+  /* Success */
+  --color-success-50 : #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-300: #86efac;
+  --color-success-400: #4ade80;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+
+  /* Warning */
+  --color-warning-50 : #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+
+  /* Error */
+  --color-error-50 : #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-200: #fecaca;
+  --color-error-300: #fca5a5;
+  --color-error-400: #f87171;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+  --color-error-900: #7f1d1d;
+
+  /* Aliases */
+  --color-background   : var(--color-neutral-50);
+  --color-surface      : var(--color-neutral-0);
+  --color-surface-alt  : var(--color-neutral-100);
+  --color-border       : var(--color-neutral-200);
+  --color-text         : var(--color-neutral-800);
+  --color-muted        : var(--color-neutral-500);
+  --color-primary      : var(--color-primary-500);
+  --color-primary-bg   : var(--color-primary-50);
+  --color-accent       : var(--color-accent-500);
+  --color-accent-bg    : var(--color-accent-50);
+  --color-success      : var(--color-success-500);
+  --color-success-bg   : var(--color-success-50);
+  --color-warning      : var(--color-warning-500);
+  --color-warning-bg   : var(--color-warning-50);
+  --color-error        : var(--color-error-500);
+  --color-error-bg     : var(--color-error-50);
+  --color-text-on-primary: #ffffff;
+  --color-text-on-accent : #ffffff;
+  --color-text-on-success: #ffffff;
+  --color-text-on-warning: #111827;
+  --color-text-on-error  : #ffffff;
 
   /* Typography */
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
