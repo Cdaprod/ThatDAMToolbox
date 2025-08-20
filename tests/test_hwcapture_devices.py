@@ -19,8 +19,11 @@ class _DummyClient:
         return False
 
     async def get(self, url: str):
-        assert url == "http://capture-daemon/devices"
-        return httpx.Response(200, json=[{"id": "/dev/video0", "name": "cam"}])
+        if url == "http://capture-daemon/devices":
+            return httpx.Response(200, json=[{"path": "/dev/video0"}])
+        if url == "http://camera-proxy/api/devices":
+            return httpx.Response(200, json=[{"path": "/dev/video1"}])
+        raise AssertionError(f"unexpected url {url}")
 
 
 def _app():
@@ -30,11 +33,16 @@ def _app():
 
 
 @pytest.mark.asyncio
-async def test_devices_proxies_to_capture_daemon(monkeypatch):
-    """Ensure /hwcapture/devices forwards to capture-daemon."""
+async def test_devices_aggregates_sources(monkeypatch):
     os.environ["CAPTURE_DAEMON_URL"] = "http://capture-daemon"
+    os.environ["CAMERA_PROXY_URL"] = "http://camera-proxy"
     monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **kw: _DummyClient())
+    monkeypatch.setattr("video.modules.hwcapture.routes.list_video_devices", lambda: [{"path": "/dev/video2"}])
     client = TestClient(_app())
     resp = client.get("/hwcapture/devices")
     assert resp.status_code == 200
-    assert resp.json() == [{"id": "/dev/video0", "name": "cam"}]
+    assert resp.json() == [
+        {"path": "/dev/video0"},
+        {"path": "/dev/video1"},
+        {"path": "/dev/video2"},
+    ]

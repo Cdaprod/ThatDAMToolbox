@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert'
-import { deviceOptionStyle, sliderBackgroundStyle, statusClasses } from '../theme'
+import { cardBaseClasses, deviceOptionStyle, sliderBackgroundStyle, statusClasses } from '../theme'
 
 test('deviceOptionStyle uses CSS variable tokens', () => {
   const unavailable = deviceOptionStyle(false)
@@ -20,4 +20,9 @@ test('statusClasses use semantic tokens', () => {
     assert.match(cls, /var\(--color-[a-z-]+\)/)
     assert.ok(!/#/.test(cls))
   })
+})
+
+test('cardBaseClasses include rounding and shadow', () => {
+  assert.match(cardBaseClasses, /rounded-xl/)
+  assert.match(cardBaseClasses, /shadow-md/)
 })
