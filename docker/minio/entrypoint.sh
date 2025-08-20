@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # MinIO entrypoint for That DAM Toolbox.
 # Starts the server and ensures configured buckets exist.
-# Optionally sets the media bucket public and creates a service account.
+# Optionally sets the media bucket public, applies CORS, and creates a service account.
 #
 # Usage:
 #   MINIO_ROOT_USER=minio MINIO_ROOT_PASSWORD=minio123 ./entrypoint.sh
@@ -11,7 +11,8 @@
 #     -e MINIO_ROOT_USER=minio \
 #     -e MINIO_ROOT_PASSWORD=minio123 \
 #     -e MINIO_BUCKET_MEDIA=media \
-#     -e MINIO_MEDIA_PUBLIC=1 \
+#     -e MINIO_MEDIA_PUBLIC=true \
+#     -e MINIO_MEDIA_CORS_JSON='[{"AllowedMethods":["GET"],"AllowedOrigins":["*"]}]' \
 #     -e MINIO_SVC_ACCESS_KEY=svcuser \
 #     -e MINIO_SVC_SECRET_KEY=svcpw \
 #     thatdamtoolbox-minio
@@ -23,15 +24,16 @@ set -euo pipefail
 
 MINIO_BUCKET_MEDIA="${MINIO_BUCKET_MEDIA:-}"
 MINIO_BUCKET_WEAVIATE_BACKUPS="${MINIO_BUCKET_WEAVIATE_BACKUPS:-}"
-MINIO_MEDIA_PUBLIC="${MINIO_MEDIA_PUBLIC:-}"
+MINIO_MEDIA_PUBLIC="${MINIO_MEDIA_PUBLIC:-false}"
+MINIO_MEDIA_CORS_JSON="${MINIO_MEDIA_CORS_JSON:-}"
 MINIO_SVC_ACCESS_KEY="${MINIO_SVC_ACCESS_KEY:-}"
 MINIO_SVC_SECRET_KEY="${MINIO_SVC_SECRET_KEY:-}"
 
-minio server /data --console-address :9001 >/proc/1/fd/1 2>/proc/1/fd/2 &
+/usr/bin/minio server /data --console-address :9001 >/proc/1/fd/1 2>/proc/1/fd/2 &
 MINIO_PID=$!
 
 for i in $(seq 1 60); do
-  if curl -fSs http://127.0.0.1:9000/minio/health/ready >/dev/null 2>&1; then
+  if wget -qO- http://127.0.0.1:9000/minio/health/ready >/dev/null 2>&1; then
     READY=1
     break
   fi
@@ -59,8 +61,15 @@ ensure_bucket() {
 ensure_bucket "$MINIO_BUCKET_MEDIA"
 ensure_bucket "$MINIO_BUCKET_WEAVIATE_BACKUPS"
 
-if [[ -n "$MINIO_MEDIA_PUBLIC" && -n "$MINIO_BUCKET_MEDIA" ]]; then
+if [[ "$MINIO_MEDIA_PUBLIC" == "true" && -n "$MINIO_BUCKET_MEDIA" ]]; then
   mc anonymous set download "local/${MINIO_BUCKET_MEDIA}" >/dev/null
+fi
+
+if [[ -n "$MINIO_MEDIA_CORS_JSON" && -n "$MINIO_BUCKET_MEDIA" ]]; then
+  tmpcors=$(mktemp)
+  printf '%s' "$MINIO_MEDIA_CORS_JSON" > "$tmpcors"
+  mc cors set "local/${MINIO_BUCKET_MEDIA}" "$tmpcors" >/dev/null
+  rm -f "$tmpcors"
 fi
 
 if [[ -n "$MINIO_SVC_ACCESS_KEY" && -n "$MINIO_SVC_SECRET_KEY" ]]; then
