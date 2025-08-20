@@ -13,6 +13,7 @@
     "src/hooks/__tests__/**/*.tsx",
     "src/providers/__tests__/**/*.tsx",
     "src/lib/__tests__/**/*.ts",
+    "src/styles/__tests__/**/*.ts",
     "src/components/tools/FFmpegConsole.tsx",
     "src/components/tools/AnalyticsCard.tsx",
     "src/components/tools/MotionExtract.tsx",

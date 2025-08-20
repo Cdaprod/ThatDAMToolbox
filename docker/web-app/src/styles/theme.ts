@@ -34,10 +34,10 @@ export const overlaySurfaceStyle: CSSProperties = {
 };
 
 export const monitorCanvasStyle: CSSProperties = {
-  background: 'black',
+  background: 'var(--color-monitor-canvas)',
 };
 
-export const videoCardStyle:    CSSProperties = { margin: 8, border: '1px solid #333', padding: 12 };
+export const videoCardStyle:    CSSProperties = { margin: 8, border: '1px solid var(--color-border)', padding: 12 };
 export const videoStyle:        CSSProperties = { display: 'block', marginBottom: 8, maxWidth: '100%' };
 export const videoInfoStyle:    CSSProperties = { fontSize: 14, marginBottom: 4 };
 export const sceneThumbStyle:   CSSProperties = { marginRight: 2 };
@@ -64,12 +64,12 @@ export const folderIndentStyle = (level: number): CSSProperties => ({
 });
 
 export const deviceOptionStyle = (available: boolean): CSSProperties => ({
-  color:      available ? '#fff' : '#888',
-  background: available ? ''     : '#333',
+  color:      available ? 'var(--color-surface)' : 'var(--color-muted)',
+  background: available ? ''                    : 'var(--color-text)',
 });
 
 export const sliderBackgroundStyle = (percent: number): CSSProperties => ({
-  background: `linear-gradient(to right, #ff4500 0%, #ff4500 ${percent}%, #666 ${percent}%, #666 100%)`,
+  background: `linear-gradient(to right, var(--color-slider-fill) 0%, var(--color-slider-fill) ${percent}%, var(--color-slider-track) ${percent}%, var(--color-slider-track) 100%)`,
 });
 
 export const batteryLevelStyle = (level: number): CSSProperties => ({
@@ -77,18 +77,18 @@ export const batteryLevelStyle = (level: number): CSSProperties => ({
 });
 
 export const statusClasses: Record<'success' | 'error' | 'warning' | 'info', string> = {
-  success: 'bg-green-100 text-green-800 border-green-300',
-  error:   'bg-red-100   text-red-800   border-red-300',
-  warning: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  info:    'bg-blue-100  text-blue-800  border-blue-300',
+  success: 'bg-[var(--color-success-bg)] text-[var(--color-success-text)] border-[var(--color-success-border)]',
+  error:   'bg-[var(--color-error-bg)]   text-[var(--color-error-text)]   border-[var(--color-error-border)]',
+  warning: 'bg-[var(--color-warning-bg)] text-[var(--color-warning-text)] border-[var(--color-warning-border)]',
+  info:    'bg-[var(--color-info-bg)]    text-[var(--color-info-text)]    border-[var(--color-info-border)]',
 };
 
 export const dashboardColorClasses: Record<string, string> = {
-  'camera-monitor': 'text-indigo-500',
-  'dam-explorer':   'text-purple-500',
-  motion:           'text-pink-500',
-  live:             'text-green-500',
-  witness:          'text-yellow-500',
-  explorer:         'text-blue-500',
-  nodes:            'text-cyan-500',
+  'camera-monitor': 'text-[var(--color-camera-monitor)]',
+  'dam-explorer':   'text-[var(--color-accent)]',
+  motion:           'text-[var(--color-motion)]',
+  live:             'text-[var(--color-live)]',
+  witness:          'text-[var(--color-witness)]',
+  explorer:         'text-[var(--color-primary)]',
+  nodes:            'text-[var(--color-nodes)]',
 };
