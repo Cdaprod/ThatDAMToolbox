@@ -1,3 +1,24 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-build-common: &build-common
+  args:
+    BUILDKIT_INLINE_CACHE: "1"
+  cache_from:
+    - type=local,src=.docker_cache
+  cache_to:
+    - type=local,dest=.docker_cache,mode=max
+  labels:
+    org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
+    org.opencontainers.image.vendor: "Cdaprod"
+    org.opencontainers.image.title: "ThatDAMToolbox"
+    org.opencontainers.image.revision: "${GIT_SHA:-dev}"
+    org.opencontainers.image.version: "${IMAGE_TAG:-dev}"
+    org.opencontainers.image.licenses: "Apache-2.0"
+
 services:
   media-api:
     profiles: ["media-api"]
