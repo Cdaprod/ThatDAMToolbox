@@ -1,9 +1,11 @@
 services:
   web-site:
     build:
+      <<: *build-common
       context: ../../docker/web-site
       dockerfile: Dockerfile
       target: development
+    logging: *default-logging
     image: cdaprod/web-site:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-web-site
     platform: linux/arm64
@@ -12,6 +14,7 @@ services:
     profiles: [web-site]
     environment:
       NODE_ENV: development
+      NPM_CONFIG_CACHE: /root/.npm
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"

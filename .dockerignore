@@ -74,6 +74,7 @@ mnt/**                       # NAS mounts in dev
 thatdamtoolbox/              # local cache; mount at runtime
 .cache/
 __pypackages__/
+.docker_cache/
 
 ###############################
 #  Tests & docs (not needed at runtime)

@@ -1,4 +1,4 @@
-# ThatDamToolbox - Integrated Build System (CLEAN MIGRATED)
+						# ThatDamToolbox - Integrated Build System (CLEAN MIGRATED)
 # Only modern Go host services and Docker; fully migrated "capture-daemon" (no "-new", no legacy)
 
 # =============================================================================
@@ -112,6 +112,52 @@ compose-down: docker-down
 compose-logs: docker-logs
 compose-restart: docker-restart
 compose-status: docker-status
+
+# =============================================================================
+# IMAGE BUILD/PUSH (Buildx + SBOM/Provenance)
+# =============================================================================
+
+PROJECT ?= thatdamtoolbox
+REGISTRY ?= ghcr.io/cdaprod
+TAG ?= $(shell git rev-parse --short=12 HEAD)
+DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+IMAGES = video video-web web-site api-gateway overlay-hub supervisor capture-daemon camera-proxy media-api runner
+
+define build_one
+@docker buildx build \
+--file docker/$(1)/Dockerfile \
+--provenance=true \
+--sbom=true \
+--label org.opencontainers.image.created=$(DATE) \
+--label org.opencontainers.image.revision=$(TAG) \
+--build-arg BUILDKIT_INLINE_CACHE=1 \
+--cache-from type=local,src=.docker_cache \
+--cache-to type=local,dest=.docker_cache,mode=max \
+--tag $(REGISTRY)/$(1):$(TAG) \
+--tag $(REGISTRY)/$(1):latest \
+.
+endef
+
+.PHONY: build-images push-images login-ghcr
+build-images: ## build all images locally with cache
+	$(foreach img,$(IMAGES),$(call build_one,$(img)))
+
+push-images: ## build and push all images to GHCR
+	@for img in $(IMAGES); do \
+  docker buildx build \
+    --file docker/$$img/Dockerfile \
+    --provenance=true --sbom=true \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
+    --cache-from type=registry,ref=$(REGISTRY)/thatdamtoolbox-cache:build \
+    --cache-to type=registry,ref=$(REGISTRY)/thatdamtoolbox-cache:build,mode=max \
+    --tag $(REGISTRY)/$$img:$(TAG) \
+    --tag $(REGISTRY)/$$img:latest \
+    --push . ; \
+done
+
+login-ghcr: ## login to GHCR (requires GHCR_USER and GHCR_TOKEN)
+	@echo "$$GHCR_TOKEN" | docker login ghcr.io -u $$GHCR_USER --password-stdin
 
 # =============================================================================
 # GO HOST SERVICES (workspace-driven, keeps named binaries for 3 core services)

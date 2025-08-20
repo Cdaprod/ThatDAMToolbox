@@ -1,6 +1,7 @@
 services:
   gateway:
     build:
+      <<: *build-common
       context: ../../docker/nginx
       dockerfile: Dockerfile
     image: cdaprod/gateway:latest
@@ -30,6 +31,4 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    logging:
-      driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+    logging: *default-logging

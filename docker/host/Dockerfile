@@ -30,5 +30,13 @@ RUN go build -mod=readonly -o /out/capture-daemon ./host/services/capture-daemon
 
 # 5) (Optional) final stage
 FROM alpine:3.18
+ARG VCS_REF
+ARG IMAGE_TAG=dev
+LABEL org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
+      org.opencontainers.image.vendor="Cdaprod" \
+      org.opencontainers.image.title="ThatDAMToolbox - host" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.version=$IMAGE_TAG
 COPY --from=builder /out/ /usr/local/bin/
 ENTRYPOINT ["api-gateway"]   # or whatever your default is

@@ -1,5 +1,13 @@
 # Use the official RabbitMQ image with the management UI baked in
 FROM rabbitmq:3.13-management
+ARG VCS_REF
+ARG IMAGE_TAG=dev
+LABEL org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
+      org.opencontainers.image.vendor="Cdaprod" \
+      org.opencontainers.image.title="ThatDAMToolbox - rabbitmq" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.version=$IMAGE_TAG
 
 # Enable the Prometheus plugin (for /metrics) and any other you wish
 # (removed: rabbitmq_peer_discovery_classic_config)

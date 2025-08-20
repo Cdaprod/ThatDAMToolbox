@@ -175,6 +175,14 @@ RUN set -e; \
 # Stage 4 – Runtime: reuse that venv
 #############################################
 FROM builder AS runtime
+ARG VCS_REF
+ARG IMAGE_TAG=dev
+LABEL org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
+      org.opencontainers.image.vendor="Cdaprod" \
+      org.opencontainers.image.title="ThatDAMToolbox - video-api" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.version=$IMAGE_TAG
 
 # Copy over your code + venv, all already owned by appuser
 COPY --from=builder --chown=appuser:appuser /thatdamtoolbox /thatdamtoolbox

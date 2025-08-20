@@ -1,0 +1,13 @@
+[worker.oci]
+  max-parallelism = 4
+
+[registry."ghcr.io"]
+  http = false
+
+[worker]
+  # optional: enable entitlements if you ever need them
+  # gateway = true
+
+[entitlements]
+  security.insecure = true
+  network.host = false
