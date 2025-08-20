@@ -1,10 +1,5 @@
 # Codex Hints (PR Milestones)
 
-- Always include a `Milestone:` line at the very top of the PR body.
-- Use the exact milestone title, emoji included. Titles are case-sensitive.
-- If unsure which milestone applies, default to `🧬 Feature Development`.
-- Keep `Scope:` listing the components or services touched.
-
 The sync workflow falls back to a `Milestone:` prefix in the PR title if the header line is missing and will automatically create the milestone if it does not already exist.
 
 Example:
@@ -54,3 +49,8 @@ If unsure, default to **🧬 Feature Development**.
 
 
 All new scripts or workflows must be idempotent and documented per repository standards.
+
+- Always include a `Milestone:` line at the very top of the PR body.
+- Use the exact milestone title, emoji included. Titles are case-sensitive.
+- If unsure which milestone applies, default to `🧬 Feature Development` but try keep them sorted by closest milestone type
+- Keep `Scope:` listing the components or services touched.
