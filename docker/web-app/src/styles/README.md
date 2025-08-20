@@ -50,6 +50,16 @@ Adjusting these variables updates layout across the app without touching markup.
 
 Utilities are defined in `globals.css` under the `@layer utilities` block.
 
+### Theme Variables
+
+A default blue theme applies across the app via three CSS variables:
+
+- `--theme-background`
+- `--theme-primary`
+- `--theme-accent`
+
+Changing these values updates the global background and accent colors without touching component markup.
+
 ## Color Tokens
 
 Color tokens allow components to stay theme-aware without hardcoding Tailwind palette values.
