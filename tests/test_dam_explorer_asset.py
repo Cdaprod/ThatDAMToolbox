@@ -12,6 +12,7 @@ def test_dashboard_includes_dam_explorer(api_client: TestClient) -> None:
     resp = api_client.get("/")
     assert resp.status_code == 200
     assert "/static/components/dam-explorer.js" in resp.text
+    assert 'id="dam-explorer-section"' in resp.text
 
 
 def test_dam_explorer_asset_served(api_client: TestClient) -> None:
