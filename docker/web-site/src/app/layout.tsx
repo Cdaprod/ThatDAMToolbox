@@ -1,4 +1,5 @@
 import CookieBanner from '../components/CookieBanner'
+import '@thatdamtoolbox/design-system'
 
 /**
  * Root layout with optional analytics and cookie consent.
