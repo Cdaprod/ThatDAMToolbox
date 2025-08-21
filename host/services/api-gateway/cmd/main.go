@@ -56,6 +56,7 @@ func main() {
 	mux.HandleFunc(*apiPrefix+"video/", videoHandler)
 	mux.HandleFunc("/", frontendHandler)
 	setupOverlayRoutes(mux)
+	setupStreamRoutes(mux)
 
 	// 3) Build middleware chain
 	chain := middleware.New().
