@@ -22,6 +22,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
@@ -143,6 +144,7 @@ func main() {
 	reg := registry.NewRegistry()
 	var deps runner.Deps
 	deps.DirEnsurer = platform.NewOSDirEnsurer()
+	deps.Clock = ptp.New()
 	if root := os.Getenv("BLOB_STORE_ROOT"); root != "" {
 		deps.BlobStore = storage.NewFS(root, deps.DirEnsurer)
 	}

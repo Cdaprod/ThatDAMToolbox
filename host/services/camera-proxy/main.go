@@ -42,6 +42,7 @@ import (
 	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
 	"github.com/gorilla/websocket"
@@ -102,10 +103,11 @@ type DeviceProxy struct {
 	probeDropped []v4l2probe.Device
 	usbSeen      map[string]struct{}
 	ignoredSeen  map[string]struct{}
+	clock        *ptp.Clock
 }
 
 // NewDeviceProxy creates a new transparent device proxy
-func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
+func NewDeviceProxy(backendAddr, frontendAddr string, clock *ptp.Clock) (*DeviceProxy, error) {
 	backendURL, err := url.Parse(backendAddr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid backend URL: %v", err)
@@ -139,6 +141,7 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 				return false
 			},
 		},
+		clock: clock,
 	}, nil
 }
 
@@ -366,7 +369,7 @@ func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, trac
 		}
 		data := make([]byte, n)
 		copy(data, buf[:n])
-		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur})
+		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur, Timestamp: dp.clock.Now()})
 	}
 }
 
@@ -513,6 +516,7 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 
 		io.WriteString(w, "--"+boundary+"\r\n")
 		io.WriteString(w, "Content-Type: image/jpeg\r\n")
+		io.WriteString(w, fmt.Sprintf("X-Timestamp: %s\r\n", dp.clock.Now().Format(time.RFC3339Nano)))
 		io.WriteString(w, fmt.Sprintf("Content-Length: %d\r\n\r\n", n))
 		if _, err := w.Write(buffer[:n]); err != nil {
 			break
@@ -715,7 +719,8 @@ func main() {
 	frontendAddr := getEnv("FRONTEND_URL", "http://localhost:3000")
 
 	// Create device proxy
-	proxy, err := NewDeviceProxy(backendAddr, frontendAddr)
+	clock := ptp.New()
+	proxy, err := NewDeviceProxy(backendAddr, frontendAddr, clock)
 	if err != nil {
 		logx.L.Error("failed to create device proxy", "err", err)
 		os.Exit(1)
