@@ -2,6 +2,7 @@
 
 Edge-friendly viewer for live camera preview.
 Automatically reconciles available devices from `camera-proxy`.
+Uses shared design tokens via `@thatdamtoolbox/design-system`.
 
 ## Development
 
