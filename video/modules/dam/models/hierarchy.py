@@ -13,6 +13,8 @@ from typing import List, Dict, Any, Tuple, Optional
 import subprocess
 import tempfile
 
+from video.core.ports import tenant_prefix
+
 import cv2
 import numpy as np
 from scenedetect import detect, ContentDetector
@@ -241,10 +243,11 @@ class HierarchyManager:
         
         return await asyncio.get_event_loop().run_in_executor(None, _extract)
     
-    async def save_hierarchy_cache(self, path: str, hierarchy: Dict[str, List[VideoSlice]]):
+    async def save_hierarchy_cache(self, path: str, hierarchy: Dict[str, List[VideoSlice]], tenant_id: str = "default"):
         """Save hierarchy to cache file."""
         file_hash = await self.get_file_hash(path)
-        cache_file = self.cache_dir / f"{file_hash}_hierarchy.json"
+        cache_file = self.cache_dir / tenant_prefix(tenant_id, f"{file_hash}_hierarchy.json")
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
         
         # Convert slices to serializable format
         cache_data = {}
@@ -263,10 +266,10 @@ class HierarchyManager:
         
         await asyncio.get_event_loop().run_in_executor(None, _save)
     
-    async def load_hierarchy_cache(self, path: str) -> Optional[Dict[str, List[VideoSlice]]]:
+    async def load_hierarchy_cache(self, path: str, tenant_id: str = "default") -> Optional[Dict[str, List[VideoSlice]]]:
         """Load hierarchy from cache file."""
         file_hash = await self.get_file_hash(path)
-        cache_file = self.cache_dir / f"{file_hash}_hierarchy.json"
+        cache_file = self.cache_dir / tenant_prefix(tenant_id, f"{file_hash}_hierarchy.json")
         
         if not cache_file.exists():
             return None
@@ -301,14 +304,14 @@ class HierarchyManager:
             logger.error(f"Error loading hierarchy cache: {e}")
             return None
     
-    async def generate_full_hierarchy(self, path: str) -> Dict[str, List[VideoSlice]]:
+    async def generate_full_hierarchy(self, path: str, tenant_id: str = "default") -> Dict[str, List[VideoSlice]]:
         """Generate complete four-level hierarchy for a video."""
         # Check cache first
-        cached_hierarchy = await self.load_hierarchy_cache(path)
+        cached_hierarchy = await self.load_hierarchy_cache(path, tenant_id)
         if cached_hierarchy:
             logger.info(f"Loaded hierarchy from cache: {path}")
             return cached_hierarchy
-        
+
         logger.info(f"Generating hierarchy for: {path}")
         
         # Generate L0 (whole video)
@@ -330,10 +333,12 @@ class HierarchyManager:
             "L2": beats,
             "L3": keyframes
         }
-        
+
         # Cache the hierarchy
-        await self.save_hierarchy_cache(path, hierarchy)
-        
-        logger.info(f"Generated hierarchy: L0={len(hierarchy['L0'])}, L1={len(hierarchy['L1'])}, L2={len(hierarchy['L2'])}, L3={len(hierarchy['L3'])}")
-        
+        await self.save_hierarchy_cache(path, hierarchy, tenant_id)
+
+        logger.info(
+            f"Generated hierarchy: L0={len(hierarchy['L0'])}, L1={len(hierarchy['L1'])}, L2={len(hierarchy['L2'])}, L3={len(hierarchy['L3'])}"
+        )
+
         return hierarchy

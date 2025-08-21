@@ -7,12 +7,16 @@ class FFMpegConsole {
     // UI refs
     this.quickSelect   = document.getElementById('ff-quick-select');
     this.fileInput     = document.getElementById('ff-file-input');
+    this.assetSelect   = document.getElementById('ff-asset-select');
     this.outputNameEl  = document.getElementById('ff-output-name');
     this.txt           = document.getElementById('ff-input');
     this.btn           = document.getElementById('ff-run');
     this.histL         = document.getElementById('ff-history-list');
     this.out           = document.getElementById('ff-output');
     this.clearBtn      = document.getElementById('ff-clear-file');
+
+    this.assetPath = '';
+    this.localPath = '';
 
     // Enhanced Quick-command presets
     this.quickCommands = {
@@ -260,11 +264,12 @@ class FFMpegConsole {
       const key = this.quickSelect.value;
       if (!this.quickCommands[key]) return;
       
-      const fileName = this.fileInput.files[0]?.name || 'input.mp4';
-      const output   = this.outputNameEl.value || this.getDefaultOutput(key, fileName);
-    
+      const inputPath = this.fileInput.files[0]?.name || this.assetPath || 'input.mp4';
+      const fileName  = inputPath.split('/').pop();
+      const output    = this.outputNameEl.value || this.getDefaultOutput(key, fileName);
+
       const cmd = this.quickCommands[key].cmd
-                    .replace(/\{\{input\}\}/g, fileName)
+                    .replace(/\{\{input\}\}/g, inputPath)
                     .replace(/\{\{output\}\}/g, output);
     
       this.txt.value = cmd;
@@ -273,10 +278,13 @@ class FFMpegConsole {
       this.showCommandDescription(key);
     });
     
-    // When user picks a file, infer output-name
+    // When user picks a file, infer output-name and store path
     this.fileInput.addEventListener('change', () => {
       const file = this.fileInput.files[0];
       if (!file) return;
+      this.localPath = file.name;
+      this.assetSelect.value = '';
+      this.assetPath = '';
       // Only override if user hasn't typed something custom
       if (!this.outputNameEl.value || this.outputNameEl.value === this.lastInferred) {
         const [base, ext] = file.name.split(/\.(?=[^\.]+$)/);
@@ -288,17 +296,37 @@ class FFMpegConsole {
         this.quickSelect.dispatchEvent(new Event('change'));
       }
     });
+
+    // When user picks an asset, store its path
+    this.assetSelect.addEventListener('change', () => {
+      this.assetPath = this.assetSelect.value;
+      this.fileInput.value = '';
+      this.localPath = '';
+      if (!this.outputNameEl.value || this.outputNameEl.value === this.lastInferred) {
+        const file = this.assetPath.split('/').pop();
+        const [base, ext] = file.split(/\.(?=[^\.]+$)/);
+        this.lastInferred = `${base}_processed.${ext || 'mp4'}`;
+        this.outputNameEl.value = this.lastInferred;
+      }
+      if (this.quickSelect.value) {
+        this.quickSelect.dispatchEvent(new Event('change'));
+      }
+    });
     
     // Clear file handler
     this.clearBtn.addEventListener('click', () => {
       this.fileInput.value = '';
       this.txt.value       = '';
       this.outputNameEl.value = '';
+      this.localPath = '';
     });
-    
+
     // Populate the select dropdown
     this.populateQuickSelect();
-    
+
+    // Load available assets
+    await this.loadAssets();
+
     // Load history
     await this.loadHistory();
 
@@ -377,6 +405,23 @@ class FFMpegConsole {
     if (desc) {
       // You can display this in a tooltip or info area
       console.log(`Command: ${key} - ${desc}`);
+    }
+  }
+
+  // Fetch assets from explorer and populate the dropdown
+  async loadAssets(path='') {
+    try {
+      const res = await fetch(`/api/v1/explorer/assets?path=${encodeURIComponent(path)}`);
+      const assets = await res.json();
+      this.assetSelect.innerHTML = '<option value="">Choose asset…</option>';
+      assets.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.path;
+        opt.textContent = a.path;
+        this.assetSelect.appendChild(opt);
+      });
+    } catch {
+      this.assetSelect.innerHTML = '<option value="">(none)</option>';
     }
   }
 

@@ -16,3 +16,9 @@ test('mergeDeviceIds merges new ids when list was empty', () => {
   const result = mergeDeviceIds([], ['x'])
   assert.deepEqual(result, ['x'])
 })
+
+test('mergeDeviceIds is idempotent when merging same list', () => {
+  const first = mergeDeviceIds([], ['a', 'b'])
+  const second = mergeDeviceIds(first, ['a', 'b'])
+  assert.deepEqual(second.sort(), ['a', 'b'])
+})
