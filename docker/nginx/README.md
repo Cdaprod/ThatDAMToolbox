@@ -30,7 +30,10 @@ docker/nginx/
 
 ## 1 ↦ nginx.tmpl
 
-The main configuration template that gets rendered with environment variables:
+The main configuration template that gets rendered with environment variables.
+The legacy `ServiceDashboard.html` override has been removed so the gateway
+always proxies to the live Next.js frontend, preserving the original `Host`
+header for tenancy-aware routing.
 
 ```nginx
 # Nginx front door for That DAM Toolbox

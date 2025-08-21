@@ -101,3 +101,12 @@ def test_upstream_resolution(tmp_path: Path) -> None:
     assert bad.returncode != 0
     assert "unable to resolve upstream host 'no-such-host'" in bad.stderr
 
+
+def test_template_proxies_root() -> None:
+    """The nginx template should proxy root requests to the live web app."""
+
+    tmpl = Path("docker/nginx/nginx.tmpl").read_text()
+    assert "ServiceDashboard.html" not in tmpl
+    assert "proxy_pass http://video_web" in tmpl
+    assert "proxy_set_header Host $host;" in tmpl
+
