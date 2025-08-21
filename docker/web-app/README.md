@@ -263,6 +263,7 @@ Create `/web-app/.env.local` for local development:
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+TENANCY_URL=http://localhost:8080/api/tenancy
 NODE_ENV=development
 ```
 
