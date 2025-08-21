@@ -2,6 +2,13 @@
 
 Adds vector embeddings and FAISS search to the toolbox.
 
+The base Docker image skips these heavy machine‑learning libraries by default to
+keep builds small. Install them manually when DAM features are needed:
+
+```bash
+pip install -r video/modules/dam/requirements.txt
+```
+
 ## Usage
 
 ### Build FAISS index
@@ -25,9 +32,6 @@ curl http://localhost:8080/dam/videos
 
 See `commands.py` for `index`, `search` and `wipe` helpers.
 
-Optional dependencies such as `faiss-cpu` can be installed with:
-
-```bash
-pip install -r video/modules/dam/requirements.txt
-```
+Optional dependencies such as `faiss-cpu` can be installed with the command
+above.
 

@@ -162,13 +162,17 @@ RUN python3 -m venv venv \
  && venv/bin/pip install --no-cache-dir -r requirements.txt \
  && venv/bin/pip install --no-cache-dir -e .
 
-# 5) (Optional) install any module‐specific extras
+# 5) (Optional) install any module‐specific extras (skip heavy DAM deps)
 RUN set -e; \
     for req in video/modules/*/requirements.txt; do \
-      if [ -f "$req" ]; then \
-        echo "Installing extra deps for $(dirname $req)"; \
-        venv/bin/pip install --no-cache-dir -r "$req"; \
+      [ -f "$req" ] || continue; \
+      mod="$(basename "$(dirname "$req")")"; \
+      if [ "$mod" = "dam" ]; then \
+        echo "Skipping DAM extras to keep base image slim"; \
+        continue; \
       fi; \
+      echo "Installing extra deps for $(dirname $req)"; \
+      venv/bin/pip install --no-cache-dir -r "$req"; \
     done
 
 #############################################
