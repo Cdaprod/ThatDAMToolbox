@@ -37,6 +37,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
@@ -47,6 +48,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -679,6 +681,9 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	fs := http.FileServer(http.Dir(viewerDir))
 	mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
 
+	// Metrics endpoint
+	mux.Handle("/metrics", promhttp.Handler())
+
 	// Default proxy to backend for all other requests
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		proxy := dp.createReverseProxy(dp.backendURL)
@@ -704,6 +709,9 @@ func main() {
 		logx.L.Warn("bus connect failed", "err", err)
 	}
 	defer bus.Close()
+
+	// Register encoder metrics so telemetry is exposed via /metrics.
+	encoder.RegisterMetrics()
 
 	// Configuration from environment variables
 	proxyPort := getEnv("PROXY_PORT", "8000")
