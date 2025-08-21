@@ -7,7 +7,7 @@ import (
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/tenant"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/tenant"
 )
 
 // Deps bundles dependencies for HTTP handlers.

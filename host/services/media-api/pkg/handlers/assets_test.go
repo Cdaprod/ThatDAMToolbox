@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/tenant"
+	"github.com/Cdaprod/ThatDamToolbox/host/shared/tenant"
 )
 
 type memCat struct {

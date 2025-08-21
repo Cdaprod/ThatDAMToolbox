@@ -1,0 +1,16 @@
+{
+  "name": "@thatdamtoolbox/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && cp src/tokens.css dist/tokens.css",
+    "test": "npm run build && node --test dist/index.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "typescript": "^5.2.2"
+  }
+}

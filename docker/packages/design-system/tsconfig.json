@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "NodeNext",
+    "declaration": true,
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "strict": true,
+    "types": ["node"],
+    "moduleResolution": "nodenext"
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -164,3 +164,71 @@
   --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
   --shadow-lg: 0 10px 15px rgba(0,0,0,0.15);
 }
+
+[data-theme='dark'] {
+  --color-background   : var(--color-neutral-900);
+  --color-surface      : var(--color-neutral-800);
+  --color-surface-alt  : var(--color-neutral-700);
+  --color-border       : var(--color-neutral-600);
+  --color-text         : var(--color-neutral-100);
+  --color-muted        : var(--color-neutral-400);
+  --color-primary      : var(--color-primary-400);
+  --color-primary-bg   : var(--color-primary-900);
+  --color-accent       : var(--color-accent-400);
+  --color-accent-bg    : var(--color-accent-900);
+  --color-success      : var(--color-success-400);
+  --color-success-bg   : var(--color-success-900);
+  --color-warning      : var(--color-warning-400);
+  --color-warning-bg   : var(--color-warning-900);
+  --color-error        : var(--color-error-400);
+  --color-error-bg     : var(--color-error-900);
+  --theme-background   : #0f172a;
+  --theme-primary      : #3b82f6;
+  --theme-accent       : #a855f7;
+}
+
+/* Sepia theme */
+[data-theme='sepia'] {
+  --color-background   : var(--color-warning-50);
+  --color-surface      : var(--color-warning-100);
+  --color-surface-alt  : var(--color-warning-200);
+  --color-border       : var(--color-warning-300);
+  --color-text         : var(--color-warning-900);
+  --color-muted        : var(--color-warning-600);
+  --color-primary      : var(--color-warning-700);
+  --color-primary-bg   : var(--color-warning-50);
+  --color-accent       : var(--color-accent-600);
+  --color-accent-bg    : var(--color-accent-50);
+  --color-success      : var(--color-success-700);
+  --color-success-bg   : var(--color-success-50);
+  --color-warning      : var(--color-warning-700);
+  --color-warning-bg   : var(--color-warning-50);
+  --color-error        : var(--color-error-600);
+  --color-error-bg     : var(--color-error-50);
+  --theme-background   : #fdf6e3;
+  --theme-primary      : #b45309;
+  --theme-accent       : #7e22ce;
+}
+
+/* Royal theme */
+[data-theme='royal'] {
+  --color-background   : var(--color-accent-50);
+  --color-surface      : var(--color-accent-100);
+  --color-surface-alt  : var(--color-accent-200);
+  --color-border       : var(--color-accent-300);
+  --color-text         : var(--color-accent-900);
+  --color-muted        : var(--color-accent-600);
+  --color-primary      : var(--color-accent-700);
+  --color-primary-bg   : var(--color-accent-50);
+  --color-accent       : var(--color-warning-600);
+  --color-accent-bg    : var(--color-warning-50);
+  --color-success      : var(--color-success-700);
+  --color-success-bg   : var(--color-success-50);
+  --color-warning      : var(--color-warning-700);
+  --color-warning-bg   : var(--color-warning-50);
+  --color-error        : var(--color-error-600);
+  --color-error-bg     : var(--color-error-50);
+  --theme-background   : #f5f3ff;
+  --theme-primary      : #7e22ce;
+  --theme-accent       : #b45309;
+}

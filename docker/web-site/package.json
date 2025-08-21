@@ -15,7 +15,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "@sendgrid/mail": "^8.1.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@thatdamtoolbox/design-system": "file:../packages/design-system"
   },
   "devDependencies": {
     "@types/node": "^20.14.11",

@@ -1,6 +1,7 @@
 # Web Site
 
 Static marketing site built with Next.js.
+Imports shared design tokens from `@thatdamtoolbox/design-system`.
 
 ## Quick Start
 

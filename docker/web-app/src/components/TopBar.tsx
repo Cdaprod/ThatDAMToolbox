@@ -5,10 +5,12 @@ import clsx from 'clsx'
 import { Menu, X } from 'lucide-react'
 import { useSidebar } from '../hooks/useSidebar'
 import { useModal } from '@/providers/ModalProvider'
+import { useTheme, AVAILABLE_SCHEMES, ColorScheme } from '@/context/ThemeContext'
 
 export default function TopBar() {
   const { collapsed, setCollapsed } = useSidebar()
   const { openModal } = useModal()
+  const { scheme, setScheme } = useTheme()
 
   return (
     <header
@@ -31,8 +33,18 @@ export default function TopBar() {
         </a>
       </div>
 
-      {/* right – placeholder for future buttons */}
+      {/* right – explorer & theme */}
       <nav className="flex items-center gap-4">
+        <select
+          aria-label="Select color scheme"
+          value={scheme}
+          onChange={e => setScheme(e.target.value as ColorScheme)}
+          className="input text-sm"
+        >
+          {AVAILABLE_SCHEMES.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
         <button
           type="button"
           onClick={() => openModal('dam-explorer')}

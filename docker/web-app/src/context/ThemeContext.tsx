@@ -1,24 +1,33 @@
 // /src/context/ThemeContext.tsx
-import { ReactNode, useEffect } from 'react'
+// Wraps next-themes to expose color-scheme selection driven by tokens.
+'use client'
+import { ReactNode } from 'react'
+import {
+  ThemeProvider as NextThemesProvider,
+  useTheme as useNextTheme,
+} from 'next-themes'
 
-// Single theme applied across the app to avoid a route-based rainbow
-const THEME_VARS: Record<string, string> = {
-  '--theme-background': '#f0f4ff',
-  '--theme-primary':    '#1e40af',
-  '--theme-accent':     '#3b82f6',
-}
-
-export function deriveThemeId(_: string) {
-  return 'default'
-}
+export const AVAILABLE_SCHEMES = ['light', 'dark', 'sepia', 'royal'] as const
+export type ColorScheme = (typeof AVAILABLE_SCHEMES)[number]
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    Object.entries(THEME_VARS).forEach(([k, v]) =>
-      document.documentElement.style.setProperty(k, v)
-    )
-  }, [])
+  return (
+    <NextThemesProvider
+      attribute="data-theme"
+      defaultTheme="light"
+      enableSystem={false}
+    >
+      {children}
+    </NextThemesProvider>
+  )
+}
 
-  return <>{children}</>
+export function useTheme() {
+  const { theme, setTheme } = useNextTheme()
+  return { scheme: (theme as ColorScheme) || 'light', setScheme: setTheme }
+}
+
+export function deriveThemeId(_: string): ColorScheme {
+  return 'light'
 }
 

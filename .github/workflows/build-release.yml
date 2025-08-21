@@ -50,6 +50,15 @@ jobs:
         run: |
           DIGEST=$(make echo/edge-digest | tail -n1)
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "${DIGEST}" > edge-image-digest.txt
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-image-digest
+          path: edge-image-digest.txt
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Create/Update Release (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -61,5 +70,7 @@ jobs:
             Edge image: ${{ steps.digest.outputs.digest }}
             Channel: prod
             SHA: ${{ github.sha }}
+          files: |
+            edge-image-digest.txt
           draft: false
           prerelease: false

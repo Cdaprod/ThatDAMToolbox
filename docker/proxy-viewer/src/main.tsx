@@ -3,6 +3,7 @@ import Router from 'preact-router';
 import Live from './routes/Live';
 import Pair from './routes/Pair';
 import Health from './routes/Health';
+import '@thatdamtoolbox/design-system';
 
 function App() {
   const base = (import.meta.env.BASE_PATH || '/viewer').replace(/\/$/, '');
