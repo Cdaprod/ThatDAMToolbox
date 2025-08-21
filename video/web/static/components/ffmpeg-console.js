@@ -478,9 +478,9 @@ class FFMpegConsole {
         const form = new FormData();
         form.append('file',    this.fileInput.files[0]);
         form.append('cmd',     cmd);
-        res = await this._apiForm('/api/v1/ffmpeg', form);
+        res = await this._apiForm('/api/v1/ffmpeg/run', form);
       } else {
-        res = await this._apiJson('/api/v1/ffmpeg', {cmd});
+        res = await this._apiJson('/api/v1/ffmpeg/run', {cmd});
       }
 
       this.out.textContent =
