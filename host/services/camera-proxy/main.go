@@ -33,25 +33,64 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-
+  
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/metrics"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/abr"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
+	srt "github.com/Cdaprod/ThatDamToolbox/host/services/shared/stream/adapter/srt"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
 	version   = "dev"
 	ffmpegCmd = exec.CommandContext
+
+	metricsRegistry = prometheus.NewRegistry()
+	latencyGauge    = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "latency_seconds",
+		Help:      "Current stream latency.",
+	})
+	lossGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "packet_loss_ratio",
+		Help:      "Current packet loss ratio.",
+	})
+	jitterGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "jitter_seconds",
+		Help:      "Current jitter of the stream.",
+	})
+	bitrateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "bitrate_bits_per_second",
+		Help:      "Current stream bitrate.",
+	})
+	rerouteCounter = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "camera_proxy",
+		Name:      "reroutes_total",
+		Help:      "Number of stream reroutes.",
+	})
 )
+
+func init() {
+	metricsRegistry.MustRegister(latencyGauge, lossGauge, jitterGauge, bitrateGauge, rerouteCounter)
+}
 
 // hwAccelArgs returns additional ffmpeg arguments from FFMPEG_HWACCEL.
 func hwAccelArgs() []string {
@@ -79,6 +118,43 @@ func iceServers() []webrtc.ICEServer {
 	return out
 }
 
+// tsnConfig represents required Time Sensitive Networking settings.
+// Example:
+//
+//	TSN_INTERFACE=eth0 TSN_QUEUE=3 TSN_PTP_GRANDMASTER=abcd \
+//	PTP_GRANDMASTER_ID=abcd
+//
+// cfg, err := loadTSNConfig()
+//
+// The service exits if TSN env vars are invalid.
+type tsnConfig struct {
+	Interface   string
+	Queue       int
+	Grandmaster string
+}
+
+// loadTSNConfig parses TSN_* environment variables and validates the active
+// PTP grandmaster against TSN_PTP_GRANDMASTER when provided.
+func loadTSNConfig() (*tsnConfig, error) {
+	iface := os.Getenv("TSN_INTERFACE")
+	if iface == "" {
+		return nil, fmt.Errorf("TSN_INTERFACE required")
+	}
+	q, err := strconv.Atoi(os.Getenv("TSN_QUEUE"))
+	if err != nil || q <= 0 {
+		return nil, fmt.Errorf("TSN_QUEUE must be >0")
+	}
+	actual := os.Getenv("PTP_GRANDMASTER_ID")
+	if actual == "" {
+		return nil, fmt.Errorf("PTP_GRANDMASTER_ID not set")
+	}
+	expected := os.Getenv("TSN_PTP_GRANDMASTER")
+	if expected != "" && expected != actual {
+		return nil, fmt.Errorf("ptp grandmaster mismatch: expected %s got %s", expected, actual)
+	}
+	return &tsnConfig{Interface: iface, Queue: q, Grandmaster: actual}, nil
+}
+
 // DeviceInfo represents camera device information
 type DeviceInfo struct {
 	Path         string                 `json:"path"`
@@ -96,14 +172,25 @@ type DeviceProxy struct {
 	upgrader     websocket.Upgrader
 	daemonURL    string
 	daemonToken  string
+	srtBase      string
 	probeKept    []v4l2probe.Device
 	probeDropped []v4l2probe.Device
 	usbSeen      map[string]struct{}
 	ignoredSeen  map[string]struct{}
+	abrCtrl      *abr.Controller
+}
+
+func defaultABRLadder() []abr.Profile {
+	return []abr.Profile{
+		{Resolution: "1920x1080", FPS: 60, Bitrate: 12_000_000},
+		{Resolution: "1920x1080", FPS: 30, Bitrate: 8_000_000},
+		{Resolution: "1280x720", FPS: 30, Bitrate: 4_000_000},
+	}
+	clock        *ptp.Clock
 }
 
 // NewDeviceProxy creates a new transparent device proxy
-func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
+func NewDeviceProxy(backendAddr, frontendAddr string, clock *ptp.Clock) (*DeviceProxy, error) {
 	backendURL, err := url.Parse(backendAddr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid backend URL: %v", err)
@@ -121,8 +208,10 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		frontendURL: frontendURL,
 		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
 		daemonToken: getEnv("CAPTURE_DAEMON_TOKEN", ""),
+		srtBase:     getEnv("SRT_BASE_URL", ""),
 		usbSeen:     make(map[string]struct{}),
 		ignoredSeen: make(map[string]struct{}),
+		abrCtrl:     abr.NewController(defaultABRLadder()),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				if len(allow) == 1 && allow[0] == "" {
@@ -137,6 +226,7 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 				return false
 			},
 		},
+		clock: clock,
 	}, nil
 }
 
@@ -339,9 +429,11 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 }
 
 // streamFromFFmpeg launches ffmpeg and forwards H264 samples to track.
-func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample) error {
+func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample, bandwidth int) error {
+	profile := dp.abrCtrl.Update(bandwidth)
 	args := append(hwAccelArgs(), "-f", "v4l2", "-i", device,
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+		"-b:v", fmt.Sprintf("%d", profile.Bitrate),
 		"-g", "30", "-keyint_min", "30", "-sc_threshold", "0",
 		"-f", "h264", "pipe:1")
 	cmd := ffmpegCmd(ctx, "ffmpeg", args...)
@@ -364,7 +456,7 @@ func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, trac
 		}
 		data := make([]byte, n)
 		copy(data, buf[:n])
-		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur})
+		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur, Timestamp: dp.clock.Now()})
 	}
 }
 
@@ -388,7 +480,7 @@ func (dp *DeviceProxy) streamWebRTC(ctx context.Context, device string) error {
 		return err
 	}
 	go func() {
-		_ = dp.streamFromFFmpeg(ctx, device, track)
+		_ = dp.streamFromFFmpeg(ctx, device, track, dp.abrCtrl.Current().Bitrate)
 		pc.Close()
 	}()
 	return nil
@@ -465,6 +557,14 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "webrtc"})
 		return
+	} else {
+		rerouteCounter.Inc()
+		_ = bus.Publish("camera.path_change", map[string]any{
+			"device": devicePath,
+			"from":   "webrtc",
+			"to":     "mjpeg",
+			"err":    err.Error(),
+		})
 	}
 
 	// Fallback to MJPEG stream
@@ -505,12 +605,15 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		if err != nil {
 			if err != io.EOF {
 				logx.L.Error("stream read error", "err", err)
+				_ = bus.Publish("camera.alarm", map[string]any{"device": devicePath, "err": err.Error()})
 			}
 			break
 		}
 
+		bitrateGauge.Set(float64(n * 8))
 		io.WriteString(w, "--"+boundary+"\r\n")
 		io.WriteString(w, "Content-Type: image/jpeg\r\n")
+		io.WriteString(w, fmt.Sprintf("X-Timestamp: %s\r\n", dp.clock.Now().Format(time.RFC3339Nano)))
 		io.WriteString(w, fmt.Sprintf("Content-Length: %d\r\n\r\n", n))
 		if _, err := w.Write(buffer[:n]); err != nil {
 			break
@@ -657,8 +760,14 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 		io.WriteString(w, "ok")
 	})
 
+	// Prometheus metrics
+	mux.Handle("/metrics", promhttp.HandlerFor(metricsRegistry, promhttp.HandlerOpts{}))
+
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)
+
+	// Expose SRT endpoint negotiation
+	mux.HandleFunc("/srt", dp.handleSRT)
 
 	// WebSocket proxy for control messages
 	mux.HandleFunc("/ws/", dp.handleWebSocketProxy)
@@ -675,6 +784,9 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	fs := http.FileServer(http.Dir(viewerDir))
 	mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
 
+	// Metrics endpoint
+	mux.Handle("/metrics", promhttp.Handler())
+
 	// Default proxy to backend for all other requests
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		proxy := dp.createReverseProxy(dp.backendURL)
@@ -682,6 +794,32 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	})
 
 	return mux
+}
+
+// handleSRT returns an SRT URL for the requested device using streamid.
+//
+// Example:
+//
+//	curl 'http://localhost:8000/srt?device=cam1'
+//	-> {"uri":"srt://host:9000?streamid=cam1"}
+func (dp *DeviceProxy) handleSRT(w http.ResponseWriter, r *http.Request) {
+	if dp.srtBase == "" {
+		http.NotFound(w, r)
+		return
+	}
+	id := r.URL.Query().Get("device")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	ad := srt.New(dp.srtBase)
+	details, err := ad.Open(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(details)
 }
 
 func main() {
@@ -701,17 +839,40 @@ func main() {
 	}
 	defer bus.Close()
 
+	// Register encoder metrics so telemetry is exposed via /metrics.
+	encoder.RegisterMetrics()
+
 	// Configuration from environment variables
 	proxyPort := getEnv("PROXY_PORT", "8000")
 	backendAddr := getEnv("BACKEND_URL", "http://api-gateway:8080")
 	frontendAddr := getEnv("FRONTEND_URL", "http://localhost:3000")
+	var tsnCfg *tsnConfig
+	if os.Getenv("TSN_INTERFACE") != "" {
+		var err error
+		tsnCfg, err = loadTSNConfig()
+		if err != nil {
+			logx.L.Error("invalid TSN config", "err", err)
+			os.Exit(1)
+		}
+	}
 
 	// Create device proxy
-	proxy, err := NewDeviceProxy(backendAddr, frontendAddr)
+	clock := ptp.New()
+	proxy, err := NewDeviceProxy(backendAddr, frontendAddr, clock)
 	if err != nil {
 		logx.L.Error("failed to create device proxy", "err", err)
 		os.Exit(1)
 	}
+
+	// Metrics server
+	m := metrics.New()
+	go func() {
+		port := getEnv("METRICS_PORT", "8001")
+		logx.L.Info("metrics listening", "port", port)
+		if err := http.ListenAndServe(":"+port, m.Handler()); err != nil {
+			logx.L.Error("metrics server failed", "err", err)
+		}
+	}()
 
 	// Start device discovery
 	ctx, cancel := context.WithCancel(context.Background())
@@ -726,6 +887,9 @@ func main() {
 	logx.L.Info("service starting", "port", proxyPort)
 	logx.L.Info("proxying to backend", "backend", backendAddr)
 	logx.L.Info("serving frontend", "frontend", frontendAddr)
+	if tsnCfg != nil {
+		logx.L.Info("TSN enabled", "iface", tsnCfg.Interface, "queue", tsnCfg.Queue, "gm", tsnCfg.Grandmaster)
+	}
 
 	server := &http.Server{
 		Addr:    ":" + proxyPort,

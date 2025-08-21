@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/api"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/config"
@@ -21,6 +22,8 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/abr"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
@@ -65,6 +68,17 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("config load failed: %v", err))
 	}
+	if err := cfg.Validate(); err != nil {
+		panic(fmt.Sprintf("invalid config: %v", err))
+	}
+
+	// Adaptive bitrate controller
+	ladder := make([]abr.Profile, len(cfg.Capture.ABRLadder))
+	for i, p := range cfg.Capture.ABRLadder {
+		ladder[i] = abr.Profile{Resolution: p.Resolution, FPS: p.FPS, Bitrate: p.Bitrate}
+	}
+	abrCtrl := abr.NewController(ladder)
+	_ = abrCtrl
 
 	// Register any statically configured network streams
 	if len(cfg.Capture.NetworkSources) > 0 {
@@ -77,6 +91,9 @@ func main() {
 		panic(fmt.Sprintf("logger init failed: %v", err))
 	}
 	lg.Info("🔌 starting capture-daemon", "version", version)
+	if cfg.TSN.Enabled {
+		lg.WithComponent("tsn").Info("TSN enabled", "iface", cfg.TSN.Interface, "queue", cfg.TSN.Queue, "gm", cfg.TSN.PTPGrandmaster)
+	}
 
 	// 3. Init broker
 	normalizeBrokerEnv()
@@ -90,6 +107,7 @@ func main() {
 	}
 
 	// 4. Init metrics & health
+	encoder.RegisterMetrics()
 	m := metrics.New()
 	hc := health.New(cfg.Health.Interval)
 	hc.AddCheck("broker", func(ctx context.Context) (health.Status, string, error) {
@@ -141,12 +159,14 @@ func main() {
 	reg := registry.NewRegistry()
 	var deps runner.Deps
 	deps.DirEnsurer = platform.NewOSDirEnsurer()
+	deps.Clock = ptp.New()
 	if root := os.Getenv("BLOB_STORE_ROOT"); root != "" {
 		deps.BlobStore = storage.NewFS(root, deps.DirEnsurer)
 	}
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, reg)
 	api.RegisterFeatureRoutes(mux, cfg)
+	api.RegisterSRTRoutes(mux, os.Getenv("SRT_BASE_URL"))
 	if cfg.Features.WebRTC.Enabled {
 		webrtc.RegisterRoutes(mux, cfg.Features.WebRTC.PathPrefix)
 	}
