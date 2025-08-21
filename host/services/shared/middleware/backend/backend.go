@@ -7,10 +7,12 @@ package backend
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 )
 
 // AuthenticationMiddleware validates JWT tokens and sets user context
@@ -64,21 +66,32 @@ func APIGatewayMiddleware(routes map[string]string) func(http.Handler) http.Hand
 // RequestLoggingMiddleware logs all requests with timing
 func RequestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+		tenant := r.Header.Get("X-Tenant-ID")
+		principal := r.Header.Get("X-Principal-ID")
+		logger := logx.With("tenant_id", tenant, "principal_id", principal)
+		ctx := logx.ToContext(r.Context(), logger)
 
-		// Capture response
+		start := time.Now()
 		recorder := &responseRecorder{ResponseWriter: w, statusCode: 200}
 
-		next.ServeHTTP(recorder, r)
+		next.ServeHTTP(recorder, r.WithContext(ctx))
 
-		log.Printf("[%s] %s %s %d %v %s",
-			r.Method,
-			r.URL.Path,
-			r.RemoteAddr,
-			recorder.statusCode,
-			time.Since(start),
-			r.UserAgent(),
+		logger.Info("request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"remote", r.RemoteAddr,
+			"status", recorder.statusCode,
+			"duration", time.Since(start),
+			"user_agent", r.UserAgent(),
 		)
+
+		if err := bus.PublishTenantEvent("access", map[string]any{
+			"tenant_id":    tenant,
+			"principal_id": principal,
+			"path":         r.URL.Path,
+		}); err != nil {
+			logger.Warn("tenant event publish", "error", err)
+		}
 	})
 }
 

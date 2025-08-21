@@ -1,6 +1,7 @@
 package logx
 
 import (
+	"context"
 	"fmt"
 	"io"
 	stdlog "log"
@@ -72,6 +73,21 @@ func Init(cfg Config) {
 }
 
 func With(kv ...any) *log.Logger { return L.With(kv...) }
+
+type ctxKey struct{}
+
+// ToContext returns a new context carrying l.
+func ToContext(ctx context.Context, l *log.Logger) context.Context {
+	return context.WithValue(ctx, ctxKey{}, l)
+}
+
+// FromContext retrieves a logger from ctx or returns the global logger.
+func FromContext(ctx context.Context) *log.Logger {
+	if v, ok := ctx.Value(ctxKey{}).(*log.Logger); ok && v != nil {
+		return v
+	}
+	return L
+}
 
 func parseLevel(lvl string) log.Level {
 	switch strings.ToLower(lvl) {
