@@ -52,9 +52,28 @@ and `TenantContextResolverPort` extracts tenant context from requests.
 
 ## Stream
 
+The `stream` package negotiates device streaming sessions across protocols.
+It now includes an `srt` adapter that builds SRT URLs with a `streamid`
+query parameter.
+
+## PTP Clock
+
+The `ptp` package provides a monotonic clock that can be synchronised to an
+external PTP source. Create a clock, call `Sync` with the current PTP time, and
+use `Now` for aligned timestamps:
+
+```go
+clk := ptp.New()
+clk.Sync(ptpTime)
+ts := clk.Now()
+```
+
+## Stream
+
 The `stream/rtp` package sends RTP packets paced by PTP timestamps with optional jitter buffering.
 
 ```go
 s, _ := rtp.NewSender(rtp.Config{Destination: "239.1.1.1:5004", ClockRate: 90000})
 _ = s.Send(&rtp.Packet{Timestamp:0, SequenceNumber:1})
 ```
+
