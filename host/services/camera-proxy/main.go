@@ -37,10 +37,10 @@ import (
 	"strings"
 	"sync"
 	"time"
-  
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/metrics"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/abr"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
@@ -178,6 +178,7 @@ type DeviceProxy struct {
 	usbSeen      map[string]struct{}
 	ignoredSeen  map[string]struct{}
 	abrCtrl      *abr.Controller
+	clock        *ptp.Clock
 }
 
 func defaultABRLadder() []abr.Profile {
@@ -186,7 +187,6 @@ func defaultABRLadder() []abr.Profile {
 		{Resolution: "1920x1080", FPS: 30, Bitrate: 8_000_000},
 		{Resolution: "1280x720", FPS: 30, Bitrate: 4_000_000},
 	}
-	clock        *ptp.Clock
 }
 
 // NewDeviceProxy creates a new transparent device proxy
@@ -783,9 +783,6 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	viewerDir := getEnv("VIEWER_DIR", "/srv/viewer")
 	fs := http.FileServer(http.Dir(viewerDir))
 	mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
-
-	// Metrics endpoint
-	mux.Handle("/metrics", promhttp.Handler())
 
 	// Default proxy to backend for all other requests
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
