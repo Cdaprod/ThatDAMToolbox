@@ -15,13 +15,10 @@ import (
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
-	"github.com/pion/webrtc/v3"
-	"github.com/prometheus/client_golang/prometheus/testutil"
-
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	"github.com/pion/webrtc/v3"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 // TestDiscoverDevicesIncludesDaemon ensures capture-daemon devices are merged.
@@ -238,8 +235,6 @@ func TestViewerServed(t *testing.T) {
 	}
 	t.Setenv("VIEWER_DIR", dir)
 
-	dp, _ := NewDeviceProxy("http://b", "http://f")
-
 	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	srv := httptest.NewServer(dp.setupRoutes())
 	defer srv.Close()
@@ -253,14 +248,12 @@ func TestViewerServed(t *testing.T) {
 		t.Fatalf("unexpected body: %s", b)
 	}
 
-
-
 }
 
 // TestHandleSRT exposes negotiated SRT URLs.
 func TestHandleSRT(t *testing.T) {
 	t.Setenv("SRT_BASE_URL", "srt://localhost:9000")
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	srv := httptest.NewServer(dp.setupRoutes())
 	defer srv.Close()
 	resp, err := http.Get(srv.URL + "/srt?device=cam1")
