@@ -1,0 +1,21 @@
+## /video/modules/dam/requirements.txt
+# Optional heavy dependencies for DAM features.
+# Example:
+#   pip install -r video/modules/dam/requirements.txt
+
+# Deep-learning + model toolkits
+# NOTE (Raspberry Pi 5): install CPU wheels for torch/vision first:
+#   pip install --extra-index-url https://download.pytorch.org/whl/raspberrypi \
+#       torch torchvision
+torch>=2.1.0
+torchvision>=0.15.0
+transformers>=4.41.0
+openai-whisper>=202311
+open-clip-torch>=2.24.0
+
+# Vector-DB back-ends (optional -- fall back to in-memory)
+weaviate-client>=4.5.4
+pymilvus>=2.4.4
+faiss-cpu>=1.7.4.post0
+# faiss-gpu>=1.7.4.post0  # uncomment if you have CUDA
+
