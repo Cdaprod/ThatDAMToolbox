@@ -15,6 +15,10 @@ import (
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
+	"github.com/pion/webrtc/v3"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	"github.com/pion/webrtc/v3"
@@ -190,12 +194,16 @@ func TestHandleDeviceStreamFallback(t *testing.T) {
 	defer func() { ffmpegCmd = orig }()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/stream?device=%2Fdev%2Fvideo0", nil)
+	before := testutil.ToFloat64(rerouteCounter)
 	dp.handleDeviceStream(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 	if ct := rr.Header().Get("Content-Type"); !strings.HasPrefix(ct, "multipart/x-mixed-replace") {
 		t.Fatalf("unexpected content type: %s", ct)
+	}
+	if diff := testutil.ToFloat64(rerouteCounter) - before; diff != 1 {
+		t.Fatalf("reroute counter not incremented, diff %v", diff)
 	}
 }
 
@@ -229,6 +237,9 @@ func TestViewerServed(t *testing.T) {
 		t.Fatalf("write file: %v", err)
 	}
 	t.Setenv("VIEWER_DIR", dir)
+
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+
 	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	srv := httptest.NewServer(dp.setupRoutes())
 	defer srv.Close()
@@ -241,6 +252,8 @@ func TestViewerServed(t *testing.T) {
 	if string(b) != "ok" {
 		t.Fatalf("unexpected body: %s", b)
 	}
+
+
 
 }
 
@@ -261,6 +274,7 @@ func TestHandleSRT(t *testing.T) {
 	if out["uri"] != "srt://localhost:9000?streamid=cam1" {
 		t.Fatalf("unexpected uri: %s", out["uri"])
 	}
+
 }
 
 // TestIceServers parses ICE_SERVERS env variable.
@@ -292,5 +306,34 @@ func TestHWAccelArgs(t *testing.T) {
 	}
 	if !called {
 		t.Fatalf("ffmpegCmd not called")
+	}
+}
+
+// TestMetricsRegistered ensures Prometheus metrics are registered and writable.
+func TestMetricsRegistered(t *testing.T) {
+	mfs, err := metricsRegistry.Gather()
+	if err != nil {
+		t.Fatalf("gather: %v", err)
+	}
+	names := map[string]bool{}
+	for _, mf := range mfs {
+		names[mf.GetName()] = true
+	}
+	want := []string{
+		"camera_proxy_latency_seconds",
+		"camera_proxy_packet_loss_ratio",
+		"camera_proxy_jitter_seconds",
+		"camera_proxy_bitrate_bits_per_second",
+		"camera_proxy_reroutes_total",
+	}
+	for _, w := range want {
+		if !names[w] {
+			t.Fatalf("missing metric %s", w)
+		}
+	}
+
+	latencyGauge.Set(1.5)
+	if v := testutil.ToFloat64(latencyGauge); v != 1.5 {
+		t.Fatalf("unexpected latency gauge value %v", v)
 	}
 }

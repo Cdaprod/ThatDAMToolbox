@@ -52,13 +52,45 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
 	version   = "dev"
 	ffmpegCmd = exec.CommandContext
+
+	metricsRegistry = prometheus.NewRegistry()
+	latencyGauge    = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "latency_seconds",
+		Help:      "Current stream latency.",
+	})
+	lossGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "packet_loss_ratio",
+		Help:      "Current packet loss ratio.",
+	})
+	jitterGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "jitter_seconds",
+		Help:      "Current jitter of the stream.",
+	})
+	bitrateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "camera_proxy",
+		Name:      "bitrate_bits_per_second",
+		Help:      "Current stream bitrate.",
+	})
+	rerouteCounter = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "camera_proxy",
+		Name:      "reroutes_total",
+		Help:      "Number of stream reroutes.",
+	})
 )
+
+func init() {
+	metricsRegistry.MustRegister(latencyGauge, lossGauge, jitterGauge, bitrateGauge, rerouteCounter)
+}
 
 // hwAccelArgs returns additional ffmpeg arguments from FFMPEG_HWACCEL.
 func hwAccelArgs() []string {
@@ -525,6 +557,14 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "webrtc"})
 		return
+	} else {
+		rerouteCounter.Inc()
+		_ = bus.Publish("camera.path_change", map[string]any{
+			"device": devicePath,
+			"from":   "webrtc",
+			"to":     "mjpeg",
+			"err":    err.Error(),
+		})
 	}
 
 	// Fallback to MJPEG stream
@@ -565,10 +605,12 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 		if err != nil {
 			if err != io.EOF {
 				logx.L.Error("stream read error", "err", err)
+				_ = bus.Publish("camera.alarm", map[string]any{"device": devicePath, "err": err.Error()})
 			}
 			break
 		}
 
+		bitrateGauge.Set(float64(n * 8))
 		io.WriteString(w, "--"+boundary+"\r\n")
 		io.WriteString(w, "Content-Type: image/jpeg\r\n")
 		io.WriteString(w, fmt.Sprintf("X-Timestamp: %s\r\n", dp.clock.Now().Format(time.RFC3339Nano)))
@@ -717,6 +759,9 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, "ok")
 	})
+
+	// Prometheus metrics
+	mux.Handle("/metrics", promhttp.HandlerFor(metricsRegistry, promhttp.HandlerOpts{}))
 
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)
