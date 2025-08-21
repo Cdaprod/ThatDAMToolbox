@@ -17,7 +17,11 @@ Test locally with:
 cd docker/web-app
 yarn dev
 
-# in another shell invoke the tenancy API used by the form
+# start the tenancy API (port 8082)
+uvicorn tenancy.app:app --port 8082
+# or: docker compose up tenancy
+
+# in another shell invoke the tenancy API via the web-app proxy
 curl -X POST http://localhost:3000/api/tenancy \
   -H 'Content-Type: application/json' \
   -d '{"name":"Demo","email":"demo@example.com"}'
@@ -263,6 +267,7 @@ Create `/web-app/.env.local` for local development:
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+# Maybe disabled for TENANCY_URL NEXT_PUBLIC_TENANCY_URL=http://localhost:8082
 TENANCY_URL=http://localhost:8080/api/tenancy
 NODE_ENV=development
 ```

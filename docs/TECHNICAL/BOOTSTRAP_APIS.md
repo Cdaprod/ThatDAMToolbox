@@ -83,3 +83,26 @@ Example:
 POST /v1/bootstrap/events
 - Req: node id, component, action, status, message optional
 Notes: mirrored to AMQP as overlay.bootstrap.{component}.{ok|error}
+
+## Tenancy API
+
+Base URL: `TENANCY_URL` (default `http://localhost:8082`)
+
+POST /login
+- Header: `X-User-ID`
+- Res: membership for caller
+
+POST /tenants
+- Req: name
+- Header: `X-User-ID`
+- Res: new tenant
+
+POST /tenants/{tenant_id}/invite
+- Req: user_id, role
+- Header: `X-User-ID`
+- Res: created membership
+
+PATCH /memberships/{membership_id}
+- Req: role
+- Header: `X-User-ID`
+- Res: updated membership
