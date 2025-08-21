@@ -1,8 +1,24 @@
-export default function LiveMonitorPage() {
+// /docker/web-app/src/app/[tenant]/dashboard/live/page.tsx
+// Streams live video from a selected device or shows a fallback message.
+import { apiUrl } from '../../../../lib/networkConfig';
+
+export const metadata = { title: 'Live • That DAM Toolbox' };
+
+export default function LivePage({ searchParams }: { searchParams: { device?: string } }) {
+  const device = searchParams?.device;
+  if (!device) {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold mb-4">Live Monitor</h1>
+        <p className="text-gray-500">No device selected</p>
+      </div>
+    );
+  }
+  const src = apiUrl(`/live/${device}`);
   return (
-    <section className="p-8">
-      <h2 className="text-3xl font-bold mb-4">Live Monitor</h2>
-      <p>Monitor live video feeds in real time.</p>
-    </section>
+    <div>
+      <h1 className="text-2xl font-semibold mb-4">Live Monitor</h1>
+      <img src={src} alt={`live feed ${device}`} />
+    </div>
   );
 }

@@ -1,6 +1,18 @@
 <details class="glass-card">
   <summary>🛰️ Witness Record</summary>
   <div class="card-body">
+    <div class="grid-two">
+      <div>
+        <label>Main Device</label>
+        <select id="mainDev" class="capDev"></select>
+        <img id="mainPrev" class="prevImg" alt="main preview" />
+      </div>
+      <div>
+        <label>Witness Device</label>
+        <select id="witDev" class="capDev"></select>
+        <img id="witPrev" class="prevImg" alt="witness preview" />
+      </div>
+    </div>
     <button id="startWitness" class="btn">⚡ Start 60-s take</button>
     <pre id="witResult" class="result-area" style="display:none;"></pre>
   </div>
