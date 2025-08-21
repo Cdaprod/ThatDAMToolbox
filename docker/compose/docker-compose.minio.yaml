@@ -9,8 +9,6 @@ x-build-common: &build-common
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
     - type=local,src=/tmp/buildx-cache
-  cache_to:
-    - type=local,dest=/tmp/buildx-cache,mode=max
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
