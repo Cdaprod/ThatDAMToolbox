@@ -23,6 +23,7 @@ Configure via environment variables:
 - `LOG_CALLER` – off|short|full (default short)
 - `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
 - `LOG_NO_COLOR` – set to `1` to disable colored output
+- `SRT_BASE_URL` – base SRT address advertised at `/api/registry/srt`
 
 ## Overlay endpoints
 - `POST /agents/issue`
@@ -43,3 +44,13 @@ Configure via environment variables:
 - `GET /streams/{id}/ice` – list ICE candidates
 
 All endpoints (except JWKS and token issuance) expect an `Authorization: Bearer <token>` header.
+
+## RTP session registry
+
+- `POST /rtp/sessions` – register an RTP session
+- `GET /rtp/sessions/{id}.sdp` – fetch SDP descriptor
+
+```bash
+curl -X POST localhost:8080/rtp/sessions \
+  -d '{"id":"cam1","address":"239.0.0.1","port":5004,"payload_type":96,"clock_rate":90000}'
+```

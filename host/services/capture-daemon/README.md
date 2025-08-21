@@ -76,6 +76,7 @@ Additional runtime options:
 
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC negotiation.
 - `FFMPEG_HWACCEL` – extra ffmpeg args to enable hardware acceleration.
+- `SRT_BASE_URL` – base SRT address used by `/srt?device=`.
 
 ### Logging
 
@@ -90,4 +91,12 @@ Set these variables to control log output:
 ## Security
 
 Set `AUTH_TOKEN` to require a bearer token on API requests. To serve HTTPS, provide `TLS_CERT_FILE` and `TLS_KEY_FILE` with the certificate and key paths.
+
+## Metrics
+
+Prometheus metrics, including encoder frame delay and drop counts, are served at `/metrics` when metrics are enabled in the configuration (defaults to port `9001`).
+
+```bash
+curl http://localhost:9001/metrics
+```
 

@@ -23,7 +23,8 @@ Attach `SelectableItem` to wrap children with selection and gesture handling.
 
 ## Layered Explorer (experimental)
 
-Renders the asset tree in 2.5D using WebGL.
+Renders the asset tree in 2.5D using WebGL. The grid automatically
+adjusts columns based on viewport size for a responsive infinite canvas.
 
 Install deps:
 
@@ -37,3 +38,5 @@ Usage:
 import LayeredExplorer from '@/components/LayeredFS/LayeredExplorer';
 <LayeredExplorer />
 ```
+
+Route: `/{tenant}/dashboard/layered-explorer`

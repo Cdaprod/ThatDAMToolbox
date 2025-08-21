@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/backend"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/frontend"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/host"
+	srt "github.com/Cdaprod/ThatDamToolbox/host/services/shared/stream/adapter/srt"
 )
 
 var wsUpgrader = websocket.Upgrader{
@@ -54,9 +56,11 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(*apiPrefix+"health", healthHandler)
 	mux.HandleFunc(*apiPrefix+"video/", videoHandler)
+	mux.HandleFunc(*apiPrefix+"registry/srt", registryHandler)
 	mux.HandleFunc("/", frontendHandler)
 	setupOverlayRoutes(mux)
 	setupStreamRoutes(mux)
+	setupRTPRoutes(mux)
 
 	// 3) Build middleware chain
 	chain := middleware.New().
@@ -171,6 +175,28 @@ func handleVideoStream(w http.ResponseWriter, r *http.Request, mediaPath string)
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Accept-Ranges", "bytes")
 	http.ServeContent(w, r, stat.Name(), stat.ModTime(), f)
+}
+
+// registryHandler advertises SRT endpoints for devices.
+// Example:
+//
+//	curl '/api/registry/srt?device=cam1'
+//	-> {"uri":"srt://host:9000?streamid=cam1"}
+func registryHandler(w http.ResponseWriter, r *http.Request) {
+	base := getEnv("SRT_BASE_URL", "")
+	if base == "" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	id := r.URL.Query().Get("device")
+	ad := srt.New(base)
+	details, err := ad.Open(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(details)
 }
 
 // WebSocketUpgradeMiddleware upgrades /ws/ to a simple echo server
