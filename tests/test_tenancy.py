@@ -12,6 +12,12 @@ def setup_function() -> None:
     service.reset()
 
 
+def test_health_endpoint() -> None:
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
 def test_first_login_creates_personal_tenant() -> None:
     resp = client.post("/login", headers={"X-User-ID": "user1"})
     assert resp.status_code == 200
