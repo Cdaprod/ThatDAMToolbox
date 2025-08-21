@@ -38,3 +38,14 @@ log.Register()
 b, _ := bus.Connect(context.Background(), bus.Config{URL: "/tmp/bus", Exchange: "events"})
 _ = b.Publish("topic", []byte("msg"))
 ```
+## Tenancy
+
+The `tenant` package defines interfaces used to scope requests to a tenant.
+
+```go
+var r tenant.TenantContextResolverPort
+tenantID, principalID, _ := r.Resolve(ctx, req)
+```
+
+`TenantDirectoryPort` looks up tenants, `MembershipPort` checks principal access,
+and `TenantContextResolverPort` extracts tenant context from requests.

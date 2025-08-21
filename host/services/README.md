@@ -39,7 +39,8 @@ proxy/
 	•	main.go: A top-level HTTP(S) proxy—serves static frontend, compresses, applies API rate limits, routes /api/ and /ws/assets to backend (typically your Python API).
 
 shared/
-	•	middleware/: Core chainable middlewares for backend (JWT, API proxy, logging, caching, rate limiting), frontend (static files, SPA, CSP, compression), host (system resource, filesystem, process limits), utils and shared types.
+        •       middleware/: Core chainable middlewares for backend (JWT, API proxy, logging, caching, rate limiting), frontend (static files, SPA, CSP, compression), host (system resource, filesystem, process limits), utils and shared types.
+        •       tenant/: tenant lookup, membership checks, and context resolution interfaces.
 
 ⸻
 
