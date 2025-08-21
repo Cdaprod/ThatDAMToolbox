@@ -52,3 +52,10 @@ python -m video witness_record --duration 10
 
 Writes `main_raw.mp4` and a stabilised witness copy.
 
+
+### See also
+- [camera-proxy](../../../host/services/camera-proxy/README.md)
+- [capture-daemon](../../../host/services/capture-daemon/README.md)
+- [api-gateway](../../../host/services/api-gateway/README.md)
+- [overlay-hub](../../../host/services/overlay-hub/README.md)
+- [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)

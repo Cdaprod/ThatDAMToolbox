@@ -28,3 +28,10 @@ Configure via environment variables:
 - `POST /agents/issue`
 - `GET /.well-known/jwks.json`
 - `GET /overlay/hints`
+
+### See also
+- [camera-proxy](../camera-proxy/README.md)
+- [capture-daemon](../capture-daemon/README.md)
+- [overlay-hub](../overlay-hub/README.md)
+- [Hardware Capture Module](../../../video/modules/hwcapture/README.md)
+- [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)

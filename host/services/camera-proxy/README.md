@@ -95,3 +95,10 @@ curl -i 'http://localhost:8000/stream?device=daemon:cam1'
 
 If WebRTC negotiation with the daemon fails, the proxy serves an MJPEG stream directly so browsers and tools can still view the feed.
 
+
+### See also
+- [capture-daemon](../capture-daemon/README.md)
+- [api-gateway](../api-gateway/README.md)
+- [overlay-hub](../overlay-hub/README.md)
+- [Hardware Capture Module](../../../video/modules/hwcapture/README.md)
+- [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)
