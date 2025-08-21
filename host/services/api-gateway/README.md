@@ -23,6 +23,7 @@ Configure via environment variables:
 - `LOG_CALLER` – off|short|full (default short)
 - `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
 - `LOG_NO_COLOR` – set to `1` to disable colored output
+- `SRT_BASE_URL` – base SRT address advertised at `/api/registry/srt`
 
 ## Overlay endpoints
 - `POST /agents/issue`

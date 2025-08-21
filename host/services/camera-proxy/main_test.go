@@ -231,6 +231,26 @@ func TestViewerServed(t *testing.T) {
 	if string(b) != "ok" {
 		t.Fatalf("unexpected body: %s", b)
 	}
+
+}
+
+// TestHandleSRT exposes negotiated SRT URLs.
+func TestHandleSRT(t *testing.T) {
+	t.Setenv("SRT_BASE_URL", "srt://localhost:9000")
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	srv := httptest.NewServer(dp.setupRoutes())
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/srt?device=cam1")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	var out map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out["uri"] != "srt://localhost:9000?streamid=cam1" {
+		t.Fatalf("unexpected uri: %s", out["uri"])
+	}
 }
 
 // TestIceServers parses ICE_SERVERS env variable.

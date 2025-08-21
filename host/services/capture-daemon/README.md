@@ -76,6 +76,7 @@ Additional runtime options:
 
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC negotiation.
 - `FFMPEG_HWACCEL` – extra ffmpeg args to enable hardware acceleration.
+- `SRT_BASE_URL` – base SRT address used by `/srt?device=`.
 
 ### Logging
 

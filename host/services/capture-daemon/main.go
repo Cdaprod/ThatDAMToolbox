@@ -151,6 +151,7 @@ func main() {
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, reg)
 	api.RegisterFeatureRoutes(mux, cfg)
+	api.RegisterSRTRoutes(mux, os.Getenv("SRT_BASE_URL"))
 	if cfg.Features.WebRTC.Enabled {
 		webrtc.RegisterRoutes(mux, cfg.Features.WebRTC.PathPrefix)
 	}
