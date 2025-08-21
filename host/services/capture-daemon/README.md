@@ -43,6 +43,17 @@ features:
     enabled: true
   hls_preview:
     enabled: true
+capture:
+  abr_ladder:
+    - resolution: 1920x1080
+      fps: 60
+      bitrate: 12000000
+    - resolution: 1920x1080
+      fps: 30
+      bitrate: 8000000
+    - resolution: 1280x720
+      fps: 30
+      bitrate: 4000000
 ```
 
 Negotiate a WebRTC session using curl:
@@ -76,6 +87,22 @@ Additional runtime options:
 
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC negotiation.
 - `FFMPEG_HWACCEL` – extra ffmpeg args to enable hardware acceleration.
+- `SRT_BASE_URL` – base SRT address used by `/srt?device=`.
+
+### TSN / AVB
+
+Enable Time Sensitive Networking features to reserve deterministic bandwidth
+and validate PTP synchronization:
+
+- `CAPTURE_TSN_ENABLED` – set to `true` to enable TSN mode.
+- `CAPTURE_TSN_INTERFACE` – network interface to use for AVB traffic.
+- `CAPTURE_TSN_QUEUE` – egress queue to reserve for SR class streams.
+- `CAPTURE_TSN_PTP_GRANDMASTER` – expected PTP grandmaster ID; compared against
+  `PTP_GRANDMASTER_ID` from the system.
+
+The service aborts on startup if any of the above are missing or if the
+grandmaster does not match. Ensure your NIC and connected switch have TSN/AVB
+features enabled (IEEE 802.1AS and 802.1Qav) and a PTP domain is active.
 
 ### Logging
 
@@ -90,4 +117,22 @@ Set these variables to control log output:
 ## Security
 
 Set `AUTH_TOKEN` to require a bearer token on API requests. To serve HTTPS, provide `TLS_CERT_FILE` and `TLS_KEY_FILE` with the certificate and key paths.
+
+
+
+### See also
+- [camera-proxy](../camera-proxy/README.md)
+- [api-gateway](../api-gateway/README.md)
+- [overlay-hub](../overlay-hub/README.md)
+- [Hardware Capture Module](../../../video/modules/hwcapture/README.md)
+- [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)
+
+## Metrics
+
+Prometheus metrics, including encoder frame delay and drop counts, are served at `/metrics` when metrics are enabled in the configuration (defaults to port `9001`).
+
+```bash
+curl http://localhost:9001/metrics
+```
+
 

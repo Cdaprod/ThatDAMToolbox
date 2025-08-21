@@ -28,13 +28,32 @@ var (
 			Help: "Count of capture errors",
 		}, []string{"device", "type"},
 	)
+
+	RTCPPacketsLost = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "capture_rtcp_packets_lost",
+			Help: "RTCP reported packet loss",
+		},
+	)
+	SRTBandwidth = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "capture_srt_bandwidth_bytes",
+			Help: "Current SRT bandwidth in bytes per second",
+		},
+	)
 )
 
 type Metrics struct{}
 
 // New registers all metrics and returns a handler wrapper.
 func New() *Metrics {
-	prometheus.MustRegister(DevicesDiscovered, DevicesActive, CaptureErrors)
+	prometheus.MustRegister(
+		DevicesDiscovered,
+		DevicesActive,
+		CaptureErrors,
+		RTCPPacketsLost,
+		SRTBandwidth,
+	)
 	return &Metrics{}
 }
 
@@ -60,4 +79,14 @@ func (m *Metrics) RecordDeviceActive(device string, active bool) {
 // RecordError increments the error counter for a device/type.
 func (m *Metrics) RecordError(device, errType string) {
 	CaptureErrors.WithLabelValues(device, errType).Inc()
+}
+
+// RecordRTCP sets gauges for RTCP stats.
+func (m *Metrics) RecordRTCP(packetsLost float64) {
+	RTCPPacketsLost.Set(packetsLost)
+}
+
+// RecordSRT sets the current SRT bandwidth.
+func (m *Metrics) RecordSRT(bandwidthBytes int64) {
+	SRTBandwidth.Set(float64(bandwidthBytes))
 }

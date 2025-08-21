@@ -34,6 +34,16 @@ curl -I http://localhost:8000/viewer/
 
 The static files live under `/srv/viewer` inside the container. Override `VIEWER_DIR` to serve a different directory.
 
+### Metrics
+
+Encoder telemetry (frame delays and drops) is exposed at `/metrics` on the same port:
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+Prometheus can scrape this endpoint for monitoring.
+
 ## Remote deployment
 
 Build for older ARM boards by targeting `linux/arm/v6` and setting `GOARM=6`:
@@ -64,6 +74,36 @@ docker run -p 8000:8000 \
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC (optional)
 - `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
 - `VIEWER_DIR` – path to static viewer files served at `/viewer/` (default `/srv/viewer`)
+- `METRICS_PORT` – port for Prometheus metrics (default `8001`)
+
+The proxy uses an adaptive bitrate ladder:
+
+```yaml
+abr_ladder:
+  - resolution: 1920x1080
+    fps: 60
+    bitrate: 12000000
+  - resolution: 1920x1080
+    fps: 30
+    bitrate: 8000000
+  - resolution: 1280x720
+    fps: 30
+    bitrate: 4000000
+```
+
+- `SRT_BASE_URL` – base SRT address used by `/srt?device=` (optional)
+
+### TSN / AVB
+
+Enable deterministic transport and PTP validation with these variables:
+
+- `TSN_INTERFACE` – network interface for AVB traffic (enables TSN mode when set)
+- `TSN_QUEUE` – egress queue to reserve for SR class traffic
+- `TSN_PTP_GRANDMASTER` – expected grandmaster ID; checked against
+  `PTP_GRANDMASTER_ID`
+
+The proxy exits if configuration is invalid or the grandmaster mismatches.
+Ensure NIC and switch ports have 802.1AS and 802.1Qav enabled.
 
 ### Logging
 
@@ -95,3 +135,10 @@ curl -i 'http://localhost:8000/stream?device=daemon:cam1'
 
 If WebRTC negotiation with the daemon fails, the proxy serves an MJPEG stream directly so browsers and tools can still view the feed.
 
+
+### See also
+- [capture-daemon](../capture-daemon/README.md)
+- [api-gateway](../api-gateway/README.md)
+- [overlay-hub](../overlay-hub/README.md)
+- [Hardware Capture Module](../../../video/modules/hwcapture/README.md)
+- [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)
