@@ -142,8 +142,8 @@ define build_one
 --label org.opencontainers.image.created=$(DATE) \
 --label org.opencontainers.image.revision=$(TAG) \
 --build-arg BUILDKIT_INLINE_CACHE=1 \
---cache-from type=local,src=.docker_cache \
---cache-to type=local,dest=.docker_cache,mode=max \
+--cache-from type=local,src=/tmp/buildx-cache \
+--cache-to type=local,dest=/tmp/buildx-cache,mode=max \
 --tag $(REGISTRY)/$(1):$(TAG) \
 --tag $(REGISTRY)/$(1):latest \
 .

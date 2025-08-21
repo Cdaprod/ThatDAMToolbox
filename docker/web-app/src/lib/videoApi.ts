@@ -36,7 +36,8 @@ export const videoApi = {
 
   /* hardware capture helpers */
   listDevices: () => getJson<Device[]>('/hwcapture/devices'),
-  witnessStart: (req: WitnessReq) => postJson<{}>('/hwcapture/witness_record', req),
+  witnessStart: (req: WitnessReq) =>
+    postJson<{ job: string; status: string }>('/hwcapture/witness_record', req),
   vectorSearch: (q: string) => getJson<Asset[]>(`/vector-search?q=${encodeURIComponent(q)}`),
 };
 
@@ -47,4 +48,4 @@ export interface VideoCard { artifact: { path: string }; /* …snip… */ }
 export interface MotionExtractPayload { path: string; sensitivity?: number }
 export interface MotionJob { job_id: string; status: string }
 export interface Device { path: string; width: number; height: number; fps: number }
-export interface WitnessReq { device: string; output: string }
+export interface WitnessReq { main: string; witness: string; duration?: number }

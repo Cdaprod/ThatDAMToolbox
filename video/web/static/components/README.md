@@ -11,3 +11,12 @@ Reusable ES modules used by the web UI.  Import them from `app.js` or other scri
 import { UploadCard } from './components/upload-card.js'
 ```
 
+### ffmpeg-console.js
+
+Include the FFmpeg card partial and this script; it auto-initializes on load:
+
+```html
+<!-- see templates/partials/_ffmpeg_card.html for markup -->
+<script type="module" src="/static/components/ffmpeg-console.js"></script>
+```
+
