@@ -5,18 +5,20 @@ go 1.23.0
 toolchain go1.24.3
 
 require (
-        github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
-        github.com/charmbracelet/log v0.4.2
-        github.com/golang-jwt/jwt/v5 v5.3.0
-        github.com/google/uuid v1.5.0
-        github.com/muesli/termenv v0.16.0
-        github.com/quic-go/quic-go v0.40.0
-        github.com/rabbitmq/amqp091-go v1.9.0
-        golang.org/x/term v0.34.0
-        github.com/Cdaprod/ThatDamToolbox/host/shared v0.0.0
+	github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
+	github.com/Cdaprod/ThatDamToolbox/host/shared v0.0.0
+	github.com/charmbracelet/log v0.4.2
+	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/google/uuid v1.5.0
+	github.com/muesli/termenv v0.16.0
+	github.com/pion/rtp v1.8.3
+	github.com/quic-go/quic-go v0.40.0
+	github.com/rabbitmq/amqp091-go v1.9.0
+	golang.org/x/term v0.34.0
 )
 
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe => ./hostcap/v4l2probe
+
 replace github.com/Cdaprod/ThatDamToolbox/host/shared => ../../shared
 
 require (
@@ -33,6 +35,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.5 // indirect
+	github.com/pion/randutil v0.1.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect

@@ -10,7 +10,8 @@
   "dependencies": {
     "preact": "^10.19.3",
     "preact-router": "^4.1.2",
-    "@thatdamtoolbox/player": "file:../packages/player"
+    "@thatdamtoolbox/player": "file:../packages/player",
+    "@thatdamtoolbox/design-system": "file:../packages/design-system"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.0",
