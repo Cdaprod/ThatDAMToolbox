@@ -59,6 +59,7 @@ func main() {
 	mux.HandleFunc(*apiPrefix+"registry/srt", registryHandler)
 	mux.HandleFunc("/", frontendHandler)
 	setupOverlayRoutes(mux)
+	setupStreamRoutes(mux)
 	setupRTPRoutes(mux)
 
 	// 3) Build middleware chain
