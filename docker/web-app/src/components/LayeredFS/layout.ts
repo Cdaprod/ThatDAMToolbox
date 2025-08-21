@@ -1,6 +1,9 @@
 /**
 Utilities to position folder and file nodes into 2.5D layers.
 Each folder depth maps to a Z offset while children are placed in a grid.
+
+The grid can be resized by passing a `cols` option so callers can
+adapt to varying viewport widths or device sizes.
 */
 
 import { TreeSnapshot, FolderNode, TreeNode } from './types';
@@ -24,7 +27,7 @@ const CELL_W = 1.6;
 const CELL_H = 1.0;
 const PAD_X = 0.4;
 const PAD_Y = 0.4;
-const COLS = 6;
+const DEFAULT_COLS = 6;
 
 /**
  * Compute positions for every node and connecting edges.
@@ -35,9 +38,11 @@ const COLS = 6;
  * console.log(layout.items[nodeId]); // {x,y,z,w,h}
  * ```
  */
-export function layeredLayout(tree: TreeSnapshot): LayoutResult {
+export function layeredLayout(tree: TreeSnapshot, opts: { cols?: number } = {}): LayoutResult {
   const items: Record<string, Positioned> = {};
   const edges: Array<{ from: string; to: string }> = [];
+
+  const cols = opts.cols ?? DEFAULT_COLS;
 
   const childrenByParent: Record<string, TreeNode[]> = {};
   Object.values(tree.nodes).forEach(n => {
@@ -56,9 +61,9 @@ export function layeredLayout(tree: TreeSnapshot): LayoutResult {
     });
 
     kids.forEach((child, i) => {
-      const col = i % COLS;
-      const row = Math.floor(i / COLS);
-      const x = (col - (COLS - 1) / 2) * (CELL_W + PAD_X);
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = (col - (cols - 1) / 2) * (CELL_W + PAD_X);
       const y = -(row + 1) * (CELL_H + PAD_Y) - 0.8;
       const childPos: Positioned = {
         id: child.id,
