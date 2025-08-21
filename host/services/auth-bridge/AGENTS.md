@@ -6,4 +6,5 @@ Scope: Minimal HTTP bridge exposing Auth0 or Keycloak auth endpoints.
 - Respect `OIDC_*` env vars; default provider is Auth0.
 - Expose `/health`, `/session/me`, and login/logout routes; document additions.
 - Keep internal logic under `internal/`; avoid cross-service imports.
+- `TENANCY_URL` enables membership lookup; handlers must degrade gracefully if unset.
 - Test with `go test ./...` and update README for new config.
