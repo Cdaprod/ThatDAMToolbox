@@ -43,6 +43,17 @@ features:
     enabled: true
   hls_preview:
     enabled: true
+capture:
+  abr_ladder:
+    - resolution: 1920x1080
+      fps: 60
+      bitrate: 12000000
+    - resolution: 1920x1080
+      fps: 30
+      bitrate: 8000000
+    - resolution: 1280x720
+      fps: 30
+      bitrate: 4000000
 ```
 
 Negotiate a WebRTC session using curl:

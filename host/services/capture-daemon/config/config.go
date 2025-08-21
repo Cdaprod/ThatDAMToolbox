@@ -45,6 +45,14 @@ type CaptureConfig struct {
 	DefaultRes     string            `mapstructure:"default_resolution"`
 	MaxConcurrent  int               `mapstructure:"max_concurrent"`
 	NetworkSources map[string]string `mapstructure:"network_sources"`
+	ABRLadder      []Profile         `mapstructure:"abr_ladder"`
+}
+
+// Profile represents a rung in the adaptive bitrate ladder.
+type Profile struct {
+	Resolution string `mapstructure:"resolution"`
+	FPS        int    `mapstructure:"fps"`
+	Bitrate    int    `mapstructure:"bitrate"`
 }
 
 type FeatureConfig struct {
@@ -124,8 +132,8 @@ func setDefaults() {
 	viper.SetDefault("server.write_timeout", "30s")
 	viper.SetDefault("server.idle_timeout", "120s")
 
-        // broker
-        viper.SetDefault("broker.url", "amqp://video:video@localhost:5672/")
+	// broker
+	viper.SetDefault("broker.url", "amqp://video:video@localhost:5672/")
 	viper.SetDefault("broker.exchange", "capture")
 	viper.SetDefault("broker.connect_timeout", "10s")
 	viper.SetDefault("broker.reconnect_delay", "5s")
@@ -139,6 +147,11 @@ func setDefaults() {
 	viper.SetDefault("capture.default_resolution", "1920x1080")
 	viper.SetDefault("capture.max_concurrent", 5)
 	viper.SetDefault("capture.network_sources", map[string]string{})
+	viper.SetDefault("capture.abr_ladder", []map[string]any{
+		{"resolution": "1920x1080", "fps": 60, "bitrate": 12_000_000},
+		{"resolution": "1920x1080", "fps": 30, "bitrate": 8_000_000},
+		{"resolution": "1280x720", "fps": 30, "bitrate": 4_000_000},
+	})
 
 	// features.hls_preview
 	viper.SetDefault("features.hls_preview.enabled", false)

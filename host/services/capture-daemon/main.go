@@ -21,6 +21,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/runner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/abr"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
@@ -65,6 +66,14 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("config load failed: %v", err))
 	}
+
+	// Adaptive bitrate controller
+	ladder := make([]abr.Profile, len(cfg.Capture.ABRLadder))
+	for i, p := range cfg.Capture.ABRLadder {
+		ladder[i] = abr.Profile{Resolution: p.Resolution, FPS: p.FPS, Bitrate: p.Bitrate}
+	}
+	abrCtrl := abr.NewController(ladder)
+	_ = abrCtrl
 
 	// Register any statically configured network streams
 	if len(cfg.Capture.NetworkSources) > 0 {

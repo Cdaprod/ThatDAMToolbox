@@ -64,6 +64,22 @@ docker run -p 8000:8000 \
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC (optional)
 - `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
 - `VIEWER_DIR` – path to static viewer files served at `/viewer/` (default `/srv/viewer`)
+- `METRICS_PORT` – port for Prometheus metrics (default `8001`)
+
+The proxy uses an adaptive bitrate ladder:
+
+```yaml
+abr_ladder:
+  - resolution: 1920x1080
+    fps: 60
+    bitrate: 12000000
+  - resolution: 1920x1080
+    fps: 30
+    bitrate: 8000000
+  - resolution: 1280x720
+    fps: 30
+    bitrate: 4000000
+```
 
 ### Logging
 
