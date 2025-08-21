@@ -14,7 +14,7 @@ func BuildMux(cfg config.Config) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", httpapi.HealthHandler)
-	mux.HandleFunc("/session/me", httpapi.SessionMeHandler)
+	mux.HandleFunc("/session/me", httpapi.SessionMeHandler(cfg))
 
 	store := runners.NewMemoryStore()
 	mux.HandleFunc("/runners/register", runners.RegisterHandler(store))
