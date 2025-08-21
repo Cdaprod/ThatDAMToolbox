@@ -16,3 +16,17 @@ test('layeredLayout positions children by depth', () => {
   assert.equal(layout.items['file1'].z, -3);
   assert.ok(layout.edges.find(e => e.from === 'root' && e.to === 'file1'));
 });
+
+test('layeredLayout respects column option for responsiveness', () => {
+  const snapshot: TreeSnapshot = {
+    nodes: {
+      root: { id: 'root', name: '/', path: '/', depth: 0, kind: 'folder', childIds: ['a', 'b', 'c'] },
+      a: { id: 'a', name: 'a', path: '/', depth: 1, kind: 'file', parentId: 'root' },
+      b: { id: 'b', name: 'b', path: '/', depth: 1, kind: 'file', parentId: 'root' },
+      c: { id: 'c', name: 'c', path: '/', depth: 1, kind: 'file', parentId: 'root' },
+    },
+    rootId: 'root',
+  };
+  const layout = layeredLayout(snapshot, { cols: 2 });
+  assert.notEqual(layout.items['c'].y, layout.items['a'].y);
+});

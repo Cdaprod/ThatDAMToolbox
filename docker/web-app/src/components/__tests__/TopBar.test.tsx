@@ -47,6 +47,10 @@ test('MainLayout shows sidebar on camera monitor route', () => {
   assert.equal(shouldHideSidebar('/dashboard/camera-monitor'), false)
 })
 
+test('Layered explorer hides sidebar', () => {
+  assert.equal(shouldHideSidebar('/dashboard/layered-explorer'), true)
+})
+
 test('Explorer button triggers dam-explorer modal', async () => {
   const sidebarPath = path.resolve(__dirname, '../../hooks/useSidebar.js')
   const modalPath = path.resolve(__dirname, '../../providers/ModalProvider.js')
