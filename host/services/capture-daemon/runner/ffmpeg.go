@@ -14,6 +14,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/catalog"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ingest"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ import (
 type Deps struct {
 	BlobStore  storage.BlobStore
 	DirEnsurer platform.DirEnsurer
+	Clock      *ptp.Clock
 }
 
 // Config holds the parameters for a single device capture loop.
@@ -71,6 +73,10 @@ func buildInputArgs(cfg Config) []string {
 // saves to MP4, and broadcasts status via the broker.
 // Supports configurable MP4 output and HLS preview via env flags.
 func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
+	clock := deps.Clock
+	if clock == nil {
+		clock = ptp.New()
+	}
 	enableMP4 := strings.EqualFold(os.Getenv("ENABLE_MP4_SERVE"), "true")
 	enableHLS := strings.EqualFold(os.Getenv("ENABLE_HLS_PREVIEW"), "true")
 
@@ -123,11 +129,11 @@ func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 		default:
 		}
 
-		outFile := buildOutputFilename(cfg)
+		outFile := buildOutputFilename(cfg, clock)
 		broker.Publish("capture.recording_started", map[string]any{
 			"device":    cfg.Device,
 			"file":      outFile,
-			"timestamp": time.Now().UTC(),
+			"timestamp": clock.Now().UTC(),
 		})
 
 		if enableMP4 {
@@ -155,7 +161,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 					broker.Publish("capture.recording_stopped", map[string]any{
 						"device":    cfg.Device,
 						"file":      outFile,
-						"timestamp": time.Now().UTC(),
+						"timestamp": clock.Now().UTC(),
 					})
 					return nil
 				}
@@ -166,7 +172,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 					broker.Publish("capture.recording_stopped", map[string]any{
 						"device":    cfg.Device,
 						"file":      outFile,
-						"timestamp": time.Now().UTC(),
+						"timestamp": clock.Now().UTC(),
 					})
 					return nil
 				}
@@ -184,7 +190,7 @@ func RunCaptureLoop(ctx context.Context, cfg Config, deps Deps) error {
 		broker.Publish("capture.recording_stopped", map[string]any{
 			"device":    cfg.Device,
 			"file":      outFile,
-			"timestamp": time.Now().UTC(),
+			"timestamp": clock.Now().UTC(),
 		})
 
 		select {
@@ -220,7 +226,7 @@ func ingestRecording(deps Deps, path string) (catalog.Asset, error) {
 		Hash:       hash,
 		MIME:       "video/mp4",
 		Folder:     "recordings",
-		CreatedAt:  time.Now().UTC(),
+		CreatedAt:  deps.Clock.Now().UTC(),
 		SourceNode: host,
 		OriginPath: path,
 		Labels:     map[string]string{"index_key": indexKey},
@@ -230,8 +236,8 @@ func ingestRecording(deps Deps, path string) (catalog.Asset, error) {
 }
 
 // buildOutputFilename constructs a timestamped filename under cfg.OutDir.
-func buildOutputFilename(cfg Config) string {
-	ts := time.Now().UTC().Format("20060102T150405Z")
+func buildOutputFilename(cfg Config, clock *ptp.Clock) string {
+	ts := clock.Now().UTC().Format("20060102T150405Z")
 	base := filepath.Base(cfg.Device)
 	return filepath.Join(cfg.OutDir, fmt.Sprintf("%s-%s-%s.mp4", base, cfg.Codec, ts))
 }

@@ -9,15 +9,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/abr"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 // StreamH264FromFFmpeg launches ffmpeg and forwards raw H264 samples to the provided track.
-func StreamH264FromFFmpeg(ctx context.Context, device string, fps int, res string, track *webrtc.TrackLocalStaticSample) error {
+func StreamH264FromFFmpeg(ctx context.Context, device string, fps int, res string, bandwidth int, ctrl *abr.Controller, track *webrtc.TrackLocalStaticSample) error {
+	profile := ctrl.Update(bandwidth)
 	args := append(hwAccelArgs(), "-f", "v4l2", "-framerate", fmt.Sprint(fps),
 		"-video_size", res, "-i", device,
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+		"-b:v", fmt.Sprintf("%d", profile.Bitrate),
 		"-f", "h264", "pipe:1")
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	stdout, err := cmd.StdoutPipe()

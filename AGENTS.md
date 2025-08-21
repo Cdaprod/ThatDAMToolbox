@@ -77,6 +77,9 @@ This document explains the key principles and details you’ll need to develop a
     – Frontend: Next.js web-app for asset management and live monitoring.
 - Control-plane oriented: Discovery asks Supervisor for a plan; Supervisor serves desired state (plan + environment profile).
 - Overlay network (overlay-hub) for low-latency agent connectivity and registration.
+- TSN/AVB optional mode for capture-daemon and camera-proxy via `TSN_*` and
+  `CAPTURE_TSN_*` env vars (interface, queue, ptp grandmaster); services abort on
+  validation failures.
 - All messaging uses RabbitMQ with the unified EVENT_BROKER_URL (fallback to AMQP_URL).
 - Idempotent bootstrap: storage → broker → index (non-destructive by default).
 - Air-gapped ready: artifacts and profiles can be hosted on-LAN (MinIO or Supervisor static).

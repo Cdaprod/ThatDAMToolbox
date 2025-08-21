@@ -23,11 +23,13 @@ Configure via environment variables:
 - `LOG_CALLER` – off|short|full (default short)
 - `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
 - `LOG_NO_COLOR` – set to `1` to disable colored output
+- `SRT_BASE_URL` – base SRT address advertised at `/api/registry/srt`
 
 ## Overlay endpoints
 - `POST /agents/issue`
 - `GET /.well-known/jwks.json`
 - `GET /overlay/hints`
+
 
 ### See also
 - [camera-proxy](../camera-proxy/README.md)
@@ -35,3 +37,29 @@ Configure via environment variables:
 - [overlay-hub](../overlay-hub/README.md)
 - [Hardware Capture Module](../../../video/modules/hwcapture/README.md)
 - [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)
+
+## Stream endpoints (JWT required)
+- `POST /streams` – register transmitter metadata
+- `GET /streams` – list active streams
+- `GET /streams/{id}` – retrieve stream
+- `PUT /streams/{id}` – update codecs/transports
+- `DELETE /streams/{id}` – remove stream
+- `POST /streams/{id}/offer` – submit WebRTC offer
+- `GET /streams/{id}/offer` – fetch offer
+- `POST /streams/{id}/answer` – submit answer
+- `GET /streams/{id}/answer` – fetch answer
+- `POST /streams/{id}/ice` – append ICE candidate
+- `GET /streams/{id}/ice` – list ICE candidates
+
+All endpoints (except JWKS and token issuance) expect an `Authorization: Bearer <token>` header.
+
+## RTP session registry
+
+- `POST /rtp/sessions` – register an RTP session
+- `GET /rtp/sessions/{id}.sdp` – fetch SDP descriptor
+
+```bash
+curl -X POST localhost:8080/rtp/sessions \
+  -d '{"id":"cam1","address":"239.0.0.1","port":5004,"payload_type":96,"clock_rate":90000}'
+```
+
