@@ -1,0 +1,65 @@
+name: Build & Release (Edge)
+on:
+  push:
+    branches: [ "main", "staging" ]
+    tags:     [ "v*" ]
+    paths:
+      - "docker/edge/**"
+      - "ops/ci/**"
+      - "Makefile"
+      - ".github/workflows/build-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write      # for release on tags
+  packages: write      # push to GHCR
+
+jobs:
+  edge:
+    runs-on: [self-hosted, repo=thatdam, ephemeral]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Compute CI vars (VERSION/CHANNEL)
+        run: bash ops/ci/compute-ci-vars.sh ops/ci/vars.env
+        env:
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA:      ${{ github.sha }}
+          REGISTRY: ghcr.io
+          REGISTRY_NS: cdaprod
+          SERVICE_EDGE: thatdam-run
+
+      - name: Print matrix
+        run: make print/matrix
+
+      - name: Build & Push edge
+        run: make release/edge
+
+      - name: Emit digest (output for deploy steps)
+        id: digest
+        run: |
+          DIGEST=$(make echo/edge-digest | tail -n1)
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Create/Update Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "ThatDAM Run ${{ github.ref_name }}"
+          body: |
+            Edge image: ${{ steps.digest.outputs.digest }}
+            Channel: prod
+            SHA: ${{ github.sha }}
+          draft: false
+          prerelease: false
