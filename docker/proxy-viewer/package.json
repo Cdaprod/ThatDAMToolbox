@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test --import tsx src/__tests__/Player.test.tsx"
+    "test": "node --test --import tsx src/__tests__/*.test.tsx"
   },
   "dependencies": {
     "preact": "^10.19.3",
     "preact-router": "^4.1.2",
     "@thatdamtoolbox/player": "file:../packages/player",
-    "@thatdamtoolbox/design-system": "file:../packages/design-system"
+    "@thatdamtoolbox/design-system": "file:../packages/design-system",
+    "@thatdamtoolbox/stream-registry": "file:../packages/stream-registry"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.0",
