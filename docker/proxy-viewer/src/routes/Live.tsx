@@ -2,9 +2,11 @@ import { h } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import Player from '../components/Player';
 import { createPlayer } from '@thatdamtoolbox/player';
+import StreamModeSelector from '../components/StreamModeSelector';
 
 export default function Live({ source }: { source?: string }) {
   const [device, setDevice] = useState<string | undefined>(source);
+  const [transportSrc, setTransportSrc] = useState<string>('');
   const fallback = import.meta.env.VITE_DEFAULT_SOURCE || 'default';
 
   useEffect(() => {
@@ -28,10 +30,11 @@ export default function Live({ source }: { source?: string }) {
     };
   }, [source]);
 
-  const chosen = device ?? fallback;
+  const chosen = transportSrc || device || fallback;
 
   return (
     <div class="h-screen flex flex-col">
+      <StreamModeSelector onSelect={setTransportSrc} />
       <Player source={chosen} create={createPlayer} />
     </div>
   );

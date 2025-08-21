@@ -18,6 +18,10 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	"github.com/pion/webrtc/v3"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
+	"github.com/pion/webrtc/v3"
 )
 
 // TestDiscoverDevicesIncludesDaemon ensures capture-daemon devices are merged.
@@ -34,7 +38,7 @@ func TestDiscoverDevicesIncludesDaemon(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("CAPTURE_DAEMON_URL", srv.URL)
 	t.Setenv("CAPTURE_DAEMON_TOKEN", "secret")
-	proxy, err := NewDeviceProxy("http://backend", "http://frontend")
+	proxy, err := NewDeviceProxy("http://backend", "http://frontend", ptp.New())
 	if err != nil {
 		t.Fatalf("NewDeviceProxy: %v", err)
 	}
@@ -49,7 +53,7 @@ func TestDiscoverDevicesIncludesDaemon(t *testing.T) {
 // TestDiscoverDevicesLogsOnce ensures repeated discovery doesn't spam logs.
 func TestDiscoverDevicesLogsOnce(t *testing.T) {
 	scanner.Register(fakeScanner{})
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 
 	var buf bytes.Buffer
 	logx.Init(logx.Config{Service: "camera-proxy", Writer: &buf, Format: "text"})
@@ -96,7 +100,7 @@ func TestRegisterWithDaemon(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	dp.daemonURL = srv.URL
 	dp.daemonToken = "secret"
 	dp.devices["/dev/video0"] = &DeviceInfo{Path: "/dev/video0", Name: "cam", IsAvailable: true}
@@ -129,7 +133,7 @@ func TestNegotiateWithDaemon(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"sdp": ans})
 	}))
 	defer srv.Close()
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	dp.daemonURL = srv.URL
 	dp.daemonToken = "secret"
 	pc, _ := webrtc.NewPeerConnection(webrtc.Configuration{})
@@ -138,9 +142,19 @@ func TestNegotiateWithDaemon(t *testing.T) {
 	}
 }
 
+// TestLoadTSNConfigInvalid verifies TSN env validation.
+func TestLoadTSNConfigInvalid(t *testing.T) {
+	t.Setenv("TSN_INTERFACE", "eth0")
+	t.Setenv("TSN_QUEUE", "0")
+	t.Setenv("PTP_GRANDMASTER_ID", "gm1")
+	if _, err := loadTSNConfig(); err == nil {
+		t.Fatalf("expected error for invalid queue")
+	}
+}
+
 // TestHealthz ensures the health endpoint returns 200.
 func TestHealthz(t *testing.T) {
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	srv := httptest.NewServer(dp.setupRoutes())
 	defer srv.Close()
 	resp, err := http.Get(srv.URL + "/healthz")
@@ -154,7 +168,7 @@ func TestHealthz(t *testing.T) {
 
 // TestHandleDeviceStreamRedirect verifies daemon devices redirect to HLS.
 func TestHandleDeviceStreamRedirect(t *testing.T) {
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	dp.devices["daemon:cam1"] = &DeviceInfo{Path: "daemon:cam1", IsAvailable: true}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/stream?device=daemon:cam1", nil)
@@ -170,7 +184,7 @@ func TestHandleDeviceStreamRedirect(t *testing.T) {
 
 // TestHandleDeviceStreamFallback ensures MJPEG fallback when WebRTC fails.
 func TestHandleDeviceStreamFallback(t *testing.T) {
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	dp.daemonURL = "http://invalid"
 	dp.devices["/dev/video0"] = &DeviceInfo{Path: "/dev/video0", IsAvailable: true}
 	orig := ffmpegCmd
@@ -195,7 +209,7 @@ func TestHandleDeviceStreamFallback(t *testing.T) {
 
 // TestDebugV4L2 exposes the probe results via /debug/v4l2.
 func TestDebugV4L2(t *testing.T) {
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	dp.probeKept = []v4l2probe.Device{{Node: "/dev/video19", Name: "rpivid", Kind: "m2m-decoder"}}
 	dp.probeDropped = []v4l2probe.Device{{Node: "/dev/video0", Name: "pispbe", Kind: "ignored"}}
 	srv := httptest.NewServer(dp.setupRoutes())
@@ -223,7 +237,10 @@ func TestViewerServed(t *testing.T) {
 		t.Fatalf("write file: %v", err)
 	}
 	t.Setenv("VIEWER_DIR", dir)
+
 	dp, _ := NewDeviceProxy("http://b", "http://f")
+
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	srv := httptest.NewServer(dp.setupRoutes())
 	defer srv.Close()
 	resp, err := http.Get(srv.URL + "/viewer/index.html")
@@ -235,6 +252,29 @@ func TestViewerServed(t *testing.T) {
 	if string(b) != "ok" {
 		t.Fatalf("unexpected body: %s", b)
 	}
+
+
+
+}
+
+// TestHandleSRT exposes negotiated SRT URLs.
+func TestHandleSRT(t *testing.T) {
+	t.Setenv("SRT_BASE_URL", "srt://localhost:9000")
+	dp, _ := NewDeviceProxy("http://b", "http://f")
+	srv := httptest.NewServer(dp.setupRoutes())
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/srt?device=cam1")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	var out map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out["uri"] != "srt://localhost:9000?streamid=cam1" {
+		t.Fatalf("unexpected uri: %s", out["uri"])
+	}
+
 }
 
 // TestIceServers parses ICE_SERVERS env variable.
@@ -248,7 +288,7 @@ func TestIceServers(t *testing.T) {
 
 // TestHWAccelArgs ensures FFMPEG_HWACCEL is inserted into ffmpeg command.
 func TestHWAccelArgs(t *testing.T) {
-	dp, _ := NewDeviceProxy("http://b", "http://f")
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
 	t.Setenv("FFMPEG_HWACCEL", "cuda -hwaccel_device 0")
 	called := false
 	orig := ffmpegCmd
@@ -261,7 +301,7 @@ func TestHWAccelArgs(t *testing.T) {
 	}
 	defer func() { ffmpegCmd = orig }()
 	track, _ := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264}, "v", "p")
-	if err := dp.streamFromFFmpeg(context.Background(), "/dev/video0", track); err != nil {
+	if err := dp.streamFromFFmpeg(context.Background(), "/dev/video0", track, dp.abrCtrl.Current().Bitrate); err != nil {
 		t.Fatalf("streamFromFFmpeg: %v", err)
 	}
 	if !called {
