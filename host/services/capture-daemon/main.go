@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/api"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/config"
@@ -22,6 +23,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/scanner"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/webrtc"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/abr"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
@@ -99,6 +101,7 @@ func main() {
 	}
 
 	// 4. Init metrics & health
+	encoder.RegisterMetrics()
 	m := metrics.New()
 	hc := health.New(cfg.Health.Interval)
 	hc.AddCheck("broker", func(ctx context.Context) (health.Status, string, error) {
@@ -150,12 +153,14 @@ func main() {
 	reg := registry.NewRegistry()
 	var deps runner.Deps
 	deps.DirEnsurer = platform.NewOSDirEnsurer()
+	deps.Clock = ptp.New()
 	if root := os.Getenv("BLOB_STORE_ROOT"); root != "" {
 		deps.BlobStore = storage.NewFS(root, deps.DirEnsurer)
 	}
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, reg)
 	api.RegisterFeatureRoutes(mux, cfg)
+	api.RegisterSRTRoutes(mux, os.Getenv("SRT_BASE_URL"))
 	if cfg.Features.WebRTC.Enabled {
 		webrtc.RegisterRoutes(mux, cfg.Features.WebRTC.PathPrefix)
 	}

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/storage"
 	"github.com/Cdaprod/ThatDamToolbox/host/shared/platform"
 )
@@ -24,7 +25,7 @@ func TestIngestRecording(t *testing.T) {
 	bs := storage.NewFS(t.TempDir(), testDirEnsurer{})
 	tmp := filepath.Join(t.TempDir(), "a.mp4")
 	os.WriteFile(tmp, []byte("hello"), 0o644)
-	deps := Deps{BlobStore: bs}
+	deps := Deps{BlobStore: bs, Clock: ptp.New()}
 	asset, err := ingestRecording(deps, tmp)
 	if err != nil {
 		t.Fatal(err)
