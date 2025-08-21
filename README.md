@@ -855,7 +855,7 @@ The helper invokes `ensure-dirs` from `host/shared/platform`, making the operati
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+pip install -r docker/video-api/requirements.txt
 
 # Initialize database
 python -m video.db init

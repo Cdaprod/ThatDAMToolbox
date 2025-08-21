@@ -18,33 +18,18 @@ tqdm
 textual==0.54                      # optional TUI dashboards
 
 # ────────────────────────────────────────────────────────────────
-#  Deep-learning + model toolkits
+#  Messaging / queues
 # ────────────────────────────────────────────────────────────────
-# NOTE (Raspberry Pi 5): install CPU wheels for torch/vision first:
-#   pip install --extra-index-url https://download.pytorch.org/whl/raspberrypi \
-#       torch torchvision
-torch>=2.1.0           # core tensor library
-torchvision>=0.15.0    # model zoo / transforms
-transformers>=4.41.0   # Hugging-Face models / tokenizers
-openai-whisper>=202311          # audio → text embeddings
-open-clip-torch>=2.24.0         # Visual CLIP embeddings
-
-# ────────────────────────────────────────────────────────────────
-#  Vector-DB back-ends (optional -- fall back to in-memory)
-# ────────────────────────────────────────────────────────────────
-weaviate-client>=4.5.4           # remote / embedded Weaviate
-pymilvus>=2.4.4                  # Milvus / Zilliz cloud
-faiss-cpu>=1.7.4.post0           # local ANN index (CPU build)
-# faiss-gpu>=1.7.4.post0         # uncomment if you have CUDA
 aio-pika~=9.5.5
+pika
 
 # ────────────────────────────────────────────────────────────────
-#  Anything else specific to your modules goes below
+#  Serialization helpers
 # ────────────────────────────────────────────────────────────────
 marshmallow<4.0
 
 # ────────────────────────────────────────────────────────────────
-#  webrtc & websocket requirements
+#  WebRTC & websocket requirements
 # ────────────────────────────────────────────────────────────────
 aiortc>=1.9.0
 av>=10.0.0
