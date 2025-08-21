@@ -52,7 +52,8 @@ export default class UploadCard {
         if (j.status === 'done') {
           clearInterval(timer);
           li.textContent = `${j.filename} – ✅`;
-          document.querySelector('explorer-pane')?.refresh();
+          // Notify DAM Explorer to refresh its asset list
+          window.dispatchEvent(new Event('explorer:refresh'));
         } else if (j.status === 'error') {
           clearInterval(timer);
           li.textContent = `${j.filename} – ❌ ${j.error || 'Unknown error'}`;
