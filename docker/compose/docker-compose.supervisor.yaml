@@ -8,7 +8,7 @@ x-build-common: &build-common
   args:
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
-    - type=local,src=/tmp/docker_cache
+    - type=local,src=/tmp/buildx-cache
   cache_to:
     - type=local,dest=/tmp/buildx-cache,mode=max
   labels:
