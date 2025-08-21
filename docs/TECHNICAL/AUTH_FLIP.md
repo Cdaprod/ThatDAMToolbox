@@ -31,11 +31,13 @@ Use the root `docker-compose.yaml` with profiles when you want the bridge and Id
 # Auth0
 export COMPOSE_PROFILES=auth0
 export OIDC_PROVIDER=auth0
+export TENANCY_URL=http://tenancy:8082
 docker compose up -d --build auth-bridge
 
 # Keycloak
 export COMPOSE_PROFILES=keycloak
 export OIDC_PROVIDER=keycloak
+export TENANCY_URL=http://tenancy:8082
 docker compose up -d --build keycloak auth-bridge
 ```
 

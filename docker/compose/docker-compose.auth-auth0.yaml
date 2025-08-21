@@ -42,6 +42,7 @@ services:
       AUTH_REDIRECT_BASE: "${AUTH_REDIRECT_BASE:-http://localhost:8081}"
       AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:-localhost}"
       AUTH_ALLOWED_ORIGINS: "${AUTH_ALLOWED_ORIGINS:-http://localhost:3000}"
+      TENANCY_URL: "${TENANCY_URL:-http://tenancy:8082}"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
       interval: 10s
