@@ -4,6 +4,27 @@ Create these files in your `/web-app` directory:
 
 For provisioning the full stack, follow the [Provisioning Quickstart](../../docs/provisioning.md).
 
+## Signup Flow
+
+The `/signup` page creates a personal tenant and stores the tenant ID in the
+auth session. After signup, users are routed to `/{tenant}/dashboard` and can
+choose to create an organization or invite members.
+
+Test locally with:
+
+```bash
+# run the dev server
+cd docker/web-app
+yarn dev
+
+# in another shell invoke the tenancy API used by the form
+curl -X POST http://localhost:3000/api/tenancy \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Demo","email":"demo@example.com"}'
+```
+
+Then open http://localhost:3000/signup in your browser.
+
 ## Core Configuration Files
 
 ```
