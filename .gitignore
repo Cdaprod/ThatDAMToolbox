@@ -165,6 +165,8 @@ docker/rabbitmq/data/
 !/docker/proxy-viewer/tsconfig.json
 !/docker/packages/player/package.json
 !/docker/packages/player/tsconfig.json
+!/docker/packages/design-system/package.json
+!/docker/packages/design-system/tsconfig.json
 
 /public/design-token-styles/**
 /docs/GIT-APPLY/**

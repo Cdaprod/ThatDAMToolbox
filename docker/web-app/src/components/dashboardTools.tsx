@@ -53,6 +53,17 @@ export const dashboardTools: Record<string, DashboardTool> = {
     lastUsed: '2024-01-20T09:15:00Z',
     status: 'idle',
   },
+  'layered-explorer': {
+    id: 'layered-explorer',
+    href: '/dashboard/layered-explorer',
+    title: 'Layered Explorer',
+    icon: Eye,
+    color: dashboardColorClasses['layered-explorer'],
+    context: 'archive',
+    relatedTools: ['dam-explorer'],
+    lastUsed: '2024-01-20T09:15:00Z',
+    status: 'idle',
+  },
   motion: {
     id: 'motion',
     href: '/dashboard/motion',
