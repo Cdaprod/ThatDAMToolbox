@@ -167,6 +167,7 @@ docker/rabbitmq/data/
 !/docker/packages/player/tsconfig.json
 !/docker/packages/design-system/package.json
 !/docker/packages/design-system/tsconfig.json
+!/docker/packages/stream-registry/package.json
 
 /public/design-token-styles/**
 /docs/GIT-APPLY/**

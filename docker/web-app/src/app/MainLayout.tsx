@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 
 export const shouldHideSidebar = (pathname: string) =>
-  /^\/dashboard\/(dam-explorer|motion|live|witness)/.test(pathname);
+  /^\/dashboard\/(dam-explorer|layered-explorer|motion|live|witness)/.test(pathname);
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

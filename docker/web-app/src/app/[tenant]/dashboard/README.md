@@ -8,6 +8,7 @@ Tools are rendered in primary/secondary/tertiary sections based on activity and 
 |---------------------------------|--------------------|
 | /{tenant}/dashboard/camera-monitor       | Camera Monitor     |
 | /{tenant}/dashboard/dam-explorer         | DAM Explorer       |
+| /{tenant}/dashboard/layered-explorer     | Layered Explorer   |
 | /{tenant}/dashboard/motion               | Motion Tool        |
 | /{tenant}/dashboard/live                 | Live Monitor       |
 | /{tenant}/dashboard/witness              | Witness Tool       |
