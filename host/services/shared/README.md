@@ -50,6 +50,18 @@ tenantID, principalID, _ := r.Resolve(ctx, req)
 `TenantDirectoryPort` looks up tenants, `MembershipPort` checks principal access,
 and `TenantContextResolverPort` extracts tenant context from requests.
 
+## PTP Clock
+
+The `ptp` package provides a monotonic clock that can be synchronised to an
+external PTP source. Create a clock, call `Sync` with the current PTP time, and
+use `Now` for aligned timestamps:
+
+```go
+clk := ptp.New()
+clk.Sync(ptpTime)
+ts := clk.Now()
+```
+
 ## Stream
 
 The `stream/rtp` package sends RTP packets paced by PTP timestamps with optional jitter buffering.
