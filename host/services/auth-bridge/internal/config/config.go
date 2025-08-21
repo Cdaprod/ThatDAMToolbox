@@ -18,6 +18,7 @@ type Config struct {
 	RedirectBase   string
 	CookieDomain   string
 	AllowedOrigins []string // reserved for future CORS work
+	TenancyURL     string
 	Addr           string
 }
 
@@ -38,6 +39,7 @@ func Load() Config {
 		Scopes:       env("OIDC_SCOPES", "openid profile email"),
 		RedirectBase: env("AUTH_REDIRECT_BASE", "http://localhost:8081"),
 		CookieDomain: env("AUTH_COOKIE_DOMAIN", "localhost"),
+		TenancyURL:   env("TENANCY_URL", ""),
 		Addr:         env("ADDR", ":8081"),
 	}
 }

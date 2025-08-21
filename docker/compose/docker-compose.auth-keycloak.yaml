@@ -8,9 +8,7 @@ x-build-common: &build-common
   args:
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
-    - type=local,src=.docker_cache
-  cache_to:
-    - type=local,dest=.docker_cache,mode=max
+    - type=local,src=/tmp/buildx-cache
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
@@ -62,6 +60,7 @@ services:
       AUTH_REDIRECT_BASE: "${AUTH_REDIRECT_BASE:-http://localhost:8081}"
       AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:-localhost}"
       AUTH_ALLOWED_ORIGINS: "${AUTH_ALLOWED_ORIGINS:-http://localhost:3000}"
+      TENANCY_URL: "${TENANCY_URL:-http://tenancy:8082}"
     depends_on:
       keycloak:
         condition: service_healthy

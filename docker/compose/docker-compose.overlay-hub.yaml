@@ -8,9 +8,7 @@ x-build-common: &build-common
   args:
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
-    - type=local,src=.docker_cache
-  cache_to:
-    - type=local,dest=.docker_cache,mode=max
+    - type=local,src=/tmp/buildx-cache
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
@@ -23,6 +21,8 @@ services:
   overlay-hub:
     build:
       <<: *build-common
+      cache_to:
+        - type=local,dest=/tmp/buildx-cache.overlay-hub,mode=max
       context: ../../
       dockerfile: host/services/overlay-hub/Dockerfile
     image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}

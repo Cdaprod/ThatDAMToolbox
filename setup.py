@@ -4,7 +4,9 @@ from setuptools import find_packages, setup
 
 ROOT = Path(__file__).parent
 README = (ROOT / "README.md").read_text(encoding="utf-8")
-REQUIREMENTS = (ROOT / "requirements.txt").read_text().splitlines()
+REQUIREMENTS = (
+    ROOT / "docker" / "video-api" / "requirements.txt"
+).read_text().splitlines()
 
 setup(
     name="video",

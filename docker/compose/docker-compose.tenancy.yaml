@@ -1,0 +1,37 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-build-common: &build-common
+  args:
+    BUILDKIT_INLINE_CACHE: "1"
+  cache_from:
+    - type=local,src=/tmp/buildx-cache
+  labels:
+    org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
+    org.opencontainers.image.vendor: "Cdaprod"
+    org.opencontainers.image.title: "ThatDAMToolbox"
+    org.opencontainers.image.revision: "${GIT_SHA:-dev}"
+    org.opencontainers.image.version: "${IMAGE_TAG:-dev}"
+    org.opencontainers.image.licenses: "Apache-2.0"
+
+services:
+  tenancy:
+    build:
+      <<: *build-common
+      context: ../../
+      dockerfile: docker/tenancy/Dockerfile
+    image: cdaprod/tenancy:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-tenancy
+    networks: [damnet]
+    ports: ["8082:8082"]
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped

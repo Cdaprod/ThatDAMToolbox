@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
+	"time"
 )
 
 // Config holds connection settings for the message bus.
@@ -102,4 +104,34 @@ func Close() error {
 	err := inst.Close()
 	inst = nil
 	return err
+}
+
+// PublishTenantEvent publishes a tenant.* event and appends it to the audit log.
+func PublishTenantEvent(action string, payload any) error {
+	topic := "tenant." + action
+	if err := Publish(topic, payload); err != nil {
+		return err
+	}
+	entry := map[string]any{
+		"topic":   topic,
+		"payload": payload,
+		"ts":      time.Now().UTC(),
+	}
+	b, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join("data", "audit.log")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(append(b, '\n')); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }

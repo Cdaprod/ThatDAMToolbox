@@ -10,11 +10,7 @@ import { useTimecode } from "@/hooks/useTimecode";
 import { useCameraStream } from "@/hooks/useCameraStream";
 import RecordButton from "@/components/RecordButton";
 import { useModal } from "@/providers/ModalProvider";
-import {
-  deviceOptionStyle,
-  sliderBackgroundStyle,
-  batteryLevelStyle,
-} from "@/styles/theme";
+import { sliderBackgroundStyle, batteryLevelStyle } from "@/styles/theme";
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(
@@ -157,8 +153,7 @@ const CameraMonitor: React.FC = () => {
 
   /* State management */
   const [devices, setDevices] = useState<string[]>([]);
-  const [devicesAvailableNow, setDevicesAvailableNow] = useState<string[]>([]);
-  const [allDevicesSeen, setAllDevicesSeen] = useState<string[]>(() => {
+  const [, setAllDevicesSeen] = useState<string[]>(() => {
     // Try to load last seen from localStorage
     const stored =
       typeof window !== "undefined" &&
@@ -303,7 +298,7 @@ const CameraMonitor: React.FC = () => {
             ? msg.data.map((d) => d.path)
             : [];
 
-          setDevicesAvailableNow(nowList);
+          setDevices(nowList);
 
           // Merge with all previously seen devices, guarding against non-arrays
           setAllDevicesSeen(prev => {
@@ -332,6 +327,8 @@ const CameraMonitor: React.FC = () => {
                 feed: "main",
                 device: nowList[0],
               } as SelectStreamMsg);
+            } else {
+              setSelectedDevice("");
             }
           }
 
@@ -580,11 +577,11 @@ const CameraMonitor: React.FC = () => {
       <div className="flex flex-1">
         <div className="flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden">
           {/* 1) The preview wrapper */}
-          <div className="relative w-full h-full">
+          <div className="relative max-w-full">
             <video
               ref={mediaRef}
               src={streamSrc}
-              className="camera-video-feed w-full h-full object-contain absolute top-0 left-0 z-0"
+              className="camera-video-feed max-w-full h-auto"
               controls
               autoPlay
               muted
@@ -649,18 +646,17 @@ const CameraMonitor: React.FC = () => {
               value={selectedDevice}
               onChange={(e) => handleDeviceChange(e.target.value)}
               className="w-full mb-2 p-1 bg-gray-800 text-white text-sm rounded"
+              disabled={devices.length === 0}
             >
-              {allDevicesSeen.map((dev) => (
-                <option
-                  key={dev}
-                  value={dev}
-                  disabled={!devicesAvailableNow.includes(dev)}
-                  style={deviceOptionStyle(devicesAvailableNow.includes(dev))}
-                >
-                  {dev}
-                  {!devicesAvailableNow.includes(dev) ? " (offline)" : ""}
-                </option>
-              ))}
+              {devices.length === 0 ? (
+                <option value="">No cameras found</option>
+              ) : (
+                devices.map((dev) => (
+                  <option key={dev} value={dev}>
+                    {dev}
+                  </option>
+                ))
+              )}
             </select>
 
             {/* Codec dropdown */}

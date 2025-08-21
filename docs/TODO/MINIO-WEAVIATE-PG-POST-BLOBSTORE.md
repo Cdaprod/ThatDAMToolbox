@@ -127,7 +127,7 @@ services:
     image: semitechnologies/weaviate:latest
     container_name: thatdamtoolbox-weaviate
     command: ["--host","0.0.0.0","--port","8080","--scheme","http"]
-    ports: ["8082:8080","50051:50051"]
+    ports: ["8083:8080","50051:50051"]
     environment:
       QUERY_DEFAULTS_LIMIT: "25"
       DEFAULT_VECTORIZER_MODULE: "none"

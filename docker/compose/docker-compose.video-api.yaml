@@ -9,9 +9,7 @@ x-build-common: &build-common
   args:
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
-    - type=local,src=.docker_cache
-  cache_to:
-    - type=local,dest=.docker_cache,mode=max
+    - type=local,src=/tmp/buildx-cache
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
@@ -91,7 +89,7 @@ services:
       # VIDEO_STORAGE:  "sqlite"                      # Default (no env needed)
       # VIDEO_STORAGE:  "faiss"                       # Use Faiss vector index
       # VIDEO_STORAGE:  "weaviate"                    # Use Weaviate backend
-      WEAVIATE_URL:   "http://localhost:8082"         # For Weaviate backend:
+      WEAVIATE_URL:   "http://localhost:8083"         # For Weaviate backend:
       MINIO_ENDPOINT: "http://localhost:9000"         # Optional if your code needs it
 
       # --- Event bus + integrations -------------

@@ -11,10 +11,8 @@ x-build-common: &build-common
   args:
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
-    - type=local,src=.docker_cache
+    - type=local,src=/tmp/buildx-cache
     - type=registry,ref=ghcr.io/cdaprod/thatdamtoolbox-cache:build
-  cache_to:
-    - type=local,dest=.docker_cache,mode=max
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
@@ -44,6 +42,7 @@ include:
   - path: ./docker/compose/docker-compose.media-api.yaml
   - path: ./docker/compose/docker-compose.video-api.yaml
   - path: ./docker/compose/docker-compose.video-web.yaml
+  - path: ./docker/compose/docker-compose.tenancy.yaml
   - path: ./docker/compose/docker-compose.web-site.yaml
 
 networks:
@@ -77,6 +76,4 @@ volumes:
   web-site-next:
     driver: local
   web-site-npm:
-    driver: local
-  buildx-cache:
     driver: local

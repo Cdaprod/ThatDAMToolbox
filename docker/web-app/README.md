@@ -4,6 +4,31 @@ Create these files in your `/web-app` directory:
 
 For provisioning the full stack, follow the [Provisioning Quickstart](../../docs/provisioning.md).
 
+## Signup Flow
+
+The `/signup` page creates a personal tenant and stores the tenant ID in the
+auth session. After signup, users are routed to `/{tenant}/dashboard` and can
+choose to create an organization or invite members.
+
+Test locally with:
+
+```bash
+# run the dev server
+cd docker/web-app
+yarn dev
+
+# start the tenancy API (port 8082)
+uvicorn tenancy.app:app --port 8082
+# or: docker compose up tenancy
+
+# in another shell invoke the tenancy API via the web-app proxy
+curl -X POST http://localhost:3000/api/tenancy \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Demo","email":"demo@example.com"}'
+```
+
+Then open http://localhost:3000/signup in your browser.
+
 ## Core Configuration Files
 
 ```
@@ -50,10 +75,6 @@ web-app/.
 │   │   │   │   ├── layout.tsx
 │   │   │   │   └── page.tsx
 │   │   │       ├── dam-explorer
-│   │   │       │   └── page.tsx
-│   │   │       ├── explorer
-│   │   │       │   ├── layered
-│   │   │       │   │   └── page.tsx
 │   │   │       │   └── page.tsx
 │   │   │       ├── ffmpeg
 │   │   │       │   └── page.tsx
@@ -246,6 +267,8 @@ Create `/web-app/.env.local` for local development:
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+# Maybe disabled for TENANCY_URL NEXT_PUBLIC_TENANCY_URL=http://localhost:8082
+TENANCY_URL=http://localhost:8080/api/tenancy
 NODE_ENV=development
 ```
 

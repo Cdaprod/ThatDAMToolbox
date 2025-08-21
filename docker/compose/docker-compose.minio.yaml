@@ -8,9 +8,7 @@ x-build-common: &build-common
   args:
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
-    - type=local,src=.docker_cache
-  cache_to:
-    - type=local,dest=.docker_cache,mode=max
+    - type=local,src=/tmp/buildx-cache
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
@@ -59,10 +57,7 @@ services:
       - ../../docker/minio/data:/data
     # ✅ mc-based healthcheck: no curl/wget required
     healthcheck:
-      test: >
-        CMD-SHELL
-        mc alias set hc http://localhost:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1
-        && mc admin info hc >/dev/null 2>&1
+      test: ["CMD-SHELL", "mc alias set hc http://localhost:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" >/dev/null 2>&1 || true; mc admin info hc >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 12

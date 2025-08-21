@@ -86,14 +86,14 @@ How to Use
 
 Deploy Schema
 
-You can create this schema with a script using the Weaviate Python client or via a POST to http://localhost:8081/v1/schema.
+You can create this schema with a script using the Weaviate Python client or via a POST to http://localhost:8083/v1/schema.
 
 Example (Python, run in your dev container):
 
 import weaviate
 import json
 
-client = weaviate.Client("http://localhost:8081")
+client = weaviate.Client("http://localhost:8083")
 
 with open("scripts/weaviate/schema.json") as f:
     schema = json.load(f)
