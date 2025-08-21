@@ -43,6 +43,11 @@ export const videoApi = {
     getJson<unknown[]>(`/video/search?q=${encodeURIComponent(q)}`),
 };
 
+// Motion extractor job status
+export const motionExtractor = {
+  jobs: () => getJson<unknown[]>('/motion_extractor'),
+};
+
 // API gateway: credentials, webhooks, billing
 export const apiGateway = {
   credentials: () => getJson<unknown[]>('/credentials'),
