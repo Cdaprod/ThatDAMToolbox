@@ -16,3 +16,14 @@ test('shows fallback message when supervisor unreachable', async () => {
     supervisor.listNodes = original;
   }
 });
+
+test('renders node names when supervisor returns list', async () => {
+  const original = supervisor.listNodes;
+  supervisor.listNodes = async () => [{ id: 'n1', name: 'cam1' }];
+  try {
+    const html = renderToString(await NodesPage());
+    assert.ok(html.includes('cam1'));
+  } finally {
+    supervisor.listNodes = original;
+  }
+});

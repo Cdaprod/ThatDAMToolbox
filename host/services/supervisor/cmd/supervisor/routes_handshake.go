@@ -1,19 +1,39 @@
 package main
 
 import (
-	"encoding/json"
-	"net/http"
-	"os"
-	"path/filepath"
-	"runtime"
+        "encoding/json"
+        "net/http"
+        "os"
+        "path/filepath"
+        "runtime"
 
-	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/supervisor/plan"
-	"github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
-	"gopkg.in/yaml.v3"
+        "github.com/Cdaprod/ThatDamToolbox/host/services/shared/supervisor/plan"
+        "github.com/Cdaprod/ThatDamToolbox/host/services/supervisor/internal/ports"
+        "gopkg.in/yaml.v3"
 )
 
 // Handshake route handlers with basic policy enforcement.
 // Example: curl -X POST http://localhost:8070/v1/nodes/register -d '{}'
+
+// nodesList returns a snapshot of registered agents.
+// Example: curl http://localhost:8070/v1/nodes
+func nodesList(w http.ResponseWriter, r *http.Request) {
+        if r.Method != http.MethodGet {
+                http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+                return
+        }
+        p, err := auth(r)
+        if err != nil {
+                http.Error(w, err.Error(), http.StatusUnauthorized)
+                return
+        }
+        if !policy.Allow(r.Context(), p, ports.ActPlan) {
+                http.Error(w, "forbidden", http.StatusForbidden)
+                return
+        }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(reg.Snapshot())
+}
 
 func nodesRegister(w http.ResponseWriter, r *http.Request) {
 	p, err := auth(r)
