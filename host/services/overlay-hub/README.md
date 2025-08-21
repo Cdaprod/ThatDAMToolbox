@@ -14,3 +14,8 @@ Endpoints:
 - `POST /v1/register`
 - `POST /v1/heartbeat`
 - `POST /v1/negotiate`
+- `POST /v1/publish`
+- `POST /v1/subscribe`
+- `POST /v1/reroute`
+- `POST /v1/telemetry`
+- `POST /v1/node/init`
