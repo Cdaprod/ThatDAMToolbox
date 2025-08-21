@@ -61,3 +61,12 @@ clk := ptp.New()
 clk.Sync(ptpTime)
 ts := clk.Now()
 ```
+
+## Stream
+
+The `stream/rtp` package sends RTP packets paced by PTP timestamps with optional jitter buffering.
+
+```go
+s, _ := rtp.NewSender(rtp.Config{Destination: "239.1.1.1:5004", ClockRate: 90000})
+_ = s.Send(&rtp.Packet{Timestamp:0, SequenceNumber:1})
+```

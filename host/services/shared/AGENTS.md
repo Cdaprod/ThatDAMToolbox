@@ -11,3 +11,4 @@ Scope: Common Go packages and middleware reused by host services.
   Kafka-like sequential I/O.
 - `ptp` offers a monotonic clock with optional PTP offset; instantiate a
   `Clock` and avoid package-level globals.
+- `stream/rtp` provides a PTP-paced RTP sender with configurable jitter buffering.
