@@ -36,7 +36,6 @@
   "exclude": [
     "src/components/CameraMonitor/**",
     "src/components/__tests__/CameraMonitor.test.ts",
-    "src/components/__tests__/TopBar.test.tsx",
     "src/components/modals/**",
     "src/components/overlays/**"
   ]
