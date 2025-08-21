@@ -20,6 +20,7 @@ import open_clip
 import cv2
 
 from .hierarchy import VideoSlice, HierarchyManager
+from video.core.ports import tenant_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -308,17 +309,18 @@ class EmbeddingGenerator:
         
         return vectors
     
-    def get_cache_key(self, path: str, slice_obj: VideoSlice) -> str:
+    def get_cache_key(self, path: str, slice_obj: VideoSlice, tenant_id: str = "default") -> str:
         """Generate cache key for embedding."""
         file_hash = hash(path)  # Simplified hash
-        return f"{file_hash}_{slice_obj.cache_key}_{slice_obj.level}"
-    
-    async def get_cached_embedding(self, path: str, slice_obj: VideoSlice) -> Optional[np.ndarray]:
+        key = f"{file_hash}_{slice_obj.cache_key}_{slice_obj.level}"
+        return tenant_prefix(tenant_id, key)
+
+    async def get_cached_embedding(self, path: str, slice_obj: VideoSlice, tenant_id: str = "default") -> Optional[np.ndarray]:
         """Get cached embedding if available."""
-        cache_key = self.get_cache_key(path, slice_obj)
+        cache_key = self.get_cache_key(path, slice_obj, tenant_id)
         return self.embedding_cache.get(cache_key)
-    
-    async def cache_embedding(self, path: str, slice_obj: VideoSlice, embedding: np.ndarray):
+
+    async def cache_embedding(self, path: str, slice_obj: VideoSlice, embedding: np.ndarray, tenant_id: str = "default"):
         """Cache embedding for future use."""
-        cache_key = self.get_cache_key(path, slice_obj)
+        cache_key = self.get_cache_key(path, slice_obj, tenant_id)
         self.embedding_cache[cache_key] = embedding

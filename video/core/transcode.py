@@ -10,10 +10,12 @@ import shutil
 import subprocess
 from typing import Literal
 
+from .ports import UsageMeterPort
+
 __all__ = ["transcode_sw"]
 
 
-def transcode_sw(src: str, dst: str, vcodec: Literal["h264", "hevc"] = "h264") -> None:
+def transcode_sw(src: str, dst: str, vcodec: Literal["h264", "hevc"] = "h264", usage_meter: UsageMeterPort | None = None) -> None:
     """Transcode ``src`` to ``dst`` using ffmpeg (CPU).
 
     Raises ``RuntimeError`` if ffmpeg is not available.
@@ -34,3 +36,5 @@ def transcode_sw(src: str, dst: str, vcodec: Literal["h264", "hevc"] = "h264") -
         dst,
     ]
     subprocess.check_call(cmd)
+    if usage_meter:
+        usage_meter.record_transcode()

@@ -18,6 +18,17 @@ These events are delivered over the central event bus (RabbitMQ topic `events`),
 - Some events may include `trace_id`, `request_id`, or `correlation_id` for tracing.
 - **Event schemas are versioned** and can be safely extended with new fields.
 
+### Tenant Logging & Audit
+
+- Middleware in Go and Python services appends `tenant_id` and `principal_id`
+  to all log entries.
+- Requests emit `tenant.*` events on the message bus. These are also written to
+  `data/audit.log` as an immutable trail.
+- Event payloads **must** include both identifiers:
+  - `tenant_id` – logical tenant namespace
+  - `principal_id` – authenticated user or agent
+
+
 -----
 
 ## Event Topics
