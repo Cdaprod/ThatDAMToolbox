@@ -33,6 +33,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -77,6 +78,43 @@ func iceServers() []webrtc.ICEServer {
 		out = append(out, webrtc.ICEServer{URLs: []string{p}})
 	}
 	return out
+}
+
+// tsnConfig represents required Time Sensitive Networking settings.
+// Example:
+//
+//	TSN_INTERFACE=eth0 TSN_QUEUE=3 TSN_PTP_GRANDMASTER=abcd \
+//	PTP_GRANDMASTER_ID=abcd
+//
+// cfg, err := loadTSNConfig()
+//
+// The service exits if TSN env vars are invalid.
+type tsnConfig struct {
+	Interface   string
+	Queue       int
+	Grandmaster string
+}
+
+// loadTSNConfig parses TSN_* environment variables and validates the active
+// PTP grandmaster against TSN_PTP_GRANDMASTER when provided.
+func loadTSNConfig() (*tsnConfig, error) {
+	iface := os.Getenv("TSN_INTERFACE")
+	if iface == "" {
+		return nil, fmt.Errorf("TSN_INTERFACE required")
+	}
+	q, err := strconv.Atoi(os.Getenv("TSN_QUEUE"))
+	if err != nil || q <= 0 {
+		return nil, fmt.Errorf("TSN_QUEUE must be >0")
+	}
+	actual := os.Getenv("PTP_GRANDMASTER_ID")
+	if actual == "" {
+		return nil, fmt.Errorf("PTP_GRANDMASTER_ID not set")
+	}
+	expected := os.Getenv("TSN_PTP_GRANDMASTER")
+	if expected != "" && expected != actual {
+		return nil, fmt.Errorf("ptp grandmaster mismatch: expected %s got %s", expected, actual)
+	}
+	return &tsnConfig{Interface: iface, Queue: q, Grandmaster: actual}, nil
 }
 
 // DeviceInfo represents camera device information
@@ -705,6 +743,15 @@ func main() {
 	proxyPort := getEnv("PROXY_PORT", "8000")
 	backendAddr := getEnv("BACKEND_URL", "http://api-gateway:8080")
 	frontendAddr := getEnv("FRONTEND_URL", "http://localhost:3000")
+	var tsnCfg *tsnConfig
+	if os.Getenv("TSN_INTERFACE") != "" {
+		var err error
+		tsnCfg, err = loadTSNConfig()
+		if err != nil {
+			logx.L.Error("invalid TSN config", "err", err)
+			os.Exit(1)
+		}
+	}
 
 	// Create device proxy
 	proxy, err := NewDeviceProxy(backendAddr, frontendAddr)
@@ -726,6 +773,9 @@ func main() {
 	logx.L.Info("service starting", "port", proxyPort)
 	logx.L.Info("proxying to backend", "backend", backendAddr)
 	logx.L.Info("serving frontend", "frontend", frontendAddr)
+	if tsnCfg != nil {
+		logx.L.Info("TSN enabled", "iface", tsnCfg.Interface, "queue", tsnCfg.Queue, "gm", tsnCfg.Grandmaster)
+	}
 
 	server := &http.Server{
 		Addr:    ":" + proxyPort,

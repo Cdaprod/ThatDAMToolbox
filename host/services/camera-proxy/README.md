@@ -65,6 +65,18 @@ docker run -p 8000:8000 \
 - `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
 - `VIEWER_DIR` – path to static viewer files served at `/viewer/` (default `/srv/viewer`)
 
+### TSN / AVB
+
+Enable deterministic transport and PTP validation with these variables:
+
+- `TSN_INTERFACE` – network interface for AVB traffic (enables TSN mode when set)
+- `TSN_QUEUE` – egress queue to reserve for SR class traffic
+- `TSN_PTP_GRANDMASTER` – expected grandmaster ID; checked against
+  `PTP_GRANDMASTER_ID`
+
+The proxy exits if configuration is invalid or the grandmaster mismatches.
+Ensure NIC and switch ports have 802.1AS and 802.1Qav enabled.
+
 ### Logging
 
 Configure log output with environment variables:
