@@ -86,8 +86,10 @@ export const statusClasses: Record<'success' | 'error' | 'warning' | 'info', str
 export const dashboardColorClasses: Record<string, string> = {
   'camera-monitor': 'text-[var(--color-camera-monitor)]',
   'dam-explorer':   'text-[var(--color-accent)]',
+  'layered-explorer': 'text-[var(--color-accent)]',
   motion:           'text-[var(--color-motion)]',
   live:             'text-[var(--color-live)]',
   witness:          'text-[var(--color-witness)]',
   nodes:            'text-[var(--color-nodes)]',
+  'trim-idle':      'text-[var(--color-trim-idle)]',
 };
