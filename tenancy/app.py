@@ -165,3 +165,9 @@ def patch_membership(
     x_user_id: str = Header(..., alias="X-User-ID"),
 ) -> Membership:
     return service.update_membership(membership_id, x_user_id, payload.role)
+
+
+@app.get("/health")
+def health() -> Dict[str, str]:
+    """Basic liveness probe."""
+    return {"status": "ok"}
