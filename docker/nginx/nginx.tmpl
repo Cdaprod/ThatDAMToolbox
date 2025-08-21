@@ -81,17 +81,6 @@ http {
         #     proxy_pass http://video_web;
         # }
 
-        # ------------------ Dev frontend (Next.js) ------------------------
-        # In local dev we don’t have a static build yet--just proxy everything
-        # ------------------ Dashboard (exact match; bypass Next.js) --------
-        # Put the file at docker/web-app/out/ServiceDashboard.html
-        # (mounted to /usr/share/nginx/html via compose)
-        location = /ServiceDashboard.html {
-            root /usr/share/nginx/html;
-            default_type text/html;
-            expires -1;   # disable cache while iterating
-        }
-
         # ------------------ PREVIEW PROXY (same-origin iframes) ------------
         # Each block strips upstream frame-blockers and allows SAMEORIGIN.
 
@@ -208,7 +197,8 @@ http {
         }
 
         # ------------------ Dev frontend (Next.js) --------------------------
-        # In local dev we don’t have a static build yet--just proxy everything.
+        # In local dev we don’t have a static build yet—proxy everything to the
+        # live Next.js server so theme changes appear immediately.
         location / {
             include proxy_defaults.conf;
             proxy_pass http://video_web;
