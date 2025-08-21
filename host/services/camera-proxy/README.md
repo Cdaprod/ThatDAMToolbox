@@ -77,6 +77,14 @@ Configure log output with environment variables:
 
 Health check endpoint: `GET /healthz` returns `200 OK` when ready.
 
+Prometheus metrics are available at `/metrics` including gauges for latency, packet
+loss, jitter, bitrate, and a reroute counter.
+
+Events:
+
+- `camera.path_change` – emitted when the proxy falls back from WebRTC to MJPEG.
+- `camera.alarm` – emitted on streaming errors.
+
 
 ## Streaming
 
