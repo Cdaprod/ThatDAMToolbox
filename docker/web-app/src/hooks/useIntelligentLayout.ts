@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import type { DashboardTool } from '../components/dashboardTools'
+import type { DashboardTool } from '../lib/toolRegistry'
 
 /** Compute groups of tools based on status and recency */
 export function computeLayoutGroups(tools: DashboardTool[]) {

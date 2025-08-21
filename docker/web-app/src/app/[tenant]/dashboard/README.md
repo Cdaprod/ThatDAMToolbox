@@ -12,4 +12,5 @@ Tools are rendered in primary/secondary/tertiary sections based on activity and 
 | /{tenant}/dashboard/motion               | Motion Tool        |
 | /{tenant}/dashboard/live                 | Live Monitor       |
 | /{tenant}/dashboard/witness              | Witness Tool       |
+| /{tenant}/dashboard/trim-idle            | Trim Idle          |
 
