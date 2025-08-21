@@ -118,6 +118,15 @@ Set these variables to control log output:
 
 Set `AUTH_TOKEN` to require a bearer token on API requests. To serve HTTPS, provide `TLS_CERT_FILE` and `TLS_KEY_FILE` with the certificate and key paths.
 
+
+
+### See also
+- [camera-proxy](../camera-proxy/README.md)
+- [api-gateway](../api-gateway/README.md)
+- [overlay-hub](../overlay-hub/README.md)
+- [Hardware Capture Module](../../../video/modules/hwcapture/README.md)
+- [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)
+
 ## Metrics
 
 Prometheus metrics, including encoder frame delay and drop counts, are served at `/metrics` when metrics are enabled in the configuration (defaults to port `9001`).
@@ -125,4 +134,5 @@ Prometheus metrics, including encoder frame delay and drop counts, are served at
 ```bash
 curl http://localhost:9001/metrics
 ```
+
 

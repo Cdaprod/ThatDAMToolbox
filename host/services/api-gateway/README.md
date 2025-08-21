@@ -30,6 +30,14 @@ Configure via environment variables:
 - `GET /.well-known/jwks.json`
 - `GET /overlay/hints`
 
+
+### See also
+- [camera-proxy](../camera-proxy/README.md)
+- [capture-daemon](../capture-daemon/README.md)
+- [overlay-hub](../overlay-hub/README.md)
+- [Hardware Capture Module](../../../video/modules/hwcapture/README.md)
+- [Wireless HDMI Transmitter Architecture](../../../docs/TECHNICAL/wireless-hdmi/transmitter-architecture.md)
+
 ## Stream endpoints (JWT required)
 - `POST /streams` – register transmitter metadata
 - `GET /streams` – list active streams
@@ -54,3 +62,4 @@ All endpoints (except JWKS and token issuance) expect an `Authorization: Bearer 
 curl -X POST localhost:8080/rtp/sessions \
   -d '{"id":"cam1","address":"239.0.0.1","port":5004,"payload_type":96,"clock_rate":90000}'
 ```
+
