@@ -64,6 +64,7 @@ docker run -p 8000:8000 \
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC (optional)
 - `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
 - `VIEWER_DIR` – path to static viewer files served at `/viewer/` (default `/srv/viewer`)
+- `SRT_BASE_URL` – base SRT address used by `/srt?device=` (optional)
 
 ### Logging
 

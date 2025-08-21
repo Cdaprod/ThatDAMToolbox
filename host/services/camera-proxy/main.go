@@ -43,6 +43,7 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
+	srt "github.com/Cdaprod/ThatDamToolbox/host/services/shared/stream/adapter/srt"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
@@ -96,6 +97,7 @@ type DeviceProxy struct {
 	upgrader     websocket.Upgrader
 	daemonURL    string
 	daemonToken  string
+	srtBase      string
 	probeKept    []v4l2probe.Device
 	probeDropped []v4l2probe.Device
 	usbSeen      map[string]struct{}
@@ -121,6 +123,7 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 		frontendURL: frontendURL,
 		daemonURL:   getEnv("CAPTURE_DAEMON_URL", "http://localhost:9000"),
 		daemonToken: getEnv("CAPTURE_DAEMON_TOKEN", ""),
+		srtBase:     getEnv("SRT_BASE_URL", ""),
 		usbSeen:     make(map[string]struct{}),
 		ignoredSeen: make(map[string]struct{}),
 		upgrader: websocket.Upgrader{
@@ -660,6 +663,9 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	// Device stream endpoint (transparent to containers)
 	mux.HandleFunc("/stream/", dp.handleDeviceStream)
 
+	// Expose SRT endpoint negotiation
+	mux.HandleFunc("/srt", dp.handleSRT)
+
 	// WebSocket proxy for control messages
 	mux.HandleFunc("/ws/", dp.handleWebSocketProxy)
 
@@ -682,6 +688,32 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	})
 
 	return mux
+}
+
+// handleSRT returns an SRT URL for the requested device using streamid.
+//
+// Example:
+//
+//	curl 'http://localhost:8000/srt?device=cam1'
+//	-> {"uri":"srt://host:9000?streamid=cam1"}
+func (dp *DeviceProxy) handleSRT(w http.ResponseWriter, r *http.Request) {
+	if dp.srtBase == "" {
+		http.NotFound(w, r)
+		return
+	}
+	id := r.URL.Query().Get("device")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	ad := srt.New(dp.srtBase)
+	details, err := ad.Open(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(details)
 }
 
 func main() {

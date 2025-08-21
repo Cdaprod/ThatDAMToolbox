@@ -49,3 +49,9 @@ tenantID, principalID, _ := r.Resolve(ctx, req)
 
 `TenantDirectoryPort` looks up tenants, `MembershipPort` checks principal access,
 and `TenantContextResolverPort` extracts tenant context from requests.
+
+## Stream
+
+The `stream` package negotiates device streaming sessions across protocols.
+It now includes an `srt` adapter that builds SRT URLs with a `streamid`
+query parameter.
