@@ -1,0 +1,19 @@
+tenant_id: "your-tenant-id"
+device_name: "edge-01"
+
+minio:
+  endpoint: "http://127.0.0.1:9000"
+  access_key: "minioadmin"
+  secret_key: "minioadmin"
+weaviate:
+  endpoint: "http://127.0.0.1:8080"
+
+cloud:
+  api_base: "https://api.your-saas.tld"
+  s3_endpoint: "https://s3.your-saas.tld"
+  vector_endpoint: "https://vec.your-saas.tld"
+
+features:
+  - ingest
+  - tailscale
+  - preview

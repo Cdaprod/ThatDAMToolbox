@@ -203,6 +203,7 @@ docker/rabbitmq/data/
 # Canary deployment in dev via compose (docker/compose/v2-canary)
 # ------------------------------------------------------------------
 !/docker/compose/v2-canary/.canary.env
+!/docker/compose/dev/.env.dev
 
 # ------------------------------------------------------------------
 # (DEV-ONLY) DO NOT HAVE IN PRODUCTION ENVIRONMENTS (DEVONLY)

@@ -106,6 +106,7 @@ See [Control Plane Bootstrapping](docs/TECHNICAL/BOOTSTRAP_ARCHITECTURE.md) for 
 - [Hardware Context](#hardware-context)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Deployment & Environments](#deployment--environments)
 - [API Documentation](#api-documentation)
 - [Development Roadmap](#development-roadmap)
 - [Contributing](#contributing)
@@ -923,6 +924,12 @@ Create JSON workflows for complex operations:
   ]
 }
 ```
+
+## Deployment & Environments
+
+See [README-DEPLOY](README-DEPLOY.md) for a command cheat sheet and
+[docs/TECHNICAL/environments.md](docs/TECHNICAL/environments.md) for
+details on dev, edge, and prod flows.
 
 ## API Documentation
 
