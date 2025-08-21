@@ -36,7 +36,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-
+  
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/metrics"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/abr"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
@@ -105,6 +107,15 @@ type DeviceProxy struct {
 	probeDropped []v4l2probe.Device
 	usbSeen      map[string]struct{}
 	ignoredSeen  map[string]struct{}
+	abrCtrl      *abr.Controller
+}
+
+func defaultABRLadder() []abr.Profile {
+	return []abr.Profile{
+		{Resolution: "1920x1080", FPS: 60, Bitrate: 12_000_000},
+		{Resolution: "1920x1080", FPS: 30, Bitrate: 8_000_000},
+		{Resolution: "1280x720", FPS: 30, Bitrate: 4_000_000},
+	}
 	clock        *ptp.Clock
 }
 
@@ -130,6 +141,7 @@ func NewDeviceProxy(backendAddr, frontendAddr string, clock *ptp.Clock) (*Device
 		srtBase:     getEnv("SRT_BASE_URL", ""),
 		usbSeen:     make(map[string]struct{}),
 		ignoredSeen: make(map[string]struct{}),
+		abrCtrl:     abr.NewController(defaultABRLadder()),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				if len(allow) == 1 && allow[0] == "" {
@@ -347,9 +359,11 @@ func (dp *DeviceProxy) negotiateWithDaemon(pc *webrtc.PeerConnection) error {
 }
 
 // streamFromFFmpeg launches ffmpeg and forwards H264 samples to track.
-func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample) error {
+func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, track *webrtc.TrackLocalStaticSample, bandwidth int) error {
+	profile := dp.abrCtrl.Update(bandwidth)
 	args := append(hwAccelArgs(), "-f", "v4l2", "-i", device,
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+		"-b:v", fmt.Sprintf("%d", profile.Bitrate),
 		"-g", "30", "-keyint_min", "30", "-sc_threshold", "0",
 		"-f", "h264", "pipe:1")
 	cmd := ffmpegCmd(ctx, "ffmpeg", args...)
@@ -396,7 +410,7 @@ func (dp *DeviceProxy) streamWebRTC(ctx context.Context, device string) error {
 		return err
 	}
 	go func() {
-		_ = dp.streamFromFFmpeg(ctx, device, track)
+		_ = dp.streamFromFFmpeg(ctx, device, track, dp.abrCtrl.Current().Bitrate)
 		pc.Close()
 	}()
 	return nil
@@ -757,6 +771,16 @@ func main() {
 		logx.L.Error("failed to create device proxy", "err", err)
 		os.Exit(1)
 	}
+
+	// Metrics server
+	m := metrics.New()
+	go func() {
+		port := getEnv("METRICS_PORT", "8001")
+		logx.L.Info("metrics listening", "port", port)
+		if err := http.ListenAndServe(":"+port, m.Handler()); err != nil {
+			logx.L.Error("metrics server failed", "err", err)
+		}
+	}()
 
 	// Start device discovery
 	ctx, cancel := context.WithCancel(context.Background())

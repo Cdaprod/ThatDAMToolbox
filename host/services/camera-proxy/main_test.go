@@ -277,7 +277,7 @@ func TestHWAccelArgs(t *testing.T) {
 	}
 	defer func() { ffmpegCmd = orig }()
 	track, _ := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264}, "v", "p")
-	if err := dp.streamFromFFmpeg(context.Background(), "/dev/video0", track); err != nil {
+	if err := dp.streamFromFFmpeg(context.Background(), "/dev/video0", track, dp.abrCtrl.Current().Bitrate); err != nil {
 		t.Fatalf("streamFromFFmpeg: %v", err)
 	}
 	if !called {
