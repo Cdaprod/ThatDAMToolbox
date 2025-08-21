@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -41,7 +42,10 @@ func TestOkHandler(t *testing.T) {
 	}
 }
 
+
 func TestNewHandlers(t *testing.T) {
+
+func TestNegotiateHandler(t *testing.T) {
 	jwksJSON := []byte(`{"keys":[{"kty":"oct","kid":"overlay","k":"` + base64.RawURLEncoding.EncodeToString(overlayKey) + `"}]}`)
 	var err error
 	jwks, err = keyfunc.NewJSON(jwksJSON)
@@ -49,6 +53,7 @@ func TestNewHandlers(t *testing.T) {
 		t.Fatalf("jwks: %v", err)
 	}
 	token := signToken("agent1")
+
 
 	tests := []struct {
 		name    string
@@ -91,5 +96,26 @@ func TestNewHandlers(t *testing.T) {
 				t.Fatalf("expected 401, got %d", rr.Code)
 			}
 		})
+	req := httptest.NewRequest(http.MethodPost, "/v1/negotiate?class=realtime", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	negotiateHandler(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	var resp struct {
+		Transport  string   `json:"transport"`
+		Endpoints  []string `json:"endpoints"`
+		ABRCeiling int      `json:"abr_ceiling"`
+	}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.ABRCeiling != 3000 {
+		t.Fatalf("expected ceiling 3000, got %d", resp.ABRCeiling)
+	}
+	if resp.Transport != "quic" || len(resp.Endpoints) == 0 {
+		t.Fatalf("unexpected resp: %+v", resp)
+
 	}
 }
