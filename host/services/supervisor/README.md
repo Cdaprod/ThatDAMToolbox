@@ -32,6 +32,7 @@ SUPERVISOR_URL=http://localhost:8070 RUNNER_EXECUTOR=docker \
 - `POST /v1/nodes/register`
 - `POST /v1/nodes/plan`
 - `POST /v1/nodes/heartbeat`
+- `GET  /v1/nodes`
 - `POST /v1/tenancy/plan`
 - `GET  /v1/bootstrap/profile`
 - `GET  /v1/leader`
