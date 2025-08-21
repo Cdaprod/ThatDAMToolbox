@@ -90,4 +90,5 @@ export const dashboardColorClasses: Record<string, string> = {
   live:             'text-[var(--color-live)]',
   witness:          'text-[var(--color-witness)]',
   nodes:            'text-[var(--color-nodes)]',
+  'trim-idle':      'text-[var(--color-accent)]',
 };

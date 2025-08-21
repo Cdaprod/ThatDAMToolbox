@@ -3,7 +3,7 @@ import test from 'node:test'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { computeLayoutGroups, useIntelligentLayout } from '../useIntelligentLayout'
-import type { DashboardTool } from '@/components/dashboardTools'
+import type { DashboardTool } from '@/lib/toolRegistry'
 import { dashboardTools } from '../../components/dashboardTools'
 
 const sample: DashboardTool[] = [

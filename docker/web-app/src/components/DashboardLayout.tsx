@@ -1,6 +1,7 @@
 import React from 'react';
 import ToolCard from './ToolCard';
-import { dashboardTools, DashboardTool } from './dashboardTools';
+import { dashboardTools } from './dashboardTools';
+import type { DashboardTool } from '../lib/toolRegistry';
 import { useIntelligentLayout } from '../hooks/useIntelligentLayout';
 import { gridStyle } from '../styles/theme';
 
