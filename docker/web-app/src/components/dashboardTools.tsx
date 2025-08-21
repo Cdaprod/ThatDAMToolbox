@@ -1,26 +1,26 @@
 import { dashboardColorClasses } from '../styles/theme';
-import { Camera, FolderOpen, Video, Activity, UserCheck, Eye, Server } from 'lucide-react';
+import {
+  Camera,
+  FolderOpen,
+  Video,
+  Activity,
+  UserCheck,
+  Eye,
+  Server,
+  Scissors,
+} from 'lucide-react';
+import { createTool, registerTool, getTools, DashboardTool } from '../lib/toolRegistry';
 
-/** 
- * A dashboard "tool" with rich metadata for intelligent layout 
+/**
+ * Merged, de-conflicted tool catalog.
+ * - Keeps array form: Parameters<typeof createTool>[0][]
+ * - Deduplicates `layered-explorer` (it appeared twice and once as a keyed map)
+ * - Preserves/extends relationships + statuses
+ * - Adds `trim` tool from "add-tool-card-for-trim-idle-module-*"
+ * - Adds lightweight `live` switcher so `camera-monitor.relatedTools` stays valid
  */
-export interface DashboardTool {
-  id: string;
-  href: string;
-  title: string;
-  icon: React.ComponentType<any>;
-  color: string;
-  context: string;
-  relatedTools: string[];
-  lastUsed: string; // ISO timestamp
-  status: 'active' | 'processing' | 'idle';
-}
-
-/** 
- * Your canonical list of dashboard tools, now with context, recency, status, etc. 
- */
-export const dashboardTools: Record<string, DashboardTool> = {
-  nodes: {
+const tools: Parameters<typeof createTool>[0][] = [
+  {
     id: 'nodes',
     href: '/dashboard/nodes',
     title: 'Nodes',
@@ -28,10 +28,8 @@ export const dashboardTools: Record<string, DashboardTool> = {
     color: dashboardColorClasses['nodes'],
     context: 'cluster',
     relatedTools: [],
-    lastUsed: new Date().toISOString(),
-    status: 'idle',
   },
-  'camera-monitor': {
+  {
     id: 'camera-monitor',
     href: '/dashboard/camera-monitor',
     title: 'Camera Monitor',
@@ -42,7 +40,7 @@ export const dashboardTools: Record<string, DashboardTool> = {
     lastUsed: '2024-01-20T10:30:00Z',
     status: 'active',
   },
-  'dam-explorer': {
+  {
     id: 'dam-explorer',
     href: '/dashboard/dam-explorer',
     title: 'DAM Explorer',
@@ -51,9 +49,8 @@ export const dashboardTools: Record<string, DashboardTool> = {
     context: 'archive',
     relatedTools: ['camera-monitor', 'motion'],
     lastUsed: '2024-01-20T09:15:00Z',
-    status: 'idle',
   },
-  'layered-explorer': {
+  {
     id: 'layered-explorer',
     href: '/dashboard/layered-explorer',
     title: 'Layered Explorer',
@@ -64,48 +61,52 @@ export const dashboardTools: Record<string, DashboardTool> = {
     lastUsed: '2024-01-20T09:15:00Z',
     status: 'idle',
   },
-  motion: {
+  {
     id: 'motion',
     href: '/dashboard/motion',
     title: 'Motion Tool',
     icon: Activity,
     color: dashboardColorClasses['motion'],
     context: 'analysis',
-    relatedTools: ['dam-explorer', 'witness'],
-    lastUsed: '2024-01-19T16:20:00Z',
+    relatedTools: ['dam-explorer', 'camera-monitor'],
     status: 'idle',
   },
-  live: {
+  {
     id: 'live',
     href: '/dashboard/live',
-    title: 'Live Monitor',
+    title: 'Live Switcher',
     icon: Video,
     color: dashboardColorClasses['live'],
     context: 'live',
-    relatedTools: ['camera-monitor', 'witness'],
-    lastUsed: '2024-01-20T08:45:00Z',
-    status: 'processing',
+    relatedTools: ['camera-monitor'],
+    status: 'idle',
   },
-  witness: {
-    id: 'witness',
-    href: '/dashboard/witness',
-    title: 'Witness Tool',
+  {
+    id: 'trim',
+    href: '/dashboard/trim',
+    title: 'Trim / Idle Module',
+    icon: Scissors,
+    color: dashboardColorClasses['trim'],
+    context: 'post',
+    relatedTools: ['dam-explorer', 'motion'],
+    status: 'idle',
+  },
+  {
+    id: 'access',
+    href: '/dashboard/access',
+    title: 'Access Control',
     icon: UserCheck,
-    color: dashboardColorClasses['witness'],
-    context: 'security',
-    relatedTools: ['motion', 'live'],
-    lastUsed: '2024-01-18T14:30:00Z',
+    color: dashboardColorClasses['access'],
+    context: 'admin',
+    relatedTools: ['nodes'],
     status: 'idle',
   },
-  ffmpeg: {
-    id: 'ffmpeg',
-    href: '/dashboard/ffmpeg',
-    title: 'FFmpeg Console',
-    icon: Activity,
-    color: dashboardColorClasses['motion'],
-    context: 'analysis',
-    relatedTools: ['motion'],
-    lastUsed: '2024-01-16T12:00:00Z',
-    status: 'idle',
-  },
-};
+];
+
+// Optional: register on import; or call initDashboardTools() from your app bootstrap.
+export function initDashboardTools() {
+  tools.forEach((t) => registerTool(t));
+}
+
+export { tools };
+export type { DashboardTool };

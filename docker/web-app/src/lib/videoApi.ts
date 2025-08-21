@@ -17,6 +17,12 @@ async function postJson<T>(path: string, body: unknown, init?: RequestInit): Pro
   });
 }
 
+async function postForm(path: string, form: FormData, init?: RequestInit): Promise<Blob> {
+  const res = await fetch(apiUrl(path), { method: 'POST', body: form, ...init } as any);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.blob();
+}
+
 /* ---------- REST routes your React code needs ---------- */
 export const videoApi = {
   /* health check -- already used in /app/page.tsx */
@@ -29,6 +35,17 @@ export const videoApi = {
   /* motion-analysis or other custom calls */
   motionExtract: (payload: MotionExtractPayload) =>
     postJson<MotionJob>('/motion/extract', payload),
+
+  /* trim idle frames */
+  trimIdle: (payload: TrimIdlePayload) => {
+    const form = new FormData();
+    form.append('file', payload.file);
+    if (payload.method) form.append('method', payload.method);
+    if (payload.noise !== undefined) form.append('noise', String(payload.noise));
+    if (payload.freeze_dur !== undefined) form.append('freeze_dur', String(payload.freeze_dur));
+    if (payload.pix_thresh !== undefined) form.append('pix_thresh', String(payload.pix_thresh));
+    return postForm('/trim_idle/', form);
+  },
 
   /* ffmpeg console */
   ffmpegRun: (payload: { command: string; output?: string }) =>
@@ -49,3 +66,10 @@ export interface MotionExtractPayload { path: string; sensitivity?: number }
 export interface MotionJob { job_id: string; status: string }
 export interface Device { path: string; width: number; height: number; fps: number }
 export interface WitnessReq { main: string; witness: string; duration?: number }
+export interface TrimIdlePayload {
+  file: File;
+  method?: string;
+  noise?: number;
+  freeze_dur?: number;
+  pix_thresh?: number;
+}
