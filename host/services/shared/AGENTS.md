@@ -9,3 +9,4 @@ Scope: Common Go packages and middleware reused by host services.
 - Update this file and README when adding new packages.
 - `bus/log` implements an append-only, file-backed bus adapter for
   Kafka-like sequential I/O.
+- `stream/rtp` provides a PTP-paced RTP sender with configurable jitter buffering.
