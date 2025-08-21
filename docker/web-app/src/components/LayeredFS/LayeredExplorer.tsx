@@ -1,6 +1,8 @@
 /**
 Experimental 2.5D file explorer using @react-three/fiber.
 Folders are placed on depth layers and files render as thumbnail planes.
+The grid adapts its column count to the viewport for a responsive,
+infinite-canvas feel.
 
 Usage:
 ```tsx
@@ -10,7 +12,7 @@ Usage:
 
 'use client';
 
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, Line as DreiLine } from '@react-three/drei';
@@ -200,8 +202,17 @@ function roundedRectShape(w: number, h: number, r: number) {
 
 export default function LayeredExplorer() {
   const { view: assets, folders, foldersLoading } = useAssets();
+
+  const getCols = (w: number) => (w < 640 ? 2 : w < 1024 ? 4 : 6);
+  const [cols, setCols] = useState(() => (typeof window === 'undefined' ? 6 : getCols(window.innerWidth)));
+  useEffect(() => {
+    const onResize = () => setCols(getCols(window.innerWidth));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const snapshot = useMemo(() => buildSnapshot(folders, assets), [folders, assets]);
-  const layout = useMemo(() => layeredLayout(snapshot), [snapshot]);
+  const layout = useMemo(() => layeredLayout(snapshot, { cols }), [snapshot, cols]);
   const focusZ = useRef(0);
   const focusFolder = useCallback((z: number) => {
     focusZ.current = z;
@@ -213,7 +224,7 @@ export default function LayeredExplorer() {
 
   return (
     <div className="h-full w-full">
-      <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
+      <Canvas dpr={[1, 2]} gl={{ antialias: true }} className="h-full w-full">
         <ambientLight intensity={0.8} />
         <CameraRig focusZ={focusZ} />
 

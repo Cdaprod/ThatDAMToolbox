@@ -34,6 +34,16 @@ curl -I http://localhost:8000/viewer/
 
 The static files live under `/srv/viewer` inside the container. Override `VIEWER_DIR` to serve a different directory.
 
+### Metrics
+
+Encoder telemetry (frame delays and drops) is exposed at `/metrics` on the same port:
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+Prometheus can scrape this endpoint for monitoring.
+
 ## Remote deployment
 
 Build for older ARM boards by targeting `linux/arm/v6` and setting `GOARM=6`:
@@ -64,6 +74,7 @@ docker run -p 8000:8000 \
 - `ICE_SERVERS` – comma-separated STUN/TURN URLs for WebRTC (optional)
 - `FFMPEG_HWACCEL` – extra ffmpeg args for hardware acceleration (e.g. `cuda -hwaccel_device 0`)
 - `VIEWER_DIR` – path to static viewer files served at `/viewer/` (default `/srv/viewer`)
+- `SRT_BASE_URL` – base SRT address used by `/srt?device=` (optional)
 
 ### Logging
 
