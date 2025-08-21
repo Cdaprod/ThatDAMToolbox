@@ -3,6 +3,8 @@ package runner
 
 import (
 	"context"
+
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 )
 
 // RunnerControl is handed back to the registry so it can stop a capture loop.
@@ -23,7 +25,7 @@ func StartRunner(device string) RunnerControl {
 		}()
 
 		// Run until ctx is canceled
-		_ = RunCaptureLoop(ctx, DefaultConfig(device), Deps{})
+		_ = RunCaptureLoop(ctx, DefaultConfig(device), Deps{Clock: ptp.New()})
 	}()
 
 	return RunnerControl{StopChan: stop}

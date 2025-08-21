@@ -9,3 +9,5 @@ Scope: Common Go packages and middleware reused by host services.
 - Update this file and README when adding new packages.
 - `bus/log` implements an append-only, file-backed bus adapter for
   Kafka-like sequential I/O.
+- `ptp` offers a monotonic clock with optional PTP offset; instantiate a
+  `Clock` and avoid package-level globals.
