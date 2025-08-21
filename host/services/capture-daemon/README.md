@@ -89,6 +89,21 @@ Additional runtime options:
 - `FFMPEG_HWACCEL` – extra ffmpeg args to enable hardware acceleration.
 - `SRT_BASE_URL` – base SRT address used by `/srt?device=`.
 
+### TSN / AVB
+
+Enable Time Sensitive Networking features to reserve deterministic bandwidth
+and validate PTP synchronization:
+
+- `CAPTURE_TSN_ENABLED` – set to `true` to enable TSN mode.
+- `CAPTURE_TSN_INTERFACE` – network interface to use for AVB traffic.
+- `CAPTURE_TSN_QUEUE` – egress queue to reserve for SR class streams.
+- `CAPTURE_TSN_PTP_GRANDMASTER` – expected PTP grandmaster ID; compared against
+  `PTP_GRANDMASTER_ID` from the system.
+
+The service aborts on startup if any of the above are missing or if the
+grandmaster does not match. Ensure your NIC and connected switch have TSN/AVB
+features enabled (IEEE 802.1AS and 802.1Qav) and a PTP domain is active.
+
 ### Logging
 
 Set these variables to control log output:

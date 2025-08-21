@@ -138,6 +138,16 @@ func TestNegotiateWithDaemon(t *testing.T) {
 	}
 }
 
+// TestLoadTSNConfigInvalid verifies TSN env validation.
+func TestLoadTSNConfigInvalid(t *testing.T) {
+	t.Setenv("TSN_INTERFACE", "eth0")
+	t.Setenv("TSN_QUEUE", "0")
+	t.Setenv("PTP_GRANDMASTER_ID", "gm1")
+	if _, err := loadTSNConfig(); err == nil {
+		t.Fatalf("expected error for invalid queue")
+	}
+}
+
 // TestHealthz ensures the health endpoint returns 200.
 func TestHealthz(t *testing.T) {
 	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())

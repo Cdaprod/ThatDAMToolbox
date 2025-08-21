@@ -68,6 +68,9 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("config load failed: %v", err))
 	}
+	if err := cfg.Validate(); err != nil {
+		panic(fmt.Sprintf("invalid config: %v", err))
+	}
 
 	// Adaptive bitrate controller
 	ladder := make([]abr.Profile, len(cfg.Capture.ABRLadder))
@@ -88,6 +91,9 @@ func main() {
 		panic(fmt.Sprintf("logger init failed: %v", err))
 	}
 	lg.Info("🔌 starting capture-daemon", "version", version)
+	if cfg.TSN.Enabled {
+		lg.WithComponent("tsn").Info("TSN enabled", "iface", cfg.TSN.Interface, "queue", cfg.TSN.Queue, "gm", cfg.TSN.PTPGrandmaster)
+	}
 
 	// 3. Init broker
 	normalizeBrokerEnv()

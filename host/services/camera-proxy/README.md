@@ -93,6 +93,18 @@ abr_ladder:
 
 - `SRT_BASE_URL` – base SRT address used by `/srt?device=` (optional)
 
+### TSN / AVB
+
+Enable deterministic transport and PTP validation with these variables:
+
+- `TSN_INTERFACE` – network interface for AVB traffic (enables TSN mode when set)
+- `TSN_QUEUE` – egress queue to reserve for SR class traffic
+- `TSN_PTP_GRANDMASTER` – expected grandmaster ID; checked against
+  `PTP_GRANDMASTER_ID`
+
+The proxy exits if configuration is invalid or the grandmaster mismatches.
+Ensure NIC and switch ports have 802.1AS and 802.1Qav enabled.
+
 ### Logging
 
 Configure log output with environment variables:

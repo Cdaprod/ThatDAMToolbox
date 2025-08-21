@@ -19,6 +19,7 @@ type Config struct {
 	Features FeatureConfig `mapstructure:"features"`
 	Logging  LoggingConfig `mapstructure:"logging"`
 	Health   HealthConfig  `mapstructure:"health"`
+	TSN      TSNConfig     `mapstructure:"tsn"`
 }
 
 type ServerConfig struct {
@@ -89,6 +90,15 @@ type HealthConfig struct {
 	Enabled  bool          `mapstructure:"enabled"`
 	Port     int           `mapstructure:"port"`
 	Interval time.Duration `mapstructure:"interval"`
+}
+
+// TSNConfig enables optional Time Sensitive Networking / AVB mode.
+// When Enabled, Interface, Queue and PTPGrandmaster must all be set.
+type TSNConfig struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	Interface      string `mapstructure:"interface"`
+	Queue          int    `mapstructure:"queue"`
+	PTPGrandmaster string `mapstructure:"ptp_grandmaster"`
 }
 
 func Load() (*Config, error) {
@@ -180,4 +190,32 @@ func setDefaults() {
 	// WebRTC
 	viper.SetDefault("features.webrtc.enabled", false)
 	viper.SetDefault("features.webrtc.path_prefix", "/webrtc")
+
+	// TSN/AVB
+	viper.SetDefault("tsn.enabled", false)
+	viper.SetDefault("tsn.interface", "")
+	viper.SetDefault("tsn.queue", 0)
+	viper.SetDefault("tsn.ptp_grandmaster", "")
+}
+
+// Validate ensures all required config is present. TSN mode fails fast if
+// interface, queue or grandmaster values are missing or mismatched. The
+// current grandmaster is read from PTP_GRANDMASTER_ID.
+func (c *Config) Validate() error {
+	if c.TSN.Enabled {
+		if c.TSN.Interface == "" {
+			return fmt.Errorf("tsn.interface required when tsn.enabled")
+		}
+		if c.TSN.Queue <= 0 {
+			return fmt.Errorf("tsn.queue must be >0")
+		}
+		actual := os.Getenv("PTP_GRANDMASTER_ID")
+		if actual == "" {
+			return fmt.Errorf("PTP_GRANDMASTER_ID not set")
+		}
+		if c.TSN.PTPGrandmaster != "" && actual != c.TSN.PTPGrandmaster {
+			return fmt.Errorf("ptp grandmaster mismatch: expected %s got %s", c.TSN.PTPGrandmaster, actual)
+		}
+	}
+	return nil
 }
