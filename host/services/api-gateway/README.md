@@ -29,3 +29,13 @@ Configure via environment variables:
 - `POST /agents/issue`
 - `GET /.well-known/jwks.json`
 - `GET /overlay/hints`
+
+## RTP session registry
+
+- `POST /rtp/sessions` – register an RTP session
+- `GET /rtp/sessions/{id}.sdp` – fetch SDP descriptor
+
+```bash
+curl -X POST localhost:8080/rtp/sessions \
+  -d '{"id":"cam1","address":"239.0.0.1","port":5004,"payload_type":96,"clock_rate":90000}'
+```

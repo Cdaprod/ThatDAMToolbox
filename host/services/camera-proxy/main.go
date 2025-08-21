@@ -37,16 +37,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus"
 	busamqp "github.com/Cdaprod/ThatDamToolbox/host/services/shared/bus/amqp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
+	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/ptp"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner"
 	_ "github.com/Cdaprod/ThatDamToolbox/host/services/shared/scanner/v4l2"
 	srt "github.com/Cdaprod/ThatDamToolbox/host/services/shared/stream/adapter/srt"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -102,10 +105,11 @@ type DeviceProxy struct {
 	probeDropped []v4l2probe.Device
 	usbSeen      map[string]struct{}
 	ignoredSeen  map[string]struct{}
+	clock        *ptp.Clock
 }
 
 // NewDeviceProxy creates a new transparent device proxy
-func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
+func NewDeviceProxy(backendAddr, frontendAddr string, clock *ptp.Clock) (*DeviceProxy, error) {
 	backendURL, err := url.Parse(backendAddr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid backend URL: %v", err)
@@ -140,6 +144,7 @@ func NewDeviceProxy(backendAddr, frontendAddr string) (*DeviceProxy, error) {
 				return false
 			},
 		},
+		clock: clock,
 	}, nil
 }
 
@@ -367,7 +372,7 @@ func (dp *DeviceProxy) streamFromFFmpeg(ctx context.Context, device string, trac
 		}
 		data := make([]byte, n)
 		copy(data, buf[:n])
-		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur})
+		_ = track.WriteSample(media.Sample{Data: data, Duration: frameDur, Timestamp: dp.clock.Now()})
 	}
 }
 
@@ -514,6 +519,7 @@ func (dp *DeviceProxy) handleDeviceStream(w http.ResponseWriter, r *http.Request
 
 		io.WriteString(w, "--"+boundary+"\r\n")
 		io.WriteString(w, "Content-Type: image/jpeg\r\n")
+		io.WriteString(w, fmt.Sprintf("X-Timestamp: %s\r\n", dp.clock.Now().Format(time.RFC3339Nano)))
 		io.WriteString(w, fmt.Sprintf("Content-Length: %d\r\n\r\n", n))
 		if _, err := w.Write(buffer[:n]); err != nil {
 			break
@@ -681,6 +687,9 @@ func (dp *DeviceProxy) setupRoutes() *http.ServeMux {
 	fs := http.FileServer(http.Dir(viewerDir))
 	mux.Handle("/viewer/", http.StripPrefix("/viewer/", fs))
 
+	// Metrics endpoint
+	mux.Handle("/metrics", promhttp.Handler())
+
 	// Default proxy to backend for all other requests
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		proxy := dp.createReverseProxy(dp.backendURL)
@@ -733,13 +742,17 @@ func main() {
 	}
 	defer bus.Close()
 
+	// Register encoder metrics so telemetry is exposed via /metrics.
+	encoder.RegisterMetrics()
+
 	// Configuration from environment variables
 	proxyPort := getEnv("PROXY_PORT", "8000")
 	backendAddr := getEnv("BACKEND_URL", "http://api-gateway:8080")
 	frontendAddr := getEnv("FRONTEND_URL", "http://localhost:3000")
 
 	// Create device proxy
-	proxy, err := NewDeviceProxy(backendAddr, frontendAddr)
+	clock := ptp.New()
+	proxy, err := NewDeviceProxy(backendAddr, frontendAddr, clock)
 	if err != nil {
 		logx.L.Error("failed to create device proxy", "err", err)
 		os.Exit(1)

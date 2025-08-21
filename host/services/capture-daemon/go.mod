@@ -5,17 +5,18 @@ go 1.23.0
 toolchain go1.24.3
 
 require (
-        github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0
-        github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
-        github.com/Cdaprod/ThatDamToolbox/host/shared v0.0.0
-        github.com/google/uuid v1.6.0
-        github.com/pion/webrtc/v3 v3.2.0
-        github.com/prometheus/client_golang v1.23.0
+	github.com/Cdaprod/ThatDamToolbox/host/services/shared v0.0.0
+	github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe v0.0.0
+	github.com/Cdaprod/ThatDamToolbox/host/shared v0.0.0
+	github.com/google/uuid v1.6.0
+	github.com/pion/webrtc/v3 v3.2.0
+	github.com/prometheus/client_golang v1.23.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/spf13/viper v1.20.1
 )
 
 require (
+	github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy v0.0.0-00010101000000-000000000000
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
@@ -60,4 +61,7 @@ require (
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared => ../shared
 
 replace github.com/Cdaprod/ThatDamToolbox/host/services/shared/hostcap/v4l2probe => ../shared/hostcap/v4l2probe
+
 replace github.com/Cdaprod/ThatDamToolbox/host/shared => ../../shared
+
+replace github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy => ../camera-proxy

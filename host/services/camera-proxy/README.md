@@ -34,6 +34,16 @@ curl -I http://localhost:8000/viewer/
 
 The static files live under `/srv/viewer` inside the container. Override `VIEWER_DIR` to serve a different directory.
 
+### Metrics
+
+Encoder telemetry (frame delays and drops) is exposed at `/metrics` on the same port:
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+Prometheus can scrape this endpoint for monitoring.
+
 ## Remote deployment
 
 Build for older ARM boards by targeting `linux/arm/v6` and setting `GOARM=6`:
