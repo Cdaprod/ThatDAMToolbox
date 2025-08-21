@@ -60,6 +60,12 @@ A default blue theme applies across the app via three CSS variables:
 
 Changing these values updates the global background and accent colors without touching component markup.
 
+### Color Schemes
+
+`ThemeProvider` wraps [`next-themes`](https://github.com/pacocoursey/next-themes) and applies a `data-theme` attribute on the
+root element. Predefined schemes (`light`, `dark`, `sepia`, `royal`) are driven by the variables in `tokens.css`, and the top bar
+dropdown lets users switch schemes at runtime.
+
 ## Color Tokens
 
 Color tokens allow components to stay theme-aware without hardcoding Tailwind palette values.

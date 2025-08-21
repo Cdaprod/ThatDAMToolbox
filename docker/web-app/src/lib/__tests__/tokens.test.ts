@@ -15,5 +15,8 @@ test('tokens.css exposes required color variables', () => {
   const css = readFileSync(TOKENS_PATH, 'utf8');
   assert.match(css, /--color-primary-500:/);
   assert.match(css, /--color-success-500:/);
+  assert.match(css, /\[data-theme='dark'\]/);
+  assert.match(css, /\[data-theme='sepia'\]/);
+  assert.match(css, /\[data-theme='royal'\]/);
 });
 
