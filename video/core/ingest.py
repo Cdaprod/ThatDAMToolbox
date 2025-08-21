@@ -22,6 +22,8 @@ import shutil
 from pathlib import Path
 from typing import Iterable, Final, Sequence
 
+from .ports import UsageMeterPort
+
 from video.config import MEDIA_ROOT
 from video.probe  import probe_media          # ffprobe helper
 
@@ -62,6 +64,7 @@ def ingest_files(
     paths: Iterable[str | Path],
     *,
     batch_name: str | None = None,
+    usage_meter: "UsageMeterPort" | None = None,
 ) -> int:
     """
     Move each *path* to the canonical store and register it in the DB.
@@ -99,6 +102,8 @@ def ingest_files(
             )
 
             processed += 1
+            if usage_meter:
+                usage_meter.record_ingest()
 
         except Exception as exc:                  # noqa: BLE001
             _LOG.exception("Ingest failed for %s: %s", p, exc)

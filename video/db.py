@@ -17,6 +17,7 @@ from typing     import Optional, List, Dict, Any
 import fcntl  # Linux-only; use portalocker for cross-platform if you need Mac/Windows
 
 from .config import DB_PATH                     # resolved by video.config
+from video.core.ports import RelationalStorePort
 
 # ─────────────────────────────────────────────────────────────────────────────
 DB_FILE        = Path(os.getenv("VIDEO_DB_PATH", str(DB_PATH))).expanduser()
@@ -364,6 +365,10 @@ class MediaDB:
         # Always ensure FTS is rebuilt after destructive ops
         self._repair_fts()
         return total
+
+    def port(self, tenant_id: str) -> RelationalStorePort:
+        """Return a tenant-scoped relational store port."""
+        return RelationalStorePort(self.conn, tenant_id)
 
 
     # Only _repair_fts() implementation shown – keep the rest of your helpers
