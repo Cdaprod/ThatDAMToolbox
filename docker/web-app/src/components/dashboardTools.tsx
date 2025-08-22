@@ -9,7 +9,7 @@ import {
   Server,
   Scissors,
 } from 'lucide-react';
-import { createTool, registerTool, getTools, DashboardTool } from '../lib/toolRegistry';
+import { createTool, registerTool, DashboardTool } from '../lib/toolRegistry';
 
 /**
  * Merged, de-conflicted tool catalog.
@@ -82,11 +82,11 @@ const tools: Parameters<typeof createTool>[0][] = [
     status: 'idle',
   },
   {
-    id: 'trim',
-    href: '/dashboard/trim',
+    id: 'trim-idle',
+    href: '/dashboard/trim-idle',
     title: 'Trim / Idle Module',
     icon: Scissors,
-    color: dashboardColorClasses['trim'],
+    color: dashboardColorClasses['trim-idle'],
     context: 'post',
     relatedTools: ['dam-explorer', 'motion'],
     status: 'idle',
@@ -103,10 +103,15 @@ const tools: Parameters<typeof createTool>[0][] = [
   },
 ];
 
+const dashboardTools: Record<string, DashboardTool> = {};
+tools.forEach((cfg) => {
+  dashboardTools[cfg.id] = createTool(cfg);
+});
+
 // Optional: register on import; or call initDashboardTools() from your app bootstrap.
 export function initDashboardTools() {
-  tools.forEach((t) => registerTool(t));
+  Object.values(dashboardTools).forEach(registerTool);
 }
 
-export { tools };
+export { tools, dashboardTools };
 export type { DashboardTool };
