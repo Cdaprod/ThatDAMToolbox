@@ -23,9 +23,12 @@ SUPERVISOR_URL=http://localhost:8070 RUNNER_EXECUTOR=docker \
 - `POLICY_REQUIRE_AUTH_FOR_PLAN`
 - `POLICY_REQUIRE_AUTH_FOR_BOOTSTRAP`
 - `JWKS_URL` (JWKS endpoint for JWT validation)
-- `SUPERVISOR_API_KEY` (static fallback)
+- `SUPERVISOR_API_KEY` (static fallback; when set, most endpoints require `X-API-Key` but `GET /v1/nodes` remains open)
 - `BUS_KIND` (e.g. `amqp` for RabbitMQ)
 - `BROKER_URL` (AMQP connection string)
+
+If `SUPERVISOR_API_KEY` is unset (default), all access is governed solely by
+policy flags such as `POLICY_REQUIRE_AUTH_FOR_PLAN`.
 
 ## Endpoints (partial)
 

@@ -9,9 +9,7 @@
   },
   "include": [
     "src/lib/__tests__/api.test.ts",
-    "src/app/[tenant]/dashboard/__tests__/NodesPage.test.tsx",
-    "src/app/[tenant]/dashboard/nodes/page.tsx",
-    "src/lib/api/index.ts"
+    "src/app/[tenant]/dashboard/__tests__/NodesPage.test.tsx"
   ],
   "exclude": []
 }
