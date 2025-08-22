@@ -1,16 +1,12 @@
 package main
 
 // overlay-hub exposes register and heartbeat endpoints and a QUIC relay stub.
-//
 // Example:
 //   go run ./cmd/overlay-hub/main.go -addr :8090
 
 import (
 	"encoding/json"
-
-
 	"errors"
-
 	"flag"
 	"log"
 	"net/http"
@@ -42,6 +38,7 @@ func main() {
 	if *jwksURL == "" {
 		log.Fatal("JWKS_URL is required")
 	}
+
 	var err error
 	jwks, err = keyfunc.Get(*jwksURL, keyfunc.Options{RefreshInterval: time.Minute})
 	if err != nil {
@@ -51,20 +48,22 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+
+	// Simple no-op OKs (auth required)
 	mux.HandleFunc("/v1/register", okHandler)
 	mux.HandleFunc("/v1/heartbeat", okHandler)
-	mux.HandleFunc("/v1/negotiate", okHandler)
+
+	// Business endpoints
 	mux.HandleFunc("/v1/publish", publishHandler)
 	mux.HandleFunc("/v1/subscribe", subscribeHandler)
 	mux.HandleFunc("/v1/reroute", rerouteHandler)
 	mux.HandleFunc("/v1/telemetry", telemetryHandler)
 	mux.HandleFunc("/v1/node/init", nodeInitHandler)
-
 	mux.HandleFunc("/v1/negotiate", negotiateHandler)
 
 	srv := &http.Server{
@@ -78,12 +77,7 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func okHandler(w http.ResponseWriter, r *http.Request) {
-	if !authorize(w, r) {
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-}
+// ---- auth helpers ----
 
 func authorize(w http.ResponseWriter, r *http.Request) bool {
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -102,9 +96,6 @@ func authorize(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func publishHandler(w http.ResponseWriter, r *http.Request) {
-	if !authorize(w, r) {
-    
 func authAgent(r *http.Request) (string, error) {
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if token == "" {
@@ -128,8 +119,60 @@ func authAgent(r *http.Request) (string, error) {
 	return sub, nil
 }
 
+// ---- generic OK ----
+
 func okHandler(w http.ResponseWriter, r *http.Request) {
-	if _, err := authAgent(r); err != nil {
+	if !authorize(w, r) {
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// ---- request/response shapes ----
+
+type PublishRequest struct {
+	Topic   string `json:"topic"`
+	Payload string `json:"payload"`
+}
+type PublishResponse struct {
+	Status string `json:"status"`
+}
+
+type SubscribeRequest struct {
+	Topics []string `json:"topics"`
+}
+type SubscribeResponse struct {
+	Status string `json:"status"`
+}
+
+type RerouteRequest struct {
+	NodeID string `json:"node_id"`
+	Target string `json:"target"`
+}
+type RerouteResponse struct {
+	Status string `json:"status"`
+}
+
+type TelemetryRequest struct {
+	NodeID string  `json:"node_id"`
+	CPU    float64 `json:"cpu"`
+}
+type TelemetryResponse struct {
+	Status string `json:"status"`
+}
+
+type NodeInitRequest struct {
+	NodeID string `json:"node_id"`
+}
+type NodeInitResponse struct {
+	Status string `json:"status"`
+}
+
+// ---- handlers ----
+
+func publishHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := authAgent(r)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -189,62 +232,10 @@ func nodeInitHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, NodeInitResponse{Status: "ok"})
 }
 
-func writeJSON(w http.ResponseWriter, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-type PublishRequest struct {
-	Topic   string `json:"topic"`
-	Payload string `json:"payload"`
-}
-
-type PublishResponse struct {
-	Status string `json:"status"`
-}
-
-type SubscribeRequest struct {
-	Topics []string `json:"topics"`
-}
-
-type SubscribeResponse struct {
-	Status string `json:"status"`
-}
-
-type RerouteRequest struct {
-	NodeID string `json:"node_id"`
-	Target string `json:"target"`
-}
-
-type RerouteResponse struct {
-	Status string `json:"status"`
-}
-
-type TelemetryRequest struct {
-	NodeID string  `json:"node_id"`
-	CPU    float64 `json:"cpu"`
-}
-
-type TelemetryResponse struct {
-	Status string `json:"status"`
-}
-
-type NodeInitRequest struct {
-	NodeID string `json:"node_id"`
-}
-
-type NodeInitResponse struct {
-	Status string `json:"status"`
-}
-
 // negotiateHandler returns a flow contract based on policy and path ranking.
-//
 // Example:
 //
-//	curl -H "Authorization: Bearer $TOKEN" \
-//	     -X POST 'http://localhost:8090/v1/negotiate?class=realtime'
+//	curl -H "Authorization: Bearer $TOKEN" -X POST 'http://localhost:8090/v1/negotiate?class=realtime'
 func negotiateHandler(w http.ResponseWriter, r *http.Request) {
 	agentID, err := authAgent(r)
 	if err != nil {
@@ -270,6 +261,14 @@ func negotiateHandler(w http.ResponseWriter, r *http.Request) {
 		Endpoints:  []string{ranked[0].Endpoint},
 		ABRCeiling: ceiling,
 	}
+	writeJSON(w, resp)
+}
+
+// ---- utils ----
+
+func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
