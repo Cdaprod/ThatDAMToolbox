@@ -46,3 +46,17 @@ func TestFetchPlan(t *testing.T) {
 		t.Fatalf("fetch plan failed: %v %#v", err, dp)
 	}
 }
+
+func TestFetchPlanNotFound(t *testing.T) {
+	ts := httptest.NewServer(http.NotFoundHandler())
+	defer ts.Close()
+	os.Setenv("SUPERVISOR_URL", ts.URL+"/v1/nodes")
+	t.Cleanup(func() { os.Unsetenv("SUPERVISOR_URL") })
+	dp, err := FetchPlan(context.Background(), map[string]string{"node_id": "n1"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if dp.Node != "" || len(dp.Apps) != 0 {
+		t.Fatalf("expected zero plan, got %#v", dp)
+	}
+}
