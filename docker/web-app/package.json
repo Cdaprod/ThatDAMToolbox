@@ -14,7 +14,7 @@
     "docker:build": "docker build -t thatdamtoolbox-web-app:dev .",
     "docker:run": "docker run --rm -p 3000:3000 thatdamtoolbox-web-app:dev",
     "docker:sh": "docker run -it --rm thatdamtoolbox-web-app:dev sh",
-    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --require ./src/test/test-mocks.js --test $(find .tmp-test -name '*.test.js')"
+    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && NODE_ENV=test node --require ./src/test/test-mocks.js --test $(find .tmp-test -name '*.test.js')"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
