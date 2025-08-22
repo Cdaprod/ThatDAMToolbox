@@ -22,3 +22,15 @@ services:
       start_period: 10s
     restart: unless-stopped
     networks: [damnet]
+
+  # One-off job to reconcile collation versions after glibc upgrades
+  postgres-collation-refresh:
+    image: postgres:15
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: weaviate
+    command: ["psql","-v","ON_ERROR_STOP=1","-h","postgres","-U","weaviate","-d","weaviate","-c","ALTER DATABASE weaviate REFRESH COLLATION VERSION;"]
+    restart: "no"
+    networks: [damnet]
