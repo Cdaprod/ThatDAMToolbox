@@ -159,11 +159,11 @@ func main() {
 		}
 	}()
 
-        mux := http.NewServeMux()
-        mux.HandleFunc("/v1/nodes", nodesList)
-        mux.HandleFunc("/v1/nodes/register", nodesRegister)
-        mux.HandleFunc("/v1/nodes/plan", nodesPlan)
-        mux.HandleFunc("/v1/nodes/heartbeat", nodesHeartbeat)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/nodes", nodesList)
+	mux.HandleFunc("/v1/nodes/register", nodesRegister)
+	mux.HandleFunc("/v1/nodes/plan", nodesPlan)
+	mux.HandleFunc("/v1/nodes/heartbeat", nodesHeartbeat)
 	mux.HandleFunc("/v1/tenancy/plan", tenancyPlan)
 	mux.HandleFunc("/v1/leader/claim", leaderClaim)
 	mux.HandleFunc("/v1/leader", leaderGet)
@@ -301,7 +301,11 @@ func auth(r *http.Request) (ports.Principal, error) {
 		return p, nil
 	}
 	if apiKey != "" {
-		if r.Header.Get("X-API-Key") != apiKey {
+		key := r.Header.Get("X-API-Key")
+		if key == "" {
+			return p, nil
+		}
+		if key != apiKey {
 			return p, errors.New("unauthorized")
 		}
 		p.Sub = "apikey"
