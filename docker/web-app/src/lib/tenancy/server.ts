@@ -7,7 +7,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export async function requireTenant() {
   const slug = headers().get("x-tenant-slug");
