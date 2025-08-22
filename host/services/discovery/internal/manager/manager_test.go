@@ -1,10 +1,13 @@
 package manager
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/supervisor/plan"
@@ -41,5 +44,21 @@ func TestStartProxyModeUsesPlan(t *testing.T) {
 	defer os.Unsetenv("SUPERVISOR_URL")
 	if err := dm.startProxyMode(); err != nil {
 		t.Fatalf("startProxyMode: %v", err)
+	}
+}
+
+func TestSilenceMDNSLogs(t *testing.T) {
+	buf := &bytes.Buffer{}
+	orig := log.Writer()
+	log.SetOutput(buf)
+	silenceMDNSLogs()
+	log.Println("[INFO] mdns: Closing client 123")
+	log.Println("keep")
+	log.SetOutput(orig)
+	if strings.Contains(buf.String(), "Closing client") {
+		t.Fatalf("mdns close log was not filtered: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "keep") {
+		t.Fatalf("expected non-mdns logs to remain: %s", buf.String())
 	}
 }
