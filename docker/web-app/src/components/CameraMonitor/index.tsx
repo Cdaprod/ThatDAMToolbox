@@ -582,6 +582,7 @@ const CameraMonitor: React.FC = () => {
       <div className={`flex flex-1 ${orientation === 'portrait' ? 'flex-col' : ''}`}>
         <div
           className={`flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden`}
+          style={{ aspectRatio: aspect ? aspect.toString() : undefined }}
         >
           {/* 1) The preview wrapper */}
           <div
