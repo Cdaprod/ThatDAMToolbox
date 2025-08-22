@@ -2,9 +2,12 @@ package manager
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -66,6 +69,8 @@ type DiscoveryManager struct {
 func New() *DiscoveryManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	silenceMDNSLogs()
+
 	// Generate unique node ID
 	hostname, _ := os.Hostname()
 	nodeID := fmt.Sprintf("%s-%d", hostname, time.Now().Unix())
@@ -78,6 +83,29 @@ func New() *DiscoveryManager {
 	}
 
 	return dm
+}
+
+// silenceMDNSLogs filters out noisy mdns client shutdown logs.
+// Example:
+//
+//	silenceMDNSLogs()
+//
+// It ensures repeated mdns lookups don't spam standard log output.
+func silenceMDNSLogs() {
+	orig := log.Writer()
+	log.SetOutput(&mdnsLogFilter{w: orig})
+}
+
+// mdnsLogFilter discards mdns client close messages while forwarding others.
+type mdnsLogFilter struct {
+	w io.Writer
+}
+
+func (f *mdnsLogFilter) Write(p []byte) (int, error) {
+	if bytes.Contains(p, []byte("mdns: Closing client")) {
+		return len(p), nil
+	}
+	return f.w.Write(p)
 }
 
 type leaderInfo struct {
