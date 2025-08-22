@@ -13,7 +13,8 @@ import sys
 import time
 from typing import Any
 
-import requests
+import urllib.error
+import urllib.request
 
 WEAVIATE_URL = os.environ.get("WEAVIATE_URL", "http://weaviate:8080")
 SCHEMA_FILE = os.environ.get("WEAVIATE_SCHEMA", "schema.json")
@@ -23,10 +24,12 @@ def wait_for_weaviate(url: str) -> bool:
     """Poll the readiness endpoint until Weaviate is up."""
     for _ in range(30):
         try:
-            res = requests.get(f"{url}/v1/.well-known/ready", timeout=2)
-            if res.ok:
-                return True
-        except requests.RequestException:
+            with urllib.request.urlopen(
+                f"{url}/v1/.well-known/ready", timeout=2
+            ) as res:
+                if res.status == 200:
+                    return True
+        except urllib.error.URLError:
             pass
         time.sleep(2)
     return False
@@ -46,15 +49,24 @@ def main() -> int:
 
     for cls in schema.get("classes", []):
         url = f"{WEAVIATE_URL}/v1/schema"
-        resp = requests.post(url, json=cls)
-        if resp.status_code in (200, 201):
+        body = json.dumps(cls).encode()
+        req = urllib.request.Request(
+            url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req) as resp:
+                status, text = resp.status, resp.read().decode()
+        except urllib.error.HTTPError as exc:
+            status, text = exc.code, exc.read().decode()
+
+        if status in (200, 201):
             print(f"Created class {cls['class']}")
-        elif resp.status_code == 422:
+        elif status == 422:
             # Class already exists – treat as success for idempotency
             print(f"Class {cls['class']} already exists")
         else:
             print(
-                f"Error creating class {cls['class']}: {resp.text}",
+                f"Error creating class {cls['class']}: {text}",
                 file=sys.stderr,
             )
             return 1

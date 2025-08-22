@@ -70,6 +70,25 @@ func TestDiscoverDevicesLogsOnce(t *testing.T) {
 	}
 }
 
+// TestLogIgnoredDevicesSkipsInternal verifies internal pipeline nodes aren't logged.
+func TestLogIgnoredDevicesSkipsInternal(t *testing.T) {
+	dp, _ := NewDeviceProxy("http://b", "http://f", ptp.New())
+	dp.probeDropped = []v4l2probe.Device{
+		{Node: "/dev/video31", Name: "pispbe-stitch", Caps: "CAPTURE", Kind: "ignored-internal-pipeline"},
+		{Node: "/dev/video5", Name: "other", Caps: "CAPTURE", Kind: "ignored"},
+	}
+	var buf bytes.Buffer
+	logx.Init(logx.Config{Service: "camera-proxy", Writer: &buf, Format: "text"})
+	dp.logIgnoredDevices()
+	out := buf.String()
+	if strings.Contains(out, "pispbe-stitch") {
+		t.Fatalf("internal pipeline device should not log: %s", out)
+	}
+	if !strings.Contains(out, "other") {
+		t.Fatalf("expected other device log, got: %s", out)
+	}
+}
+
 type fakeScanner struct{}
 
 func (fakeScanner) Scan() ([]scanner.Device, error) {
