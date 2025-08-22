@@ -828,6 +828,12 @@ cd ThatDAMToolbox
 # Build Go service images (run from repo root)
 docker compose build overlay-hub supervisor runner
 
+# BuildKit caches default to `~/.cache/buildx-cache`. Override the path with
+# `BUILDX_CACHE_SRC`/`BUILDX_CACHE_DEST` if your home directory differs:
+#
+#   export BUILDX_CACHE_SRC=$HOME/.cache/buildx-cache
+#   export BUILDX_CACHE_DEST=$HOME/.cache/buildx-cache
+
 # Build and run with Docker Compose
 docker compose up -d
 
