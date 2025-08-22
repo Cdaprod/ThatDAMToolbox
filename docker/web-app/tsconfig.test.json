@@ -18,6 +18,9 @@
     "src/app/__tests__/login.test.tsx",
     "src/app/__tests__/account.test.tsx",
     "src/app/[tenant]/__tests__/settings.test.tsx",
+    "src/components/__tests__/uiUxTasks.test.ts",
+    "src/lib/__tests__/fitRect.test.ts",
+    "src/styles/__tests__/tokens.test.ts",
     "src/components/__tests__/uiUxTasks.test.ts"
   ],
   "exclude": []
