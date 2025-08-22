@@ -1,7 +1,7 @@
 // src/providers/AppProviders.tsx
 'use client'
 
-import { ReactNode }       from 'react'
+import { ReactNode, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import dynamic             from 'next/dynamic'
 
@@ -30,6 +30,18 @@ const CaptureProvider = dynamic(
 )
 
 export default function AppProviders({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      import('react-devtools-core')
+        .then(({ connectToDevTools }) =>
+          connectToDevTools({ host: window.location.hostname, port: 8097 })
+        )
+        .catch(() => {
+          // Ignore devtools connection errors in development.
+        });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={qc}>
       <AuthProvider>

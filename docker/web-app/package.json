@@ -14,7 +14,7 @@
     "docker:build": "docker build -t thatdamtoolbox-web-app:dev .",
     "docker:run": "docker run --rm -p 3000:3000 thatdamtoolbox-web-app:dev",
     "docker:sh": "docker run -it --rm thatdamtoolbox-web-app:dev sh",
-    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/**/*.test.js"
+    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test $(find .tmp-test -name '*.test.js')"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
@@ -22,6 +22,7 @@
     "@react-three/fiber": "^8.13.5",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-query-devtools": "^5.83.0",
+    "@thatdamtoolbox/stream-registry": "file:../packages/stream-registry",
     "amqplib": "^0.10.3",
     "axios": "^1.6.0",
     "clsx": "^2.0.0",
@@ -37,8 +38,7 @@
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
     "tailwindcss": "^3.3.6",
-    "three": "^0.179.1",
-    "@thatdamtoolbox/stream-registry": "file:../packages/stream-registry"
+    "three": "^0.179.1"
   },
   "devDependencies": {
     "@types/node": "^20.9.0",
@@ -50,6 +50,7 @@
     "eslint-config-next": "14.0.4",
     "postcss": "^8.4.31",
     "prettier": "^3.2.5",
+    "react-devtools-core": "^6.1.5",
     "typescript": "^5.2.2"
   },
   "engines": {
