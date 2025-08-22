@@ -40,27 +40,9 @@ export default function AppProviders({ children }: { children: ReactNode }) {
     if (typeof (globalThis as any).EdgeRuntime !== 'undefined') return
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const DevTools = require('react-devtools-core/standalone')
-
-    let el = document.getElementById('react-devtools')
-    if (!el) {
-      el = document.createElement('div')
-      el.id = 'react-devtools'
-      Object.assign(el.style, {
-        position: 'fixed',
-        left: '0',
-        right: '0',
-        bottom: '0',
-        height: '38vh',
-        zIndex: '2147483647',
-        background: '#111',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-      } as CSSStyleDeclaration)
-      document.body.appendChild(el)
-    }
-
+    const { connectToDevTools } = require('react-devtools-core')
     const port = Number(process.env.NEXT_PUBLIC_REACT_DEVTOOLS_PORT ?? 8097)
-    DevTools.setContentDOMNode(el).startServer(port)
+    connectToDevTools({ host: 'localhost', port })
   }, [])
 
   return (
@@ -82,8 +64,6 @@ export default function AppProviders({ children }: { children: ReactNode }) {
         </SidebarProvider>
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
-      {/* container for the embedded devtools UI */}
-      <div id="react-devtools" />
     </QueryClientProvider>
   )
 }

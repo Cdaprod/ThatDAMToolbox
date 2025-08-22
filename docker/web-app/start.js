@@ -3,17 +3,20 @@ const { publishServiceUp } = require('./src/lib/serviceUp.js');
 
 const mode = process.argv[2] === 'start' ? 'start' : 'dev';
 
-// Start a React DevTools server during local development so the app can
-// connect without needing a browser extension.  This is a no-op in
-// production builds.
+// Attempt to connect to a locally running React DevTools instance during
+// development.  `connectToDevTools` is a no-op if the DevTools server is not
+// running, so this block can safely fail.
 if (mode === 'dev') {
   try {
     // react-devtools-core expects a `self` global when required in Node.
     global.self = global;
-    const { startServer } = require('react-devtools-core');
-    startServer();
+    const { connectToDevTools } = require('react-devtools-core');
+    connectToDevTools({
+      host: 'localhost',
+      port: Number(process.env.NEXT_PUBLIC_REACT_DEVTOOLS_PORT ?? 8097),
+    });
   } catch (err) {
-    console.warn('react-devtools-core failed to start:', err.message);
+    console.warn('react-devtools-core failed to connect:', err.message);
   }
 }
 
