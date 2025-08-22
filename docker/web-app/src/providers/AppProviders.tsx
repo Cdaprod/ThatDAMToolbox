@@ -31,16 +31,37 @@ const CaptureProvider = dynamic(
 
 export default function AppProviders({ children }: { children: ReactNode }) {
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      import('react-devtools-core')
-        .then(({ connectToDevTools }) =>
-          connectToDevTools({ host: window.location.hostname, port: 8097 })
-        )
-        .catch(() => {
-          // Ignore devtools connection errors in development.
-        });
+    const DEV = process.env.NODE_ENV === 'development'
+    const ENABLED = process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS !== '0'
+
+    if (!DEV || !ENABLED) return
+    if (typeof window === 'undefined') return
+    // @ts-ignore – Next sets this in edge runtimes
+    if (typeof (globalThis as any).EdgeRuntime !== 'undefined') return
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const DevTools = require('react-devtools-core/standalone')
+
+    let el = document.getElementById('react-devtools')
+    if (!el) {
+      el = document.createElement('div')
+      el.id = 'react-devtools'
+      Object.assign(el.style, {
+        position: 'fixed',
+        left: '0',
+        right: '0',
+        bottom: '0',
+        height: '38vh',
+        zIndex: '2147483647',
+        background: '#111',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+      } as CSSStyleDeclaration)
+      document.body.appendChild(el)
     }
-  }, []);
+
+    const port = Number(process.env.NEXT_PUBLIC_REACT_DEVTOOLS_PORT ?? 8097)
+    DevTools.setContentDOMNode(el).startServer(port)
+  }, [])
 
   return (
     <QueryClientProvider client={qc}>
@@ -61,6 +82,8 @@ export default function AppProviders({ children }: { children: ReactNode }) {
         </SidebarProvider>
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
+      {/* container for the embedded devtools UI */}
+      <div id="react-devtools" />
     </QueryClientProvider>
   )
 }
