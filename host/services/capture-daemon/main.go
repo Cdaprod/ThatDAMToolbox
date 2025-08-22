@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Cdaprod/ThatDamToolbox/host/services/camera-proxy/encoder"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/api"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/broker"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/capture-daemon/config"
@@ -107,7 +106,6 @@ func main() {
 	}
 
 	// 4. Init metrics & health
-	encoder.RegisterMetrics()
 	m := metrics.New()
 	hc := health.New(cfg.Health.Interval)
 	hc.AddCheck("broker", func(ctx context.Context) (health.Status, string, error) {
