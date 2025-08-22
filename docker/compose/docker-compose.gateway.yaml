@@ -8,7 +8,7 @@ x-build-common: &build-common
   args:
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
-    - type=registry,ref=ghcr.io/cdaprod/thatdamtoolbox-cache:build
+    - type=registry,ref=ghcr.io/cdaprod/thatdamtoolbox-cache:build,ignore-error=true
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
