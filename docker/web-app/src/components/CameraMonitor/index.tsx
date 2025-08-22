@@ -11,6 +11,7 @@ import { useCameraStream } from "@/hooks/useCameraStream";
 import RecordButton from "@/components/RecordButton";
 import { useModal } from "@/providers/ModalProvider";
 import { sliderBackgroundStyle, batteryLevelStyle } from "@/styles/theme";
+import { useOrientation } from "@/hooks/useOrientation";
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(
@@ -483,8 +484,10 @@ const CameraMonitor: React.FC = () => {
     }
   }, []);
 
+  const orientation = useOrientation();
+
   return (
-    <div className="w-screen h-screen bg-gradient-to-br from-gray-900 to-black text-white font-sans overflow-hidden select-none flex flex-col">
+    <div className="w-full h-screen min-h-[100dvh] bg-gradient-to-br from-gray-900 to-black text-white font-sans overflow-hidden select-none flex flex-col">
       {/* Custom Styles */}
       <style jsx>{`
         @keyframes blink {
@@ -574,8 +577,8 @@ const CameraMonitor: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1">
-        <div className="flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden">
+      <div className={`flex flex-1 ${orientation === 'portrait' ? 'flex-col' : ''}`}>
+        <div className={`flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden`}>
           {/* 1) The preview wrapper */}
           <div className="relative max-w-full">
             <video
@@ -633,7 +636,7 @@ const CameraMonitor: React.FC = () => {
         </div>
 
         {/* Control Panel */}
-        <div className="w-45 bg-gradient-to-b from-gray-700 to-gray-900 border-l border-gray-700 p-3 overflow-y-auto">
+        <div className={`bg-gradient-to-b from-gray-700 to-gray-900 p-3 overflow-y-auto ${orientation === 'portrait' ? 'w-full border-t border-gray-700 m-2' : 'w-45 border-l border-gray-700'}`}>
           {/* ◆ Device & Codec Selectors ◆ */}
           <div className="mb-4 bg-black/20 border border-gray-600 rounded-md p-2.5">
             <div className="text-orange-500 text-xs font-bold uppercase mb-2 tracking-wide">

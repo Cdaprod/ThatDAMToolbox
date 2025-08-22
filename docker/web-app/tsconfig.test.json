@@ -12,7 +12,11 @@
     "src/app/[tenant]/dashboard/__tests__/NodesPage.test.tsx",
     "src/components/__tests__/dashboardTools.access.test.tsx",
     "src/lib/__tests__/videoApi.trimIdle.test.ts",
-    "src/providers/__tests__/reactDevtools.test.tsx"
+    "src/providers/__tests__/reactDevtools.test.tsx",
+    "src/hooks/__tests__/useOrientation.test.ts",
+    "src/app/__tests__/login.test.tsx",
+    "src/app/__tests__/account.test.tsx",
+    "src/app/[tenant]/__tests__/settings.test.tsx"
   ],
   "exclude": []
 }
