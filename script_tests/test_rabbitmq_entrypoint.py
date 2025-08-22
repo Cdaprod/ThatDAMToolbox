@@ -5,15 +5,15 @@ import subprocess
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "docker" / "rabbitmq" / "entrypoint.sh"
 
 
-def test_enables_feature_flag(tmp_path):
+def test_enables_feature_flag_and_passes_default_command(tmp_path):
     log = tmp_path / "log"
     # stub rabbitmqctl to record invocation
     ctl = tmp_path / "rabbitmqctl"
     ctl.write_text("#!/usr/bin/env bash\n" f"echo rabbitmqctl >> {log}\n")
     ctl.chmod(0o755)
-    # stub docker-entrypoint.sh to avoid launching rabbitmq
+    # stub docker-entrypoint.sh to capture the first argument
     de = tmp_path / "docker-entrypoint.sh"
-    de.write_text("#!/usr/bin/env bash\n" f"echo entrypoint >> {log}\n")
+    de.write_text("#!/usr/bin/env bash\n" f"echo \"$1\" >> {log}\n")
     de.chmod(0o755)
 
     env = os.environ.copy()
@@ -21,4 +21,4 @@ def test_enables_feature_flag(tmp_path):
 
     result = subprocess.run(["bash", str(SCRIPT)], env=env, text=True, capture_output=True)
     assert result.returncode == 0
-    assert log.read_text().splitlines() == ["rabbitmqctl", "entrypoint"]
+    assert log.read_text().splitlines() == ["rabbitmqctl", "rabbitmq-server"]
