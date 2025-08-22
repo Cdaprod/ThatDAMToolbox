@@ -132,6 +132,8 @@ Local development images use an environment-driven tag so builds stay consistent
 - **Mount the repo root** into your container (`volumes: - ../../:/app`) and add `--reload` to the API command for instant feedback.
 - **Keep dotenv files** (`.env`, `.env.local`) inside `docker/compose/` so they’re easy to share but stay out of the image build context.
 - **Use BuildKit’s inline cache** ⇢ `docker buildx build --cache-to type=inline` ⇢ lightning-fast rebuilds when iterating on one service.
+- **Shared build cache** – compose files pull from `ghcr.io/cdaprod/thatdamtoolbox-cache:build` and default to `${BUILDX_CACHE_DEST:-$HOME/.cache/buildx-cache}`; override `BUILDX_CACHE_SRC` or `BUILDX_CACHE_DEST` as needed.
+- **Enable BuildKit once** – add `{ "features": { "buildkit": true } }` to `~/.docker/config.json` so you don't have to export `DOCKER_BUILDKIT=1` every run.
 
 -----
 
