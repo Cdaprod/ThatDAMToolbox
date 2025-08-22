@@ -289,6 +289,18 @@ All requests flow through the typed clients in `src/lib/api`, generated via `yar
 ## Authentication
 
 `AuthProvider` wraps the app and injects a bearer token into every API call via `src/lib/api`. Use it to handle login/logout and expose user context.
+Google SSO is provided by NextAuth. Configure the following environment variables in `.env.local` or deployment secrets:
+
+```
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=<32B random>
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+TENANT_DEFAULT_ALLOWED_DOMAINS=cdaprod.dev,example.com
+```
+
+Users sign in at `/login` and manage personal details under `/account`.
+
 
 ## Streaming protocol
 
