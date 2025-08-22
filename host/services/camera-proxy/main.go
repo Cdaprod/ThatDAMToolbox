@@ -297,12 +297,7 @@ func (dp *DeviceProxy) discoverDevices() error {
 	defer cancel()
 	opt := v4l2probe.DefaultOptions()
 	dp.probeKept, dp.probeDropped, _ = v4l2probe.Discover(ctx, opt)
-	for _, d := range dp.probeDropped {
-		if _, logged := dp.ignoredSeen[d.Node]; !logged {
-			logx.L.Info("ignoring device", "node", d.Node, "name", d.Name, "caps", d.Caps, "reason", d.Kind)
-			dp.ignoredSeen[d.Node] = struct{}{}
-		}
-	}
+	dp.logIgnoredDevices()
 
 	dp.scanUSBCameras()
 
@@ -316,6 +311,19 @@ var httpClient = &http.Client{Timeout: 5 * time.Second}
 
 // remaining helper functions removed: detailed capability parsing now lives in
 // shared scanners.
+
+// logIgnoredDevices logs probeDropped devices once, excluding internal pipeline nodes.
+// It records every seen device in ignoredSeen to avoid repeat logs.
+func (dp *DeviceProxy) logIgnoredDevices() {
+	for _, d := range dp.probeDropped {
+		if _, logged := dp.ignoredSeen[d.Node]; !logged {
+			if d.Kind != "ignored-internal-pipeline" {
+				logx.L.Info("ignoring device", "node", d.Node, "name", d.Name, "caps", d.Caps, "reason", d.Kind)
+			}
+			dp.ignoredSeen[d.Node] = struct{}{}
+		}
+	}
+}
 
 // scanUSBCameras looks for USB cameras that might need initialization
 func (dp *DeviceProxy) scanUSBCameras() {
