@@ -41,11 +41,7 @@ func TestOkHandler(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 }
-
-
-func TestNewHandlers(t *testing.T) {
-
-func TestNegotiateHandler(t *testing.T) {
+func TestHandlers(t *testing.T) {
 	jwksJSON := []byte(`{"keys":[{"kty":"oct","kid":"overlay","k":"` + base64.RawURLEncoding.EncodeToString(overlayKey) + `"}]}`)
 	var err error
 	jwks, err = keyfunc.NewJSON(jwksJSON)
@@ -53,7 +49,6 @@ func TestNegotiateHandler(t *testing.T) {
 		t.Fatalf("jwks: %v", err)
 	}
 	token := signToken("agent1")
-
 
 	tests := []struct {
 		name    string
@@ -96,6 +91,8 @@ func TestNegotiateHandler(t *testing.T) {
 				t.Fatalf("expected 401, got %d", rr.Code)
 			}
 		})
+	}
+
 	req := httptest.NewRequest(http.MethodPost, "/v1/negotiate?class=realtime", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rr := httptest.NewRecorder()
@@ -116,6 +113,5 @@ func TestNegotiateHandler(t *testing.T) {
 	}
 	if resp.Transport != "quic" || len(resp.Endpoints) == 0 {
 		t.Fatalf("unexpected resp: %+v", resp)
-
 	}
 }
