@@ -21,7 +21,9 @@
     "src/components/__tests__/uiUxTasks.test.ts",
     "src/lib/__tests__/fitRect.test.ts",
     "src/styles/__tests__/tokens.test.ts",
-    "src/components/__tests__/uiUxTasks.test.ts"
+    "src/components/__tests__/uiUxTasks.test.ts",
+    "src/lib/server/__tests__/settingsDB.test.ts",
+    "src/app/api/policy/__tests__/evaluate.test.ts"
   ],
   "exclude": []
 }

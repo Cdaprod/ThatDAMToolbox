@@ -5,14 +5,14 @@
 import assert from 'node:assert';
 import test from 'node:test';
 import { renderToString } from 'react-dom/server';
-import TenantProvider from '../../../providers/TenantProvider';
 import SettingsPage from '../settings/page';
+import ToastProvider from '../../../components/providers/ToastProvider';
 
 test('SettingsPage shows general tab', () => {
   const html = renderToString(
-    <TenantProvider tenant="acme">
-      <SettingsPage />
-    </TenantProvider>
+    <ToastProvider>
+      <SettingsPage params={{ tenant: 'acme' }} />
+    </ToastProvider>
   );
   assert.ok(html.includes('General &amp; Branding'));
 });
