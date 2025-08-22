@@ -18,22 +18,17 @@ x-build-common: &build-common
     org.opencontainers.image.licenses: "Apache-2.0"
 
 services:
-  media-api:
-    profiles: ["media-api"]
-    build:
-      <<: *build-common
-      context: ../../
-      dockerfile: host/services/media-api/Dockerfile
-    image: cdaprod/media-api:${IMAGE_TAG:-dev}
-    container_name: thatdamtoolbox-media-api
-    networks: [damnet]
-    ports: ["8081:8080"]
-    logging: *default-logging
-    environment:
-      EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
-      BLOB_STORE_ROOT: /data
+  buildkit:
+    image: moby/buildkit:latest
+    privileged: true
+    command: ["--addr", "tcp://0.0.0.0:1234"]
+    ports: ["1234:1234"]
     volumes:
-      - "${DATA_ROOT:-./data}:/data:rw"
-      - "${INCOMING_ROOT:-./incoming}:/data/_INCOMING:rw"
-    depends_on:
-      - rabbitmq
+      - ${BUILDX_CACHE_DEST:-$HOME/.cache/buildx-cache}:/var/lib/buildkit
+    networks: [damnet]
+    healthcheck:
+      test: ["CMD", "buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    logging: *default-logging

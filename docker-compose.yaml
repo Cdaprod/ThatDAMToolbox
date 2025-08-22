@@ -12,9 +12,6 @@ x-build-common: &build-common
     BUILDKIT_INLINE_CACHE: "1"
   cache_from:
     - type=registry,ref=ghcr.io/cdaprod/thatdamtoolbox-cache:build
-    - type=local,src=${BUILDX_CACHE_SRC:-$HOME/.cache/buildx-cache}
-  cache_to:
-    - type=local,dest=${BUILDX_CACHE_DEST:-$HOME/.cache/buildx-cache},mode=max
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
@@ -25,6 +22,7 @@ x-build-common: &build-common
 
 include:
   # Infra-grade services
+  - path: ./docker/compose/docker-compose.buildkit.yaml
   - path: ./docker/compose/docker-compose.postgres.yaml
   - path: ./docker/compose/docker-compose.weaviate.yaml
   - path: ./docker/compose/docker-compose.minio.yaml
