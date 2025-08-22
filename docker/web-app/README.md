@@ -309,6 +309,10 @@ capture-daemon exposes WebRTC. When available, it negotiates a WHEP session via
 `/whep/<room>` to receive full‑res H.264 without transcoding; otherwise it falls
 back to the HLS preview.
 
+The monitor view automatically adjusts to device orientation. On portrait
+screens the video fills the top of the display and controls stack beneath it,
+eliminating the need to scroll.
+
 Recording is controlled via simple HTTP calls:
 
 ```

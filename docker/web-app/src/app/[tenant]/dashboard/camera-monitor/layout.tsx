@@ -6,7 +6,7 @@ import { useTenant } from '@/providers/TenantProvider';
 export default function CameraMonitorLayout({ children }: { children: ReactNode }) {
   const tenant = useTenant();
   return (
-    <div className="w-screen h-screen bg-black flex flex-col">
+    <div className="w-full h-screen min-h-[100dvh] bg-black flex flex-col">
       {/* Back button overlays top-left */}
       <div className="absolute top-4 left-4 z-10">
         <Link
