@@ -1,19 +1,18 @@
 /**
- * Tenant settings page renders tab labels.
+ * Access control page render test.
  * Run with: npm test
  */
 import assert from 'node:assert';
 import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import TenantProvider from '../../../providers/TenantProvider';
-import SettingsPage from '../settings/page';
+import AccessControlPage from '../access-control/page';
 
-test('SettingsPage shows sections', () => {
+test('AccessControlPage shows heading', () => {
   const html = renderToString(
     <TenantProvider tenant="acme">
-      <SettingsPage />
+      <AccessControlPage />
     </TenantProvider>
   );
-  assert.ok(html.includes('General &amp; Branding'));
+  assert.ok(html.includes('Access Control'));
 });
-

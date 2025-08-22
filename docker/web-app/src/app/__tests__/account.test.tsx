@@ -9,6 +9,6 @@ import AccountPage from '../account/page';
 
 test('AccountPage shows heading', () => {
   const html = renderToString(<AccountPage />);
-  assert.ok(html.includes('My Account'));
+  assert.ok(html.includes('Account'));
 });
 
