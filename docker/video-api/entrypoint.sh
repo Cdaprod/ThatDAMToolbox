@@ -76,7 +76,7 @@ create_directories() {
   for d in "${DATA_DIRS[@]}"; do
     if [[ ! -d "$d" ]]; then
       log "Creating directory: $d"
-      mkdir -p "$d"
+      mkdir -p "$d" 2>/dev/null || log "⚠️  Could not create directory $d (continuing anyway)"
     fi
   done
 }
