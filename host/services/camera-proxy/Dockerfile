@@ -38,23 +38,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM node:20-alpine AS viewer-builder
 WORKDIR /app
 
-# build reusable player package
+# copy packages used by proxy-viewer
 COPY docker/packages/player/ ./packages/player/
-RUN --mount=type=cache,target=/root/.npm \
-    sh -ceu '\
-      cd packages/player; \
-      npm ci || npm install; \
-      npm run build \
-    '
-
-# build proxy-viewer depending on player
+COPY docker/packages/design-system/ ./packages/design-system/
+COPY docker/packages/stream-registry/ ./packages/stream-registry/
 COPY docker/proxy-viewer/ ./proxy-viewer/
+
+# install and build local packages then bundle the viewer
 RUN --mount=type=cache,target=/root/.npm \
-    sh -ceu '\
-      cd proxy-viewer; \
-      npm ci || npm install; \
-      npm run build \
-    '
+    npm --prefix packages/player install && npm --prefix packages/player run build && \
+    npm --prefix packages/design-system install && npm --prefix packages/design-system run build && \
+    npm --prefix packages/stream-registry install && \
+    npm --prefix proxy-viewer install && npm --prefix proxy-viewer run build
 
 # ── runtime (needs ffmpeg, v4l2 utils for device probing)
 FROM alpine:3.20

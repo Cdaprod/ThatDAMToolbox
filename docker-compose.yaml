@@ -14,7 +14,7 @@ x-build-common: &build-common
     - type=registry,ref=ghcr.io/cdaprod/thatdamtoolbox-cache:build
     - type=local,src=${BUILDX_CACHE_SRC:-$HOME/.cache/buildx-cache}
   cache_to:
-    - type=local,dest=${BUILDX_CACHE_DEST:-$HOME/.cache/buildx-cache},mode=max
+    - type=local,dest=${BUILDX_CACHE_DEST:-$HOME/.cache/buildx-cache},mode=max,sharing=locked
   labels:
     org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
     org.opencontainers.image.vendor: "Cdaprod"
