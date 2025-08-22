@@ -7,6 +7,14 @@ export const metadata = { title: 'Nodes • That DAM Toolbox' };
 export default async function NodesPage() {
   try {
     const nodes = await supervisor.listNodes();
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+      return (
+        <div>
+          <h1 className="text-2xl font-semibold mb-4">Nodes</h1>
+          <p className="text-gray-500">No nodes registered</p>
+        </div>
+      );
+    }
     return (
       <div>
         <h1 className="text-2xl font-semibold mb-4">Nodes</h1>

@@ -15,6 +15,23 @@ import (
 // Handshake route handlers with basic policy enforcement.
 // Example: curl -X POST http://localhost:8070/v1/nodes/register -d '{}'
 
+// nodesList returns a snapshot of registered agents.
+// Example: curl http://localhost:8070/v1/nodes
+func nodesList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Allow anonymous access; auth errors are ignored and policy decides.
+	p, _ := auth(r)
+	if !policy.Allow(r.Context(), p, ports.ActPlan) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(reg.Snapshot())
+}
+
 func nodesRegister(w http.ResponseWriter, r *http.Request) {
 	p, err := auth(r)
 	if err != nil {
