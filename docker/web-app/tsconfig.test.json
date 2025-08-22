@@ -5,7 +5,8 @@
     "outDir": ".tmp-test",
     "module": "commonjs",
     "target": "es2019",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "noImplicitAny": false
   },
   "include": [
     "src/lib/__tests__/api.test.ts",
@@ -23,7 +24,8 @@
     "src/styles/__tests__/tokens.test.ts",
     "src/components/__tests__/uiUxTasks.test.ts",
     "src/lib/server/__tests__/settingsDB.test.ts",
-    "src/app/api/policy/__tests__/evaluate.test.ts"
+    "src/app/api/policy/__tests__/evaluate.test.ts",
+    "src/types/externals.d.ts"
   ],
   "exclude": []
 }
