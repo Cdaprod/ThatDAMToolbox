@@ -29,6 +29,13 @@ curl -X POST http://localhost:3000/api/tenancy \
 
 Then open http://localhost:3000/signup in your browser.
 
+## Development Tools
+
+- TanStack React Query Devtools are included by default.
+- A React DevTools server also runs in development; visit
+  http://localhost:8097 to inspect component trees without installing a
+  browser extension.
+
 ## Core Configuration Files
 
 ```
