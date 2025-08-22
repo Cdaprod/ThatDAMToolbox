@@ -20,6 +20,10 @@ export const globalTasks = {
     throw new Error('Not implemented: implementFluidSizingMap');
   },
 
+  /** Observe orientation and video aspect without forcing re-mounts. */
+  addOrientationAspectObserver(): never {
+    throw new Error('Not implemented: addOrientationAspectObserver');
+  },
 
   /** Keep app chrome within safe areas and avoid zoom-on-load. */
   pinChromeWithSafeArea(): never {
@@ -117,6 +121,7 @@ export const taskNames = Object.keys(uiUxTasks) as UiUxTaskName[];
 export const {
   ensureOneScreenOperation,
   implementFluidSizingMap,
+  addOrientationAspectObserver,
   pinChromeWithSafeArea,
   ensureModalsBehaveLikeApps,
   honorUserSettings,
