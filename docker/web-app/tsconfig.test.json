@@ -9,7 +9,9 @@
   },
   "include": [
     "src/lib/__tests__/api.test.ts",
-    "src/app/[tenant]/dashboard/__tests__/NodesPage.test.tsx"
+    "src/app/[tenant]/dashboard/__tests__/NodesPage.test.tsx",
+    "src/components/__tests__/dashboardTools.access.test.tsx",
+    "src/lib/__tests__/videoApi.trimIdle.test.ts"
   ],
   "exclude": []
 }

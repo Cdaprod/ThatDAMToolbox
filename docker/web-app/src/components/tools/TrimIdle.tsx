@@ -12,6 +12,7 @@ import { createToolPage } from '../../lib/toolRegistry'
  */
 function TrimIdleContent() {
   const [file, setFile] = useState<File | null>(null)
+  const [threshold, setThreshold] = useState<number>(2)
   const [status, setStatus] = useState<'idle' | 'working' | 'error' | 'done'>('idle')
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const router = useRouter()
@@ -20,7 +21,7 @@ function TrimIdleContent() {
     if (!file) return
     setStatus('working')
     try {
-      const blob = await videoApi.trimIdle({ file })
+      const blob = await videoApi.trimIdle({ file, freeze_dur: threshold })
       setDownloadUrl(URL.createObjectURL(blob))
       setStatus('done')
     } catch (err) {
@@ -35,6 +36,22 @@ function TrimIdleContent() {
         onSelectDam={() => router.push('/dashboard/dam-explorer')}
         onSelectCamera={() => router.push('/dashboard/camera-monitor')}
       />
+      {file && (
+        <video
+          src={URL.createObjectURL(file)}
+          controls
+          className="w-full max-w-lg my-4"
+        />
+      )}
+      <label className="block mb-4">
+        <span className="mr-2">Idle Threshold (s)</span>
+        <input
+          type="number"
+          className="border px-2 py-1 rounded w-20"
+          value={threshold}
+          onChange={e => setThreshold(Number(e.target.value))}
+        />
+      </label>
       <button
         className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
         onClick={handleSubmit}

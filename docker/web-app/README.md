@@ -279,8 +279,10 @@ Dashboard views map to service APIs as follows:
 - Events → Broker topics (`overlay.*`, `capture.*`, `video.*`, `webapp.*`)
 - Capture devices → capture-daemon API (`/hwcapture/*`)
 - Jobs & Search → video-api (`/video/*`)
+- Trim / Idle Module → video-api (`/trim_idle/`)
 - Observability → service `/health` and `/metrics` endpoints
 - Credentials, Webhooks, Billing → api-gateway
+- Access Control → api-gateway (`/credentials`)
 
 All requests flow through the typed clients in `src/lib/api`, generated via `yarn run generate-api` for a single source of truth.
 
