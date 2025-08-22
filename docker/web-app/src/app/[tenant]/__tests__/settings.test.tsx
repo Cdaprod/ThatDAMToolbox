@@ -14,6 +14,6 @@ test('SettingsPage shows general tab', () => {
       <SettingsPage />
     </TenantProvider>
   );
-  assert.ok(html.includes('General'));
+  assert.ok(html.includes('General &amp; Branding'));
 });
 

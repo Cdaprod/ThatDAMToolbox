@@ -7,8 +7,8 @@ import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import AccountPage from '../account/page';
 
-test('AccountPage shows heading', () => {
+test('AccountPage shows profile section', () => {
   const html = renderToString(<AccountPage />);
-  assert.ok(html.includes('My Account'));
+  assert.ok(html.includes('Profile'));
 });
 
