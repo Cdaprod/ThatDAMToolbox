@@ -36,6 +36,8 @@ services:
 
       # Single-node cluster name
       CLUSTER_HOSTNAME:                          "node1"
+      # Prevent self-join attempts that spam logs in single-node setups
+      CLUSTER_JOIN:                              ""
     volumes:
       - ../../docker/weaviate/data/weaviate:/var/lib/weaviate
     depends_on:
