@@ -826,6 +826,9 @@ git clone https://github.com/Cdaprod/ThatDAMToolbox.git
 cd ThatDAMToolbox
 
 # Build Go service images (run from repo root)
+# Optional: avoid /tmp cache issues by pinning BuildKit cache path
+export BUILDX_CACHE_SRC="$HOME/.cache/buildx-cache"
+export BUILDX_CACHE_DEST="$BUILDX_CACHE_SRC"
 docker compose build overlay-hub supervisor runner
 
 # Build and run with Docker Compose
