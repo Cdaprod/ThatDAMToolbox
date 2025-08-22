@@ -17,5 +17,10 @@ if command -v rabbitmqctl >/dev/null 2>&1; then
 else
   echo "rabbitmqctl not found; skipping feature flag enable" >&2
 fi
+if [[ $# -eq 0 ]]; then
+  set -- rabbitmq-server
+fi
 
+# disable unbound variable check before delegating; the upstream script doesn't enable it
+set +u
 exec docker-entrypoint.sh "$@"
