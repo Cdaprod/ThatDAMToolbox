@@ -20,12 +20,12 @@ import (
 )
 
 var (
-	addr         = firstNonEmpty(os.Getenv("EVENT_BROKER_URL"), os.Getenv("AMQP_URL"))
-	exchangeName = firstNonEmpty(os.Getenv("BROKER_EXCHANGE"), "events")
+	addr         string
+	exchangeName string
 
 	// ring-buffer defaults to 256 msgs but can be tuned via env
-	bufSize, _ = strconv.Atoi(firstNonEmpty(os.Getenv("BROKER_BUFFER"), "256"))
-	buf        = make(chan amqp.Publishing, bufSize)
+	bufSize int
+	buf     chan amqp.Publishing
 
 	initOnce   sync.Once
 	cancelFunc context.CancelFunc
@@ -34,10 +34,16 @@ var (
 // Init *must* be called once from main() – it returns immediately.
 func Init() {
 	initOnce.Do(func() {
+		addr = firstNonEmpty(os.Getenv("EVENT_BROKER_URL"), os.Getenv("AMQP_URL"))
+		exchangeName = firstNonEmpty(os.Getenv("BROKER_EXCHANGE"), "events")
+		bufSize, _ = strconv.Atoi(firstNonEmpty(os.Getenv("BROKER_BUFFER"), "256"))
+		buf = make(chan amqp.Publishing, bufSize)
+
 		if addr == "" {
 			log.Println("[broker] AMQP_URL/EVENT_BROKER_URL not set – running in in-proc mode")
 			return
 		}
+
 		ctx, cancel := context.WithCancel(context.Background())
 		cancelFunc = cancel
 		go run(ctx)
