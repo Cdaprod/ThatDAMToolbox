@@ -58,6 +58,7 @@ dist/
 *.tar
 *.tar.gz
 data/
+!docker/web-app/lighthouse/budgets.json
 !/docker/weaviate/data/
 
 # ---- Metadata/output folders ----

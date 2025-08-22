@@ -1,4 +1,5 @@
 import CookieBanner from '../components/CookieBanner'
+import AmbientGrid from '../components/AmbientGrid'
 import '@thatdamtoolbox/design-system'
 
 /**
@@ -9,6 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html>
       <body>
+        <AmbientGrid />
         {children}
         <CookieBanner />
         {domain && (

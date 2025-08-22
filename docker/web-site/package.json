@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "node start.js start",
-    "test": "node --test src/lib/sendMail.test.js && node --test -r ts-node/register src/lib/email/sendgrid.test.js",
+    "test": "node --test src/lib/sendMail.test.js && node --test -r ts-node/register src/lib/email/sendgrid.test.js && node --test src/components/hero-video-file.test.js",
     "postinstall": "node -e \"try{require('child_process').execSync('npx --yes next telemetry disable',{stdio:'ignore'})}catch{}\""
   },
   "dependencies": {
