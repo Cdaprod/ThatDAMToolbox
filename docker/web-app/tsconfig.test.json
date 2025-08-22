@@ -16,7 +16,8 @@
     "src/hooks/__tests__/useOrientation.test.ts",
     "src/app/__tests__/login.test.tsx",
     "src/app/__tests__/account.test.tsx",
-    "src/app/[tenant]/__tests__/settings.test.tsx"
+    "src/app/[tenant]/__tests__/settings.test.tsx",
+    "src/components/__tests__/uiUxTasks.test.ts"
   ],
   "exclude": []
 }
