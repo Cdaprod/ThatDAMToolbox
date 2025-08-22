@@ -14,4 +14,8 @@ declare module '@mui/icons-material';
 declare module '@emotion/react';
 declare module '@emotion/styled';
 declare module 'next-auth/react';
+declare module 'next-auth' {
+  export type NextAuthOptions = any;
+}
+declare module 'next-auth/providers/google';
 
