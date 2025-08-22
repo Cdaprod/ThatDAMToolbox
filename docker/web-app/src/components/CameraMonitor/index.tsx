@@ -11,7 +11,8 @@ import { useCameraStream } from "@/hooks/useCameraStream";
 import RecordButton from "@/components/RecordButton";
 import { useModal } from "@/providers/ModalProvider";
 import { sliderBackgroundStyle, batteryLevelStyle } from "@/styles/theme";
-import { useOrientation } from "@/hooks/useOrientation";
+import useOrientationAspect from "@/hooks/useOrientationAspect";
+import useVideoBox from "@/hooks/useVideoBox";
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(
@@ -484,7 +485,8 @@ const CameraMonitor: React.FC = () => {
     }
   }, []);
 
-  const orientation = useOrientation();
+  const { orientation } = useOrientationAspect(mediaRef);
+  const { width: boxWidth, height: boxHeight } = useVideoBox(mediaRef);
 
   return (
     <div className="w-full h-screen min-h-[100dvh] bg-gradient-to-br from-gray-900 to-black text-white font-sans overflow-hidden select-none flex flex-col">
@@ -578,13 +580,18 @@ const CameraMonitor: React.FC = () => {
 
       {/* Main Content Area */}
       <div className={`flex flex-1 ${orientation === 'portrait' ? 'flex-col' : ''}`}>
-        <div className={`flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden`}>
+        <div
+          className={`flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden`}
+        >
           {/* 1) The preview wrapper */}
-          <div className="relative max-w-full">
+          <div
+            className="relative"
+            style={{ width: boxWidth, height: boxHeight }}
+          >
             <video
               ref={mediaRef}
               src={streamSrc}
-              className="camera-video-feed max-w-full h-auto"
+              className="camera-video-feed w-full h-full object-contain"
               controls
               autoPlay
               muted
