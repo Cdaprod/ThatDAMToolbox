@@ -131,6 +131,10 @@ func FetchPlan(ctx context.Context, reqPayload any) (plan.DesiredPlan, error) {
 		return dp, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		io.CopyN(io.Discard, resp.Body, 1024)
+		return dp, nil
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		io.CopyN(io.Discard, resp.Body, 1024)
 		return dp, fmt.Errorf("supervisor plan: %s", resp.Status)
