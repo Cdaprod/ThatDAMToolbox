@@ -38,16 +38,23 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM node:20-alpine AS viewer-builder
 WORKDIR /app
 
-# build reusable player package
+# copy packages used by proxy-viewer
 COPY docker/packages/player/ ./packages/player/
+COPY docker/packages/design-system/ ./packages/design-system/
+COPY docker/packages/stream-registry/ ./packages/stream-registry/
+
+# build shared packages first
 RUN --mount=type=cache,target=/root/.npm \
     sh -ceu '\
       cd packages/player; \
       npm ci || npm install; \
+      npm run build; \
+      cd ../design-system; \
+      npm ci || npm install; \
       npm run build \
     '
 
-# build proxy-viewer depending on player
+# build proxy-viewer depending on local packages
 COPY docker/proxy-viewer/ ./proxy-viewer/
 RUN --mount=type=cache,target=/root/.npm \
     sh -ceu '\
