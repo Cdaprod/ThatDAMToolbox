@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node start.js dev",
+    "dev": "NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS=1 node start.js dev",
     "build": "next build",
     "start": "NODE_ENV=production node start.js start",
     "export": "next export -o build",
