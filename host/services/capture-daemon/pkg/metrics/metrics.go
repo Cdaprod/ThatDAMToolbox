@@ -41,6 +41,21 @@ var (
 			Help: "Current SRT bandwidth in bytes per second",
 		},
 	)
+
+	// Encoder metrics mirror camera-proxy's encoder package to avoid cross-service imports.
+	EncoderFrameDelay = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "encoder_frame_delay_seconds",
+			Help:    "Time spent encoding a frame",
+			Buckets: prometheus.DefBuckets,
+		}, []string{"backend"},
+	)
+	EncoderFrameDrops = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "encoder_frame_drops_total",
+			Help: "Number of frames dropped by encoder",
+		}, []string{"backend"},
+	)
 )
 
 type Metrics struct{}
@@ -53,6 +68,8 @@ func New() *Metrics {
 		CaptureErrors,
 		RTCPPacketsLost,
 		SRTBandwidth,
+		EncoderFrameDelay,
+		EncoderFrameDrops,
 	)
 	return &Metrics{}
 }
