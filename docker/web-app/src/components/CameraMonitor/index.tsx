@@ -13,6 +13,7 @@ import { useModal } from "@/providers/ModalProvider";
 import { sliderBackgroundStyle, batteryLevelStyle } from "@/styles/theme";
 import useOrientationAspect from "@/hooks/useOrientationAspect";
 import useVideoBox from "@/hooks/useVideoBox";
+import { mergeDeviceIds, toCssAspect } from "./utils";
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(
@@ -42,14 +43,6 @@ const formatDuration = (seconds: number) => {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 };
 
-/**
- * Merge previously seen device IDs with a new list.
- * Safely handles non-array inputs.
- */
-export function mergeDeviceIds(prev: unknown, now: string[]): string[] {
-  const prevList = Array.isArray(prev) ? prev : [];
-  return Array.from(new Set([...prevList, ...now]));
-}
 
 // --- 1) TYPES & ENUMS ---
 type Codec = "h264" | "hevc";
@@ -485,7 +478,8 @@ const CameraMonitor: React.FC = () => {
     }
   }, []);
 
-  const { orientation } = useOrientationAspect(mediaRef);
+  const { orientation, aspect } = useOrientationAspect(mediaRef);
+  const cssAspect = toCssAspect(aspect);
   const { width: boxWidth, height: boxHeight } = useVideoBox(mediaRef);
 
   return (
@@ -582,7 +576,7 @@ const CameraMonitor: React.FC = () => {
       <div className={`flex flex-1 ${orientation === 'portrait' ? 'flex-col' : ''}`}>
         <div
           className={`flex-1 bg-black relative m-2 border-2 border-gray-700 rounded flex items-center justify-center overflow-hidden`}
-          style={{ aspectRatio: aspect ? aspect.toString() : undefined }}
+          style={{ aspectRatio: cssAspect }}
         >
           {/* 1) The preview wrapper */}
           <div
