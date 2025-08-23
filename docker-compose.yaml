@@ -5,7 +5,7 @@ x-logging: &default-logging
   options:
     max-size: "10m"
     max-file: "5"
-    labels: "io.github.thatdam.project,com.docker.compose.service,com.docker.compose.project"
+    labels:   "io.github.thatdam.project,com.docker.compose.service,com.docker.compose.project"
 
 x-build-common: &build-common
   args:
@@ -13,12 +13,12 @@ x-build-common: &build-common
   cache_from:
     - type=registry,ref=ghcr.io/cdaprod/thatdamtoolbox-cache:build,ignore-error=true
   labels:
-    org.opencontainers.image.source: "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
-    org.opencontainers.image.vendor: "Cdaprod"
-    org.opencontainers.image.title: "ThatDAMToolbox"
-    org.opencontainers.image.revision: "${GIT_SHA:-dev}"
-    org.opencontainers.image.version: "${IMAGE_TAG:-dev}"
-    org.opencontainers.image.licenses: "Apache-2.0"
+    org.opencontainers.image.source:    "https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype"
+    org.opencontainers.image.vendor:    "Cdaprod"
+    org.opencontainers.image.title:     "ThatDAMToolbox"
+    org.opencontainers.image.revision:  "${GIT_SHA:-dev}"
+    org.opencontainers.image.version:   "${IMAGE_TAG:-dev}"
+    org.opencontainers.image.licenses:  "Apache-2.0"
 
 include:
   # Infra-grade services
@@ -65,15 +65,15 @@ volumes:
       device: ${RABBITMQ_DATA_PATH:-./docker/rabbitmq/data}
   discovery-run:
     name: ${COMPOSE_PROJECT_NAME:-thatdamtoolbox}_discovery-run
-  video-web-node_modules:
-    driver: local
-  video-web-next:
-    driver: local
-  video-web-npm:
-    driver: local
-  web-site-node_modules:
-    driver: local
-  web-site-next:
-    driver: local
-  web-site-npm:
-    driver: local
+  # video-web-node_modules:
+  #   driver: local
+  # video-web-next:
+  #   driver: local
+  # video-web-npm:
+  #   driver: local
+  # web-site-node_modules:
+  #   driver: local
+  # web-site-next:
+  #   driver: local
+  # web-site-npm:
+  #   driver: local
