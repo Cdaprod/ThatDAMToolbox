@@ -42,12 +42,16 @@ services:
       # You can also override here in CI or host:
       # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
     volumes:
+      - ../../docker/web-site/src:/app/src:ro
+      - ../../docker/web-site/public:/app/public:ro
+      - ../../docker/web-site/start.js:/app/start.js:ro
+      - ../../docker/web-site/entrypoint.sh:/app/entrypoint.sh:ro
       - ../../docker/web-site:/app:ro
       - /app/.next
     entrypoint:
       - "/bin/sh"
       - "-c"
-      - "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"
+      - "sh /app/entrypoint.sh"
     depends_on:
       - rabbitmq
     restart: unless-stopped

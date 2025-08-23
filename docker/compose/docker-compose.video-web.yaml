@@ -43,7 +43,9 @@ services:
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       NPM_CONFIG_CACHE: /root/.npm
     volumes:
-      - ../../docker/web-app:/app:ro
+      - ../../docker/web-app/src:/app/src:ro
+      - ../../docker/web-app/public:/app/public:ro
+      - ../../docker/web-app/start.js:/app/start.js:ro
       - /app/.next
       - discovery-run:/run/discovery:ro
     group_add: ["video"]

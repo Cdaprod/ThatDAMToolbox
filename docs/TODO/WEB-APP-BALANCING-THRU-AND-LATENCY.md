@@ -267,7 +267,9 @@ services:
       - NODE_OPTIONS=--max-old-space-size=512
       - UV_THREADPOOL_SIZE=8
     volumes:
-      - ./docker/web-app:/app:ro
+      - ./docker/web-app/src:/app/src:ro
+      - ./docker/web-app/public:/app/public:ro
+      - ./docker/web-app/start.js:/app/start.js:ro
       - /app/.next
 
   camera-proxy:
