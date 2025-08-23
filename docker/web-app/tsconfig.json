@@ -1,6 +1,7 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": "src",
+    "baseUrl": ".",
     "target": "es5",
     "lib": [
       "dom",
@@ -18,24 +19,12 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "paths": {
-      "@/*": [
-        "*"
-      ],
-      "@components/*": [
-        "components/*"
-      ],
-      "@app/*": [
-        "app/*"
-      ],
-      "@lib/*": [
-        "lib/*"
-      ],
-      "@styles/*": [
-        "styles/*"
-      ],
-      "@providers/*": [
-        "providers/*"
-      ]
+      "@/*": ["src/*"],
+      "@components/*": ["src/components/*"],
+      "@app/*": ["src/app/*"],
+      "@lib/*": ["src/lib/*"],
+      "@styles/*": ["src/styles/*"],
+      "@providers/*": ["src/providers/*"]
     },
     "allowJs": true,
     "esModuleInterop": true,

@@ -41,6 +41,7 @@ ehthumbs.db
 # ---- Build & Dist ----
 #build/
 dist/
+**/dist/
 *.log
 *.tmp
 *.bak
@@ -58,6 +59,13 @@ dist/
 *.tar
 *.tar.gz
 data/
+!docker/web-app/lighthouse/budgets.json
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!docker/packages/**/package.json
+!docker/packages/**/tsconfig.json
+!docker/packages/**/README.md
 !/docker/weaviate/data/
 
 # ---- Metadata/output folders ----

@@ -1,61 +1,31 @@
-# syntax=docker/dockerfile:1
-
-# ── Base ─────────────────────────────────────────────────────
+# syntax=docker/dockerfile:1.7
+# Dockerfile for marketing site using npm workspaces
 FROM node:20-alpine AS base
-WORKDIR /app
-ENV NODE_ENV=development
-ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /repo
 
-# ── deps (install node_modules once) ─────────────────────────
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY docker/web-site/package.json docker/web-site/tsconfig.json docker/web-site/next.config.js ./docker/web-site/
+COPY docker/packages/motion-lite/package.json ./docker/packages/motion-lite/
+COPY docker/packages/design-system/package.json ./docker/packages/design-system/
+COPY docker/packages/ui-perf/package.json ./docker/packages/ui-perf/
+
 FROM base AS deps
-# hadolint ignore=DL3018
-RUN apk add --no-cache bash curl ca-certificates
-COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* .npmrc* ./
-RUN set -e; \
-  if [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm install --frozen-lockfile; \
-  elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci || npm install; \
-  else npm install; \
-  fi
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
+    npm ci --workspaces --include-workspace-root=false
 
-# ── development (hot reload) ─────────────────────────────────
-FROM base AS development
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+FROM deps AS builder
 COPY . .
-EXPOSE 3000
-CMD ["npm","run","dev"]
+WORKDIR /repo/docker/web-site
+RUN --mount=type=cache,id=next-cache,target=.next/cache \
+    npm run build
 
-# ── builder (creates .next/standalone) ───────────────────────
-FROM base AS builder
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-# Cache next build
-RUN --mount=type=cache,target=/app/.next/cache npm run build
-
-# ── production (slim runtime) ────────────────────────────────
-FROM node:20-alpine AS production
-ARG VCS_REF
-ARG IMAGE_TAG=dev
-LABEL org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
-      org.opencontainers.image.vendor="Cdaprod" \
-      org.opencontainers.image.title="ThatDAMToolbox - web-site" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.revision=$VCS_REF \
-      org.opencontainers.image.version=$IMAGE_TAG
-WORKDIR /app
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-# non-root user
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
-# copy runtime bits
-COPY --from=builder /app/.next               ./.next
-COPY --from=builder /app/public              ./public
-COPY --from=deps    /app/node_modules        ./node_modules
-COPY --from=builder /app/package.json        ./package.json
-COPY --from=builder /app/start.js            ./start.js
-USER nextjs:nodejs
+COPY --from=builder /repo/docker/web-site/.next ./.next
+COPY --from=builder /repo/docker/web-site/public ./public
+COPY --from=builder /repo/docker/web-site/package.json ./package.json
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
+    npm ci --omit=dev
 EXPOSE 3000
-CMD ["node","start.js","start"]
+CMD ["npm","start"]

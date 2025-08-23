@@ -3,31 +3,40 @@
 
 import { ReactNode, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import dynamic             from 'next/dynamic'
+import dynamic from 'next/dynamic'
 
-import { ThemeProvider }   from '@/context/ThemeContext'
+import { ThemeProvider } from '@/context/ThemeContext'
 import VideoSocketProvider from './VideoSocketProvider'
-import AssetProvider       from './AssetProvider'
-import ModalProvider       from './ModalProvider'
-import ActionSheet         from '@/components/modals/ActionSheet'
+import AssetProvider from './AssetProvider'
+import ModalProvider from './ModalProvider'
+import ActionSheet from '@/components/modals/ActionSheet'
 import { SidebarProvider } from '../hooks/useSidebar'
-import AuthProvider        from './AuthProvider'
+import AuthProvider from './AuthProvider'
 
-const qc = new QueryClient()
+const qc = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: (failCount, error: any) => (error?.status === 404 ? 0 : Math.min(failCount, 2)),
+    },
+    mutations: { retry: 0 },
+  },
+})
 
-// dev-only React Query Devtools
+// Devtools (TanStack)
 const ReactQueryDevtools =
   process.env.NODE_ENV === 'development'
-    ? dynamic(() => import('@tanstack/react-query-devtools')
-        .then(m => m.ReactQueryDevtools),
-      { ssr: false })
+    ? dynamic(() => import('@tanstack/react-query-devtools').then((m) => m.ReactQueryDevtools), {
+        ssr: false,
+      })
     : () => null
 
+const RouteProgress = dynamic(() => import('@/components/ui/RouteProgress'), { ssr: false })
+const GlobalBackdrop = dynamic(() => import('@/components/ui/GlobalBackdrop'), { ssr: false })
 // ← point at your unified CaptureProvider, not "CaptureProviderImpl"
-const CaptureProvider = dynamic(
-  () => import('./CaptureProvider'),
-  { ssr: false }
-)
+const CaptureProvider = dynamic(() => import('./CaptureProvider'), { ssr: false })
 
 export default function AppProviders({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -38,29 +47,32 @@ export default function AppProviders({ children }: { children: ReactNode }) {
         )
         .catch(() => {
           // Ignore devtools connection errors in development.
-        });
+        })
     }
-  }, []);
+  }, [])
 
   return (
-    <QueryClientProvider client={qc}>
-      <AuthProvider>
-        <SidebarProvider>
-          <ThemeProvider>
-            <VideoSocketProvider>
-              <CaptureProvider>
-                <AssetProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={qc}>
+          <SidebarProvider>
+            <AssetProvider>
+              <VideoSocketProvider>
+                {/* immersive in-between UI */}
+                <RouteProgress />
+                <GlobalBackdrop />
+                <CaptureProvider>
                   <ModalProvider>
                     {children}
                     <ActionSheet />
                   </ModalProvider>
-                </AssetProvider>
-              </CaptureProvider>
-            </VideoSocketProvider>
-          </ThemeProvider>
-        </SidebarProvider>
-      </AuthProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+                </CaptureProvider>
+                <ReactQueryDevtools initialIsOpen={false} />
+              </VideoSocketProvider>
+            </AssetProvider>
+          </SidebarProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </AuthProvider>
   )
 }

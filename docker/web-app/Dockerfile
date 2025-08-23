@@ -1,75 +1,31 @@
-# /docker/web-app/Dockerfile
-#
-# Folder layout inside the image
-# ┌─ /app
-# │   ├─ node_modules     ← installed once during build
-# │   ├─ public           ← static assets
-# │   ├─ start.js         ← standalone server entrypoint
-# │   └─ .next            ← output of `npm run build`
-# └───────────────────────────────────────────────────────────────────────────
+# syntax=docker/dockerfile:1.7
+# Dockerfile for web-app using npm workspaces
+FROM node:20-alpine AS base
+WORKDIR /repo
 
-# Stage 0 ▸ Base image
-FROM node:18-alpine AS base
-WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=development
+# copy workspace manifests
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY docker/web-app/package.json docker/web-app/tsconfig.json docker/web-app/next.config.js docker/web-app/postcss.config.js docker/web-app/tailwind.config.js ./docker/web-app/
+COPY docker/packages/ui-perf/package.json ./docker/packages/ui-perf/
+COPY docker/packages/stream-registry/package.json ./docker/packages/stream-registry/
 
-# Stage 1 ▸ deps
 FROM base AS deps
-# hadolint ignore=DL3018
-RUN apk add --no-cache bash curl ca-certificates
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
+    npm ci --workspaces --include-workspace-root=false
 
-# copy only manifests
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-
-# SC2015 fix: no "A && B || C" fallthroughs; use explicit branching
-RUN set -euo pipefail; \
-  if [ -f yarn.lock ]; then \
-    echo "🧶 Installing with yarn…"; yarn install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then \
-    echo "📦 Installing with npm ci…"; \
-    if ! npm ci; then \
-      echo "⚠️ npm ci failed – falling back to npm install"; npm install; \
-    fi; \
-  elif [ -f pnpm-lock.yaml ]; then \
-    echo "📦 Installing with pnpm…"; corepack enable pnpm; pnpm install --frozen-lockfile; \
-  else \
-    echo "⚠️ No lockfile found – running npm install"; npm install; \
-  fi
-
-# Stage 2 ▸ dev
-FROM base AS development
-COPY --from=deps /app/node_modules /app/node_modules
-WORKDIR /app
+FROM deps AS builder
 COPY . .
-EXPOSE 3000
-CMD ["npm","run","dev"]
+WORKDIR /repo/docker/web-app
+RUN --mount=type=cache,id=next-cache,target=.next/cache \
+    npm run build
 
-# Stage 3 ▸ builder
-FROM base AS builder
-COPY --from=deps /app/node_modules /app/node_modules
-WORKDIR /app
-COPY . .
-RUN --mount=type=cache,target=/app/.next/cache npm run build
-
-# Stage 4 ▸ production
-FROM node:18-alpine AS production
-ARG VCS_REF
-ARG IMAGE_TAG=dev
-LABEL org.opencontainers.image.source="https://github.com/Cdaprod/Media-Indexer-Stdlib-Prototype" \
-      org.opencontainers.image.vendor="Cdaprod" \
-      org.opencontainers.image.title="ThatDAMToolbox - video-web" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.revision=$VCS_REF \
-      org.opencontainers.image.version=$IMAGE_TAG
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nextjs
-COPY --from=builder /app/.next        ./.next
-COPY --from=builder /app/start.js     ./start.js
-COPY --from=deps    /app/node_modules ./node_modules
-COPY --from=builder /app/public       ./public
-USER nextjs:nodejs
+COPY --from=builder /repo/docker/web-app/.next ./.next
+COPY --from=builder /repo/docker/web-app/public ./public
+COPY --from=builder /repo/docker/web-app/package.json ./package.json
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
+    npm ci --omit=dev
 EXPOSE 3000
-CMD ["node","start.js","start"]
+CMD ["npm","start"]

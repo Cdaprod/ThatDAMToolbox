@@ -54,14 +54,16 @@ venv/*
 #  Node / frontend artefacts
 ###############################
 # (only if you occasionally run npm/yarn here)
-node_modules/
+**/node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-package-lock.json            # copied later with --from if you do multi-stage
 yarn.lock
 pnpm-lock.yaml
+**/.next/cache
+**/.turbo
+**/dist
 
 ###############################
 #  Large local data / cache

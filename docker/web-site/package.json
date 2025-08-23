@@ -16,7 +16,8 @@
     "react-dom": "^18.3.1",
     "@sendgrid/mail": "^8.1.0",
     "zod": "^3.23.8",
-    "@thatdamtoolbox/design-system": "file:../packages/design-system"
+    "@cdaprod/motion-lite": "0.1.0",
+    "@thatdamtoolbox/design-system": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.11",

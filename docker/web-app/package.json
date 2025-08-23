@@ -14,7 +14,8 @@
     "docker:build": "docker build -t thatdamtoolbox-web-app:dev .",
     "docker:run": "docker run --rm -p 3000:3000 thatdamtoolbox-web-app:dev",
     "docker:sh": "docker run -it --rm thatdamtoolbox-web-app:dev sh",
-    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && NODE_ENV=test node --require ./src/test/test-mocks.js --test $(find .tmp-test -name '*.test.js')"
+    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && NODE_ENV=test node --require ./src/test/test-mocks.js --test $(find .tmp-test -name '*.test.js')",
+    "ci:budgets": "lighthouse http://localhost:3000 --budgets-path=./lighthouse/budgets.json --quiet || echo '⚠️ budgets exceeded'"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
@@ -22,7 +23,8 @@
     "@react-three/fiber": "^8.13.5",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-query-devtools": "^5.83.0",
-    "@thatdamtoolbox/stream-registry": "file:../packages/stream-registry",
+    "@cdaprod/ui-perf": "0.1.0",
+    "@thatdamtoolbox/stream-registry": "0.1.0",
     "amqplib": "^0.10.3",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",

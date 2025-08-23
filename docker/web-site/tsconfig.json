@@ -1,7 +1,10 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "CommonJS",
     "esModuleInterop": true,
-    "moduleResolution": "node"
-  }
+    "moduleResolution": "node",
+    "baseUrl": "."
+  },
+  "include": ["src"]
 }
