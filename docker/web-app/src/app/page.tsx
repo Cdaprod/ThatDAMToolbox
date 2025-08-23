@@ -1,14 +1,23 @@
 // /docker/web-app/src/app/page.tsx
-'use client';
 
-import DashboardLayout from '../components/DashboardLayout';
+import { redirect } from 'next/navigation';
+import { api } from '../lib/api/client';
 
-export default function HomePage() {
-  const hero = (
-    <h1 className="text-4xl font-extrabold py-6 text-center">
-      🎬 Cdaprods Video Dashboard
-    </h1>
-  );
-
-  return <DashboardLayout hero={hero} />;
+/**
+ * Root page that redirects to the user's default tenant dashboard
+ * or to the login screen when unauthenticated.
+ *
+ * Example:
+ *   visiting "/" -> "/acme/dashboard"
+ */
+export default async function HomePage() {
+  try {
+    const { defaultTenant } = await api<{ defaultTenant: string }>(
+      '/api/account/default-tenant',
+      { cache: 'no-store' },
+    );
+    redirect(`/${defaultTenant || 'default'}/dashboard`);
+  } catch {
+    redirect('/login');
+  }
 }

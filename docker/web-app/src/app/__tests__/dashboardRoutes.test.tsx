@@ -3,13 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { renderToString } from 'react-dom/server';
 
-import HomePage from '../page';
 import TenantDashboard from '../[tenant]/dashboard/page';
 import TenantProvider from '../../providers/TenantProvider';
 import { dashboardTools } from '../../components/dashboardTools';
+import { mock } from 'node:test';
 
-test('default and tenant dashboards render the same tools', () => {
-  const homeHtml = renderToString(<HomePage />);
+// Ensure tenant dashboards render all configured tools.
+test('tenant dashboard renders expected tools', () => {
   const tenantHtml = renderToString(
     <TenantProvider tenant="acme">
       <TenantDashboard />
@@ -17,7 +17,28 @@ test('default and tenant dashboards render the same tools', () => {
   );
 
   Object.values(dashboardTools).forEach(tool => {
-    assert.ok(homeHtml.includes(tool.title), `home missing ${tool.title}`);
     assert.ok(tenantHtml.includes(tool.title), `tenant missing ${tool.title}`);
   });
+});
+
+// Root page redirects unauthenticated users to the login screen.
+test('root page redirects to login when unauthenticated', async () => {
+  const navigation = await import('next/navigation');
+  const redirectMock = mock.method(navigation, 'redirect', (url: string) => {
+    throw new Error(url);
+  });
+
+  global.fetch = async () => ({ ok: false }) as any;
+
+  const { default: HomePage } = await import('../page');
+
+  let err: any;
+  try {
+    await HomePage();
+  } catch (e) {
+    err = e;
+  }
+
+  assert.equal(err?.message, '/login');
+  assert.equal(redirectMock.mock.callCount(), 1);
 });
