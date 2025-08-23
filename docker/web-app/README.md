@@ -13,7 +13,7 @@ choose to create an organization or invite members.
 Test locally with:
 
 ```bash
-# run the dev server
+# run the dev server (binds 0.0.0.0 so LAN devices can connect)
 cd docker/web-app
 yarn dev
 
@@ -31,7 +31,7 @@ Then open http://localhost:3000/signup in your browser.
 
 ## Development Tools
 
-- TanStack React Query Devtools are included by default.
+ - TanStack React Query Devtools are included by default (set `NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS=0` to disable).
 - A React DevTools server also runs in development; visit
   http://localhost:8097 to inspect component trees without installing a
   browser extension.
