@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: host/services/camera-proxy/Dockerfile
-    image: cdaprod/camera-proxy:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/camera-proxy:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-camera-proxy
     networks: [damnet]
     ports: ["8000:8000"]

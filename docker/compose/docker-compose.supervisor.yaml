@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: host/services/supervisor/Dockerfile
-    image: cdaprod/supervisor:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/supervisor:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-supervisor
     networks: [damnet]
     ports: ["8070:8070"]

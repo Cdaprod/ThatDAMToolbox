@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: host/services/runner/Dockerfile
-    image: cdaprod/runner:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/runner:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-runner
     networks: [damnet]
     logging: *default-logging

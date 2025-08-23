@@ -24,7 +24,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: host/services/media-api/Dockerfile
-    image: cdaprod/media-api:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/media-api:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-media-api
     networks: [damnet]
     ports: ["8081:8080"]

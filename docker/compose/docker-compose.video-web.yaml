@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
       target: development
     logging: *default-logging
-    image: cdaprod/video-web:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/video-web:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-web-app
     platform: linux/arm64
     ports: ["3000:3000"]
