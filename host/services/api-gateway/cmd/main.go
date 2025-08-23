@@ -16,11 +16,13 @@ import (
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/logx"
 	"github.com/gorilla/websocket"
 
+	aphttp "github.com/Cdaprod/ThatDamToolbox/host/services/api-gateway/internal/http"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/api-gateway/pkg/middleware"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/backend"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/frontend"
 	"github.com/Cdaprod/ThatDamToolbox/host/services/shared/middleware/host"
 	srt "github.com/Cdaprod/ThatDamToolbox/host/services/shared/stream/adapter/srt"
+	authz "github.com/Cdaprod/ThatDamToolbox/host/shared/authz"
 )
 
 var wsUpgrader = websocket.Upgrader{
@@ -44,7 +46,6 @@ func main() {
 	addr := flag.String("addr", ":8080", "HTTP bind address")
 	apiPrefix := flag.String("api-prefix", "/api/", "API route prefix")
 	backendURL := flag.String("backend-url", "http://localhost:8000", "Upstream backend URL")
-	jwtSecret := flag.String("jwt-secret", "your-jwt-secret", "JWT signing secret")
 	staticDir := flag.String("static-dir", filepath.Join("docker", "web-app", "build"), "SPA build directory")
 	mediaDir := flag.String("media-dir", "/data/media", "Media directory path")
 	dbPath := flag.String("db-path", "/data/db/live.sqlite3", "Path to SQLite DB")
@@ -52,12 +53,17 @@ func main() {
 	rlPerMin := flag.Int("rate-limit", 60, "Requests per minute")
 	flag.Parse()
 
+	_ = authz.InitJWKS("http://localhost:8080/.well-known/jwks.json")
+
 	// 2) Base mux & handlers
 	mux := http.NewServeMux()
 	mux.HandleFunc(*apiPrefix+"health", healthHandler)
 	mux.HandleFunc(*apiPrefix+"video/", videoHandler)
 	mux.HandleFunc(*apiPrefix+"registry/srt", registryHandler)
 	mux.HandleFunc("/", frontendHandler)
+	mux.HandleFunc("/.well-known/jwks.json", aphttp.JWKSHandler)
+	mux.HandleFunc("/auth/session/exchange", aphttp.SessionExchangeHandler)
+	mux.Handle("/assets", authz.WithAuth(http.HandlerFunc(aphttp.AssetsHandler)))
 	setupOverlayRoutes(mux)
 	setupStreamRoutes(mux)
 	setupRTPRoutes(mux)
@@ -72,7 +78,6 @@ func main() {
 		Use(backend.APIGatewayMiddleware(map[string]string{
 			*apiPrefix: *backendURL,
 		})).
-		Use(backend.AuthenticationMiddleware(*jwtSecret)).
 		Use(backend.CacheMiddleware(*cacheDur)).
 		Use(frontend.CSPMiddleware("default-src 'self'; script-src 'self' 'unsafe-inline'")).
 		Use(frontend.StaticFileMiddleware(*staticDir, 24*time.Hour)).
