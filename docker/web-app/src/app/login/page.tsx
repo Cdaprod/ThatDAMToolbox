@@ -1,19 +1,18 @@
 // Server component rendering the Google GIS button when configured
 import GoogleGISButton from '@/components/auth/GoogleGISButton';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LoginPage() {
+  const authOptions = getAuthOptions();
   const session = await getServerSession(authOptions);
   if (session) redirect('/' + (session.user?.tenant ?? 'demo') + '/dashboard');
 
-  const googleEnabled = Boolean(
-    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-  );
+  const googleEnabled = authOptions.providers.some((p) => p.id === 'google');
 
   return (
     <main className="min-h-[70vh] flex items-center justify-center p-6">
