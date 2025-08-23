@@ -28,6 +28,7 @@ Configure via environment variables:
 ## Overlay endpoints
 - `POST /agents/issue`
 - `GET /.well-known/jwks.json`
+- `POST /auth/session/exchange`
 - `GET /overlay/hints`
 
 
