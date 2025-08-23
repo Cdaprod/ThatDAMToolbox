@@ -34,3 +34,31 @@ test('main continues without MQ in dev', async () => {
   process.exit = originalExit
   ;(Module as any)._load = originalLoad
 })
+
+test('DEV_SKIP_MQ skips requireMq', async () => {
+  const originalLoad = (Module as any)._load
+  let called = false
+  const fakeServiceUp = {
+    publishServiceUp: async () => {},
+    requireMq: async () => { called = true }
+  }
+  const fakeSpawn = () => ({
+    stdout: { on: () => {} },
+    stderr: { on: () => {} },
+    on: () => {}
+  })
+  ;(Module as any)._load = (request: string, parent: any, isMain: boolean) => {
+    if (request === './src/lib/serviceUp.js') return fakeServiceUp
+    if (request === 'child_process') return { spawn: fakeSpawn }
+    return originalLoad(request, parent, isMain)
+  }
+
+  process.env.DEV_SKIP_MQ = '1'
+  const { main } = require(path.join(process.cwd(), 'start.js'))
+  await main()
+  delete process.env.DEV_SKIP_MQ
+
+  assert.strictEqual(called, false)
+
+  ;(Module as any)._load = originalLoad
+})
