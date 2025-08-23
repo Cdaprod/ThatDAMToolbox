@@ -316,8 +316,8 @@ The login page renders an official “Sign in with Google” button. Pass `dark`
 
 When `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are unset in development, the
 app falls back to a basic email-only credentials provider so you can sign in
-without configuring OAuth. Visit `/api/auth/signin` to use this development
-login.
+without configuring OAuth. The `/login` page automatically renders a simple
+development form for signing in.
 
 ## Pairing local nodes
 

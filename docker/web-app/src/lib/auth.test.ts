@@ -11,14 +11,18 @@ import { getAuthOptions } from './auth';
 test('falls back to credentials provider when Google env vars are missing', () => {
   const origId = process.env.GOOGLE_CLIENT_ID;
   const origSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const origSecretAuth = process.env.NEXTAUTH_SECRET;
   delete process.env.GOOGLE_CLIENT_ID;
   delete process.env.GOOGLE_CLIENT_SECRET;
+  delete process.env.NEXTAUTH_SECRET;
   const opts = getAuthOptions();
   assert.equal(opts.providers?.[0]?.id, 'credentials');
+  assert.equal(opts.secret, 'dev-secret-only');
   assert.equal(opts.session?.strategy, 'jwt');
   assert.equal(opts.pages?.signIn, '/login');
   process.env.GOOGLE_CLIENT_ID = origId;
   process.env.GOOGLE_CLIENT_SECRET = origSecret;
+  process.env.NEXTAUTH_SECRET = origSecretAuth;
 });
 
 test('uses Google provider when credentials are configured', () => {
@@ -27,7 +31,7 @@ test('uses Google provider when credentials are configured', () => {
   process.env.GOOGLE_CLIENT_ID = 'id';
   process.env.GOOGLE_CLIENT_SECRET = 'secret';
   const opts = getAuthOptions();
-  assert.equal(opts.providers?.[0]?.id, 'google');
+  assert.ok(opts.providers?.some((p) => p.id === 'google'));
   process.env.GOOGLE_CLIENT_ID = origId;
   process.env.GOOGLE_CLIENT_SECRET = origSecret;
 });
