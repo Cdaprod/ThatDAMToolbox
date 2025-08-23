@@ -39,6 +39,12 @@ Then open http://localhost:3000/signup in your browser.
   http://localhost:8097 to inspect component trees without installing a
   browser extension.
 
+## Precompiling
+
+Next.js experimental precompilation is enabled via `next.config.mjs` and requires
+Next.js `14.2` or newer. The app precompiles during `next build` to speed up App
+Router startup.
+
 ## Core Configuration Files
 
 ```

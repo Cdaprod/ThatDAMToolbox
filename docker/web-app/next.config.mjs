@@ -8,6 +8,9 @@ const API_BASE =
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // produce .next/standalone
+  experimental: {
+    precompile: true,
+  },
 
   async rewrites() {
     return [
