@@ -8,6 +8,9 @@ make release/edge ENV_FILE=ops/ci/vars.env
 
 cd docker/compose/dev
 docker compose --env-file .env.dev up -d
+
+# Add Traefik + Tailscale sidecars
+docker compose -f docker-compose.yaml -f docker/compose/docker-compose.traefik.yaml up -d traefik tailscale
 ```
 
 ## Prod (digest pinned)
@@ -28,3 +31,6 @@ TAG=v1.4.0 ./ops/deploy/prod/pull-run.sh
 Same as prod, but your config may point to local backends:
 - Mount config: `-v $(pwd)/ops/deploy/edge/config/edge.yaml:/etc/thatdam/edge.yaml:ro`
 - Add envs for Tailscale, etc.
+
+## Vercel branch
+Push or open a pull request against the `vercel` branch to build and deploy the web app via Vercel.

@@ -12,6 +12,7 @@ This directory contains all **CI/CD workflow definitions** for building, testing
 | deploy.yml                           | Build images and deploy via self-hosted runners |
 | generate-docker-diagram.yml          | Builds SVG architecture diagrams from docker-compose.yaml                |
 | generate-nodeprop-config.yml         | Runs NodeProp config generator & commits results                        |
+| vercel-branch.yml                   | Deploys Next.js web app to Vercel on `vercel` branch                    |
 
 ---
 
@@ -52,13 +53,21 @@ This directory contains all **CI/CD workflow definitions** for building, testing
 ---
 
 ### **generate-nodeprop-config.yml**
-- **Purpose:**  
+- **Purpose:**
   Runs your custom NodeProp configuration/code generator (via [Cdaprod/nodeprop-action](https://github.com/Cdaprod/nodeprop-action)), writes/updates the `.nodeprop.yml` and derived configs, and auto-commits changes.
 
 - **Triggers:**  
   - On push to any branch/tag with `.nodeprop.yaml` or `.nodeprop.yml` changes.
   - Nightly via cron (6am UTC).
   - Manual `workflow_dispatch`.
+
+### **vercel-branch.yml**
+- **Purpose:**
+  Deploys the Next.js web app to Vercel for preview and production on the `vercel` branch.
+
+- **Triggers:**
+  - Pull requests targeting `vercel`.
+  - Pushes to `vercel`.
 
 ---
 

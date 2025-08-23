@@ -35,6 +35,7 @@ include:
   - path: ./docker/compose/docker-compose.gateway.yaml
   - path: ./docker/compose/docker-compose.api-gateway.yaml
   - path: ./docker/compose/docker-compose.overlay-hub.yaml
+  - path: ./docker/compose/docker-compose.traefik.yaml
   - path: ./docker/compose/docker-compose.capture-daemon.yaml
   - path: ./docker/compose/docker-compose.camera-proxy.yaml
   - path: ./docker/compose/docker-compose.supervisor.yaml
@@ -65,3 +66,5 @@ volumes:
       device: ${RABBITMQ_DATA_PATH:-./docker/rabbitmq/data}
   discovery-run:
     name: ${COMPOSE_PROJECT_NAME:-thatdamtoolbox}_discovery-run
+  tailscale-state:
+    driver: local

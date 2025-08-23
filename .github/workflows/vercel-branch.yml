@@ -1,0 +1,70 @@
+# .github/workflows/vercel-branch.yml
+# Deploys the Next.js web app to Vercel when working on the `vercel` branch.
+# Usage:
+#   Push or open a PR targeting the `vercel` branch and this workflow
+#   builds and deploys using the Vercel CLI.
+
+name: Vercel Deploy (vercel branch)
+
+on:
+  pull_request:
+    branches: [ vercel ]
+    paths:
+      - "docker/web-app/**"
+      - ".github/workflows/vercel-branch.yml"
+  push:
+    branches: [ vercel ]
+    paths:
+      - "docker/web-app/**"
+      - ".github/workflows/vercel-branch.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docker/web-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Inject Vercel metadata
+        run: |
+          echo '{"orgId":"'"${{ secrets.VERCEL_ORG_ID }}"'","projectId":"'"${{ secrets.VERCEL_PROJECT_ID }}"'"}' > .vercel/project.json
+
+      - name: Pull env from Vercel
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+          else
+            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          fi
+
+      - name: Build
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        id: deploy
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} > url.txt
+          else
+            vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} > url.txt
+          fi
+          DEPLOY_URL=$(tail -n1 url.txt)
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+
+      - name: Comment URL on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: "Vercel Preview: ${{ steps.deploy.outputs.url }}"
