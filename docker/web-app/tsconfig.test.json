@@ -29,7 +29,9 @@
     "src/app/api/policy/__tests__/evaluate.test.ts",
     "src/providers/__tests__/loadReactQueryDevtools.test.tsx",
     "src/types/externals.d.ts",
-    "src/lib/auth.test.ts"
+    "src/lib/auth.test.ts",
+    "middleware.test.ts",
+    "src/app/__tests__/pair.test.tsx"
   ],
   "exclude": []
 }

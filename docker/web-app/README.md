@@ -312,6 +312,19 @@ Users sign in at `/login` and manage personal details under `/account`.
 The login page renders an official “Sign in with Google” button. Pass `dark` to
 `<GoogleSignInButton>` when using a dark background.
 
+When `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are unset in development, the
+app falls back to a basic email-only credentials provider so you can sign in
+without configuring OAuth. Visit `/api/auth/signin` to use this development
+login.
+
+## Pairing local nodes
+
+Local deployments pair with the cloud tenancy through an `auth-bridge` service.
+Accessing tenant dashboards, access control or settings pages without a
+`node_session` cookie automatically redirects to `/pair`. The pairing page shows
+a short code and polling status; once the code is approved in the cloud UI, the
+bridge sets the session cookie and redirects back to the requested page.
+
 
 ## Streaming protocol
 

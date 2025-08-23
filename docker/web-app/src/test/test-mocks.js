@@ -10,8 +10,14 @@ if (process.env.NODE_ENV === 'test') {
   const originalRequire = Module.prototype.require;
   Module.prototype.require = function (id) {
     if (id.startsWith('@/')) {
-      const target = path.join(process.cwd(), '.tmp-test', id.slice(2));
-      return originalRequire.call(this, target);
+      const base = path.join(process.cwd(), '.tmp-test');
+      const direct = path.join(base, id.slice(2));
+      const alt = path.join(base, 'src', id.slice(2));
+      try {
+        return originalRequire.call(this, direct);
+      } catch {
+        return originalRequire.call(this, alt);
+      }
     }
     if (id === '@mui/material') {
       const React = require('react');
@@ -25,8 +31,14 @@ if (process.env.NODE_ENV === 'test') {
     if (id === 'next-auth') {
       return { getServerSession: async () => null };
     }
+    if (id === 'next-auth/next') {
+      return { getServerSession: async () => null };
+    }
     if (id === 'next-auth/providers/google') {
       return () => ({ id: 'google' });
+    }
+    if (id === 'next-auth/providers/credentials') {
+      return () => ({ id: 'credentials' });
     }
     if (id === 'react-devtools-core') {
       return { connectToDevTools: () => ({}), startServer: () => {} };
