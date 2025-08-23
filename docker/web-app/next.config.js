@@ -88,6 +88,9 @@ module.exports = {
       };
     }
 
+    return config;
+  },
+
   // Help Docker + bind mounts on some hosts
   webpackDevMiddleware: (config) => {
     // respect your CHOKIDAR_USEPOLLING/WATCHPACK_POLLING envs
