@@ -1,10 +1,3 @@
-declare module 'react-devtools-core';
-
-declare module 'react-devtools-core/standalone' {
-  interface DevToolsStandalone {
-    setContentDOMNode(node: HTMLElement): DevToolsStandalone
-    startServer(port?: number): void
-  }
-  const DevTools: DevToolsStandalone
-  export = DevTools
+declare module 'react-devtools-core' {
+  export function connectToDevTools(options?: { host?: string; port?: number }): void;
 }

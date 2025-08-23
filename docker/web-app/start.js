@@ -1,21 +1,14 @@
+// start.js - spawn Next.js dev or production server
+// Usage: node start.js [dev|start]
+// Example: NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS=1 node start.js dev
 const { spawn }          = require('child_process');
 const { publishServiceUp } = require('./src/lib/serviceUp.js');
+const { maybeConnectReactDevTools } = require('./src/lib/reactDevtools.js');
 
 const mode = process.argv[2] === 'start' ? 'start' : 'dev';
 
-// Start a React DevTools server during local development so the app can
-// connect without needing a browser extension.  This is a no-op in
-// production builds.
-if (mode === 'dev') {
-  try {
-    // react-devtools-core expects a `self` global when required in Node.
-    global.self = global;
-    const { startServer } = require('react-devtools-core');
-    startServer();
-  } catch (err) {
-    console.warn('react-devtools-core failed to start:', err.message);
-  }
-}
+// Attempt to connect to React DevTools only when running in a browser context.
+maybeConnectReactDevTools(mode);
 
 const child = mode === 'start'
   ? spawn('node', ['.next/standalone/server.js'], { stdio: ['ignore', 'pipe', 'pipe'] })

@@ -17,6 +17,12 @@ if (process.env.NODE_ENV === 'test') {
     if (id === 'next-auth/react') {
       return { signIn: async () => {} };
     }
+    if (id === 'next-auth') {
+      return {};
+    }
+    if (id === 'next-auth/providers/google') {
+      return () => ({ id: 'google' });
+    }
     if (id === 'react-devtools-core') {
       return { connectToDevTools: () => ({}), startServer: () => {} };
     }

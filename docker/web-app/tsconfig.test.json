@@ -21,10 +21,12 @@
     "src/app/[tenant]/__tests__/settings.test.tsx",
     "src/components/__tests__/uiUxTasks.test.ts",
     "src/lib/__tests__/fitRect.test.ts",
+    "src/lib/__tests__/startDevtools.test.ts",
     "src/styles/__tests__/tokens.test.ts",
     "src/components/__tests__/uiUxTasks.test.ts",
     "src/lib/server/__tests__/settingsDB.test.ts",
     "src/app/api/policy/__tests__/evaluate.test.ts",
+    "src/providers/__tests__/loadReactQueryDevtools.test.tsx",
     "src/types/externals.d.ts",
     "src/lib/auth.test.ts"
   ],
