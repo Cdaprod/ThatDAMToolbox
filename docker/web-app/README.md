@@ -335,6 +335,8 @@ Pages are served under a dynamic `[tenant]` segment. Visiting
 `/acme/dashboard` wraps the app in a `TenantProvider` so child components can
 read the current tenant via `useTenant()`.
 
+Visiting `/` automatically redirects to the user's default tenant dashboard or `/login` when no session is present.
+
 ```tsx
 import { useTenant } from '@/providers/TenantProvider'
 
