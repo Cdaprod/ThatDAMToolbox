@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../docker/nginx
       dockerfile: Dockerfile
-    image: cdaprod/gateway:latest
+    image: ghcr.io/cdaprod/gateway:latest
     container_name: thatdamtoolbox-gateway
     entrypoint: ["/bin/bash","-lc",". /opt/shared/entrypoint-snippet.sh && exec /entrypoint.sh"]
     networks: [damnet]

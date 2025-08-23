@@ -28,7 +28,7 @@ services:
       context: ../../
       dockerfile: host/services/discovery/Dockerfile
     logging: *default-logging
-    image: cdaprod/thatdam-discovery:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/thatdam-discovery:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-discovery
 
     # Discovery binds a tiny HTTP port on the host for health & leader file

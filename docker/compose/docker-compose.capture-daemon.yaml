@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: host/services/capture-daemon/Dockerfile
-    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-capture-daemon
     hostname: "thatdam-capture-${HOST_SUFFIX:-local}"
     networks: [damnet]

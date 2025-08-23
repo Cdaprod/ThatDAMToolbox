@@ -43,7 +43,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: docker/auth-bridge/Dockerfile
-    image: cdaprod/auth-bridge:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/auth-bridge:${IMAGE_TAG:-dev}
     # (optional) avoid container_name clash with auth0 variant
     container_name: thatdamtoolbox-auth-keycloak
     networks:

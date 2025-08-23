@@ -22,7 +22,7 @@ services:
     build:
       <<: *build-common
       context: .
-    image: cdaprod/camerarig-wifi:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/camerarig-wifi:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-camerarig-wifi-manager
     restart: unless-stopped
     

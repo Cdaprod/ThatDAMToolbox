@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: host/services/overlay-hub/Dockerfile
-    image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/overlay-hub:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-overlay-hub
     networks: [damnet]
     ports: ["8090:8090"]

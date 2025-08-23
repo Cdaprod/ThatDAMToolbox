@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../docker/rabbitmq
       dockerfile: Dockerfile
-    image: cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/thatdamtoolbox-rabbitmq:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-rabbitmq
     restart: unless-stopped
     networks: [damnet]

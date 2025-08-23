@@ -23,7 +23,7 @@ services:
       <<: *build-common
       context: ../../
       dockerfile: host/services/api-gateway/Dockerfile
-    image: cdaprod/api-gateway:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/api-gateway:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-api-gateway
     networks: [damnet]
     ports: ["8085:8080"]

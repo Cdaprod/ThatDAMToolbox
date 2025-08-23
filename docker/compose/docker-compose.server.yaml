@@ -1,7 +1,7 @@
 name: thatdamtoolbox-server
 services:
   overlay-hub:
-    image: cdaprod/overlay-hub:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/overlay-hub:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-overlay-hub
     restart: unless-stopped
     depends_on: {}
@@ -13,7 +13,7 @@ services:
       start_period: 10s
 
   capture-daemon:
-    image: cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/video-capture-daemon:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-capture-daemon
     restart: unless-stopped
     depends_on:
@@ -26,7 +26,7 @@ services:
       start_period: 10s
 
   video-api:
-    image: cdaprod/video:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/video:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-api
     restart: unless-stopped
     env_file: [ .env ]
@@ -43,7 +43,7 @@ services:
       start_period: 10s
 
   api-gateway:
-    image: cdaprod/api-gateway:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/api-gateway:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-api-gateway
     restart: unless-stopped
     env_file: [ .env ]
@@ -58,7 +58,7 @@ services:
       start_period: 10s
 
   video-web:
-    image: cdaprod/video-web:${IMAGE_TAG:-dev}
+    image: ghcr.io/cdaprod/video-web:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-web-app
     restart: unless-stopped
     env_file: [ .env ]
