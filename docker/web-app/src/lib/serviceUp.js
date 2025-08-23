@@ -166,4 +166,14 @@ async function closeAmqp() {
   _chan = null; _conn = null; _connecting = null;
 }
 
-module.exports = { publishServiceUp, closeAmqp };
+/**
+ * Require an active RabbitMQ channel or throw.
+ * Used during startup to ensure the broker is available.
+ */
+async function requireMq() {
+  const ch = await getChannel();
+  if (!ch) throw new Error('RabbitMQ connection required');
+  return ch;
+}
+
+module.exports = { publishServiceUp, closeAmqp, requireMq };
