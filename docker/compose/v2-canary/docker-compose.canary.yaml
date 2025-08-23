@@ -25,6 +25,7 @@ services:
       - "${API_GATEWAY_PORT:-18080}:8080"
     environment:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      AUTH_PRIVATE_KEY_PEM: "${AUTH_PRIVATE_KEY_PEM:-}"
 
   media-api:
     container_name: thatdamtoolbox-media-api-canary

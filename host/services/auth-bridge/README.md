@@ -16,6 +16,8 @@ OIDC_PROVIDER=auth0 go run ./cmd/auth-bridge
 - `GET /login`
 - `GET /callback`
 - `POST /logout`
+- `POST /pair/start`
+- `GET /pair/poll`
 
 ### Environment
 - `OIDC_PROVIDER` – `auth0` or `keycloak`
