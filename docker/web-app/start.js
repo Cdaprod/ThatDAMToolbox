@@ -2,17 +2,14 @@
 const fs = require('fs');
 const { spawn } = require('child_process');
 
-// Robust import that tolerates naming drift (DevTools vs Devtools)
 let maybeConnectReactDevTools = () => {};
 try {
-  const devtoolsMod = require('./src/lib/reactDevtools.js');
+  const mod = require('./src/lib/reactDevtools.js');
   maybeConnectReactDevTools =
-    devtoolsMod.maybeConnectReactDevTools ||
-    devtoolsMod.maybeConnectReactDevtools || // tolerate legacy casing
+    mod.maybeConnectReactDevTools ||
+    mod.maybeConnectReactDevtools || // tolerate old casing once
     (() => {});
-} catch (_) {
-  // no-op: devtools optional in prod
-}
+} catch (_) {}
 
 const { publishServiceUp } = require('./src/lib/serviceUp.js');
 
