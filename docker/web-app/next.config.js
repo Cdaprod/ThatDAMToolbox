@@ -66,7 +66,7 @@ module.exports = {
     unoptimized: process.env.NODE_ENV === "development",
   },
 
-  webpack: (config) => {
+  webpack: (config, { dev }) => {
     // 1) teach webpack that '@' roots at your /src dir
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
@@ -78,8 +78,15 @@ module.exports = {
       "@providers": path.resolve(__dirname, "src/providers"),
     };
 
-    return config;
-  },
+    // Help Docker + bind mounts on some hosts
+    if (dev) {
+      // respect your CHOKIDAR_USEPOLLING/WATCHPACK_POLLING envs
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ["**/node_modules/**", "**/.git/**"],
+      };
+    }
 
   // Help Docker + bind mounts on some hosts
   webpackDevMiddleware: (config) => {

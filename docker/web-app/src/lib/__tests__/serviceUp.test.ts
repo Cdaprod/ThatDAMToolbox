@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert'
 import Module from 'module'
-import { publishServiceUp } from '../serviceUp.js'
+import { publishServiceUp, requireMq } from '../serviceUp.js'
 
 // Example: node --test src/lib/__tests__/serviceUp.test.ts
 
@@ -54,5 +54,26 @@ test('publishServiceUp uses EVENT_BROKER_URL', async () => {
   assert.strictEqual(connectUrl, 'amqp://video:video@mq:5672')
 
   delete process.env.EVENT_BROKER_URL
+  ;(Module as any)._load = originalLoad
+})
+
+test('requireMq throws when broker unreachable', async () => {
+  const originalLoad = (Module as any)._load
+  const fakeAmqp = {
+    connect: async () => { throw new Error('ECONNREFUSED') },
+  }
+  ;(Module as any)._load = (request: string, parent: any, isMain: boolean) => {
+    if (request === 'amqplib') return fakeAmqp
+    return originalLoad(request, parent, isMain)
+  }
+
+  let threw = false
+  try {
+    await requireMq()
+  } catch {
+    threw = true
+  }
+  assert.ok(threw)
+
   ;(Module as any)._load = originalLoad
 })
