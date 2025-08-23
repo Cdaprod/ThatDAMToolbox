@@ -1,16 +1,23 @@
-/**
- * Spawn Next.js dev or production server and publish a `service.up` event.
- *
- * Usage: node start.js [dev|start]
- * Example: node start.js dev
- */
+// Usage: node start.js [dev|start]
 const fs = require('fs');
 const { spawn } = require('child_process');
+
+// Robust import that tolerates naming drift (DevTools vs Devtools)
+let maybeConnectReactDevTools = () => {};
+try {
+  const devtoolsMod = require('./src/lib/reactDevtools.js');
+  maybeConnectReactDevTools =
+    devtoolsMod.maybeConnectReactDevTools ||
+    devtoolsMod.maybeConnectReactDevtools || // tolerate legacy casing
+    (() => {});
+} catch (_) {
+  // no-op: devtools optional in prod
+}
+
 const { publishServiceUp } = require('./src/lib/serviceUp.js');
-const { maybeConnectReactDevtools } = require('./src/lib/reactDevtools.js');
 
 const mode = process.argv[2] === 'start' ? 'start' : 'dev';
-maybeConnectReactDevtools(mode);
+maybeConnectReactDevTools(mode);
 
 const standalone = '.next/standalone/server.js';
 const haveStandalone = fs.existsSync(standalone);
