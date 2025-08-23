@@ -1,39 +1,64 @@
-// docker/web-app/src/lib/serviceUp.js
-const amqplib = require('amqplib');
-
-async function publishServiceUp() {
-  const url = process.env.EVENT_BROKER_URL
-            || process.env.AMQP_URL
-            || 'amqp://guest:guest@localhost:5672/';
-  const exchange   = process.env.BROKER_EXCHANGE || 'events';
-  const routingKey = 'webapp.service_up';
-
+/**
+ * Publish a `service.up` event to RabbitMQ if `amqplib` is available.
+ *
+ * Broker URL is resolved from `EVENT_BROKER_URL`, `AMQP_URL`, `RABBITMQ_URL`,
+ * then defaults to `amqp://video:video@rabbitmq:5672`.
+ *
+ * Example:
+ *   node -e "require('./src/lib/serviceUp').publishServiceUp()"
+ */
+let amqpMod = null;
+function getAmqplib() {
+  if (amqpMod) return amqpMod;
   try {
-    const conn    = await amqplib.connect(url);
-    const channel = await conn.createChannel();
-    await channel.assertExchange(exchange, 'topic', { durable: true });
-
-    const message = {
-      topic:   routingKey,
-      ts:      Math.floor(Date.now() / 1000),
-      payload: { service: 'web-app' }
-    };
-
-    channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)));
-    await channel.close();
-    await conn.close();
-    console.log(`[event] published ${routingKey}`);
-  } catch (err) {
-    console.error('[event] publish failed', err);
+    // eslint-disable-next-line global-require, import/no-extraneous-dependencies
+    amqpMod = require('amqplib');
+    return amqpMod;
+  } catch (e) {
+    console.warn('[serviceUp] amqplib not available:', e.message);
+    return null;
   }
 }
 
-// allow `node serviceUp.js` to run it standalone
-if (require.main === module) {
-  publishServiceUp()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
+async function publishServiceUp(payload = {}) {
+  const amqplib = getAmqplib();
+  if (!amqplib) {
+    console.warn('[serviceUp] skipping publish; amqplib unavailable');
+    return;
+  }
+
+  const {
+    EVENT_BROKER_URL,
+    AMQP_URL,
+    RABBITMQ_URL,
+    SERVICE_NAME = 'web-app',
+  } = process.env;
+  const url =
+    EVENT_BROKER_URL ||
+    AMQP_URL ||
+    RABBITMQ_URL ||
+    'amqp://video:video@rabbitmq:5672';
+
+  const msg = {
+    type: 'service.up',
+    service: SERVICE_NAME,
+    ts: new Date().toISOString(),
+    ...payload,
+  };
+
+  let conn;
+  try {
+    conn = await amqplib.connect(url);
+    const ch = await conn.createChannel();
+    const ex = 'events';
+    await ch.assertExchange(ex, 'topic', { durable: true });
+    ch.publish(ex, 'service.up', Buffer.from(JSON.stringify(msg)), { persistent: true });
+    await ch.close();
+  } catch (err) {
+    console.warn('[serviceUp] publish error:', err.message);
+  } finally {
+    if (conn) await conn.close().catch(() => {});
+  }
 }
 
-// export for your start.js
 module.exports = { publishServiceUp };

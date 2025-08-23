@@ -1,27 +1,22 @@
 /**
- * Optionally connect to a running React DevTools instance.
+ * Optionally start the React DevTools server in dev mode.
  *
  * Example:
  *   maybeConnectReactDevTools('dev')
  */
 function maybeConnectReactDevTools(mode) {
-  if (
-    mode !== 'dev' ||
-    process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS === '0' ||
-    typeof globalThis.window === 'undefined'
-  ) {
-    return
-  }
+  if (mode !== 'dev') return;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { connectToDevTools } = require('react-devtools-core')
-    connectToDevTools({
-      host: 'localhost',
-      port: Number(process.env.NEXT_PUBLIC_REACT_DEVTOOLS_PORT ?? 8097),
-    })
-  } catch (err) {
-    console.warn('react-devtools-core failed to connect:', err.message)
+    // react-devtools-core expects a global `self` when required in Node
+    // eslint-disable-next-line no-global-assign
+    global.self = global;
+    // eslint-disable-next-line import/no-extraneous-dependencies, global-require
+    const { startServer } = require('react-devtools-core');
+    startServer();
+    console.log('[devtools] React DevTools server started');
+  } catch (e) {
+    console.warn('[devtools] failed to start React DevTools:', e.message);
   }
 }
 
-module.exports = { maybeConnectReactDevTools }
+module.exports = { maybeConnectReactDevTools };

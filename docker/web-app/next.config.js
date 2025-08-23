@@ -6,7 +6,7 @@ const API_BASE =
 
 module.exports = {
   reactStrictMode: true,
-  output: "standalone",
+  output: "standalone", // ensure .next/standalone/server.js is produced
 
   async rewrites() {
     // anything under /api/video/* → your video-api
