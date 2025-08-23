@@ -1,5 +1,7 @@
 /**
  * NextAuth handler providing Google SSO.
+ * Falls back to a development credentials provider when Google
+ * credentials are not configured.
  *
  * Example:
  *   GET /api/auth/signin (redirects to /login)
