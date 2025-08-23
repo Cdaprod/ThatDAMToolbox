@@ -3,7 +3,7 @@ import GoogleGISButton from '@/components/auth/GoogleGISButton';
 import { getServerSession } from 'next-auth/next';
 import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
+import DevSignIn from '@/components/auth/DevSignIn';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +24,7 @@ export default async function LoginPage() {
         {googleEnabled ? (
           <GoogleGISButton />
         ) : (
-          <Link href="/api/auth/signin" className="text-sm underline">
-            Use development sign-in
-          </Link>
+          <DevSignIn callbackUrl="/" />
         )}
       </div>
     </main>

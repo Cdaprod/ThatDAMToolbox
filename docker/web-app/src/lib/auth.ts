@@ -6,8 +6,8 @@
  *   const session = await getServerSession(getAuthOptions());
  */
 import { type NextAuthOptions } from "next-auth";
-import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 
 /**
  * Build NextAuth options. Uses Google OAuth when client credentials are
@@ -15,39 +15,41 @@ import Credentials from "next-auth/providers/credentials";
  * in non-production environments.
  */
 export function getAuthOptions(): NextAuthOptions {
-  const providers: NextAuthOptions['providers'] = [];
-  const clientId = process.env["GOOGLE_CLIENT_ID"];
-  const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
+  const isProd = process.env["NODE_ENV"] === "production";
 
-  if (clientId && clientSecret) {
-    providers.push(
-      Google({
-        clientId,
-        clientSecret,
-      })
-    );
-  } else if (process.env["NODE_ENV"] !== "production") {
-    providers.push(
-      Credentials({
-        name: 'Dev Login',
-        credentials: { email: { label: 'Email', type: 'email' } },
-        async authorize(creds) {
-          if (!creds?.email) return null;
-          return {
-            id: 'dev',
-            email: String(creds.email),
-            name: 'Dev User',
-            tenant: 'demo',
-            role: 'admin',
-          } as any;
-        },
-      })
-    );
-  }
+  const providers: NextAuthOptions['providers'] = [
+    ...(!isProd
+      ? [
+          Credentials({
+            name: 'Dev Login',
+            credentials: { email: { label: 'Email', type: 'email' } },
+            async authorize(creds) {
+              if (!creds?.email) return null;
+              return {
+                id: 'dev',
+                email: String(creds.email),
+                name: 'Dev User',
+                tenant: 'demo',
+                role: 'admin',
+              } as any;
+            },
+          }),
+        ]
+      : []),
+    ...(process.env["GOOGLE_CLIENT_ID"] && process.env["GOOGLE_CLIENT_SECRET"]
+      ? [
+          GoogleProvider({
+            clientId: process.env["GOOGLE_CLIENT_ID"]!,
+            clientSecret: process.env["GOOGLE_CLIENT_SECRET"]!,
+          }),
+        ]
+      : []),
+  ];
 
   return {
     providers,
-    secret: process.env["NEXTAUTH_SECRET"],
+    secret:
+      process.env["NEXTAUTH_SECRET"] ?? (!isProd ? "dev-secret-only" : undefined),
     pages: { signIn: '/login' },
     session: { strategy: 'jwt' },
     callbacks: {
@@ -59,5 +61,6 @@ export function getAuthOptions(): NextAuthOptions {
         return session;
       },
     },
+    debug: !isProd,
   };
 }
