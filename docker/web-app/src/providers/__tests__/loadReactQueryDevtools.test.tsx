@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert'
-import { loadReactQueryDevtools } from '../loadReactQueryDevtools'
+import { ReactQueryDevtools } from '../loadReactQueryDevtools'
 
-// Ensures the helper falls back to a no-op when the devtools package
-// is missing. Example: node --test loadReactQueryDevtools.test.tsx
+// Ensures the wrapper exports a no-op component when devtools are disabled
+// Example: node --test loadReactQueryDevtools.test.tsx
 
-test('falls back to no-op component when module missing', async () => {
-  const Comp = await loadReactQueryDevtools('non-existent-module')
-  assert.strictEqual(typeof Comp, 'function')
-  assert.strictEqual((Comp as any)(), null)
+test('exports no-op component when disabled', () => {
+  assert.strictEqual(typeof ReactQueryDevtools, 'function')
+  assert.strictEqual((ReactQueryDevtools as any)(), null)
 })
+
