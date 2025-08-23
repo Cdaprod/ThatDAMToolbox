@@ -1,58 +1,31 @@
-# /docker/web-app/Dockerfile
-#
-# Folder layout inside the image
-# ┌─ /app
-# │   ├─ node_modules     ← installed once during build
-# │   ├─ public           ← static assets
-# │   ├─ start.js         ← standalone server entrypoint
-# │   └─ .next            ← output of `npm run build`
-# └───────────────────────────────────────────────────────────────────────────
+# Dockerfile for the web-app service
+# Usage: docker build -t thatdamtoolbox-web-app .
 
-# Stage 0 ▸ Base image
+# Stage 0 ▸ Base
 FROM node:18-alpine AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=development
 
 # Stage 1 ▸ deps
 FROM base AS deps
-# hadolint ignore=DL3018
 RUN apk add --no-cache bash curl ca-certificates
-
-# copy only manifests
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-
-# SC2015 fix: no "A && B || C" fallthroughs; use explicit branching
-RUN set -euo pipefail; \
-  if [ -f yarn.lock ]; then \
-    echo "🧶 Installing with yarn…"; yarn install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then \
-    echo "📦 Installing with npm ci…"; \
-    if ! npm ci; then \
-      echo "⚠️ npm ci failed – falling back to npm install"; npm install; \
-    fi; \
-  elif [ -f pnpm-lock.yaml ]; then \
-    echo "📦 Installing with pnpm…"; corepack enable pnpm; pnpm install --frozen-lockfile; \
-  else \
-    echo "⚠️ No lockfile found – running npm install"; npm install; \
+# Install deps for THIS package (not relying on hoisted root)
+RUN set -eux; \
+  if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci --no-audit --no-fund || npm install; \
+  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm install --frozen-lockfile; \
+  else npm install; \
   fi
 
-# Stage 2 ▸ dev
-FROM base AS development
-COPY --from=deps /app/node_modules /app/node_modules
-WORKDIR /app
-COPY . .
-EXPOSE 3000
-CMD ["npm","run","dev"]
-
-# Stage 3 ▸ builder
+# Stage 2 ▸ builder
 FROM base AS builder
-COPY --from=deps /app/node_modules /app/node_modules
-WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Build Next.js (produces .next/standalone thanks to next.config.js)
 RUN --mount=type=cache,target=/app/.next/cache npm run build
 
-# Stage 4 ▸ production
+# Stage 3 ▸ production
 FROM node:18-alpine AS production
 ARG VCS_REF
 ARG IMAGE_TAG=dev
@@ -66,11 +39,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nextjs
+
 COPY --from=builder /app/.next        ./.next
 COPY --from=builder /app/start.js     ./start.js
 COPY --from=builder /app/src/lib      ./src/lib
 COPY --from=deps    /app/node_modules ./node_modules
 COPY --from=builder /app/public       ./public
+
 USER nextjs:nodejs
 EXPOSE 3000
 CMD ["node","start.js","start"]
