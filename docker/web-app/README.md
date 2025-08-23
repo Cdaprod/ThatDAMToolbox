@@ -45,7 +45,7 @@ Then open http://localhost:3000/signup in your browser.
 web-app/
 ├── Dockerfile                    # Already provided above
 ├── package.json                  # Already provided above
-├── next.config.js               # Already provided above
+├── next.config.mjs               # Already provided above
 ├── tsconfig.json                # TypeScript config
 ├── tailwind.config.js           # Tailwind CSS config
 ├── postcss.config.js            # PostCSS config
@@ -57,7 +57,7 @@ web-app/
 ```
 web-app/.
 ├── Dockerfile
-├── next.config.js
+├── next.config.mjs
 ├── next-env.d.ts
 ├── package.json
 ├── package-lock.json
