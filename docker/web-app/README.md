@@ -14,6 +14,8 @@ Test locally with:
 
 ```bash
 # run the dev server (binds 0.0.0.0 so LAN devices can connect)
+# RabbitMQ must be running (e.g. `docker compose up rabbitmq`)
+
 cd docker/web-app
 yarn dev
 
