@@ -65,15 +65,3 @@ volumes:
       device: ${RABBITMQ_DATA_PATH:-./docker/rabbitmq/data}
   discovery-run:
     name: ${COMPOSE_PROJECT_NAME:-thatdamtoolbox}_discovery-run
-  video-web-node_modules:
-    driver: local
-  video-web-next:
-    driver: local
-  video-web-npm:
-    driver: local
-  web-site-node_modules:
-    driver: local
-  web-site-next:
-    driver: local
-  web-site-npm:
-    driver: local

@@ -267,10 +267,8 @@ services:
       - NODE_OPTIONS=--max-old-space-size=512
       - UV_THREADPOOL_SIZE=8
     volumes:
-      - ./docker/web-app:/app:cached
-      - video-web-node_modules:/app/node_modules
-      - video-web-next:/app/.next
-      - video-web-npm:/root/.npm
+      - ./docker/web-app:/app:ro
+      - /app/.next
 
   camera-proxy:
     deploy:
