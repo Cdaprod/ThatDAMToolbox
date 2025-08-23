@@ -1,4 +1,5 @@
 // Usage: node start.js [dev|start]
+// Example: node start.js dev
 const fs = require('fs');
 const { spawn } = require('child_process');
 
@@ -19,11 +20,15 @@ maybeConnectReactDevTools(mode);
 const standalone = '.next/standalone/server.js';
 const haveStandalone = fs.existsSync(standalone);
 
+// dev now binds 0.0.0.0 so external devices load chunks & HMR properly
+const devArgs = ['dev', '-p', '3000', '-H', '0.0.0.0'];
+const startArgs = ['start', '-p', '3000'];
+
 const child = mode === 'start'
   ? (haveStandalone
       ? spawn('node', [standalone], { stdio: ['ignore', 'pipe', 'pipe'] })
-      : spawn('next', ['start', '-p', '3000'], { stdio: ['ignore', 'pipe', 'pipe'] }))
-  : spawn('next', ['dev', '-p', '3000'], { stdio: ['ignore', 'pipe', 'pipe'] });
+      : spawn('next', startArgs, { stdio: ['ignore', 'pipe', 'pipe'] }))
+  : spawn('next', devArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
 
 let sent = false;
 child.stdout.on('data', async (data) => {
