@@ -265,7 +265,7 @@ Later, swap requireSession to verify the NextAuth session cookie or a signed ses
 
 Create a tiny shared package and use it in both api-gateway and overlay-hub (overlay-hub already validates RS tokens; we’ll standardize).
 
-/path: host/services/shared/authz/jwks.go
+/path: host/shared/authz/jwks.go
 
 package authz
 
@@ -295,7 +295,7 @@ func Keyfunc() (keyfunc.Keyfunc, error) {
 	return jwks.Keyfunc, nil
 }
 
-/path: host/services/shared/authz/middleware.go
+/path: host/shared/authz/middleware.go
 
 package authz
 
@@ -359,7 +359,7 @@ Use it in api-gateway:
 
 /path: host/services/api-gateway/cmd/main.go (snippet)
 
-import shared "thatdamtoolbox/services/shared/authz"
+import shared "thatdamtoolbox/shared/authz"
 
 func main() {
 	_ = shared.InitJWKS("http://api-gateway:8080/.well-known/jwks.json") // or external URL when deployed
@@ -571,7 +571,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	shared "thatdamtoolbox/services/shared/authz"
+    shared "thatdamtoolbox/shared/authz"
 )
 
 func AssetsHandler(w http.ResponseWriter, r *http.Request) {
