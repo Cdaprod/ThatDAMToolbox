@@ -40,14 +40,11 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nextjs
 
-# Copy runtime artifacts
-COPY --from=builder /app/.next                 ./.next
-COPY --from=builder /app/public                ./public
-COPY --from=builder /app/start.js              ./start.js
-# ⬅️ These were missing: your custom imports live in /src
-COPY --from=builder /app/src/lib               ./src/lib
-# Keep full node_modules because start.js requires code outside standalone
-COPY --from=deps    /app/node_modules          ./node_modules
+COPY --from=builder /app/.next        ./.next
+COPY --from=builder /app/start.js     ./start.js
+COPY --from=builder /app/src/lib      ./src/lib
+COPY --from=deps    /app/node_modules ./node_modules
+COPY --from=builder /app/public       ./public
 
 USER nextjs:nodejs
 EXPOSE 3000
