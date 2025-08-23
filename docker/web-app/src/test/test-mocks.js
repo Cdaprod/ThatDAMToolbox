@@ -6,8 +6,13 @@
  */
 if (process.env.NODE_ENV === 'test') {
   const Module = require('module');
+  const path = require('path');
   const originalRequire = Module.prototype.require;
   Module.prototype.require = function (id) {
+    if (id.startsWith('@/')) {
+      const target = path.join(process.cwd(), '.tmp-test', id.slice(2));
+      return originalRequire.call(this, target);
+    }
     if (id === '@mui/material') {
       const React = require('react');
       return new Proxy({}, {
@@ -18,7 +23,7 @@ if (process.env.NODE_ENV === 'test') {
       return { signIn: async () => {} };
     }
     if (id === 'next-auth') {
-      return {};
+      return { getServerSession: async () => null };
     }
     if (id === 'next-auth/providers/google') {
       return () => ({ id: 'google' });

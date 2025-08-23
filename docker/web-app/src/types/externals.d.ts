@@ -16,6 +16,7 @@ declare module '@emotion/styled';
 declare module 'next-auth/react';
 declare module 'next-auth' {
   export type NextAuthOptions = any;
+  export function getServerSession(...args: any[]): Promise<any>;
 }
 declare module 'next-auth/providers/google';
 

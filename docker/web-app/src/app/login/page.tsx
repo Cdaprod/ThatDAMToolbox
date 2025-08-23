@@ -1,20 +1,25 @@
-// /docker/web-app/src/app/login/page.tsx
-// Simple Google SSO entry point.
-'use client';
+// Server component that renders the branded Google button
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-import { signIn } from 'next-auth/react';
+export const dynamic = 'force-dynamic';
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const session = await getServerSession(authOptions);
+  if (session) redirect('/' + (session.user?.tenant ?? 'demo') + '/dashboard');
+
   return (
-    <section className="max-w-md mx-auto py-8 text-center space-y-4">
-      <h1 className="text-2xl font-bold">Sign in</h1>
-      <button
-        className="px-4 py-2 bg-blue-600 text-white rounded"
-        onClick={() => signIn('google')}
-      >
-        Continue with Google
-      </button>
-    </section>
+    <main className="min-h-[70vh] flex items-center justify-center p-6">
+      <div className="w-full max-w-[420px] rounded-2xl border border-zinc-800/40 bg-black/30 p-6 backdrop-blur">
+        <h1 className="text-2xl font-semibold mb-2">Welcome</h1>
+        <p className="text-sm text-zinc-400 mb-6">
+          Sign in to continue to your dashboard.
+        </p>
+        <GoogleSignInButton fullWidth />
+      </div>
+    </main>
   );
 }
 
