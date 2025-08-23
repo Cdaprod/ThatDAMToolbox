@@ -46,6 +46,7 @@ services:
       - ../../docker/web-site/public:/app/public:ro
       - ../../docker/web-site/start.js:/app/start.js:ro
       - ../../docker/web-site/entrypoint.sh:/app/entrypoint.sh:ro
+      - ../../docker/web-site:/app:ro
       - /app/.next
     entrypoint:
       - "/bin/sh"
