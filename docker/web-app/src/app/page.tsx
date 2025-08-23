@@ -1,8 +1,6 @@
 // /docker/web-app/src/app/page.tsx
-'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { api } from '../lib/api/client';
 
 /**
@@ -12,20 +10,14 @@ import { api } from '../lib/api/client';
  * Example:
  *   visiting "/" -> "/acme/dashboard"
  */
-export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const { defaultTenant } = await api<{ defaultTenant: string }>('/api/account/default-tenant');
-        router.replace(`/${defaultTenant || 'default'}/dashboard`);
-      } catch {
-        router.replace('/login');
-      }
-    })();
-  }, [router]);
-
-  // Nothing is rendered because users are redirected immediately.
-  return null;
+export default async function HomePage() {
+  try {
+    const { defaultTenant } = await api<{ defaultTenant: string }>(
+      '/api/account/default-tenant',
+      { cache: 'no-store' },
+    );
+    redirect(`/${defaultTenant || 'default'}/dashboard`);
+  } catch {
+    redirect('/login');
+  }
 }
