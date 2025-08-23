@@ -8,8 +8,8 @@ import TenantDashboard from '../[tenant]/dashboard/page';
 import TenantProvider from '../../providers/TenantProvider';
 import { dashboardTools } from '../../components/dashboardTools';
 
-test('default and tenant dashboards render the same tools', () => {
-  const homeHtml = renderToString(<HomePage />);
+// Ensure tenant dashboards render all configured tools.
+test('tenant dashboard renders expected tools', () => {
   const tenantHtml = renderToString(
     <TenantProvider tenant="acme">
       <TenantDashboard />
@@ -17,7 +17,12 @@ test('default and tenant dashboards render the same tools', () => {
   );
 
   Object.values(dashboardTools).forEach(tool => {
-    assert.ok(homeHtml.includes(tool.title), `home missing ${tool.title}`);
     assert.ok(tenantHtml.includes(tool.title), `tenant missing ${tool.title}`);
   });
+});
+
+// Root page now redirects; server render should be empty.
+test('root page renders nothing (redirect)', () => {
+  const homeHtml = renderToString(<HomePage />);
+  assert.equal(homeHtml, '');
 });
