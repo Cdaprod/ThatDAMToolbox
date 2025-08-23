@@ -19,11 +19,13 @@ const mode = process.argv[2] === 'start' ? 'start' : 'dev';
 async function main() {
   maybeConnectReactDevTools(mode);
 
-  try {
-    await requireMq();
-  } catch (err) {
-    console.error('[start] MQ connect failed:', err.message);
-    process.exit(1);
+  if (process.env.DEV_SKIP_MQ !== '1') {
+    try {
+      await requireMq();
+    } catch (err) {
+      console.error('[start] MQ connect failed:', err.message);
+      if (process.env.NODE_ENV === 'production') process.exit(1);
+    }
   }
 
   const standalone = '.next/standalone/server.js';
@@ -53,4 +55,8 @@ async function main() {
   child.on('error', (err) => { console.error(err); process.exit(1); });
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { main };
