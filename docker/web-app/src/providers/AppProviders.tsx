@@ -15,12 +15,12 @@ import AuthProvider        from './AuthProvider'
 
 const qc = new QueryClient()
 
-// dev-only React Query Devtools
+import { loadReactQueryDevtools } from './loadReactQueryDevtools'
+
+// dev-only React Query Devtools component
 const ReactQueryDevtools =
   process.env.NODE_ENV === 'development'
-    ? dynamic(() => import('@tanstack/react-query-devtools')
-        .then(m => m.ReactQueryDevtools),
-      { ssr: false })
+    ? dynamic(() => loadReactQueryDevtools(), { ssr: false })
     : () => null
 
 // ← point at your unified CaptureProvider, not "CaptureProviderImpl"
