@@ -1,5 +1,5 @@
-// Server component that renders the branded Google button
-import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+// Server component rendering the Google GIS button when configured
+import GoogleGISButton from '@/components/auth/GoogleGISButton';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -11,7 +11,9 @@ export default async function LoginPage() {
   const session = await getServerSession(authOptions);
   if (session) redirect('/' + (session.user?.tenant ?? 'demo') + '/dashboard');
 
-  const hasGoogle = authOptions.providers?.some((p: any) => p.id === 'google');
+  const googleEnabled = Boolean(
+    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  );
 
   return (
     <main className="min-h-[70vh] flex items-center justify-center p-6">
@@ -20,15 +22,12 @@ export default async function LoginPage() {
         <p className="text-sm text-zinc-400 mb-6">
           Sign in to continue to your dashboard.
         </p>
-        {hasGoogle ? (
-          <GoogleSignInButton fullWidth />
+        {googleEnabled ? (
+          <GoogleGISButton />
         ) : (
-          <>
-            <p className="text-sm text-zinc-400 mb-3">Google sign-in isn’t configured.</p>
-            <Link href="/api/auth/signin" className="text-sm underline">
-              Use development sign-in
-            </Link>
-          </>
+          <Link href="/api/auth/signin" className="text-sm underline">
+            Use development sign-in
+          </Link>
         )}
       </div>
     </main>
