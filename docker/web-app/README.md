@@ -309,6 +309,8 @@ TENANT_DEFAULT_ALLOWED_DOMAINS=cdaprod.dev,example.com
 ```
 
 Users sign in at `/login` and manage personal details under `/account`.
+The login page renders an official “Sign in with Google” button. Pass `dark` to
+`<GoogleSignInButton>` when using a dark background.
 
 
 ## Streaming protocol

@@ -12,4 +12,5 @@ test('authOptions uses Google provider and JWT sessions', () => {
   assert.equal(authOptions.session?.strategy, 'jwt');
   const provider = authOptions.providers?.[0] as any;
   assert(provider && provider.id === 'google');
+  assert.equal(authOptions.pages?.signIn, '/login');
 });

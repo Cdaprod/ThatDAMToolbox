@@ -2,7 +2,7 @@
  * NextAuth handler providing Google SSO.
  *
  * Example:
- *   GET /api/auth/signin
+ *   GET /api/auth/signin (redirects to /login)
  *
  * Environment variables:
  *   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_URL, NEXTAUTH_SECRET

@@ -7,8 +7,8 @@ import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import LoginPage from '../login/page';
 
-test('LoginPage shows sign in heading', () => {
-  const html = renderToString(<LoginPage />);
-  assert.ok(html.includes('Sign in'));
+test('LoginPage shows Google sign in button', async () => {
+  const html = renderToString(await LoginPage());
+  assert.ok(html.includes('Sign in with Google'));
 });
 
