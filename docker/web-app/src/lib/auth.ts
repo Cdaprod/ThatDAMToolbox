@@ -2,8 +2,8 @@
  * Shared NextAuth configuration.
  *
  * Example:
- *   import { authOptions } from "@/lib/auth";
- *   const session = await getServerSession(authOptions);
+ *   import { getAuthOptions } from "@/lib/auth";
+ *   const session = await getServerSession(getAuthOptions());
  */
 import { type NextAuthOptions } from "next-auth";
 import Google from "next-auth/providers/google";
@@ -14,16 +14,19 @@ import Credentials from "next-auth/providers/credentials";
  * configured, otherwise falls back to a basic email-only credentials provider
  * in non-production environments.
  */
-export function buildAuthOptions(): NextAuthOptions {
+export function getAuthOptions(): NextAuthOptions {
   const providers: NextAuthOptions['providers'] = [];
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  const clientId = process.env["GOOGLE_CLIENT_ID"];
+  const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
+
+  if (clientId && clientSecret) {
     providers.push(
       Google({
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        clientId,
+        clientSecret,
       })
     );
-  } else if (process.env.NODE_ENV !== 'production') {
+  } else if (process.env["NODE_ENV"] !== "production") {
     providers.push(
       Credentials({
         name: 'Dev Login',
@@ -44,7 +47,7 @@ export function buildAuthOptions(): NextAuthOptions {
 
   return {
     providers,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env["NEXTAUTH_SECRET"],
     pages: { signIn: '/login' },
     session: { strategy: 'jwt' },
     callbacks: {
@@ -58,5 +61,3 @@ export function buildAuthOptions(): NextAuthOptions {
     },
   };
 }
-
-export const authOptions: NextAuthOptions = buildAuthOptions();
