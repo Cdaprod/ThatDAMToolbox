@@ -24,10 +24,12 @@ Configure via environment variables:
 - `LOG_TIME` – off|rfc3339|rfc3339ms (default rfc3339ms)
 - `LOG_NO_COLOR` – set to `1` to disable colored output
 - `SRT_BASE_URL` – base SRT address advertised at `/api/registry/srt`
+- `AUTH_PRIVATE_KEY_PEM` – base64-encoded RSA private key for token signing; if unset, a temporary key is generated
 
 ## Overlay endpoints
 - `POST /agents/issue`
 - `GET /.well-known/jwks.json`
+- `POST /auth/session/exchange`
 - `GET /overlay/hints`
 
 

@@ -23,5 +23,8 @@ func BuildMux(cfg config.Config) *http.ServeMux {
 	mux.HandleFunc("/callback", httpapi.CallbackHandler(cfg))
 	mux.HandleFunc("/logout", httpapi.LogoutHandler(cfg))
 
+	mux.HandleFunc("/pair/start", httpapi.PairStart)
+	mux.HandleFunc("/pair/poll", httpapi.PairPoll)
+
 	return mux
 }
