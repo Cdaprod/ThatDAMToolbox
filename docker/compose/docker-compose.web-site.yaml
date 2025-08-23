@@ -38,15 +38,16 @@ services:
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
-      
+
       # You can also override here in CI or host:
       # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
     volumes:
-      - ../../docker/web-site:/app:cached
-      - web-site-node_modules:/app/node_modules
-      - web-site-next:/app/.next
-      - web-site-npm:/root/.npm
-    entrypoint: ["/bin/sh","-c","chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
+      - ../../docker/web-site:/app:ro
+      - /app/.next
+    entrypoint:
+      - "/bin/sh"
+      - "-c"
+      - "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"
     depends_on:
       - rabbitmq
     restart: unless-stopped
