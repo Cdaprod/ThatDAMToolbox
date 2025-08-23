@@ -4,19 +4,14 @@ import { maybeConnectReactDevTools } from '../reactDevtools.js'
 
 // Example: node --test src/lib/__tests__/startDevtools.test.ts
 
-test('maybeConnectReactDevTools is a no-op without window', () => {
-  let warned = 0
-  const originalWarn = console.warn
-  console.warn = () => { warned++ }
+test('maybeConnectReactDevTools is a no-op outside dev mode', () => {
+  let logged = 0
+  const originalLog = console.log
+  console.log = () => { logged++ }
 
-  const prevEnv = process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS
-  process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS = '1'
-  delete (globalThis as any).window
+  maybeConnectReactDevTools('start')
 
-  maybeConnectReactDevTools('dev')
+  assert.strictEqual(logged, 0)
 
-  assert.strictEqual(warned, 0)
-
-  process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS = prevEnv
-  console.warn = originalWarn
+  console.log = originalLog
 })
