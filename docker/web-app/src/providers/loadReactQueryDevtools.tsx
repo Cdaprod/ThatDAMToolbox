@@ -15,9 +15,10 @@ import dynamic from 'next/dynamic';
 
 const DEV = process.env.NODE_ENV === 'development';
 const Enabled =
+  typeof window !== 'undefined' &&
   DEV &&
-  process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS !== '0' &&
-  process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS !== 'false';
+  (process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS === '1' ||
+    process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS === 'true');
 
 export const ReactQueryDevtools: ComponentType<any> = Enabled
   ? dynamic(
@@ -31,6 +32,16 @@ export const ReactQueryDevtools: ComponentType<any> = Enabled
 
 export default function LoadReactQueryDevtools() {
   if (!Enabled) return null;
-  return <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />;
+  try {
+    return (
+      <ReactQueryDevtools
+        initialIsOpen={false}
+        position="bottom-right"
+      />
+    );
+  } catch (err: any) {
+    console.warn('[ReactQueryDevtools] failed:', err.message);
+    return null;
+  }
 }
 
