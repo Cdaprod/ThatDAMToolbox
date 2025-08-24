@@ -21,11 +21,19 @@ const nextConfig = {
   },
 
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
     return [
-      // cache Next static assets aggressively
+      // cache Next static assets aggressively in prod, disable in dev to avoid stale chunks
       {
         source: '/_next/static/:path*',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: isDev
+              ? 'no-store'
+              : 'public, max-age=31536000, immutable',
+          },
+        ],
       },
       // thumbs
       {
