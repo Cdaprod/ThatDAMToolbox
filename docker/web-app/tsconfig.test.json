@@ -42,7 +42,8 @@
     "src/types/externals.d.ts",
     "src/lib/auth.test.ts",
     "middleware.test.ts",
-    "src/app/__tests__/pair.test.tsx"
+    "src/app/__tests__/pair.test.tsx",
+    "src/providers/__tests__/AppProviders.test.ts"
   ],
   "exclude": []
 }

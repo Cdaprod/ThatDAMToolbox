@@ -3,7 +3,7 @@
 import { ReactNode, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 import TenantProvider from '@/providers/TenantProvider';
 import AuthProvider from '@/providers/AuthProvider';
@@ -38,7 +38,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
     >
       <QueryClientProvider client={qc}>
         <ClientOnly>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <ThemeProvider>
             <TenantProvider>
               <AuthProvider>
                 <AssetProvider>
