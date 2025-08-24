@@ -4,6 +4,17 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import AuthProvider, { useAuth } from '../AuthProvider';
 
+(global as any).__nextAuthReact = {
+  signIn: async () => {},
+  useSession: () => ({ status: 'authenticated', data: null }),
+};
+(global as any).__nextNavigation = {
+  redirect: () => {},
+  useRouter: () => ({ replace: () => {} }),
+  usePathname: () => '/',
+  useParams: () => ({}),
+};
+
 function ShowToken() {
   const { token } = useAuth();
   return <span>{token}</span>;

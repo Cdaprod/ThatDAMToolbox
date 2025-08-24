@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
 import TenantProvider from '@/providers/TenantProvider';
+import AuthProvider from '@/providers/AuthProvider';
 import VideoSocketProvider from '@/providers/VideoSocketProvider';
 import ModalProvider from '@/providers/ModalProvider';
 import LoadReactQueryDevtools from '@/providers/loadReactQueryDevtools';
@@ -15,12 +16,14 @@ export default function AppProviders({ children }: { children: ReactNode }) {
     <SessionProvider>
       <QueryClientProvider client={qc}>
         <TenantProvider>
-          <VideoSocketProvider>
-            <ModalProvider>
-              {children}
-              <LoadReactQueryDevtools />
-            </ModalProvider>
-          </VideoSocketProvider>
+          <AuthProvider>
+            <VideoSocketProvider>
+              <ModalProvider>
+                {children}
+                <LoadReactQueryDevtools />
+              </ModalProvider>
+            </VideoSocketProvider>
+          </AuthProvider>
         </TenantProvider>
       </QueryClientProvider>
     </SessionProvider>

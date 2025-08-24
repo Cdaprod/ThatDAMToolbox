@@ -277,6 +277,8 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 TENANCY_URL=http://localhost:8082/tenants
 NODE_ENV=development
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=changeme
 # DEV_SKIP_MQ=1     # optional: skip RabbitMQ connect during UI work (unset or set to 0 to re-enable)
 ```
 
