@@ -32,6 +32,18 @@ curl -X POST http://localhost:3000/api/tenancy \
 
 Then open http://localhost:3000/signup in your browser.
 
+## Library Stats Endpoint
+
+During development you can query library statistics via:
+
+```bash
+curl http://localhost:3000/api/library/stats
+```
+
+If `MEDIA_API_BASE_URL` is set, the web-app proxy will attempt to fetch
+real data from the Go `media-api` service; otherwise it returns stub
+data to aid client integration.
+
 ## Development Tools
 
 - TanStack React Query Devtools are disabled by default (set `NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS=1` to enable) and are automatically disabled on mobile clients to avoid popup errors.
