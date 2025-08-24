@@ -34,13 +34,15 @@ Then open http://localhost:3000/signup in your browser.
 
 ## Library Stats Endpoint
 
-During development you can query placeholder library statistics via:
+During development you can query library statistics via:
 
 ```bash
 curl http://localhost:3000/api/library/stats
 ```
 
-This endpoint returns stub data to aid client integration.
+If `MEDIA_API_BASE_URL` is set, the web-app proxy will attempt to fetch
+real data from the Go `media-api` service; otherwise it returns stub
+data to aid client integration.
 
 ## Development Tools
 
