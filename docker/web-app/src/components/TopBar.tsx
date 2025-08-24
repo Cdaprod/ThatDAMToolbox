@@ -8,6 +8,7 @@ import { useSidebar } from '../hooks/useSidebar'
 import { useModal } from '@/providers/ModalProvider'
 import { useTheme, AVAILABLE_SCHEMES, ColorScheme } from '@/context/ThemeContext'
 import { useAuth } from '@/providers/AuthProvider'
+import { useIsClient } from '@/hooks/useIsClient'
 
 export default function TopBar() {
   const { collapsed, setCollapsed } = useSidebar()
@@ -16,7 +17,8 @@ export default function TopBar() {
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
-
+  const isClient = useIsClient()
+          
   useEffect(() => {
     if (!menuOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -37,10 +39,11 @@ export default function TopBar() {
       <div className="flex items-center gap-2">
         <button
           aria-label="Toggle sidebar"
-          onClick={() => setCollapsed(!collapsed)}
+          disabled={!isClient}
+          onClick={isClient ? () => setCollapsed(!collapsed) : undefined}
           className="p-2 rounded-md text-color-muted hover:text-theme-primary hover:bg-color-primary-bg"
         >
-          {collapsed ? <Menu size={20} /> : <X size={20} />}
+          {isClient && !collapsed ? <X size={20} /> : <Menu size={20} />}
         </button>
         <a href="/" className="text-heading">
           That DAM Toolbox
@@ -53,6 +56,7 @@ export default function TopBar() {
           aria-label="Select color scheme"
           value={scheme}
           onChange={e => setScheme(e.target.value as ColorScheme)}
+          disabled={!isClient}
           className="input text-sm"
         >
           {AVAILABLE_SCHEMES.map(opt => (
@@ -61,7 +65,8 @@ export default function TopBar() {
         </select>
         <button
           type="button"
-          onClick={() => openModal('dam-explorer')}
+          disabled={!isClient}
+          onClick={isClient ? () => openModal('dam-explorer') : undefined}
           className="text-body hover:text-theme-primary"
         >
           Explorer

@@ -31,7 +31,11 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   );
 
   return (
-    <SessionProvider>
+    <SessionProvider
+      refetchOnWindowFocus={false}
+      refetchWhenOffline={false}
+      refetchInterval={0}
+    >
       <QueryClientProvider client={qc}>
         <ClientOnly>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

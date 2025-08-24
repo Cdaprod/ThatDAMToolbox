@@ -3,12 +3,12 @@
 
 /* Fallback theme values for SSR */
 :root {
-  --background: #0b0f14;
-  --foreground: #dfe7f5;
+  --color-background: #0b0f14;
+  --color-text: #dfe7f5;
 }
 
-.bg-background { background: var(--background); }
-.text-foreground { color: var(--foreground); }
+.bg-background { background: var(--color-background); }
+.text-foreground { color: var(--color-text); }
 
 @tailwind base;
 @tailwind components;

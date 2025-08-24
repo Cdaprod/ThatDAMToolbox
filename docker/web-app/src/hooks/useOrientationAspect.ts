@@ -27,7 +27,7 @@ export default function useOrientationAspect<T extends HTMLElement>(
   ref: RefObject<T>
 ): OrientationAspect {
   const orientation = useOrientation();
-  const [aspect, setAspect] = useState<number | null>(null);
+  const [aspect, setAspect] = useState<number | null>(16 / 9);
 
   useEffect(() => {
     const el = ref.current;
