@@ -1,6 +1,15 @@
 /* /web-app/src/styles/globals.css */
 @import './tokens.css';
 
+/* Fallback theme values for SSR */
+:root {
+  --background: #0b0f14;
+  --foreground: #dfe7f5;
+}
+
+.bg-background { background: var(--background); }
+.text-foreground { color: var(--foreground); }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

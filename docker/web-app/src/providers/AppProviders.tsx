@@ -3,6 +3,7 @@
 import { ReactNode, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
+import { ThemeProvider } from 'next-themes';
 
 import TenantProvider from '@/providers/TenantProvider';
 import AuthProvider from '@/providers/AuthProvider';
@@ -10,14 +11,20 @@ import AssetProvider from '@/providers/AssetProvider';
 import VideoSocketProvider from '@/providers/VideoSocketProvider';
 import ModalProvider from '@/providers/ModalProvider';
 import LoadReactQueryDevtools from '@/providers/loadReactQueryDevtools';
+import ClientOnly from '@/providers/ClientOnly';
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
-  // useState() ensures a single QueryClient instance across HMR in dev
+  // Keep a single QueryClient across HMR in dev
   const [qc] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { staleTime: 30_000, refetchOnWindowFocus: false },
+          queries: {
+            staleTime: 30_000,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: true,
+            suspense: false,
+          },
         },
       })
   );
@@ -25,18 +32,22 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   return (
     <SessionProvider>
       <QueryClientProvider client={qc}>
-        <TenantProvider>
-          <AuthProvider>
-            <AssetProvider>
-              <VideoSocketProvider>
-                <ModalProvider>
-                  {children}
-                  <LoadReactQueryDevtools />
-                </ModalProvider>
-              </VideoSocketProvider>
-            </AssetProvider>
-          </AuthProvider>
-        </TenantProvider>
+        <ClientOnly>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <TenantProvider>
+              <AuthProvider>
+                <AssetProvider>
+                  <VideoSocketProvider>
+                    <ModalProvider>
+                      {children}
+                      <LoadReactQueryDevtools />
+                    </ModalProvider>
+                  </VideoSocketProvider>
+                </AssetProvider>
+              </AuthProvider>
+            </TenantProvider>
+          </ThemeProvider>
+        </ClientOnly>
       </QueryClientProvider>
     </SessionProvider>
   );

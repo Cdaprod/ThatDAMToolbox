@@ -6,6 +6,10 @@ import TenantProvider, { useTenant } from '../TenantProvider';
 import * as navigation from 'next/navigation';
 import { mock } from 'node:test';
 
+// Default mocks for pathname and search params used by TenantProvider
+mock.method(navigation, 'usePathname', () => '/acme/dashboard');
+mock.method(navigation, 'useSearchParams', () => new URLSearchParams());
+
 // Simple component to expose tenant from context
 function ShowTenant() {
   const tenant = useTenant();
