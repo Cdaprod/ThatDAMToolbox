@@ -1,52 +1,65 @@
+// /docker/web-app/src/lib/safeDynamic.tsx
 'use client';
 
-import dynamic, { DynamicOptions } from 'next/dynamic';
+import React, { type ComponentType } from 'react';
+import dynamic, { type DynamicOptions } from 'next/dynamic';
 
 /**
- * Wraps `next/dynamic` and logs a helpful error if the loader does not
- * resolve to a React component.
+ * Wraps next/dynamic and guarantees a real component is returned.
+ * If the loaded module doesn't export a component, we fall back to Noop.
  *
- * Example:
- *   const MyComp = safeDynamic(() => import('./MyComp'), { ssr: false });
- *   <MyComp />
+ * Usage:
+ *   const Widget = safeDynamic(() => import('./Widget'), { ssr: false });
+ *   <Widget />
  */
 
 type Loader<T> = () => Promise<T>;
+const Noop: ComponentType<any> = () => null;
 
 export default function safeDynamic<TModule extends Record<string, any>>(
   loader: Loader<TModule>,
   opts?: DynamicOptions<Record<string, unknown>>
 ) {
+  // The wrapped loader Next will call
   const wrapped = async () => {
-    const mod = await loader();
-    const comp =
-      (mod as any).default ??
-      (mod as any).Component ??
-      (mod as any).ReactComponent;
-
-    if (process.env.NODE_ENV !== 'production') {
-      if (typeof comp !== 'function') {
-        const err = new Error(
-          '[safeDynamic] loader did not return a React component. ' +
-            'Make sure the target file exports a default component.\n' +
-            'Resolved keys: ' + Object.keys(mod || {}).join(', ')
-        );
+    const mod = await loader().catch((err) => {
+      if (process.env.NODE_ENV !== 'production') {
         // eslint-disable-next-line no-console
-        console.error(err);
+        console.warn('[safeDynamic] loader threw:', err?.message || err);
       }
+      return {} as TModule;
+    });
+
+    let comp: any =
+      (mod as any)?.default ??
+      (mod as any)?.Component ??
+      (mod as any)?.ReactComponent;
+
+    if (typeof comp !== 'function') {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[safeDynamic] loader did not return a React component. ' +
+            'Resolved keys: ' + Object.keys(mod || {}).join(', ') +
+            ' -- falling back to Noop.'
+        );
+      }
+      comp = Noop;
     }
-    return { default: comp };
+
+    // Next expects a module-like object with a default component
+    return { default: comp } as { default: ComponentType<any> };
   };
 
-  // IMPORTANT: options must be an object literal for Next.js static analysis
-  const Dyn: any = dynamic(wrapped as any, {
-    ssr: (opts as any)?.ssr,
-    loading: (opts as any)?.loading,
-    suspense: (opts as any)?.suspense,
-  } as any);
+  // IMPORTANT: Next requires an object-literal options arg.
+  const options: DynamicOptions<Record<string, unknown>> = opts ? { ...opts } : {};
 
+  const DynamicComponent: any = dynamic(wrapped as any, options);
+
+  // Handy in tests
   if (process.env.NODE_ENV === 'test') {
-    Dyn.__loader = wrapped;
+    DynamicComponent.__loader = wrapped;
   }
-  return Dyn;
+
+  return DynamicComponent as ComponentType<any>;
 }
