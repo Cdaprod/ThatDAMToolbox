@@ -1,6 +1,7 @@
 // Usage: node start.js [dev|start]
 // Example: node start.js dev
 const fs = require('fs');
+const path = require('path');
 const { spawn } = require('child_process');
 
 let maybeConnectReactDevTools = () => {};
@@ -34,12 +35,13 @@ async function main() {
   // dev now binds 0.0.0.0 so external devices load chunks & HMR properly
   const devArgs = ['dev', '-p', '3000', '-H', '0.0.0.0'];
   const startArgs = ['start', '-p', '3000'];
+  const nextBin = path.join(__dirname, 'node_modules', '.bin', 'next');
 
   const child = mode === 'start'
     ? (haveStandalone
         ? spawn('node', [standalone], { stdio: ['ignore', 'pipe', 'pipe'] })
-        : spawn('next', startArgs, { stdio: ['ignore', 'pipe', 'pipe'] }))
-    : spawn('next', devArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+        : spawn(nextBin, startArgs, { stdio: ['ignore', 'pipe', 'pipe'] }))
+    : spawn(nextBin, devArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
 
   const forward = (sig) => { try { child.kill(sig); } catch (_) {} };
   process.on('SIGINT', forward);
