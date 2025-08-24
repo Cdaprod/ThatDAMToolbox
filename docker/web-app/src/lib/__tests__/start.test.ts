@@ -62,3 +62,32 @@ test('DEV_SKIP_MQ skips requireMq', async () => {
 
   ;(Module as any)._load = originalLoad
 })
+
+test('SIGTERM forwards to child process', async () => {
+  const originalLoad = (Module as any)._load
+  let killed: string | null = null
+  const fakeServiceUp = {
+    publishServiceUp: async () => {},
+    requireMq: async () => {}
+  }
+  const fakeSpawn = () => ({
+    stdout: { on: () => {} },
+    stderr: { on: () => {} },
+    on: () => {},
+    kill: (sig: string) => { killed = sig }
+  })
+  ;(Module as any)._load = (request: string, parent: any, isMain: boolean) => {
+    if (request === './src/lib/serviceUp.js') return fakeServiceUp
+    if (request === 'child_process') return { spawn: fakeSpawn }
+    return originalLoad(request, parent, isMain)
+  }
+
+  const { main } = require(path.join(process.cwd(), 'start.js'))
+  await main()
+  process.emit('SIGTERM')
+
+  assert.strictEqual(killed, 'SIGTERM')
+
+  process.removeAllListeners('SIGTERM')
+  ;(Module as any)._load = originalLoad
+})

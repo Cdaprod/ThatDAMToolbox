@@ -23,7 +23,7 @@ export const ReactQueryDevtools: ComponentType<any> = Enabled
   ? dynamic(
       () =>
         import('@tanstack/react-query-devtools').then(
-          (m) => m.ReactQueryDevtools,
+          (m) => m.ReactQueryDevtools ?? m.default,
         ),
       { ssr: false },
     )
