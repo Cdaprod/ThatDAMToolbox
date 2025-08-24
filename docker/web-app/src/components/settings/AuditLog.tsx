@@ -7,7 +7,7 @@ import * as React from 'react';
 import { SettingsCard } from '../common/SettingsCard';
 import { api } from '../../lib/api/client';
 import { Alert, List, ListItem, ListItemText, Typography } from '@mui/material';
-import { useToast } from '../providers/ToastProvider';
+import { useToast } from '../../providers/ToastProvider';
 
 export function SettingsAuditLog({ tenant }: { tenant: string }) {
   const { toast } = useToast();

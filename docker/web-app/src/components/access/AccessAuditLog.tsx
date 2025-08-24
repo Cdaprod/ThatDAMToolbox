@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { api } from '../../lib/api/client';
 import { List, ListItem, ListItemText, Typography } from '@mui/material';
-import { useToast } from '../providers/ToastProvider';
+import { useToast } from '../../providers/ToastProvider';
 
 export function AccessAuditViewer({ tenant }: { tenant: string }) {
   const { toast } = useToast();

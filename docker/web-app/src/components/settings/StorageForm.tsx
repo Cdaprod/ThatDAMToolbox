@@ -7,7 +7,7 @@ import * as React from 'react';
 import { Button, Stack, TextField, Typography } from '@mui/material';
 import { SettingsCard } from '../common/SettingsCard';
 import { api } from '../../lib/api/client';
-import { useToast } from '../providers/ToastProvider';
+import { useToast } from '../../providers/ToastProvider';
 
 export function StorageForm({ tenant }: { tenant: string }) {
   const { toast } = useToast();
