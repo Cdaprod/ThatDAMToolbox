@@ -4,23 +4,20 @@
 import React, { type ComponentType } from 'react';
 import dynamic, { type DynamicOptions } from 'next/dynamic';
 
+type Loader<T> = () => Promise<T>;
+const Noop: ComponentType<any> = () => null;
+
 /**
  * Wraps next/dynamic and guarantees a real component is returned.
  * If the loaded module doesn't export a component, we fall back to Noop.
  *
  * Usage:
  *   const Widget = safeDynamic(() => import('./Widget'), { ssr: false });
- *   <Widget />
  */
-
-type Loader<T> = () => Promise<T>;
-const Noop: ComponentType<any> = () => null;
-
 export default function safeDynamic<TModule extends Record<string, any>>(
   loader: Loader<TModule>,
   opts?: DynamicOptions<Record<string, unknown>>
 ) {
-  // The wrapped loader Next will call
   const wrapped = async () => {
     const mod = await loader().catch((err) => {
       if (process.env.NODE_ENV !== 'production') {
@@ -47,18 +44,21 @@ export default function safeDynamic<TModule extends Record<string, any>>(
       comp = Noop;
     }
 
-    // Next expects a module-like object with a default component
     return { default: comp } as { default: ComponentType<any> };
   };
 
-  // IMPORTANT: Next requires an object-literal options arg.
-  const options: DynamicOptions<Record<string, unknown>> = opts ? { ...opts } : {};
+  // IMPORTANT: pass an *inline object literal*; do not pass a variable.
+  const DynamicComponent: any = dynamic(wrapped as any, {
+    ssr: opts?.ssr ?? false,
+    // Next allows values to come from variables, but the object itself
+    // must be a literal at the call site.
+    loading: (opts?.loading as any) ?? undefined,
+    // You can add other allowed literal keys here if you use them later.
+    // suspense: opts?.suspense, // (uncomment if you actually use it)
+  });
 
-  const DynamicComponent: any = dynamic(wrapped as any, options);
-
-  // Handy in tests
   if (process.env.NODE_ENV === 'test') {
-    DynamicComponent.__loader = wrapped;
+    (DynamicComponent as any).__loader = wrapped;
   }
 
   return DynamicComponent as ComponentType<any>;
