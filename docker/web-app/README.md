@@ -34,7 +34,7 @@ Then open http://localhost:3000/signup in your browser.
 
 ## Development Tools
 
-- TanStack React Query Devtools are disabled by default (set `NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS=1` to enable).
+- TanStack React Query Devtools are disabled by default (set `NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS=1` to enable) and are automatically disabled on mobile clients to avoid popup errors.
 - A React DevTools server also runs in development; visit
   http://localhost:8097 to inspect component trees without installing a
   browser extension.
