@@ -1,19 +1,25 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
 
-// keep CaptureProvider small; load it statically to avoid another dynamic layer
-import CaptureProvider from './CaptureProvider';
+import LoadReactQueryDevtools from './loadReactQueryDevtools';
 
-const qc = new QueryClient();
+let singletonQc: QueryClient | null = null;
+function getClient() {
+  if (!singletonQc) singletonQc = new QueryClient();
+  return singletonQc;
+}
 
 export default function AppProviders({ children }: { children: ReactNode }) {
+  const [qc] = useState(getClient);
+
   return (
     <SessionProvider>
       <QueryClientProvider client={qc}>
-        <CaptureProvider>{children}</CaptureProvider>
+        {children}
+        <LoadReactQueryDevtools />
       </QueryClientProvider>
     </SessionProvider>
   );
