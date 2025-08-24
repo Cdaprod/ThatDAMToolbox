@@ -8,7 +8,7 @@ import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, Switch, TextField, Typography
 } from '@mui/material';
 import { api } from '../../lib/api/client';
-import { useToast } from '../../providers/ToastProvider';
+import { useToast } from '@/providers/ToastProvider';
 
 export function InviteDialog({
   tenant, open, onClose, onSuccess,

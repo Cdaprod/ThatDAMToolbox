@@ -5,7 +5,7 @@ import {
   Avatar, Box, Button, Container, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography
 } from '@mui/material';
 import { api } from '../../lib/api/client';
-import ToastProvider, { useToast } from '../../providers/ToastProvider';
+import ToastProvider, { useToast } from '@/providers/ToastProvider';
 
 type Profile = {
   name: string;

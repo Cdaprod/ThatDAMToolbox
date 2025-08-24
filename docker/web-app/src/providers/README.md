@@ -17,7 +17,7 @@ QueryClientProvider      # TanStack React Query (caching & API state)
 └─ AssetProvider   # Handles asset lists, details, real-time asset events
 └─ CaptureProvider?    # (Optional) Global recording controls
 └─ ModalProvider    # Centralized modal dialog context
-└─ children      # TopBar, MainLayout, all page components
+└─ children      # TopBar, DashboardShell, all page components
 ``` 
 
 - **QueryClientProvider**  

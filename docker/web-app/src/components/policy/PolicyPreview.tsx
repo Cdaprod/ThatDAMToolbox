@@ -5,7 +5,7 @@
 
 import * as React from 'react';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
-import { useToast } from '../../providers/ToastProvider';
+import { useToast } from '@/providers/ToastProvider';
 import { api } from '../../lib/api/client';
 
 export function PolicyPreviewWidget({ tenant }: { tenant: string }) {
