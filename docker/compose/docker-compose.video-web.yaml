@@ -33,6 +33,7 @@ services:
     networks: [damnet]
     environment:
       NODE_ENV: development
+      DEV_SKIP_MQ: "0"
       AMQP_CONNECT_TIMEOUT_MS: 2000
       AMQP_CONNECT_ATTEMPTS: 1
       NEXT_PUBLIC_API_BASE_URL: "http://video-api:8080"
@@ -47,7 +48,6 @@ services:
       NEXTAUTH_SECRET: "dev-secret-only"
       # GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
       # GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
-      DEV_SKIP_MQ: "0"
       NPM_CONFIG_CACHE: /root/.npm
     volumes:
       - ../../docker/web-app/src:/app/src:ro

@@ -41,6 +41,10 @@ async function main() {
         : spawn('next', startArgs, { stdio: ['ignore', 'pipe', 'pipe'] }))
     : spawn('next', devArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
 
+  const forward = (sig) => { try { child.kill(sig); } catch (_) {} };
+  process.on('SIGINT', forward);
+  process.on('SIGTERM', forward);
+
   let sent = false;
   child.stdout.on('data', async (data) => {
     const text = data.toString();
