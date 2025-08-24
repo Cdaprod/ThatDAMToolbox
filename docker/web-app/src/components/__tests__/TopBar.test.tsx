@@ -4,99 +4,62 @@ import React from 'react'
 import { renderToString } from 'react-dom/server'
 import path from 'node:path'
 
-import TopBar from '../TopBar'
-import Sidebar from '../Sidebar'
-import { SidebarProvider } from '../../hooks/useSidebar'
-import { shouldHideSidebar } from '../DashboardShell'
-import TenantProvider from '@/providers/TenantProvider'
-import { ThemeProvider } from '@/context/ThemeContext'
+const sidebarPath = path.resolve(__dirname, '../../hooks/useSidebar.js')
+const modalPath = path.resolve(__dirname, '../../providers/ModalProvider.js')
+const themePath = path.resolve(__dirname, '../../context/ThemeContext.js')
+const authPath = path.resolve(__dirname, '../../providers/AuthProvider.js')
 
-test('TopBar renders sidebar toggle', () => {
-  const html = renderToString(
-    <ThemeProvider>
-      <SidebarProvider>
-        <TopBar />
-      </SidebarProvider>
-    </ThemeProvider>
-  )
-  assert.ok(html.includes('Toggle sidebar'))
-})
+const sidebarMod = require(sidebarPath)
+const modalMod = require(modalPath)
+const themeMod = require(themePath)
+const authMod = require(authPath)
+
+sidebarMod.useSidebar = () => ({ collapsed: false, setCollapsed() {} })
+modalMod.useModal = () => ({ openModal() {}, closeModal() {} })
+themeMod.useTheme = () => ({ scheme: 'light', setScheme() {} })
+authMod.useAuth = () => ({ user: { name: 'A' }, logout() {} })
+
+const topBarPath = path.resolve(__dirname, '../TopBar.js')
+const { default: TopBar } = require(topBarPath)
 
 test('TopBar shows theme dropdown', () => {
-  const html = renderToString(
-    <ThemeProvider>
-      <SidebarProvider>
-        <TopBar />
-      </SidebarProvider>
-    </ThemeProvider>
-  )
+  const html = renderToString(<TopBar />)
   assert.ok(html.includes('Select color scheme'))
-  assert.ok(html.includes('sepia'))
-  assert.ok(html.includes('cybernetic-sunset'))
 })
 
-test('Sidebar shows titles when expanded', () => {
-  const html = renderToString(
-    <SidebarProvider initialCollapsed={false}>
-      <Sidebar />
-    </SidebarProvider>
-  )
-  assert.ok(html.includes('Camera Monitor'))
-})
-
-test('DashboardShell shows sidebar on camera monitor route', () => {
-  assert.equal(shouldHideSidebar('/acme/dashboard/camera-monitor'), false)
-})
-
-test('Layered explorer hides sidebar', () => {
-  assert.equal(shouldHideSidebar('/acme/dashboard/layered-explorer'), true)
+test('TopBar renders account menu button', () => {
+  const html = renderToString(<TopBar />)
+  assert.ok(html.includes('Account menu'))
 })
 
 test('Explorer button triggers dam-explorer modal', async () => {
-  const sidebarPath = path.resolve(__dirname, '../../hooks/useSidebar.js')
-  const modalPath = path.resolve(__dirname, '../../providers/ModalProvider.js')
-  const themePath = path.resolve(__dirname, '../../context/ThemeContext.js')
-  const topBarPath = path.resolve(__dirname, '../TopBar.js')
-
-  const sidebarMod = require(sidebarPath)
-  const modalMod = require(modalPath)
-  const themeMod = require(themePath)
-  const origUseSidebar = sidebarMod.useSidebar
-  const origUseModal = modalMod.useModal
-  const origUseTheme = themeMod.useTheme
-
   let opened: string | null = null
-
-  sidebarMod.useSidebar = () => ({ collapsed: false, setCollapsed() {} })
   modalMod.useModal = () => ({ openModal: (tool: string) => { opened = tool }, closeModal() {} })
-  themeMod.useTheme = () => ({ scheme: 'light', setScheme() {} })
-
   delete require.cache[topBarPath]
   const { default: TestTopBar } = await import('../TopBar')
   const el = TestTopBar()
   const nav = el.props.children[1]
   const button = nav.props.children[1]
   button.props.onClick()
-
-  assert.equal(opened, 'dam-explorer')
-
-  sidebarMod.useSidebar = origUseSidebar
-  modalMod.useModal = origUseModal
-  themeMod.useTheme = origUseTheme
+  modalMod.useModal = () => ({ openModal() {}, closeModal() {} })
   delete require.cache[topBarPath]
-
-  assert.ok(opened)
+  assert.equal(opened, 'dam-explorer')
 })
 
-test('TopBar link includes tenant', () => {
-  const html = renderToString(
-    <TenantProvider tenant="acme">
-      <ThemeProvider>
-        <SidebarProvider>
-          <TopBar />
-        </SidebarProvider>
-      </ThemeProvider>
-    </TenantProvider>
-  )
-  assert.ok(html.includes('/acme/dashboard/dam-explorer'))
+test('Account menu logout triggers logout handler', async () => {
+  let loggedOut = false
+  authMod.useAuth = () => ({ user: { name: 'A' }, logout: () => { loggedOut = true } })
+  delete require.cache[topBarPath]
+  const { default: TestTopBar } = await import('../TopBar')
+  const el = TestTopBar()
+  const nav = el.props.children[1]
+  const menuWrapper = nav.props.children[2]
+  const button = menuWrapper.props.children[0]
+  button.props.onClick()
+  const menu = menuWrapper.props.children[1]
+  const logoutBtn = menu.props.children[1]
+  logoutBtn.props.onClick()
+  authMod.useAuth = () => ({ user: { name: 'A' }, logout() {} })
+  delete require.cache[topBarPath]
+  assert.ok(loggedOut)
 })

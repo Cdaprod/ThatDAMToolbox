@@ -39,9 +39,12 @@ export function apiUrl(path: string = ''): string {
   if (process.env.NEXT_PUBLIC_API_BASE_URL)
     return process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/$/, '') + path;
 
-  // 2. Build from runtime location--just works everywhere
+  // 2. Server-side: respect API_BASE_URL for cross-container calls
+  if (!inBrowser()) return apiBaseUrlServer().replace(/\/$/, '') + path;
+
+  // 3. Build from runtime location--just works in browser
   const { host, port } = getHostAndPort(API_PORT);
-  const proto = inBrowser() ? window.location.protocol : 'http:';
+  const proto = window.location.protocol;
   return fullUrl(proto, host, port, API_PATH_PREFIX + path);
 }
 

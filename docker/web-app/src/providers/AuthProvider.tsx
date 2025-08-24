@@ -16,7 +16,7 @@ import React, {
   useEffect,
   useRef,
 } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { setAuthToken } from '../lib/api';
 
@@ -69,6 +69,8 @@ export default function AuthProvider({
     setTenantId(null);
     sessionStorage.removeItem('tenantId');
     setAuthToken(null);
+    // ensure server-side session cookies are cleared
+    signOut({ callbackUrl: '/login' });
   };
 
   const publicRoutes = ['/', '/login', '/signup', '/pair'];

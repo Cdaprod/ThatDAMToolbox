@@ -11,7 +11,8 @@ export default function VoidScene() {
   const inertia = useRef({ x: 0, y: 0, vx: 0, vy: 0 });
 
   useEffect(() => {
-    const el = rootRef.current!;
+    const el = rootRef.current;
+    if (!el) return;
     let raf = 0;
 
     const step = () => {
