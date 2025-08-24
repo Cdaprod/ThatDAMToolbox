@@ -61,6 +61,6 @@ export function getAuthOptions(): NextAuthOptions {
         return session;
       },
     },
-    debug: !isProd,
+    debug: process.env["NEXTAUTH_DEBUG"] === 'true',
   };
 }

@@ -34,9 +34,13 @@ export default function AssetProvider({ children }: { children: React.ReactNode 
   const { data, isFetching } = useQuery({
     queryKey: ['assets', refreshTick],
     queryFn: async () => {
-      const res = await fetch('/api/library/stats', { cache: 'no-store' });
-      if (!res.ok) return { assetsList: [] as Asset[] };
-      return (await res.json()) as { assetsList: Asset[] };
+      try {
+        const res = await fetch('/api/library/stats', { cache: 'no-store' });
+        if (!res.ok) return { assetsList: [] as Asset[] };
+        return (await res.json()) as { assetsList: Asset[] };
+      } catch {
+        return { assetsList: [] as Asset[] };
+      }
     },
     initialData: { assetsList: [] as Asset[] },
     refetchOnMount: false,

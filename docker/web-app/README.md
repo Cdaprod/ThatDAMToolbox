@@ -291,6 +291,8 @@ TENANCY_URL=http://localhost:8082/tenants
 NODE_ENV=development
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=changeme
+# Set to "true" to enable verbose NextAuth logs
+NEXTAUTH_DEBUG=false
 # DEV_SKIP_MQ=1     # optional: skip RabbitMQ connect during UI work (unset or set to 0 to re-enable)
 ```
 

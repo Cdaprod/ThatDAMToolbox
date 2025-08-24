@@ -2,12 +2,14 @@
 'use client';
 
 import safeDynamic from '@/lib/safeDynamic';
-import CameraMonitor from '@components/CameraMonitor';
 
-/* lazy-load the merged CaptureProvider so it doesn’t end up in your
-   main bundle (and you don’t need CaptureProviderImpl anymore) */
 const CaptureProvider = safeDynamic(
   () => import('@/providers/CaptureProvider'),
+  { ssr: false }
+);
+
+const CameraMonitor = safeDynamic(
+  () => import('@components/CameraMonitor'),
   { ssr: false }
 );
 
