@@ -285,6 +285,7 @@ docker build \
 Create `/web-app/.env.local` for local development:
 
 ```env
+API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 TENANCY_URL=http://localhost:8082/tenants
@@ -311,7 +312,7 @@ All requests flow through the typed clients in `src/lib/api`, generated via `yar
 
 ## Authentication
 
-`AuthProvider` wraps the app and injects a bearer token into every API call via `src/lib/api`. Use it to handle login/logout and expose user context.
+`AuthProvider` wraps the app and injects a bearer token into every API call via `src/lib/api`. Use it to handle login/logout and expose user context. Calling `logout()` also invokes NextAuth's `signOut` to clear server-side session cookies and redirect back to `/login`.
 Google SSO is provided by NextAuth. Configure the following environment variables in `.env.local` or deployment secrets:
 
 ```

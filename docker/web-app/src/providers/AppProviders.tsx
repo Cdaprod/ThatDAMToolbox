@@ -10,6 +10,7 @@ import AuthProvider from '@/providers/AuthProvider';
 import AssetProvider from '@/providers/AssetProvider';
 import VideoSocketProvider from '@/providers/VideoSocketProvider';
 import ModalProvider from '@/providers/ModalProvider';
+import ToastProvider from '@/providers/ToastProvider';
 import LoadReactQueryDevtools from '@/providers/loadReactQueryDevtools';
 import ClientOnly from '@/providers/ClientOnly';
 
@@ -38,10 +39,12 @@ export default function AppProviders({ children }: { children: React.ReactNode }
               <AuthProvider>
                 <AssetProvider>
                   <VideoSocketProvider>
-                    <ModalProvider>
-                      {children}
-                      <LoadReactQueryDevtools />
-                    </ModalProvider>
+                    <ToastProvider>
+                      <ModalProvider>
+                        {children}
+                        <LoadReactQueryDevtools />
+                      </ModalProvider>
+                    </ToastProvider>
                   </VideoSocketProvider>
                 </AssetProvider>
               </AuthProvider>

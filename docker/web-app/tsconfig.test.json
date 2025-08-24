@@ -29,6 +29,7 @@
     "src/lib/__tests__/safeDynamic.test.tsx",
     "src/styles/__tests__/tokens.test.ts",
     "src/components/__tests__/uiUxTasks.test.ts",
+    "src/components/__tests__/TopBar.test.tsx",
     "src/lib/server/__tests__/settingsDB.test.ts",
     "src/app/api/policy/__tests__/evaluate.test.ts",
     "src/app/api/library/__tests__/stats.test.ts",

@@ -9,6 +9,7 @@ import {
   brokerTopics,
   setAuthToken,
 } from '../api';
+import { apiUrl } from '../networkConfig';
 
 // simple fetch spy to capture URLs and options
 const calls: { url: string; init?: any }[] = [];
@@ -56,4 +57,11 @@ test('auth token attaches Authorization header', async () => {
   setAuthToken('secret');
   await supervisor.listNodes();
   assert.equal(calls[0].init.headers.Authorization, 'Bearer secret');
+});
+
+test('apiUrl honors API_BASE_URL on server', () => {
+  delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  process.env.API_BASE_URL = 'https://api.example.com';
+  const url = apiUrl('/foo');
+  assert.equal(url, 'https://api.example.com/foo');
 });

@@ -6,6 +6,7 @@ import AuthProvider, { useAuth } from '../AuthProvider';
 
 (global as any).__nextAuthReact = {
   signIn: async () => {},
+  signOut: async () => { (global as any).__signOutCalled = true; },
   useSession: () => ({ status: 'authenticated', data: null }),
 };
 (global as any).__nextNavigation = {
@@ -58,4 +59,20 @@ test('login stores tenantId in sessionStorage', () => {
   ctx?.login('tkn', { name: 'A' }, 'tenant1');
 
   assert.equal((global as any).sessionStorage.getItem('tenantId'), 'tenant1');
+});
+
+test('logout invokes next-auth signOut', () => {
+  let ctx: ReturnType<typeof useAuth> | undefined;
+  function Capture() {
+    ctx = useAuth();
+    return null;
+  }
+  (global as any).__signOutCalled = false;
+  renderToString(
+    <AuthProvider initialToken="tkn">
+      <Capture />
+    </AuthProvider>
+  );
+  ctx?.logout();
+  assert.ok((global as any).__signOutCalled);
 });

@@ -3,14 +3,28 @@
 
 import clsx from 'clsx'
 import { Menu, X } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 import { useSidebar } from '../hooks/useSidebar'
 import { useModal } from '@/providers/ModalProvider'
 import { useTheme, AVAILABLE_SCHEMES, ColorScheme } from '@/context/ThemeContext'
+import { useAuth } from '@/providers/AuthProvider'
 
 export default function TopBar() {
   const { collapsed, setCollapsed } = useSidebar()
   const { openModal } = useModal()
   const { scheme, setScheme } = useTheme()
+  const { user, logout } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   return (
     <header
@@ -52,6 +66,46 @@ export default function TopBar() {
         >
           Explorer
         </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label="Account menu"
+            className="w-8 h-8 rounded-full bg-color-primary-bg text-sm flex items-center justify-center"
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            {user?.name?.[0] ?? 'U'}
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              tabIndex={-1}
+              className="absolute right-0 mt-2 bg-surface border border-color-border rounded shadow-md"
+              onBlur={e => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) setMenuOpen(false)
+              }}
+            >
+              <a
+                href="/account"
+                role="menuitem"
+                className="block px-4 py-2 text-sm hover:bg-color-primary-bg"
+                onClick={() => setMenuOpen(false)}
+              >
+                Account
+              </a>
+              <button
+                role="menuitem"
+                className="block w-full text-left px-4 py-2 text-sm hover:bg-color-primary-bg"
+                onClick={() => {
+                  logout()
+                  setMenuOpen(false)
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
     </header>
   );
