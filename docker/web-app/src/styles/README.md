@@ -63,8 +63,26 @@ Changing these values updates the global background and accent colors without to
 ### Color Schemes
 
 `ThemeProvider` wraps [`next-themes`](https://github.com/pacocoursey/next-themes) and applies a `data-theme` attribute on the
-root element. Predefined schemes (`light`, `dark`, `sepia`, `royal`) are driven by the variables in `tokens.css`, and the top bar
-dropdown lets users switch schemes at runtime.
+root element. Predefined schemes include:
+
+- `light`
+- `dark`
+- `sepia`
+- `royal`
+- `cybernetic-sunset`
+- `cosmic-fusion`
+- `aurora-borealis`
+- `neon-metropolis`
+- `digital-twilight`
+- `emerald-depths`
+- `lava-flow`
+- `arctic-frost`
+- `quantum-realm`
+- `bioluminescence`
+- `synthwave-sunset`
+- `nebula-burst`
+
+These schemes are driven by the variables in `tokens.css`, and the top bar dropdown lets users switch schemes at runtime.
 
 ## Color Tokens
 
