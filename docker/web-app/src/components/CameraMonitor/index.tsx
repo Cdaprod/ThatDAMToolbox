@@ -1,6 +1,6 @@
 // /docker/web-app/src/components/CameraMonitor/index.tsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import dynamic from "next/dynamic";
+import safeDynamic from "@/lib/safeDynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVideoSocketCtx } from "@providers/VideoSocketProvider";
 import { useLiveRecorder } from "@/hooks/useLiveRecorder";
@@ -16,46 +16,25 @@ import useVideoBox from "@/hooks/useVideoBox";
 import { mergeDeviceIds, toCssAspect } from "./utils";
 
 // overlays (no-SSR)
-const FocusPeakingOverlay = dynamic(
-  () =>
-    import("../overlays/FocusPeakingOverlay").then(
-      (m) => m.default ?? (m as any).FocusPeakingOverlay ?? (() => null)
-    ),
-  { ssr: false },
+const FocusPeakingOverlay = safeDynamic(
+  () => import("../overlays/FocusPeakingOverlay"),
+  { ssr: false }
 );
-const ZebraOverlay = dynamic(
-  () =>
-    import("../overlays/ZebraOverlay").then(
-      (m) => m.default ?? (m as any).ZebraOverlay ?? (() => null)
-    ),
-  {
-    ssr: false,
-  },
+const ZebraOverlay = safeDynamic(
+  () => import("../overlays/ZebraOverlay"),
+  { ssr: false }
 );
-const FalseColorOverlay = dynamic(
-  () =>
-    import("../overlays/FalseColorOverlay").then(
-      (m) => m.default ?? (m as any).FalseColorOverlay ?? (() => null)
-    ),
-  { ssr: false },
+const FalseColorOverlay = safeDynamic(
+  () => import("../overlays/FalseColorOverlay"),
+  { ssr: false }
 );
-const HistogramMonitor = dynamic(
-  () =>
-    import("../overlays/HistogramMonitor").then(
-      (m) => m.default ?? (m as any).HistogramMonitor ?? (() => null)
-    ),
-  {
-    ssr: false,
-  },
+const HistogramMonitor = safeDynamic(
+  () => import("../overlays/HistogramMonitor"),
+  { ssr: false }
 );
-const WaveformMonitor = dynamic(
-  () =>
-    import("../overlays/WaveformMonitor").then(
-      (m) => m.default ?? (m as any).WaveformMonitor ?? (() => null)
-    ),
-  {
-    ssr: false,
-  },
+const WaveformMonitor = safeDynamic(
+  () => import("../overlays/WaveformMonitor"),
+  { ssr: false }
 );
 
 // helper to format elapsed seconds as HH:MM:SS

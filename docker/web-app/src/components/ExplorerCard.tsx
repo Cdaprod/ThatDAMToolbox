@@ -1,16 +1,13 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import dynamic from 'next/dynamic';
+import safeDynamic from '@/lib/safeDynamic';
 import clsx    from 'clsx';
 import { FolderOpen, ArrowUpRight } from 'lucide-react';
 
 /* ---- lazy-load the full explorer --------------------------------------- */
-const AssetExplorer = dynamic(
-  () =>
-    import('@/components/DAMExplorer').then(
-      (m) => m.default ?? (m as any).DAMExplorer ?? (() => null)
-    ),
+const AssetExplorer = safeDynamic(
+  () => import('@/components/DAMExplorer'),
   {
     ssr: false,
     loading: () => (

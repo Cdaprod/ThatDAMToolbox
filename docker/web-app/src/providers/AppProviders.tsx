@@ -1,14 +1,25 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
+import VideoSocketProvider from '@/providers/VideoSocketProvider';
+import ModalProvider from '@/providers/ModalProvider';
+import LoadReactQueryDevtools from '@/providers/loadReactQueryDevtools';
 
-import QueryProvider from './QueryProvider';
+const qc = new QueryClient();
 
 export default function AppProviders({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
-      <QueryProvider>{children}</QueryProvider>
+      <QueryClientProvider client={qc}>
+        <VideoSocketProvider>
+          <ModalProvider>
+            {children}
+            <LoadReactQueryDevtools />
+          </ModalProvider>
+        </VideoSocketProvider>
+      </QueryClientProvider>
     </SessionProvider>
   );
 }

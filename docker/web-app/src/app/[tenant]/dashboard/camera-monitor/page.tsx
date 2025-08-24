@@ -1,16 +1,13 @@
 // src/app/dashboard/camera-monitor/page.tsx
 'use client';
 
-import dynamic from 'next/dynamic';
+import safeDynamic from '@/lib/safeDynamic';
 import CameraMonitor from '@components/CameraMonitor';
 
 /* lazy-load the merged CaptureProvider so it doesn’t end up in your
    main bundle (and you don’t need CaptureProviderImpl anymore) */
-const CaptureProvider = dynamic(
-  () =>
-    import('@/providers/CaptureProvider').then(
-      (m) => m.default ?? (m as any).CaptureProvider ?? (() => null)
-    ),
+const CaptureProvider = safeDynamic(
+  () => import('@/providers/CaptureProvider'),
   { ssr: false }
 );
 
