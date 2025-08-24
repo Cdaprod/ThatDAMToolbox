@@ -4,33 +4,30 @@
 import React, { type ComponentType } from 'react';
 import dynamic, { type DynamicOptions } from 'next/dynamic';
 
-type Loader<T> = () => Promise<T>;
 const Noop: ComponentType<any> = () => null;
 
 /**
- * Wraps next/dynamic and guarantees a real component is returned.
- * If the loaded module doesn't export a component, we fall back to Noop.
- *
- * Usage:
- *   const Widget = safeDynamic(() => import('./Widget'), { ssr: false });
+ * Wraps next/dynamic and guarantees a valid component is returned.
+ * If loader resolves to a non-component or throws, we fall back to Noop.
  */
 export default function safeDynamic<TModule extends Record<string, any>>(
-  loader: Loader<TModule>,
+  loader: () => Promise<TModule>,
   opts?: DynamicOptions<Record<string, unknown>>
 ) {
   const wrapped = async () => {
-    const mod = await loader().catch((err) => {
+    let mod: any = {};
+    try {
+      mod = await loader();
+    } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') {
         // eslint-disable-next-line no-console
         console.warn('[safeDynamic] loader threw:', err?.message || err);
       }
-      return {} as TModule;
-    });
+      // fall through with empty module
+    }
 
-    let comp: any =
-      (mod as any)?.default ??
-      (mod as any)?.Component ??
-      (mod as any)?.ReactComponent;
+    let comp =
+      mod?.default ?? mod?.Component ?? mod?.ReactComponent;
 
     if (typeof comp !== 'function') {
       if (process.env.NODE_ENV !== 'production') {
@@ -44,17 +41,16 @@ export default function safeDynamic<TModule extends Record<string, any>>(
       comp = Noop;
     }
 
-    return { default: comp } as { default: ComponentType<any> };
+    return { default: comp as ComponentType<any> };
   };
 
-  // IMPORTANT: pass an *inline object literal*; do not pass a variable.
+  // IMPORTANT: options object must be an inline literal.
   const DynamicComponent: any = dynamic(wrapped as any, {
     ssr: opts?.ssr ?? false,
-    // Next allows values to come from variables, but the object itself
-    // must be a literal at the call site.
-    loading: (opts?.loading as any) ?? undefined,
-    // You can add other allowed literal keys here if you use them later.
-    // suspense: opts?.suspense, // (uncomment if you actually use it)
+    loading: (opts?.loading as any) ?? (() => null),
+    // Add more allowed literal keys here only if you actually use them
+    // suspense: opts?.suspense,
+    // revalidate: (opts as any)?.revalidate,
   });
 
   if (process.env.NODE_ENV === 'test') {
