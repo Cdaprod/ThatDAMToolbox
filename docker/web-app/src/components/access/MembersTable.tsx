@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { api } from '../../lib/api/client';
-import { useToast } from '../../providers/ToastProvider';
+import { useToast } from '@/providers/ToastProvider';
 
 export type MemberRow = { id: string; email: string; roles: string[]; lastActive: string };
 

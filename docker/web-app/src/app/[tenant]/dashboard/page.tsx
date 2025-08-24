@@ -1,8 +1,8 @@
 // /docker/web-app/src/app/[tenant]/dashboard/page.tsx
 'use client';
 
-import DashboardLayout from '../../../components/DashboardLayout';
-import AnalyticsCard from '../../../components/tools/AnalyticsCard';
+import DashboardGrid from '@/components/DashboardGrid';
+import AnalyticsCard from '@/components/tools/AnalyticsCard';
 
 export default function DashboardMain() {
   const hero = (
@@ -11,5 +11,5 @@ export default function DashboardMain() {
     </h1>
   );
 
-  return <DashboardLayout hero={hero} analytics={<AnalyticsCard />} />;
+  return <DashboardGrid hero={hero} analytics={<AnalyticsCard />} />;
 }

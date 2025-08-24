@@ -22,14 +22,28 @@ export function useTenant(): string {
   return useContext(TenantContext);
 }
 
+import { useParams } from 'next/navigation';
+
 interface TenantProviderProps {
-  tenant: string;
+  tenant?: string;
   children: React.ReactNode;
 }
 
 /**
- * Wrap parts of the app that are tenant aware.
+ * Wrap parts of the app that are tenant aware. If no tenant prop is provided,
+ * the value is derived from the current route parameters.
  */
 export default function TenantProvider({ tenant, children }: TenantProviderProps) {
-  return <TenantContext.Provider value={tenant}>{children}</TenantContext.Provider>;
+  const params = useParams();
+  const activeTenant =
+    tenant ??
+    (typeof params?.tenant === 'string'
+      ? params.tenant
+      : Array.isArray(params?.tenant)
+      ? params.tenant[0]
+      : 'default');
+
+  return (
+    <TenantContext.Provider value={activeTenant}>{children}</TenantContext.Provider>
+  );
 }

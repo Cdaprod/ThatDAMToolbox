@@ -1,10 +1,11 @@
+// /docker/web-app/src/components/DashboardGrid.tsx
 import React from 'react';
 import ToolCard from './ToolCard';
 import { dashboardTools, DashboardTool } from './dashboardTools';
 import { useIntelligentLayout } from '../hooks/useIntelligentLayout';
 import { gridStyle } from '../styles/theme';
 
-interface DashboardLayoutProps {
+interface DashboardGridProps {
   tools?: DashboardTool[];
   hero?: React.ReactNode;
   analytics?: React.ReactNode;
@@ -14,11 +15,11 @@ interface DashboardLayoutProps {
  * Shared layout for dashboard pages. Renders optional hero and analytics
  * sections followed by the intelligent tool grid.
  */
-export default function DashboardLayout({
+export default function DashboardGrid({
   tools = Object.values(dashboardTools),
   hero,
   analytics,
-}: DashboardLayoutProps) {
+}: DashboardGridProps) {
   const { layoutGroups, focusedTool, setFocusedTool } =
     useIntelligentLayout(tools);
 

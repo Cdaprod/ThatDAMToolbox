@@ -4,8 +4,8 @@ import assert from 'node:assert';
 import { renderToString } from 'react-dom/server';
 
 import TenantDashboard from '../[tenant]/dashboard/page';
-import TenantProvider from '../../providers/TenantProvider';
-import { dashboardTools } from '../../components/dashboardTools';
+import TenantProvider from '@/providers/TenantProvider';
+import { dashboardTools } from '@/components/dashboardTools';
 import { mock } from 'node:test';
 
 // Ensure tenant dashboards render all configured tools.

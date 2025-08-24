@@ -16,7 +16,7 @@ import React, { useMemo, useRef, useCallback, useEffect, useState } from 'react'
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, Line as DreiLine } from '@react-three/drei';
-import { useAssets } from '../../providers/AssetProvider';
+import { useAssets } from '@/providers/AssetProvider';
 import { bus } from '../../lib/eventBus';
 import { layeredLayout } from './layout';
 import type { TreeSnapshot, TreeNode, FolderNode } from './types';

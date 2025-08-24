@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { dashboardTools } from './dashboardTools'
 import clsx from 'clsx'
 import { useSidebar } from '../hooks/useSidebar'
-import { useTenant } from '../providers/TenantProvider'
+import { useTenant } from '@/providers/TenantProvider'
 
 export default function Sidebar() {
   const { collapsed } = useSidebar()
