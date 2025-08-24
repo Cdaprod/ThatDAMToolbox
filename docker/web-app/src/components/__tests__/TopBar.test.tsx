@@ -32,6 +32,7 @@ test('TopBar shows theme dropdown', () => {
   )
   assert.ok(html.includes('Select color scheme'))
   assert.ok(html.includes('sepia'))
+  assert.ok(html.includes('cybernetic-sunset'))
 })
 
 test('Sidebar shows titles when expanded', () => {

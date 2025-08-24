@@ -245,3 +245,76 @@
   --theme-primary      : #7e22ce;
   --theme-accent       : #b45309;
 }
+
+/* Additional gradient themes */
+[data-theme='cybernetic-sunset'] {
+  --theme-background: #16213e;
+  --theme-primary: #00ff87;
+  --theme-accent: #ffa500;
+}
+
+[data-theme='cosmic-fusion'] {
+  --theme-background: #0f0e17;
+  --theme-primary: #ff00ff;
+  --theme-accent: #00ffff;
+}
+
+[data-theme='aurora-borealis'] {
+  --theme-background: #0b1d51;
+  --theme-primary: #00ff87;
+  --theme-accent: #ff6fb5;
+}
+
+[data-theme='neon-metropolis'] {
+  --theme-background: #0b0c10;
+  --theme-primary: #66fcf1;
+  --theme-accent: #ff00ff;
+}
+
+[data-theme='digital-twilight'] {
+  --theme-background: #2d00f7;
+  --theme-primary: #f20089;
+  --theme-accent: #00ffff;
+}
+
+[data-theme='emerald-depths'] {
+  --theme-background: #004d40;
+  --theme-primary: #1de9b6;
+  --theme-accent: #ffc107;
+}
+
+[data-theme='lava-flow'] {
+  --theme-background: #3e1e68;
+  --theme-primary: #ff5722;
+  --theme-accent: #ffc107;
+}
+
+[data-theme='arctic-frost'] {
+  --theme-background: #e0f7fa;
+  --theme-primary: #4fc3f7;
+  --theme-accent: #ff8a65;
+}
+
+[data-theme='quantum-realm'] {
+  --theme-background: #1a237e;
+  --theme-primary: #00bcd4;
+  --theme-accent: #ffc400;
+}
+
+[data-theme='bioluminescence'] {
+  --theme-background: #004d40;
+  --theme-primary: #18ffff;
+  --theme-accent: #76ff03;
+}
+
+[data-theme='synthwave-sunset'] {
+  --theme-background: #ff6b6b;
+  --theme-primary: #ff6b6b;
+  --theme-accent: #4ecdc4;
+}
+
+[data-theme='nebula-burst'] {
+  --theme-background: #41295a;
+  --theme-primary: #ff61d2;
+  --theme-accent: #5efce8;
+}

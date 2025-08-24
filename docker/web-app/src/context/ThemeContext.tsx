@@ -7,7 +7,24 @@ import {
   useTheme as useNextTheme,
 } from 'next-themes'
 
-export const AVAILABLE_SCHEMES = ['light', 'dark', 'sepia', 'royal'] as const
+export const AVAILABLE_SCHEMES = [
+  'light',
+  'dark',
+  'sepia',
+  'royal',
+  'cybernetic-sunset',
+  'cosmic-fusion',
+  'aurora-borealis',
+  'neon-metropolis',
+  'digital-twilight',
+  'emerald-depths',
+  'lava-flow',
+  'arctic-frost',
+  'quantum-realm',
+  'bioluminescence',
+  'synthwave-sunset',
+  'nebula-burst',
+] as const
 export type ColorScheme = (typeof AVAILABLE_SCHEMES)[number]
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
