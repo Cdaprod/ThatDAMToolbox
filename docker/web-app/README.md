@@ -15,7 +15,7 @@ Test locally with:
 ```bash
 # run the dev server (binds 0.0.0.0 so LAN devices can connect)
 # RabbitMQ must be running (e.g. `docker compose up rabbitmq`)
-# or skip broker connect with `DEV_SKIP_MQ=1`
+# set `DEV_SKIP_MQ=1` to skip broker connect during UI-only work
 
 cd docker/web-app
 yarn dev
@@ -279,7 +279,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 TENANCY_URL=http://localhost:8082/tenants
 NODE_ENV=development
-# DEV_SKIP_MQ=1     # optional: skip RabbitMQ connect during UI work
+# DEV_SKIP_MQ=1     # optional: skip RabbitMQ connect during UI work (unset or set to 0 to re-enable)
 ```
 
 ## API Mappings
