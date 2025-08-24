@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { api } from '../../lib/api/client';
-import { useToast } from '../providers/ToastProvider';
+import { useToast } from '../../providers/ToastProvider';
 
 export function SsoEnforcementTester({ tenant }: { tenant: string }) {
   const { toast } = useToast();

@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material';
 import { api } from '../../lib/api/client';
-import { useToast } from '../providers/ToastProvider';
+import { useToast } from '../../providers/ToastProvider';
 import type { MemberRow } from './MembersTable';
 
 export function EditRolesDialog({

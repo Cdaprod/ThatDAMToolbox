@@ -7,7 +7,7 @@ import * as React from 'react';
 import { Button, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material';
 import { SettingsCard } from '../common/SettingsCard';
 import { api } from '../../lib/api/client';
-import { useToast } from '../providers/ToastProvider';
+import { useToast } from '../../providers/ToastProvider';
 import { PolicyPreviewWidget } from '../policy/PolicyPreview';
 
 export function SsoForm({ tenant }: { tenant: string }) {
