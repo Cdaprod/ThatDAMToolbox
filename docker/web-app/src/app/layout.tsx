@@ -1,4 +1,5 @@
 import '@/styles/globals.css';
+import '@/styles/void.css';
 import AppProviders from '@/providers/AppProviders';
 import type { Metadata } from 'next';
 

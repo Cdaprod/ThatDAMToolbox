@@ -24,3 +24,8 @@ test('LoginPage renders GIS button when Google is configured', async () => {
   delete process.env.GOOGLE_CLIENT_SECRET;
 });
 
+test('LoginPage includes immersive void scene', async () => {
+  const html = renderToString(await LoginPage());
+  assert.ok(html.includes('void-scene'));
+});
+

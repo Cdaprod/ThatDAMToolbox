@@ -1,0 +1,125 @@
+/* Infinite Void + Neon Text
+   - minimal GPU: transform/opacity only
+   - respects prefers-reduced-motion
+   - no external assets required (procedural noise w/ gradients)
+*/
+
+:root{
+  --void-bg-1:#040507;
+  --void-bg-2:#0a0d12;
+  --void-halo: rgba(170,140,255,.14);
+  --neon-1:#39ffd2;
+  --neon-2:#8a5cff;
+  --neon-3:#ff2d55;
+  --neon-4:#ff9a3c;
+}
+
+/* SCENE WRAPPER */
+.void-scene{
+  position: fixed; inset: 0;
+  overflow: hidden;
+  pointer-events: none; /* layers are decorative */
+  z-index: 0;
+}
+
+/* LAYER: deep radial gradient to avoid flat black */
+.void-bg{
+  position: absolute; inset: -10%;
+  background:
+    radial-gradient(1200px 1200px at 50% 60%, var(--void-bg-2), var(--void-bg-1) 70%);
+  will-change: transform, opacity;
+  transform: translate3d(calc(var(--mx,0) * -0.5%), calc(var(--my,0) * -0.8%), 0)
+             scale(1.03);
+}
+
+/* LAYER: luminance noise (procedural) */
+.void-noise{
+  position:absolute; inset:-10%;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 2px, transparent 2px 5px);
+  mix-blend-mode: screen;
+  filter: contrast(120%) brightness(70%);
+  opacity:.12;
+  animation: voidBreath 9s ease-in-out infinite;
+  transform: translate3d(0,0,0);
+}
+
+/* LAYER: dust motes */
+.void-motes{
+  position:absolute; inset:-10%;
+  background:
+    radial-gradient(2px 2px at 10% 30%, rgba(255,255,255,.08), rgba(255,255,255,0) 60%),
+    radial-gradient(2px 2px at 80% 70%, rgba(255,255,255,.06), rgba(255,255,255,0) 60%),
+    radial-gradient(1.5px 1.5px at 40% 80%, rgba(255,255,255,.05), rgba(255,255,255,0) 60%),
+    radial-gradient(1.5px 1.5px at 65% 20%, rgba(255,255,255,.05), rgba(255,255,255,0) 60%);
+  filter: blur(.4px);
+  opacity:.10;
+  animation: motesDrift 18s linear infinite;
+  transform: translate3d(calc(var(--mx,0) * .3%), calc(var(--my,0) * .4%), 0);
+}
+
+/* LAYER: faint halo around center */
+.void-halo{
+  position:absolute; inset:-15%;
+  background: radial-gradient(900px 900px at 50% 55%, var(--void-halo), transparent 70%);
+  filter: blur(10px);
+  opacity:.65;
+  transform: translate3d(calc(var(--mx,0) * 0.2%), calc(var(--my,0) * 0.2%), 0);
+}
+
+/* Neon text style */
+.neon {
+  --stroke: rgba(255,255,255,.06);
+  background: linear-gradient(90deg, var(--neon-1), var(--neon-2), var(--neon-3), var(--neon-4));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: .6px var(--stroke);
+  text-shadow:
+    0 0 14px rgba(255,255,255,.06),
+    0 0 36px rgba(120,100,255,.10),
+    0 0 90px rgba(255,50,180,.06);
+  animation: neonShift 10s ease infinite;
+  opacity: 0; /* fade-in controlled via .neon-on */
+}
+
+.neon-on { animation: neonShift 10s ease infinite, neonIn .9s ease forwards; }
+
+.neon-subtle {
+  color: rgba(230,235,255,.75);
+  text-shadow:
+    0 0 8px rgba(180,160,255,.10),
+    0 0 18px rgba(140,120,255,.08);
+  opacity: 0;
+}
+.neon-subtle-on { animation: neonIn .8s ease .15s forwards; }
+
+@keyframes neonShift {
+  0% { background-position: 0% 50%; }
+  50%{ background-position: 100% 50%; }
+  100%{background-position: 0% 50%; }
+}
+
+@keyframes neonIn {
+  from { opacity: 0; filter: blur(4px); transform: translateY(6px); }
+  to   { opacity: .8; filter: blur(0); transform: translateY(0); }
+}
+
+@keyframes voidBreath {
+  0% { transform: translate3d(0,0,0) scale(1.02); opacity:.10; }
+  50%{ transform: translate3d(-1%,1%,0) scale(1.05); opacity:.16; }
+  100%{transform: translate3d(0,0,0) scale(1.02); opacity:.10; }
+}
+
+@keyframes motesDrift {
+  0% { transform: translate3d(-2%, -1%, 0); }
+  100%{transform: translate3d(2%, 1%, 0); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .void-noise, .void-motes { animation: none; }
+  .neon-on, .neon-subtle-on { animation: none; opacity:.8; }
+}
