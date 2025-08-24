@@ -144,7 +144,10 @@ async function publishServiceUp(payload = {}) {
       { persistent: true }
     );
 
-    if (!isProd) console.log('[serviceUp] published service.up (dev best-effort)');
+      if (!isProd) {
+        console.log('[serviceUp] published service.up (dev best-effort)');
+        console.log('[serviceUp] url=', getUrl());
+      }
   } catch (err) {
     const msg = String(err && err.message || err);
     const econRefused = /ECONNREFUSED|EHOSTUNREACH|ENOTFOUND/i.test(msg);
