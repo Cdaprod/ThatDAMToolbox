@@ -6,14 +6,20 @@ import clsx    from 'clsx';
 import { FolderOpen, ArrowUpRight } from 'lucide-react';
 
 /* ---- lazy-load the full explorer --------------------------------------- */
-const AssetExplorer = dynamic(() => import('@/components/DAMExplorer'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-72 items-center justify-center">
-      <span className="animate-pulse text-sm text-gray-500">loading…</span>
-    </div>
-  ),
-});
+const AssetExplorer = dynamic(
+  () =>
+    import('@/components/DAMExplorer').then(
+      (m) => m.default ?? (m as any).DAMExplorer ?? (() => null)
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-72 items-center justify-center">
+        <span className="animate-pulse text-sm text-gray-500">loading…</span>
+      </div>
+    ),
+  }
+);
 
 /* ---- props -------------------------------------------------------------- */
 type Props = {
