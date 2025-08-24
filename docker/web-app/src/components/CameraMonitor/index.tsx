@@ -17,22 +17,46 @@ import { mergeDeviceIds, toCssAspect } from "./utils";
 
 // overlays (no-SSR)
 const FocusPeakingOverlay = dynamic(
-  () => import("../overlays/FocusPeakingOverlay"),
+  () =>
+    import("../overlays/FocusPeakingOverlay").then((m) => ({
+      default: m.default ?? (m as any).FocusPeakingOverlay ?? (() => null),
+    })),
   { ssr: false },
 );
-const ZebraOverlay = dynamic(() => import("../overlays/ZebraOverlay"), {
-  ssr: false,
-});
+const ZebraOverlay = dynamic(
+  () =>
+    import("../overlays/ZebraOverlay").then((m) => ({
+      default: m.default ?? (m as any).ZebraOverlay ?? (() => null),
+    })),
+  {
+    ssr: false,
+  },
+);
 const FalseColorOverlay = dynamic(
-  () => import("../overlays/FalseColorOverlay"),
+  () =>
+    import("../overlays/FalseColorOverlay").then((m) => ({
+      default: m.default ?? (m as any).FalseColorOverlay ?? (() => null),
+    })),
   { ssr: false },
 );
-const HistogramMonitor = dynamic(() => import("../overlays/HistogramMonitor"), {
-  ssr: false,
-});
-const WaveformMonitor = dynamic(() => import("../overlays/WaveformMonitor"), {
-  ssr: false,
-});
+const HistogramMonitor = dynamic(
+  () =>
+    import("../overlays/HistogramMonitor").then((m) => ({
+      default: m.default ?? (m as any).HistogramMonitor ?? (() => null),
+    })),
+  {
+    ssr: false,
+  },
+);
+const WaveformMonitor = dynamic(
+  () =>
+    import("../overlays/WaveformMonitor").then((m) => ({
+      default: m.default ?? (m as any).WaveformMonitor ?? (() => null),
+    })),
+  {
+    ssr: false,
+  },
+);
 
 // helper to format elapsed seconds as HH:MM:SS
 const formatDuration = (seconds: number) => {
