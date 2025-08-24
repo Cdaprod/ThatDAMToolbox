@@ -8,7 +8,7 @@ import DevSignIn from '@/components/auth/DevSignIn';
 export const dynamic = 'force-dynamic';
 
 export default async function LoginPage() {
-  const authOptions = getAuthOptions();
+  const authOptions = await getAuthOptions(); // if this is async in your impl
   const session = await getServerSession(authOptions);
   if (session) redirect('/' + (session.user?.tenant ?? 'demo') + '/dashboard');
 
