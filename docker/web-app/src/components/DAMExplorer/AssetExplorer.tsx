@@ -43,8 +43,19 @@ interface UndoOperation {
 
 // Main Component: AssetExplorer
 const AssetExplorer: React.FC = () => {
-  const { view: rawView, folders, foldersLoading, move, remove, refresh, setFilters, filters, vectorSearch } = useAssets()
-  const assets = rawView as Asset[]
+  const {
+    view: rawView,
+    assets: assetList = [],
+    folders = [],
+    foldersLoading = false,
+    move = async () => {},
+    remove = async () => {},
+    refresh = () => {},
+    setFilters = () => {},
+    filters = {},
+    vectorSearch = async () => [],
+  } = useAssets() as any
+  const assets = (rawView ?? assetList) as Asset[]
   const { ids: selectedAssets, clear: clearSelection } = useSelection()
   const [currentPath, setCurrentPath] = useState<string>('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
