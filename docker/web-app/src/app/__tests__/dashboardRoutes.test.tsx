@@ -26,5 +26,5 @@ test('dashboard page redirects unauthenticated users to login', async () => {
       <Dashboard />
     </AuthProvider>,
   );
-  assert.equal(redirected, '/login');
+  assert.equal(redirected, '/login?redirect=%2Facme%2Fdashboard');
 });
