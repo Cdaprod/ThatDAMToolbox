@@ -98,7 +98,6 @@ web-app/.
 │   │   │   └── witness
 │   │   │       └── page.tsx
 │   │   ├── layout.tsx
-│   │   ├── MainLayout.tsx
 │   │   ├── page.tsx
 │   │   └── schemas
 │   │       └── page.tsx

@@ -3,7 +3,7 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '@/providers/AuthProvider';
 
 /**
  * SignupPage creates a personal tenant then optionally lets the user

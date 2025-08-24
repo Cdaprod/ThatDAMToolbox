@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { dashboardTools } from './dashboardTools';
 import clsx from 'clsx';
 import { sizeClasses, iconClasses, titleClasses, cardBaseClasses } from '../styles/theme';
-import { useTenant } from '../providers/TenantProvider';
+import { useTenant } from '@/providers/TenantProvider';
 
 interface ToolCardProps {
   toolId: string;

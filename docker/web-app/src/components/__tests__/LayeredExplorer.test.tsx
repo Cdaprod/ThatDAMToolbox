@@ -3,7 +3,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import LayeredExplorer from '../LayeredFS/LayeredExplorer';
-import { AssetCtx } from '../../providers/AssetProvider';
+import { AssetCtx } from '@/providers/AssetProvider';
 
 test('LayeredExplorer renders canvas', () => {
   const mockCtx = {

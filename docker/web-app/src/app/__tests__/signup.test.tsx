@@ -6,7 +6,7 @@ import assert from 'node:assert';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import SignupPage from '../signup/page';
-import AuthProvider from '../../providers/AuthProvider';
+import AuthProvider from '@/providers/AuthProvider';
 
 test('SignupPage shows form inputs', () => {
   const html = renderToStaticMarkup(

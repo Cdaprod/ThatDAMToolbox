@@ -7,7 +7,7 @@ import path from 'node:path'
 import TopBar from '../TopBar'
 import Sidebar from '../Sidebar'
 import { SidebarProvider } from '../../hooks/useSidebar'
-import MainLayout, { shouldHideSidebar } from '../../app/MainLayout'
+import { shouldHideSidebar } from '../DashboardShell'
 import TenantProvider from '@/providers/TenantProvider'
 import { ThemeProvider } from '@/context/ThemeContext'
 
@@ -43,12 +43,12 @@ test('Sidebar shows titles when expanded', () => {
   assert.ok(html.includes('Camera Monitor'))
 })
 
-test('MainLayout shows sidebar on camera monitor route', () => {
-  assert.equal(shouldHideSidebar('/dashboard/camera-monitor'), false)
+test('DashboardShell shows sidebar on camera monitor route', () => {
+  assert.equal(shouldHideSidebar('/acme/dashboard/camera-monitor'), false)
 })
 
 test('Layered explorer hides sidebar', () => {
-  assert.equal(shouldHideSidebar('/dashboard/layered-explorer'), true)
+  assert.equal(shouldHideSidebar('/acme/dashboard/layered-explorer'), true)
 })
 
 test('Explorer button triggers dam-explorer modal', async () => {
