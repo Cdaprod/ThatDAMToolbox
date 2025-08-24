@@ -9,6 +9,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { useSession } from 'next-auth/react';
+import { usePathname, useRouter } from 'next/navigation';
 import { setAuthToken } from '../lib/api';
 
 interface AuthState {
@@ -34,6 +36,10 @@ export default function AuthProvider({
   initialToken?: string | null;
   initialTenantId?: string | null;
 }) {
+  const { status } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [token, setToken] = useState<string | null>(initialToken);
   const [tenantId, setTenantId] = useState<string | null>(initialTenantId);
   const [user, setUser] = useState<{ name?: string } | null>(null);
@@ -53,6 +59,13 @@ export default function AuthProvider({
     sessionStorage.removeItem('tenantId');
     setAuthToken(null);
   };
+
+  const publicRoutes = ['/', '/login', '/signup', '/pair'];
+  const isDashboardPath = pathname?.includes('/dashboard');
+  if (status === 'unauthenticated' && isDashboardPath && !publicRoutes.includes(pathname)) {
+    router.replace('/login');
+    return null;
+  }
 
   return (
     <AuthContext.Provider value={{ token, tenantId, user, login, logout }}>
