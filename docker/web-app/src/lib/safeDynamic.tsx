@@ -31,16 +31,22 @@ export default function safeDynamic<TModule extends Record<string, any>>(
             'Make sure the target file exports a default component.\n' +
             'Resolved keys: ' + Object.keys(mod || {}).join(', ')
         );
+        // eslint-disable-next-line no-console
         console.error(err);
       }
     }
     return { default: comp };
   };
 
-  const DynamicComponent: any = dynamic(wrapped as any, opts);
-  if (process.env.NODE_ENV === 'test') {
-    DynamicComponent.__loader = wrapped;
-  }
-  return DynamicComponent;
-}
+  // IMPORTANT: options must be an object literal for Next.js static analysis
+  const Dyn: any = dynamic(wrapped as any, {
+    ssr: (opts as any)?.ssr,
+    loading: (opts as any)?.loading,
+    suspense: (opts as any)?.suspense,
+  } as any);
 
+  if (process.env.NODE_ENV === 'test') {
+    Dyn.__loader = wrapped;
+  }
+  return Dyn;
+}
