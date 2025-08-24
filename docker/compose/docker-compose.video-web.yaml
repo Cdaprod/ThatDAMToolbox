@@ -20,6 +20,7 @@ x-build-common: &build-common
 
 services:
   video-web:
+    init: true
     build:
       <<: *build-common
       context: ../../docker/web-app
@@ -28,6 +29,7 @@ services:
     logging: *default-logging
     image: cdaprod/video-web:${IMAGE_TAG:-dev}
     container_name: thatdamtoolbox-video-web-app
+    command: ["node","start.js","dev"]
     platform: linux/arm64
     ports: ["3000:3000"]
     networks: [damnet]
@@ -42,6 +44,8 @@ services:
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       EVENT_BROKER_URL: "amqp://video:video@rabbitmq:5672/"
+      AMQP_URL: ""
+      RABBITMQ_URL: ""
       NEXT_PUBLIC_LOGIN_URL: "https://idp.example.com/login"
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: "example.com"
       NEXTAUTH_URL: "http://192.168.0.22:3000"
@@ -58,9 +62,10 @@ services:
     group_add: ["video"]
     device_cgroup_rules: ["c 81:* rmw"]
     depends_on:
-      - video-api
-      - thatdamtoolbox-discovery
-      - rabbitmq
+      video-api: { condition: service_started }
+      thatdamtoolbox-discovery: { condition: service_started }
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5

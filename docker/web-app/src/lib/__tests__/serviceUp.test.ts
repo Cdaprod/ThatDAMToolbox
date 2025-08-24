@@ -26,36 +26,42 @@ test('publishServiceUp skips when amqplib is missing', async () => {
   ;(Module as any)._load = originalLoad
 })
 
-test('publishServiceUp uses EVENT_BROKER_URL', async () => {
-  const originalLoad = (Module as any)._load
-  let connectUrl = ''
-  const fakeConn = {
-    createChannel: async () => ({
-      assertExchange: async () => {},
-      publish: () => {},
+  test('publishServiceUp uses EVENT_BROKER_URL', async () => {
+    const originalLoad = (Module as any)._load
+    let connectUrl = ''
+    const fakeConn = {
+      createChannel: async () => ({
+        assertExchange: async () => {},
+        publish: () => {},
+        close: async () => {},
+      }),
       close: async () => {},
-    }),
-    close: async () => {},
-  }
-  const fakeAmqp = {
-    connect: async (url: string) => {
-      connectUrl = url
-      return fakeConn
-    },
-  }
-  ;(Module as any)._load = (request: string, parent: any, isMain: boolean) => {
-    if (request === 'amqplib') return fakeAmqp
-    return originalLoad(request, parent, isMain)
-  }
+    }
+    const fakeAmqp = {
+      connect: async (url: string) => {
+        connectUrl = url
+        return fakeConn
+      },
+    }
+    ;(Module as any)._load = (request: string, parent: any, isMain: boolean) => {
+      if (request === 'amqplib') return fakeAmqp
+      return originalLoad(request, parent, isMain)
+    }
 
-  process.env.EVENT_BROKER_URL = 'amqp://video:video@mq:5672'
-  await publishServiceUp()
+    const logs: string[] = []
+    const originalLog = console.log
+    console.log = (...args: any[]) => { logs.push(args.join(' ')) }
 
-  assert.strictEqual(connectUrl, 'amqp://video:video@mq:5672')
+    process.env.EVENT_BROKER_URL = 'amqp://video:video@mq:5672'
+    await publishServiceUp()
 
-  delete process.env.EVENT_BROKER_URL
-  ;(Module as any)._load = originalLoad
-})
+    assert.strictEqual(connectUrl, 'amqp://video:video@mq:5672')
+    assert.ok(logs.includes('[serviceUp] url= amqp://video:video@mq:5672'))
+
+    console.log = originalLog
+    delete process.env.EVENT_BROKER_URL
+    ;(Module as any)._load = originalLoad
+  })
 
 test('requireMq throws when broker unreachable', async () => {
   const originalLoad = (Module as any)._load
