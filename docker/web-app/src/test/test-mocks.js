@@ -26,7 +26,10 @@ if (process.env.NODE_ENV === 'test') {
       });
     }
     if (id === 'next-auth/react') {
-      return { signIn: async () => {} };
+      return (global.__nextAuthReact ||= {
+        signIn: async () => {},
+        useSession: () => ({ status: 'authenticated', data: null }),
+      });
     }
     if (id === 'next-auth') {
       return { getServerSession: async () => null };
@@ -39,6 +42,14 @@ if (process.env.NODE_ENV === 'test') {
     }
     if (id === 'next-auth/providers/credentials') {
       return () => ({ id: 'credentials' });
+    }
+    if (id.startsWith('next/navigation')) {
+      return (global.__nextNavigation ||= {
+        redirect: () => {},
+        useRouter: () => ({ replace: () => {} }),
+        usePathname: () => '/',
+        useParams: () => ({}),
+      });
     }
     if (id === 'react-devtools-core') {
       return { connectToDevTools: () => ({}), startServer: () => {} };
