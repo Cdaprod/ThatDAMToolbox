@@ -4,9 +4,9 @@ import type { ComponentType } from 'react';
 import dynamic from 'next/dynamic';
 
 /**
- * React Query Devtools wrapper.
+ * React Query Devtools wrapper that is safe even when the package is missing.
  *
- * Example:
+ * Usage:
  *   import LoadReactQueryDevtools from '@/providers/loadReactQueryDevtools'
  *   <LoadReactQueryDevtools />
  */
@@ -17,18 +17,29 @@ const Enabled =
   process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS !== '0' &&
   process.env.NEXT_PUBLIC_ENABLE_REACT_DEVTOOLS !== 'false';
 
+const Noop: ComponentType<any> = () => null;
+
 export const ReactQueryDevtools: ComponentType<any> = Enabled
   ? dynamic(
-      () =>
-        import('@tanstack/react-query-devtools').then(
-          (m) => m.ReactQueryDevtools ?? m.default
-        ),
+      async () => {
+        try {
+          const m = await import('@tanstack/react-query-devtools');
+          // Always return a real component
+          return (m as any).ReactQueryDevtools ?? (m as any).default ?? Noop;
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            '[ReactQueryDevtools] disabled (load failed):',
+            (err as Error)?.message || err
+          );
+          return Noop;
+        }
+      },
       { ssr: false }
     )
-  : (() => null) as ComponentType<any>;
+  : Noop;
 
 export default function LoadReactQueryDevtools() {
   if (!Enabled) return null;
   return <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />;
 }
-
