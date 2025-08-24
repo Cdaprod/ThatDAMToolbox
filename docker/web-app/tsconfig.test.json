@@ -15,6 +15,7 @@
     "src/components/__tests__/CameraMonitor.test.ts",
     "src/lib/__tests__/videoApi.trimIdle.test.ts",
     "src/providers/__tests__/reactDevtools.test.tsx",
+    "src/providers/__tests__/AssetProvider.test.tsx",
     "src/hooks/__tests__/useOrientation.test.ts",
     "src/hooks/__tests__/useOrientationAspect.test.ts",
     "src/app/__tests__/login.test.tsx",
