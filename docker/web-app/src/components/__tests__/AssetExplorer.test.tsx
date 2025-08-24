@@ -58,3 +58,8 @@ test('confirmDeletion respects user choice', async () => {
   assert.strictEqual(removed.length, 1)
 })
 
+test('filterAssets handles undefined input', () => {
+  const results = filterAssets(undefined as any, 'test')
+  assert.deepStrictEqual(results, [])
+})
+

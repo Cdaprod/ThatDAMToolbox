@@ -33,7 +33,7 @@ export const toSearchResult = (asset: Asset): SearchResult => ({
 })
 
 export const filterAssets = (
-  assets: Asset[],
+  assets: Asset[] = [],
   query: string,
   filters?: SearchFilters,
 ): SearchResult[] => {
@@ -71,7 +71,7 @@ export const performVectorSearch = async (
   }
 }
 
-export const findAssetById = (assets: Asset[], id: string) =>
+export const findAssetById = (assets: Asset[] = [], id: string) =>
   assets.find((a) => a.id === id)
 
 export const confirmDeletion = async (

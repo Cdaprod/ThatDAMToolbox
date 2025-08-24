@@ -24,7 +24,7 @@ import type { TreeSnapshot, TreeNode, FolderNode } from './types';
 // Build a TreeSnapshot from provider data
 function buildSnapshot(
   folders: Array<{ name: string; path: string; children: any[] }>,
-  assets: Array<{ id: string; name: string; path: string; thumbnail?: string; mime?: string; size?: number; kind?: string }>,
+  assets: Array<{ id: string; name: string; path: string; thumbnail?: string; mime?: string; size?: number; kind?: string }> = [],
 ): TreeSnapshot {
   const nodes: Record<string, TreeNode> = {};
   const pathId = (p: string) => (p === '/' || p === '' ? 'root' : p);
@@ -201,7 +201,13 @@ function roundedRectShape(w: number, h: number, r: number) {
 }
 
 export default function LayeredExplorer() {
-  const { view: assets, folders, foldersLoading } = useAssets();
+  const {
+    view: assetsView,
+    assets: assetList = [],
+    folders = [],
+    foldersLoading = false,
+  } = useAssets() as any;
+  const assets = (assetsView ?? assetList) as any[];
 
   const getCols = (w: number) => (w < 640 ? 2 : w < 1024 ? 4 : 6);
   const [cols, setCols] = useState(() => (typeof window === 'undefined' ? 6 : getCols(window.innerWidth)));
