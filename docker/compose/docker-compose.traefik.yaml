@@ -1,0 +1,71 @@
+# docker/compose/docker-compose.traefik.yaml
+# Adds Traefik reverse proxy and Tailscale sidecar.
+# Usage:
+#   docker compose -f docker-compose.yaml -f docker/compose/docker-compose.traefik.yaml up -d traefik tailscale
+
+# local anchors live in THIS file (anchors don't cross includes)
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-build-common: &build-common
+  args:
+    BUILDKIT_INLINE_CACHE: "1"
+  cache_from:
+    - type=registry,ref=ghcr.io/cdaprod/thatdamtoolbox-cache:build,ignore-error=true
+  labels:
+    org.opencontainers.image.source: "https://github.com/Cdaprod/ThatDAMToolbox"
+    org.opencontainers.image.vendor: "Cdaprod"
+    org.opencontainers.image.title: "ThatDAMToolbox"
+    org.opencontainers.image.revision: "${GIT_SHA:-dev}"
+    org.opencontainers.image.version: "${IMAGE_TAG:-dev}"
+    org.opencontainers.image.licenses: "Apache-2.0"
+
+services:
+  traefik:
+    build:
+      <<: *build-common
+      context: ../../docker/traefik
+      dockerfile: Dockerfile
+    image: cdaprod/traefik:${IMAGE_TAG:-dev}
+    container_name: thatdamtoolbox-traefik
+    logging: *default-logging
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks: [damnet]
+    depends_on:
+      - overlay-hub
+      - api-gateway
+    restart: unless-stopped
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.video-web.rule: "Host(`${DOMAIN}`)"
+      traefik.http.routers.video-web.entrypoints: "websecure"
+      traefik.http.routers.video-web.tls: "true"
+      traefik.http.services.video-web.loadbalancer.server.port: "3000"
+
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: thatdamtoolbox-tailscale
+    logging: *default-logging
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      TS_AUTHKEY: "${TAILSCALE_AUTHKEY}"
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    network_mode: host
+    restart: unless-stopped
+
+# volumes declared in root compose
