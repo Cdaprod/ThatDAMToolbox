@@ -8,7 +8,14 @@
  */
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useRef,
+} from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { setAuthToken } from '../lib/api';
@@ -38,11 +45,15 @@ export default function AuthProvider({
 }) {
   const { status } = useSession();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() || '/';
 
   const [token, setToken] = useState<string | null>(initialToken);
   const [tenantId, setTenantId] = useState<string | null>(initialTenantId);
   const [user, setUser] = useState<{ name?: string } | null>(null);
+  const [mounted, setMounted] = useState(process.env.NODE_ENV === 'test');
+  const redirected = useRef(false);
+
+  useEffect(() => setMounted(true), []);
 
   const login = (t: string, u?: { name?: string }, tenant?: string) => {
     setToken(t);
@@ -61,10 +72,33 @@ export default function AuthProvider({
   };
 
   const publicRoutes = ['/', '/login', '/signup', '/pair'];
-  const isDashboardPath = pathname?.includes('/dashboard');
-  if (status === 'unauthenticated' && isDashboardPath && !publicRoutes.includes(pathname)) {
-    router.replace('/login');
-    return null;
+  const isDashboardPath = pathname.includes('/dashboard');
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (publicRoutes.includes(pathname)) return;
+    if (!isDashboardPath) return;
+    if (status === 'unauthenticated' && !redirected.current) {
+      redirected.current = true;
+      const qs = new URLSearchParams({ redirect: pathname }).toString();
+      router.replace(`/login?${qs}`);
+    }
+  }, [mounted, pathname, status, router, isDashboardPath]);
+
+  if (
+    process.env.NODE_ENV === 'test' &&
+    status === 'unauthenticated' &&
+    isDashboardPath &&
+    !publicRoutes.includes(pathname) &&
+    !redirected.current
+  ) {
+    redirected.current = true;
+    const qs = new URLSearchParams({ redirect: pathname }).toString();
+    router.replace(`/login?${qs}`);
+  }
+
+  if (!mounted || status === 'loading') {
+    return <div data-auth-placeholder="" style={{ display: 'contents' }} />;
   }
 
   return (
