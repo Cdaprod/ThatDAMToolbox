@@ -1,11 +1,12 @@
 // app/dashboard/dam-explorer/page.tsx
 'use client';
-import DAMExplorer from '@/components/DAMExplorer';
+import safeDynamic from '@/lib/safeDynamic';
+
+const DAMExplorer = safeDynamic(
+  () => import('@/components/DAMExplorer'),
+  { ssr: false }
+);
 
 export default function DAMExplorerPage() {
-  return (
-    <div className="w-full h-full">
-      <DAMExplorer />
-    </div>
-  );
+  return <DAMExplorer />;
 }

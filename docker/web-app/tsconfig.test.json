@@ -18,6 +18,8 @@
     "src/providers/__tests__/AssetProvider.test.tsx",
     "src/hooks/__tests__/useOrientation.test.ts",
     "src/hooks/__tests__/useOrientationAspect.test.ts",
+    "src/hooks/__tests__/useIsClient.test.tsx",
+    "src/hooks/__tests__/useMediaQuery.test.tsx",
     "src/app/__tests__/login.test.tsx",
     "src/app/__tests__/account.test.tsx",
     "src/app/__tests__/dashboardRoutes.test.tsx",
