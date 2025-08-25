@@ -1,0 +1,77 @@
+# ------------------------------------------------------------------------------
+# ThatDAMToolbox -- Modular Compose Template
+# ------------------------------------------------------------------------------
+# Copy this file to create a new compose module:
+#   docker-compose.<your-module>.yaml
+# Replace <placeholders> with actual values.
+# ------------------------------------------------------------------------------
+
+name: <stack-or-project-name>
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Global anchors (keep consistent across all modules)
+# ───────────────────────────────────────────────────────────────────────────────
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-build-common: &build-common
+  args:
+    BUILDKIT_INLINE_CACHE: "1"
+  cache_from:
+    - type=registry,ref=<registry-cache-ref>
+  labels:
+    org.opencontainers.image.source:    "<repo-url>"
+    org.opencontainers.image.vendor:    "<vendor>"
+    org.opencontainers.image.title:     "<title>"
+    org.opencontainers.image.revision:  "${GIT_SHA:-dev}"
+    org.opencontainers.image.version:   "${IMAGE_TAG:-dev}"
+    org.opencontainers.image.licenses:  "<license>"
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Networks / Volumes / Secrets (extend as needed)
+# ───────────────────────────────────────────────────────────────────────────────
+networks:
+  <network-name>:
+    driver: bridge
+
+volumes:
+  <volume-name>:
+
+secrets:
+  <secret-name>:
+    external: true
+    name: <secret-name>
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Example service (duplicate/rename for each module)
+# ───────────────────────────────────────────────────────────────────────────────
+services:
+  <service-name>:
+    profiles: ["<profile>"]                   # optional grouping
+    build:
+      <<: *build-common
+      context: <relative-path-to-build-context>
+      dockerfile: <relative-path-to-Dockerfile>
+    image: <registry>/<namespace>/<image-name>:${IMAGE_TAG:-dev}
+    container_name: <container-name>
+    networks: [<network-name>]
+    ports:
+      - "<host-port>:<container-port>"
+    environment:
+      <ENV_KEY>: "<value>"
+      <ENV_OTHER>: "${ENV_OTHER:-default}"
+    volumes:
+      - <host-path>:<container-path>:<mode>
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:<port>/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      - <dependency-service>
+    restart: unless-stopped
