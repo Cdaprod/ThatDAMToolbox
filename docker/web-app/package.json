@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node start.js dev",
+    "dev": "next dev --turbo -p 3000",
+    "dev:warm": "concurrently -k -n next,warmup -c auto \"next dev --turbo -p 3000\" \"tsx scripts/dev-warmup.ts\"",
     "build": "next build",
     "start": "NODE_ENV=production node start.js start",
     "export": "next export -o build",
@@ -14,7 +15,8 @@
     "docker:build": "docker build -t thatdamtoolbox-web-app:dev .",
     "docker:run": "docker run --rm -p 3000:3000 thatdamtoolbox-web-app:dev",
     "docker:sh": "docker run -it --rm thatdamtoolbox-web-app:dev sh",
-    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && NODE_ENV=test node --require ./src/test/test-mocks.js --test $(find .tmp-test -name '*.test.js')"
+    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && NODE_ENV=test node --require ./src/test/test-mocks.js --test $(find .tmp-test -name '*.test.js')",
+    "refresh-lock": "bash scripts/refresh-lock.sh"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
@@ -34,7 +36,7 @@
     "gl-react-dom": "^5.2.1",
     "lucide-react": "^0.357.0",
     "mitt": "^3.0.1",
-    "next": "14.2.5",
+    "next": "15.5.0",
     "next-auth": "^4.24.11",
     "next-themes": "^0.2.1",
     "react": "18.3.1",
@@ -53,11 +55,13 @@
     "@types/three": "^0.179.0",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.54.0",
-    "eslint-config-next": "14.2.5",
+    "eslint-config-next": "15.5.0",
     "postcss": "^8.4.31",
     "prettier": "^3.2.5",
     "react-devtools-core": "^6.1.5",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "concurrently": "^9.0.0",
+    "tsx": "^4.16.2"
   },
   "engines": {
     "node": ">=18.0.0"
