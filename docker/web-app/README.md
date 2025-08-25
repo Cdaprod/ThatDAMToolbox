@@ -13,11 +13,10 @@ choose to create an organization or invite members.
 Test locally with:
 
 ```bash
-# run the dev server with route warming (binds 0.0.0.0 so LAN devices can connect)
-# warmup exits after pinging routes but `next dev` keeps running
+# run the dev server (binds 0.0.0.0 so LAN devices can connect)
 
 cd docker/web-app
-npm run dev:warm
+npm run dev
 
 # start the tenancy API (port 8082)
 uvicorn tenancy.app:app --port 8082
@@ -309,12 +308,6 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=changeme
 # Set to "true" to enable verbose NextAuth logs
 NEXTAUTH_DEBUG=false
-# Optional dev warmup settings
-# WARMUP_HOST=localhost
-# WARMUP_PORT=3000
-# WARMUP_TENANT=demo
-# WARM_ROUTES=/,/dashboard,/dashboard/camera-monitor,/dashboard/dam-explorer,/account
-# Routes are auto-prefixed with WARMUP_TENANT unless starting with /api
 ```
 
 ## API Mappings

@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo -p 3000",
-    "dev:warm": "concurrently --no-kill-others -n next,warmup -c auto \"next dev --turbo -p 3000\" \"tsx scripts/dev-warmup.ts\"",
     "build": "next build",
     "start": "NODE_ENV=production node start.js start",
     "export": "next export -o build",
@@ -59,9 +58,7 @@
     "postcss": "^8.4.31",
     "prettier": "^3.2.5",
     "react-devtools-core": "^6.1.5",
-    "typescript": "^5.2.2",
-    "concurrently": "^9.0.0",
-    "tsx": "^4.16.2"
+    "typescript": "^5.2.2"
   },
   "engines": {
     "node": ">=18.0.0"
