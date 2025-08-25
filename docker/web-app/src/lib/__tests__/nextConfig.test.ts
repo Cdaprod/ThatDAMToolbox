@@ -1,7 +1,10 @@
 import assert from 'node:assert';
 import test from 'node:test';
 import pkg from '../../../package.json';
-import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_SERVER } from 'next/constants';
+import {
+  PHASE_DEVELOPMENT_SERVER,
+  PHASE_PRODUCTION_SERVER,
+} from 'next/constants.js';
 
 test('next.config defines caching headers without unsupported flags', async () => {
   // @ts-ignore next.config.mjs has no type declarations
@@ -49,6 +52,7 @@ test('dev phase keeps compiled pages warm and allows LAN origins', async () => {
   assert.deepEqual((config as any).allowedDevOrigins, [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://192.168.0.22:3000',
   ]);
 });
 
