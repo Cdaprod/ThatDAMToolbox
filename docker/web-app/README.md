@@ -13,12 +13,10 @@ choose to create an organization or invite members.
 Test locally with:
 
 ```bash
-# run the dev server (binds 0.0.0.0 so LAN devices can connect)
-# RabbitMQ must be running (e.g. `docker compose up rabbitmq`)
-# set `DEV_SKIP_MQ=1` to skip broker connect during UI-only work
+# run the dev server with route warming (binds 0.0.0.0 so LAN devices can connect)
 
 cd docker/web-app
-yarn dev
+npm run dev:warm
 
 # start the tenancy API (port 8082)
 uvicorn tenancy.app:app --port 8082
@@ -294,7 +292,10 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=changeme
 # Set to "true" to enable verbose NextAuth logs
 NEXTAUTH_DEBUG=false
-# DEV_SKIP_MQ=1     # optional: skip RabbitMQ connect during UI work (unset or set to 0 to re-enable)
+# Optional dev warmup settings
+# WARMUP_HOST=localhost
+# WARMUP_PORT=3000
+# WARM_ROUTES=/,/dashboard,/dashboard/camera-monitor,/dashboard/dam-explorer,/account
 ```
 
 ## API Mappings
