@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 from pathlib import Path
@@ -30,8 +31,11 @@ from video.config      import WEB_UPLOADS as _FALLBACK_WU
 log    = logging.getLogger("video.uploader")
 router = APIRouter(prefix="/api/v1/upload", tags=["upload"])
 
-# job_id → {status, filename, progress, error?}
+# job_id → {status, filename, progress, error?, timestamp}
 UPLOAD_JOBS: Dict[str, Dict[str, Any]] = {}
+
+# seconds to retain completed jobs before cleanup
+UPLOAD_TTL = int(os.getenv("UPLOAD_JOB_TTL", "600"))
 
 # ───────────────────────────── staging dir ──────────────────────────────
 try:
@@ -48,14 +52,34 @@ def _stamp(req: Request) -> str:
     return f"{req.method} {req.url.path}"
 
 
+def _cleanup_jobs() -> None:
+    """Remove completed jobs older than UPLOAD_TTL."""
+    now = time.time()
+    stale = [
+        jid for jid, job in UPLOAD_JOBS.items()
+        if job.get("status") in {"done", "error"}
+        and now - job.get("timestamp", now) > UPLOAD_TTL
+    ]
+    for jid in stale:
+        UPLOAD_JOBS.pop(jid, None)
+
+
 def _ingest(paths: List[Path], job_id: str, batch: Optional[str]) -> None:
     """Run ingest and update job progress."""
     try:
         ingest_files(paths, batch_name=batch)
-        UPLOAD_JOBS[job_id].update({"status": "done", "progress": 1.0})
+        UPLOAD_JOBS[job_id].update({
+            "status": "done",
+            "progress": 1.0,
+            "timestamp": time.time(),
+        })
     except Exception as exc:  # pragma: no cover - defensive
         log.exception("ingest failed for %s", job_id)
-        UPLOAD_JOBS[job_id].update({"status": "error", "error": str(exc)})
+        UPLOAD_JOBS[job_id].update({
+            "status": "error",
+            "error": str(exc),
+            "timestamp": time.time(),
+        })
 
 
 # ─────────────────────────── endpoint ───────────────────────────────────
@@ -93,6 +117,7 @@ async def upload_batch(
         "status": "queued",
         "filename": file.filename,
         "progress": 0.0,
+        "timestamp": time.time(),
     }
 
     # ── 2) schedule ingest --------------------------------------------------
@@ -104,6 +129,7 @@ async def upload_batch(
     )
 
     # ── 3) instant API response --------------------------------------------
+    _cleanup_jobs()
     return {
         "status": "queued",
         "job_id": job_id,
@@ -114,6 +140,7 @@ async def upload_batch(
 @router.get("/{job_id}", summary="Upload progress")
 async def upload_status(job_id: str) -> dict:
     """Return current status for *job_id*."""
+    _cleanup_jobs()
     job = UPLOAD_JOBS.get(job_id)
     if not job:
         raise HTTPException(404, "job not found")

@@ -6,6 +6,7 @@ Example:
 
 from pathlib import Path
 import sys
+import time
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -15,7 +16,13 @@ ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from video.modules.uploader.routes import router, UPLOAD_JOBS, WEB_UPLOADS
+from video.modules.uploader.routes import (
+    router,
+    UPLOAD_JOBS,
+    WEB_UPLOADS,
+    _cleanup_jobs,
+    UPLOAD_TTL,
+)
 
 
 def test_upload_and_poll(monkeypatch):
@@ -45,3 +52,11 @@ def test_upload_and_poll(monkeypatch):
     # cleanup
     (WEB_UPLOADS / "foo.txt").unlink(missing_ok=True)
     UPLOAD_JOBS.clear()
+
+
+def test_cleanup_removes_completed(monkeypatch):
+    """Jobs older than UPLOAD_TTL are purged."""
+    old = time.time() - UPLOAD_TTL - 1
+    UPLOAD_JOBS["old"] = {"status": "done", "timestamp": old}
+    _cleanup_jobs()
+    assert "old" not in UPLOAD_JOBS

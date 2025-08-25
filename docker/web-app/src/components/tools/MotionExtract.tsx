@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { videoApi } from '../../lib/videoApi'
+import { mediaApi } from '../../lib/mediaApi'
 
 /**
  * Minimal motion extraction tool.
@@ -15,7 +15,7 @@ export default function MotionExtract() {
     if (!path) return
     setStatus('working')
     try {
-      const job = await videoApi.motionExtract({ path })
+      const job = await mediaApi.motionExtract({ path })
       setStatus(job.status)
     } catch (err: any) {
       setStatus('error')

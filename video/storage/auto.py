@@ -40,13 +40,6 @@ def _ensure_event_loop_running(coro):
     except RuntimeError:
         return asyncio.run(coro)           # no loop → run to completion
 
-def set_position(self, sha1: str, pos: int) -> None:
-    cur = self._db.execute(
-        "UPDATE videos SET sort_order=? WHERE sha1=?",
-        (pos, sha1)
-    )
-    self._db.commit()
-
 # ---------------------------------------------------------------------------
 # main adapter
 # ---------------------------------------------------------------------------
@@ -196,8 +189,9 @@ class AutoStorage(StorageEngine):
 
     # ───── drag-and-drop sort-order persistence ────────────────────────
     def set_position(self, sha1: str, pos: int) -> None:
-        self._db.execute("UPDATE files SET sort_order=? WHERE sha1=?", (pos, sha1))
-        self._db.commit()
+        with self._db.conn() as cx:
+            cx.execute("UPDATE files SET sort_order=? WHERE sha1=?", (pos, sha1))
+            cx.commit()
 
     # ------------------------------------------------------------------ #
     # Simple passthroughs to MediaDB that higher layers rely on          #

@@ -1,7 +1,7 @@
 // /src/lib/networkConfig.ts
 
 // Defaults for host-mode, local dev, and mobile clients
-const API_PORT = 8080;
+const API_PORT = Number(process.env.API_PORT) || 8080;
 const WS_PORT = 8080;
 const API_PATH_PREFIX = '';      // e.g. '/api' if your backend is not at root
 const WS_PATH_DEFAULT = '/ws/camera';
@@ -9,7 +9,16 @@ const WS_PATH_DEFAULT = '/ws/camera';
 // Safe Base URL function for API
 export function apiBaseUrlServer() {
   // Prefer private env var for server-side, fallback for local dev
-  return process.env.API_BASE_URL || 'http://localhost:8080';
+  if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
+  // Legacy Python service optional via flag
+  if (process.env.USE_LEGACY_VIDEO_API === '1')
+    return process.env.LEGACY_VIDEO_API_URL || 'http://localhost:8080';
+  // Default to Go services
+  return (
+    process.env.GATEWAY_BASE_URL ||
+    process.env.MEDIA_API_BASE ||
+    'http://localhost:8080'
+  );
 }
 
 // All "magic" is private--only expose apiUrl and wsUrl!

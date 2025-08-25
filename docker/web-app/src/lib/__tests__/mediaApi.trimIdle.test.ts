@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import test from 'node:test'
-import { videoApi } from '../videoApi'
+import { mediaApi } from '../mediaApi'
 
 class MockResponse extends Response {
   constructor() { super(new Blob(), { status: 200 }) }
@@ -14,7 +14,7 @@ test('trimIdle sends freeze_dur in form data', async () => {
     body = init.body
     return new MockResponse()
   }
-  await videoApi.trimIdle({ file, freeze_dur: 5 })
+  await mediaApi.trimIdle({ file, freeze_dur: 5 })
   assert.equal(body.get('freeze_dur'), '5')
   global.fetch = orig
 })

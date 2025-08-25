@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   supervisor,
   captureDaemon,
-  videoApi,
+  mediaApi,
   apiGateway,
   observability,
   brokerTopics,
@@ -30,10 +30,10 @@ test('captureDaemon.listDevices hits /hwcapture/devices', async () => {
   assert.ok(calls[0].url.includes('/hwcapture/devices'));
 });
 
-test('videoApi.listJobs hits /video/jobs', async () => {
+test('mediaApi.listJobs hits /v1/jobs', async () => {
   calls.length = 0;
-  await videoApi.listJobs();
-  assert.ok(calls[0].url.includes('/video/jobs'));
+  await mediaApi.listJobs();
+  assert.ok(calls[0].url.includes('/v1/jobs'));
 });
 
 test('apiGateway.credentials hits /credentials', async () => {

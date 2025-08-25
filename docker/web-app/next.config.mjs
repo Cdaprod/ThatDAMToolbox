@@ -2,8 +2,12 @@
 import path from 'path';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://host.docker.internal:8080';
+const USE_LEGACY = process.env.USE_LEGACY_VIDEO_API === '1';
+const GATEWAY_BASE =
+  process.env.GATEWAY_BASE_URL ?? 'http://host.docker.internal:8080';
+const LEGACY_BASE =
+  process.env.LEGACY_VIDEO_API_URL ?? GATEWAY_BASE;
+const API_BASE = USE_LEGACY ? LEGACY_BASE : GATEWAY_BASE;
 
 /** @type {import('next').NextConfig} */
 const baseConfig = {
@@ -11,13 +15,16 @@ const baseConfig = {
   output: 'standalone', // produce .next/standalone
   async rewrites() {
     return [
-      // video-api
-      { source: '/api/video/:path*', destination: `${API_BASE}/api/video/:path*` },
+      // backend API (Go by default, Python when USE_LEGACY_VIDEO_API=1)
+      {
+        source: '/api/video/:path*',
+        destination: `${API_BASE}/${USE_LEGACY ? 'api/video' : 'v1'}/:path*`,
+      },
       // live capture / preview
       { source: '/live/:path*', destination: `${API_BASE}/hwcapture/live/:path*` },
       // explorer
-      { source: '/api/assets', destination: `${API_BASE}/explorer/assets` },
-      { source: '/folders', destination: `${API_BASE}/explorer/folders` },
+      { source: '/api/assets', destination: `${API_BASE}/v1/assets` },
+      { source: '/folders', destination: `${API_BASE}/v1/folders` },
     ];
   },
 
