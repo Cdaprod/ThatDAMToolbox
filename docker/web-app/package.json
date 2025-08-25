@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo -p 3000",
-    "dev:warm": "concurrently -k -n next,warmup -c auto \"next dev --turbo -p 3000\" \"tsx scripts/dev-warmup.ts\"",
+    "dev:warm": "concurrently --no-kill-others -n next,warmup -c auto \"next dev --turbo -p 3000\" \"tsx scripts/dev-warmup.ts\"",
     "build": "next build",
     "start": "NODE_ENV=production node start.js start",
     "export": "next export -o build",
