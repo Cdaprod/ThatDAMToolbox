@@ -14,6 +14,7 @@ Test locally with:
 
 ```bash
 # run the dev server with route warming (binds 0.0.0.0 so LAN devices can connect)
+# warmup exits after pinging routes but `next dev` keeps running
 
 cd docker/web-app
 npm run dev:warm
