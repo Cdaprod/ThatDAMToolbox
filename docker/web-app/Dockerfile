@@ -21,22 +21,23 @@ FROM base AS deps
 RUN apk add --no-cache bash curl ca-certificates
 
 # copy only manifests (maximize cache)
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+COPY package*.json .npmrc* ./
 
-# explicit branching (no A&&B||C fallthroughs)
-RUN set -euo pipefail; \
-  if [ -f yarn.lock ]; then \
-    echo "🧶 Installing with yarn…"; yarn install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then \
-    echo "📦 Installing with npm ci…"; \
-    if ! npm ci --no-audit --no-fund; then \
-      echo "⚠️ npm ci failed – falling back to npm install"; npm install; \
-    fi; \
-  elif [ -f pnpm-lock.yaml ]; then \
-    echo "📦 Installing with pnpm…"; corepack enable pnpm; pnpm install --frozen-lockfile; \
-  else \
-    echo "⚠️ No lockfile found – running npm install"; npm install; \
-  fi
+# install dependencies with caching
+RUN --mount=type=cache,target=/root/.npm \
+    set -euo pipefail; \
+    if [ -f yarn.lock ]; then \
+      echo "🧶 Installing with yarn…"; yarn install --frozen-lockfile; \
+    elif [ -f package-lock.json ]; then \
+      echo "📦 Installing with npm ci…"; \
+      if ! npm ci --no-audit --no-fund; then \
+        echo "⚠️  npm ci failed – falling back to npm install"; npm install; \
+      fi; \
+    elif [ -f pnpm-lock.yaml ]; then \
+      echo "📦 Installing with pnpm…"; corepack enable pnpm; pnpm install --frozen-lockfile; \
+    else \
+      echo "⚠️  No lockfile found – running npm install"; npm install; \
+    fi
 
 # ── Stage 2 ▸ development (hot reload) ──────────────────────────────────────
 # (This stage is referenced by compose/build --target=development)
