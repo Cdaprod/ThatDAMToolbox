@@ -1,0 +1,213 @@
+name: CI Audit & Prune (Auto)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 13 * * 1"   # Mondays 09:00 ET
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ci-audit-and-prune
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Inventory, Failure Rates, Suggestions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect workflow metadata & last 200 runs
+        id: collect
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            // 1) List all workflows
+            const wRes = await github.rest.actions.listRepoWorkflows({owner, repo, per_page: 100});
+            const workflows = wRes.data.workflows || [];
+
+            // Helper to fetch recent runs per workflow
+            async function fetchRuns(workflow_id) {
+              const rr = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id, per_page: 100
+              });
+              return rr.data.workflow_runs || [];
+            }
+
+            // 2) Build report
+            const rows = [];
+            for (const w of workflows) {
+              const runs = await fetchRuns(w.id);
+              const last200 = runs.slice(0, 200);
+              const total = last200.length;
+              const fails = last200.filter(r => r.conclusion === 'failure').length;
+              const canc  = last200.filter(r => r.conclusion === 'cancelled').length;
+              const timeouts = last200.filter(r => r.conclusion === 'timed_out').length;
+              const avgMs = Math.round(last200.reduce((s,r)=>s+(r.run_duration_ms ?? 0),0) / (total || 1));
+              const recent = last200[0]?.created_at || 'n/a';
+              const triggerSet = [...new Set(last200.map(r => r.event))].sort().join(', ') || 'n/a';
+              rows.push({
+                id: w.id,
+                name: w.name,
+                path: w.path,
+                state: w.state,
+                updated_at: w.updated_at,
+                recent,
+                total,
+                fails,
+                canc,
+                timeouts,
+                failureRate: total ? (fails/total) : 0,
+                avgMs,
+                triggers: triggerSet
+              });
+            }
+
+            // 3) Suggest actions
+            const suggestions = [];
+            for (const r of rows) {
+              const nameLower = (r.name || '').toLowerCase();
+              const likelyLegacy = /(openai schema|codegen|gen.*schema|experimental|legacy|testbed)/.test(nameLower);
+              const needsGating = /push/.test(r.triggers) && !/pull_request/.test(r.triggers);
+              const noisy = (r.failureRate > 0.2) || (r.canc + r.timeouts > 5);
+
+              let suggestion = [];
+              if (likelyLegacy) {
+                suggestion.push("convert-to-manual");
+              }
+              if (needsGating) {
+                suggestion.push("add-paths-filter");
+              }
+              if (noisy) {
+                suggestion.push("add-concurrency-cancel");
+              }
+              if (suggestion.length === 0) suggestion.push("ok");
+              suggestions.push({name: r.name, path: r.path, suggestions: suggestion});
+            }
+
+            core.setOutput('report', JSON.stringify(rows, null, 2));
+            core.setOutput('suggestions', JSON.stringify(suggestions, null, 2));
+
+      - name: Save report artifact
+        uses: actions/upload-artifact@v4
+        env:
+          REPORT_JSON: ${{ steps.collect.outputs.report }}
+          SUGG_JSON:   ${{ steps.collect.outputs.suggestions }}
+        with:
+          name: ci-audit-report
+          path: |
+            ci-audit-report.json
+            ci-audit-suggestions.json
+          if-no-files-found: create
+        run: |
+          printf '%s\n' "$REPORT_JSON" > ci-audit-report.json
+          printf '%s\n' "$SUGG_JSON"   > ci-audit-suggestions.json
+
+      - name: Generate markdown summary
+        id: md
+        run: |
+          echo "### CI Audit Report" > SUMMARY.md
+          echo "" >> SUMMARY.md
+          echo "| Workflow | State | Recent | Failure% | Avg ms | Triggers | Path |" >> SUMMARY.md
+          echo "|---|---|---|---:|---:|---|---|" >> SUMMARY.md
+          node -e '
+            const fs = require("fs");
+            const rows = JSON.parse(fs.readFileSync("ci-audit-report.json","utf8"));
+            for (const r of rows) {
+              const pct = (r.failureRate*100).toFixed(1);
+              console.log(`| ${r.name} | ${r.state} | ${r.recent} | ${pct}% | ${r.avgMs} | ${r.triggers} | ${r.path} |`);
+            }' >> SUMMARY.md
+          echo "" >> SUMMARY.md
+          echo "#### Suggestions" >> SUMMARY.md
+          node -e '
+            const fs = require("fs");
+            const s = JSON.parse(fs.readFileSync("ci-audit-suggestions.json","utf8"));
+            for (const e of s) {
+              console.log(`- **${e.name}** (${e.path}): ${e.suggestions.join(", ")}`);
+            }' >> SUMMARY.md
+          cat SUMMARY.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Prepare pruning patch (path-gates + concurrency + convert legacy to manual)
+        id: patch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const suggestions = JSON.parse(fs.readFileSync('ci-audit-suggestions.json','utf8'));
+
+            function addIfMissing(yaml, needle, block) {
+              if (!yaml.includes(needle)) return yaml.trim() + "\n\n" + block.trim() + "\n";
+              return yaml;
+            }
+
+            function convertToManual(yaml) {
+              return `name: ${yaml.match(/^name:\s*(.*)$/m)?.[1] ?? 'Workflow'}\n\non:\n  workflow_dispatch: {}\n\n` + yaml.replace(/^on:[\s\S]*?\n{2,}/m, '');
+            }
+
+            const edits = [];
+            for (const s of suggestions) {
+              const {path, suggestions: acts} = s;
+              if (!fs.existsSync(path)) continue;
+              let yaml = fs.readFileSync(path,'utf8');
+
+              if (acts.includes('convert-to-manual')) {
+                yaml = convertToManual(yaml);
+              } else {
+                if (acts.includes('add-concurrency-cancel')) {
+                  const block = `
+concurrency:
+  group: \${{ github.workflow }}-\${{ github.ref }}
+  cancel-in-progress: true
+`;
+                  yaml = addIfMissing(yaml, 'concurrency:', block);
+                }
+                if (acts.includes('add-paths-filter')) {
+                  const block = `
+on:
+  push:
+    branches: [ main, style-3-design-token-layers ]
+    paths:
+      - "docker/**"
+      - "ops/**"
+      - ".github/workflows/\${require('path').basename(path)}"
+  pull_request:
+    paths:
+      - "docker/**"
+      - "ops/**"
+      - ".github/workflows/\${require('path').basename(path)}"
+`;
+                  if (!/^on:/m.test(yaml) || /on:\s*workflow_dispatch/m.test(yaml)) {
+                    yaml = yaml.replace(/^name:.*$/m, (m)=>m+"\n"+block);
+                  } else {
+                    yaml = addIfMissing(yaml, 'on:', block);
+                  }
+                }
+              }
+
+              edits.push({ path, content: yaml });
+            }
+
+            fs.mkdirSync('.ci-patch', { recursive: true });
+            for (const e of edits) {
+              const p = `.ci-patch/${e.path.split('/').pop()}`;
+              fs.mkdirSync(require('path').dirname(`.ci-patch/${e.path}`), { recursive: true });
+              fs.writeFileSync(`.ci-patch/${e.path}`, e.content);
+            }
+            core.setOutput('changed', String(edits.length > 0));
+
+      - name: Create "Slim CI" PR
+        if: steps.patch.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "chore(ci): slim noisy workflows (path-gates, concurrency, manualize legacy)"
+          commit-message: "chore(ci): auto-suggested pruning from CI Audit"
+          body-path: SUMMARY.md
+          branch: ci/auto-prune
+          labels: ci, housekeeping
+          add-paths: |
+            .github/workflows/**
+          author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
