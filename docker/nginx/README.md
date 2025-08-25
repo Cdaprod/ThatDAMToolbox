@@ -265,8 +265,17 @@ services:
 |`WEB_HOST`|`video-web`|Hostname/IP for the frontend web service|
 |`WEB_PORT`|`3000`     |Port for the frontend web service       |
 
-**Host networking**: Set hosts to `127.0.0.1` to reach services on localhost  
+**Host networking**: Set hosts to `127.0.0.1` to reach services on localhost
 **Bridge networking**: Use default service names for Docker DNS resolution
+
+Lightweight deployments using `gw.tmpl` also honor the following variables:
+
+|Variable|Default|Description|
+|--------|-------|-----------|
+|`UPSTREAM_HOST`|`api-gateway`|Backend API gateway host|
+|`UPSTREAM_PORT`|`8080`|Backend API gateway port|
+|`WEB_APP_HOST`|`video-web`|Next.js web app host|
+|`WEB_APP_PORT`|`3000`|Next.js web app port|
 
 ⸻
 
