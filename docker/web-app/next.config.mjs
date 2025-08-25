@@ -1,11 +1,12 @@
 // /docker/web-app/next.config.mjs
 import path from 'path';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://host.docker.internal:8080';
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const baseConfig = {
   reactStrictMode: true,
   output: 'standalone', // produce .next/standalone
   async rewrites() {
@@ -91,4 +92,21 @@ const nextConfig = {
   // env: prefer .env.* files; keep empty here intentionally
 };
 
-export default nextConfig;
+export default function nextConfig(phase) {
+  if (phase === PHASE_DEVELOPMENT_SERVER) {
+    return {
+      ...baseConfig,
+      // keep compiled pages/API routes resident in dev longer
+      onDemandEntries: {
+        // default ~25s; bump to 5 minutes so edits don’t constantly evict
+        maxInactiveAge: 300 * 1000,
+        // default 2; hold more compiled entries before disposing
+        pagesBufferLength: 20,
+      },
+      // helpful when you’re hitting from phone or other LAN hosts in dev
+      // Docs: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+      allowedDevOrigins: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    };
+  }
+  return baseConfig;
+}
