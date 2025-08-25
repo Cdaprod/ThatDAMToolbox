@@ -6,8 +6,9 @@ import { apiBaseUrlServer } from '@/lib/networkConfig'
  * Example:
  *   curl -F "file=@in.mp4" -F "edl=@edl.json" http://localhost:3000/api/video/render-edl -o out.mp4
  *
- * Stitches the kept ranges from an EDL into a new MP4. Currently echoes the
- * original file as a stub; replace with real video-api call.
+ * Stitches the kept ranges from an EDL into a new MP4 by forwarding the
+ * request to the Go media-api. Set USE_LEGACY_VIDEO_API=1 to fall back to the
+ * Python service during development.
  */
 export async function POST(req: NextRequest) {
   const form = await req.formData()

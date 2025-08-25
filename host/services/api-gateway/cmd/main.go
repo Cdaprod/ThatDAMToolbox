@@ -58,7 +58,6 @@ func main() {
 	// 2) Base mux & handlers
 	mux := http.NewServeMux()
 	mux.HandleFunc(*apiPrefix+"health", healthHandler)
-	mux.HandleFunc(*apiPrefix+"video/", videoHandler)
 	mux.HandleFunc(*apiPrefix+"registry/srt", registryHandler)
 	mux.HandleFunc("/", frontendHandler)
 	mux.HandleFunc("/.well-known/jwks.json", aphttp.JWKSHandler)
@@ -134,13 +133,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"healthy"}`))
-}
-
-func videoHandler(w http.ResponseWriter, r *http.Request) {
-	// Proxy /video/ to your Python backend API via APIGatewayMiddleware.
-	// This stub simply returns JSON; remove if APIGatewayMiddleware handles it.
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"message":"Video API endpoint"}`))
 }
 
 func frontendHandler(w http.ResponseWriter, r *http.Request) {
