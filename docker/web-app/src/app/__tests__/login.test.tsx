@@ -29,3 +29,8 @@ test('LoginPage defers void scene to client', async () => {
   assert.ok(!html.includes('void-scene'));
 });
 
+test('LoginPage defers neon title to client', async () => {
+  const html = renderToString(await LoginPage());
+  assert.ok(!html.includes('THATDAMTOOLBOX'));
+});
+
