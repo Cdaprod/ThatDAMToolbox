@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { videoApi } from '../../lib/videoApi'
+import { mediaApi } from '../../lib/mediaApi'
 
 /**
  * Simple FFmpeg console ported from legacy Jinja template.
@@ -16,7 +16,7 @@ export default function FFmpegConsole() {
     if (!command.trim()) return
     setRunning(true)
     try {
-      const res = await videoApi.ffmpegRun({ command })
+      const res = await mediaApi.ffmpegRun({ command })
       setOutput(res.output)
     } catch (err: any) {
       setOutput(String(err))

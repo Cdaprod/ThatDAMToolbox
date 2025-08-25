@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import test from 'node:test'
-import { videoApi } from '../videoApi'
+import { mediaApi } from '../mediaApi'
 import type { EDL } from '../edl'
 
 class MockResponse extends Response {
@@ -14,7 +14,7 @@ test('renderEdl posts file and edl', async () => {
   const orig = global.fetch
   // @ts-ignore
   global.fetch = async (_url: any, init: any) => { body = init.body; return new MockResponse() }
-  await videoApi.renderEdl({ file, edl })
+  await mediaApi.renderEdl({ file, edl })
   assert.equal(body.get('file'), file)
   const edlBlob = body.get('edl') as Blob
   const text = await edlBlob.text()

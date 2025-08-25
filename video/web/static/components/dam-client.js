@@ -19,10 +19,12 @@ export async function textSearch(query, opts = {}) {
 
 export async function listFolders() {
   const res = await fetch(`${API_BASE}/explorer/folders`);
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function listAssets(path) {
   const res = await fetch(`${API_BASE}/explorer/assets?path=${encodeURIComponent(path)}`);
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }

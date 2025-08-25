@@ -18,8 +18,16 @@ export const Services = {
     if (remote) return remote.impl.renderSequence(file, sequence);
     const form = new FormData();
     form.append('file', file);
-    form.append('sequence', new Blob([JSON.stringify(sequence)], { type: 'application/json' }), 'sequence.json');
-    const res = await fetch('/api/video/render-sequence', { method: 'POST', body: form });
+    form.append(
+      'sequence',
+      new Blob([JSON.stringify(sequence)], { type: 'application/json' }),
+      'sequence.json'
+    );
+    const base = AppConfig.mediaApiBase || '';
+    const res = await fetch(`${base}/v1/render/sequence`, {
+      method: 'POST',
+      body: form,
+    });
     if (!res.ok) throw new Error(`render stub failed: ${res.status}`);
     return await res.blob();
   },

@@ -317,8 +317,8 @@ Dashboard views map to service APIs as follows:
 - Nodes & Plans → Supervisor (`/v1/nodes/*`, `/v1/bootstrap/*`)
 - Events → Broker topics (`overlay.*`, `capture.*`, `video.*`, `webapp.*`)
 - Capture devices → capture-daemon API (`/hwcapture/*`)
-- Jobs & Search → video-api (`/video/*`)
-- Trim / Idle Module → video-api (`/trim_idle/`)
+- Jobs & Search → media-api (`/v1/*`)
+- Trim / Idle Module → media-api (`/v1/trim_idle`)
 - Observability → service `/health` and `/metrics` endpoints
 - Credentials, Webhooks, Billing → api-gateway
 - Access Control → api-gateway (`/credentials`)

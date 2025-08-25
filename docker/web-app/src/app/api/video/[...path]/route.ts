@@ -5,8 +5,8 @@ import { apiBaseUrlServer } from '@/lib/networkConfig';
 export const runtime  = 'nodejs';        // we need full Node APIs (stream → stream)
 export const dynamic  = 'force-dynamic';
 
-const API_ORIGIN = 
-  apiBaseUrlServer();
+const API_ORIGIN = apiBaseUrlServer();
+const LEGACY = process.env.USE_LEGACY_VIDEO_API === '1';
 
 /** Strip hop-by-hop headers that mustn’t be forwarded */
 const hopByHop = new Set([
@@ -33,7 +33,8 @@ async function proxy(
   req: NextRequest,
   { params }: { params: { path: string[] } },
 ) {
-  const url = `${API_ORIGIN}/api/video/${params.path.join('/')}`;
+  const prefix = LEGACY ? '/api/video/' : '/v1/';
+  const url = `${API_ORIGIN}${prefix}${params.path.join('/')}`;
   const init: RequestInit = {
     method: req.method,
     headers: cleanHeaders(req.headers),

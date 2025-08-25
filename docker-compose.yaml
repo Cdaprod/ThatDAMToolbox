@@ -40,7 +40,6 @@ include:
   - path: ./docker/compose/docker-compose.supervisor.yaml
   - path: ./docker/compose/docker-compose.runner.yaml
   - path: ./docker/compose/docker-compose.media-api.yaml
-  - path: ./docker/compose/docker-compose.video-api.yaml
   - path: ./docker/compose/docker-compose.video-web.yaml
   - path: ./docker/compose/docker-compose.tenancy.yaml
   - path: ./docker/compose/docker-compose.web-site.yaml
