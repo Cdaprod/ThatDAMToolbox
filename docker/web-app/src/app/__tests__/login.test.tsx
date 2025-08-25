@@ -34,3 +34,16 @@ test('LoginPage defers neon title to client', async () => {
   assert.ok(!html.includes('THATDAMTOOLBOX'));
 });
 
+test('LoginPage sets tenant cookie when session exists', async () => {
+  const auth = require('next-auth/next');
+  const original = auth.getServerSession;
+  auth.getServerSession = async () => ({ user: { tenant: 'demo' } });
+  const { cookies } = require('next/headers');
+  const store = await cookies();
+  store.setCalls = [];
+  await LoginPage();
+  assert.equal(store.setCalls.length, 1);
+  assert.equal(store.setCalls[0].name, 'cda_tenant');
+  auth.getServerSession = original;
+});
+
