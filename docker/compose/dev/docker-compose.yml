@@ -13,3 +13,21 @@ services:
       WEAVIATE_ENDPOINT: "${WEAVIATE_ENDPOINT:-http://weaviate:8080}"
     network_mode: bridge
     restart: unless-stopped
+
+  web-app:
+    build:
+      context: ../../docker/web-app
+    command: npm run dev
+    environment:
+      NEXT_PUBLIC_MEDIA_API_BASE: ""
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - webapp_node_modules:/app/node_modules
+      - webapp_next_cache:/app/.next
+    ports:
+      - "3000:3000"
+
+volumes:
+  webapp_node_modules:
+  webapp_next_cache:
