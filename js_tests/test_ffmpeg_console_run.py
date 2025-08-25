@@ -25,9 +25,9 @@ global.fetch = async (url, opts = {}) => {
   if (url.startsWith('/api/v1/explorer/assets')) {
     return { ok: true, json: async () => [{ path: '/vid/a.mp4' }] };
   }
-  if (url === '/api/v1/ffmpeg') {
-    return { ok: true, json: async () => ({ exit: 0, elapsed: 0.1, stdout: 'ok' }) };
-  }
+      if (url === '/api/v1/ffmpeg/run') {
+        return { ok: true, json: async () => ({ exit: 0, elapsed: 0.1, stdout: 'ok' }) };
+      }
   return { ok: false, json: async () => ({}) };
 };
 
@@ -65,7 +65,7 @@ require(require('path').join(process.cwd(), 'video/web/static/components/ffmpeg-
   await new Promise(r => setImmediate(r));
   els['ff-run'].onclick();
   await new Promise(r => setImmediate(r));
-  assert(fetchCalls.some(c => c.url === '/api/v1/ffmpeg'));
+  assert(fetchCalls.some(c => c.url === '/api/v1/ffmpeg/run'));
 })();
 """,
         encoding="utf-8",

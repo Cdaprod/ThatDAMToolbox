@@ -121,7 +121,8 @@ See [Control Plane Bootstrapping](docs/TECHNICAL/BOOTSTRAP_ARCHITECTURE.md) for 
 ![Compose Service Topology](/public/serve/repository-docker-structure.svg)
 
 ### Services
-- video-api (FastAPI backend)
+- api-gateway (Go HTTP gateway)
+- media-api (Go asset indexer)
 - video-web (Next.js frontend)
 - video-cli (CLI utilities)
 ### Volumes
@@ -134,8 +135,8 @@ See [Control Plane Bootstrapping](docs/TECHNICAL/BOOTSTRAP_ARCHITECTURE.md) for 
   - /app/node_modules & /app/.next for runtime dependencies
 - Database WAL store for CLI: db_wal → /var/lib/thatdamtoolbox/db
 ### Network
-- All three services attach to the damnet bridge network for internal communication.
-- The frontend (video-web) also connects to video-api over its published ports.
+- All services attach to the damnet bridge network for internal communication.
+- The frontend (video-web) connects to api-gateway (or media-api when standalone) over its published ports.
 
 This topology ensures that each container has direct, read-write access to the same media directories, while isolating inter-service traffic on a dedicated Docker network.
 
@@ -324,7 +325,6 @@ flowchart LR
 
   subgraph BACKEND["Backend Services"]
     GW["api-gateway"]
-    VIA["video-api"]
     MIA["media-api"]
   end
 
@@ -650,7 +650,7 @@ sequenceDiagram
   participant S as mini-SFU (WHIP/WHEP)
   participant V as viewers
   participant MQ as RabbitMQ
-  participant B as video-api
+  participant M as media-api
   participant ST as storage
 
   D->>D: Probe mDNS / Serf / Tailscale
@@ -857,11 +857,8 @@ The helper invokes `ensure-dirs` from `host/shared/platform`, making the operati
 ### Manual Installation
 
 ```bash
-# Install dependencies
-pip install -r docker/video-api/requirements.txt
-
-# Initialize database
-python -m video.db init
+# Start Go media-api
+go run ./host/services/media-api/cmd/media-api serve --addr :8080
 
 # Start the server
 uvicorn video.server:app —host 0.0.0.0 —port 8080

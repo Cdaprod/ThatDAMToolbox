@@ -32,7 +32,6 @@ services:
     depends_on:
       - api-gateway
       - video-web
-      - video-api
       - thatdamtoolbox-discovery
     environment:
       UPSTREAM_HOST: api-gateway

@@ -1,4 +1,4 @@
-// lib/videoApi.ts
+// lib/mediaApi.ts
 import { apiUrl } from './networkConfig'
 import type { Asset } from './apiAssets'
 import type { EDL } from './edl'
@@ -25,17 +25,17 @@ async function postForm(path: string, form: FormData, init?: RequestInit): Promi
 }
 
 /* ---------- REST routes your React code needs ---------- */
-export const videoApi = {
+export const mediaApi = {
   /* health check -- already used in /app/page.tsx */
   health: () => getJson<{ status: string; version: string }>('/health'),
 
   /* DAM / batch explorer */
-  listBatches: () => getJson<Batch[]>('/batches'),
-  inspectBatch: (id: string) => getJson<BatchCard>('/batches/' + id + '/cards'),
+  listBatches: () => getJson<Batch[]>('/v1/batches'),
+  inspectBatch: (id: string) => getJson<BatchCard>(`/v1/batches/${id}/cards`),
 
   /* motion-analysis or other custom calls */
   motionExtract: (payload: MotionExtractPayload) =>
-    postJson<MotionJob>('/motion/extract', payload),
+    postJson<MotionJob>('/v1/motion/extract', payload),
 
   /* trim idle frames */
   trimIdle: (payload: TrimIdlePayload) => {
@@ -45,7 +45,7 @@ export const videoApi = {
     if (payload.noise !== undefined) form.append('noise', String(payload.noise));
     if (payload.freeze_dur !== undefined) form.append('freeze_dur', String(payload.freeze_dur));
     if (payload.pix_thresh !== undefined) form.append('pix_thresh', String(payload.pix_thresh));
-    return postForm('/trim_idle/', form);
+    return postForm('/v1/trim_idle', form);
   },
 
   /* render kept ranges to a new mp4 */
@@ -61,13 +61,14 @@ export const videoApi = {
 
   /* ffmpeg console */
   ffmpegRun: (payload: { command: string; output?: string }) =>
-    postJson<{ output: string }>('/ffmpeg/run', payload),
+    postJson<{ output: string }>('/v1/ffmpeg/run', payload),
 
   /* hardware capture helpers */
-  listDevices: () => getJson<Device[]>('/hwcapture/devices'),
+  listDevices: () => getJson<Device[]>('/v1/hwcapture/devices'),
   witnessStart: (req: WitnessReq) =>
-    postJson<{ job: string; status: string }>('/hwcapture/witness_record', req),
-  vectorSearch: (q: string) => getJson<Asset[]>(`/vector-search?q=${encodeURIComponent(q)}`),
+    postJson<{ job: string; status: string }>('/v1/hwcapture/witness_record', req),
+  vectorSearch: (q: string) =>
+    getJson<Asset[]>(`/v1/vector-search?q=${encodeURIComponent(q)}`),
 };
 
 /* ---------- (very) skinny DTOs ---------- */

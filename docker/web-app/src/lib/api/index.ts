@@ -37,10 +37,10 @@ export const captureDaemon = {
 };
 
 // Video API: jobs and search
-export const videoApi = {
-  listJobs: () => getJson<unknown[]>('/video/jobs'),
+export const mediaApi = {
+  listJobs: () => getJson<unknown[]>('/v1/jobs'),
   search: (q: string) =>
-    getJson<unknown[]>(`/video/search?q=${encodeURIComponent(q)}`),
+    getJson<unknown[]>(`/v1/search?q=${encodeURIComponent(q)}`),
 };
 
 // Motion extractor job status
