@@ -18,7 +18,8 @@ export default async function LoginPage() {
   if (session) {
     const tenant = session.user?.tenant ?? 'demo';
     // ensure cookie exists for middleware; set server-side as fallback
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: 'cda_tenant',
       value: tenant,
       httpOnly: true,
