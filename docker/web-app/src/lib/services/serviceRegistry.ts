@@ -28,7 +28,9 @@ export const Services = {
       method: 'POST',
       body: form,
     });
+    
     if (!res.ok) throw new Error(`render failed: ${res.status}`);
+
     return await res.blob();
   },
 };

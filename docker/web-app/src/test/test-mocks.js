@@ -51,6 +51,22 @@ if (process.env.NODE_ENV === 'test') {
         useParams: () => ({}),
       });
     }
+    if (id === 'next/headers') {
+      return (
+        global.__nextHeaders ||= {
+          cookies: async () => {
+            const store =
+              (global.__cookieStore ||= {
+                setCalls: [],
+                set(opts) {
+                  this.setCalls.push(opts);
+                },
+              });
+            return store;
+          },
+        }
+      );
+    }
     if (id === 'react-devtools-core') {
       return { connectToDevTools: () => ({}), startServer: () => {} };
     }

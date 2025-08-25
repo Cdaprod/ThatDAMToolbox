@@ -6,20 +6,11 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import TenantRedirect from './TenantRedirect';
 import DevSignIn from '@/components/auth/DevSignIn';
-import nextDynamic from 'next/dynamic';
 import { Suspense } from 'react';
+import NeonTitle from '@/components/void/NeonTitle.client';
+import VoidScene from '@/components/void/VoidScene.client';
 
 export const dynamic = 'force-dynamic';
-
-// dynamic import for neon title on client
-const NeonTitle = nextDynamic(() => import('@/components/void/NeonTitle'), {
-  ssr: false,
-});
-
-// dynamic import for animated void scene; client only
-const VoidScene = nextDynamic(() => import('@/components/void/VoidScene'), {
-  ssr: false,
-});
 
 export default async function LoginPage() {
   const authOptions = getAuthOptions();
@@ -27,7 +18,8 @@ export default async function LoginPage() {
   if (session) {
     const tenant = session.user?.tenant ?? 'demo';
     // ensure cookie exists for middleware; set server-side as fallback
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: 'cda_tenant',
       value: tenant,
       httpOnly: true,
