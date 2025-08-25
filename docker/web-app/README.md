@@ -38,6 +38,14 @@ Regenerate `package-lock.json` when dependencies change:
 npm run refresh-lock
 ```
 
+### Trim Idle render endpoint
+
+You can exercise the stub MP4 render via:
+
+```bash
+curl -F "file=@demo.mp4" -F "edl=@edl.json" http://localhost:3000/api/video/render-edl -o out.mp4
+```
+
 ## Library Stats Endpoint
 
 During development you can query library statistics via:
