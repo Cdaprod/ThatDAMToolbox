@@ -1,6 +1,7 @@
 // lib/videoApi.ts
 import { apiUrl } from './networkConfig'
 import type { Asset } from './apiAssets'
+import type { EDL } from './edl'
 
 /* ---------- helpers ---------- */
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -45,6 +46,17 @@ export const videoApi = {
     if (payload.freeze_dur !== undefined) form.append('freeze_dur', String(payload.freeze_dur));
     if (payload.pix_thresh !== undefined) form.append('pix_thresh', String(payload.pix_thresh));
     return postForm('/trim_idle/', form);
+  },
+
+  /* render kept ranges to a new mp4 */
+  renderEdl: ({ file, edl }: { file: File; edl: EDL }): Promise<Blob> => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('edl', new Blob([JSON.stringify(edl)], { type: 'application/json' }), 'edl.json');
+    return fetch('/api/video/render-edl', { method: 'POST', body: form }).then(res => {
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.blob();
+    });
   },
 
   /* ffmpeg console */
