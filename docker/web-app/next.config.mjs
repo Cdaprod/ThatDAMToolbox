@@ -1,6 +1,6 @@
 // /docker/web-app/next.config.mjs
 import path from 'path';
-import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://host.docker.internal:8080';
