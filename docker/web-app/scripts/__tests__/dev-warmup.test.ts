@@ -18,3 +18,14 @@ test('getRoutes prefixes default routes with tenant', () => {
   if (origRoutes) process.env.WARM_ROUTES = origRoutes
   else delete process.env.WARM_ROUTES
 })
+
+test('custom WARM_ROUTES are tenant-aware', () => {
+  const origTenant = process.env.WARMUP_TENANT
+  const origRoutes = process.env.WARM_ROUTES
+  process.env.WARMUP_TENANT = 'demo'
+  process.env.WARM_ROUTES = '/,/dashboard,/api/ping'
+  assert.deepEqual(getRoutes(), ['/', '/demo/dashboard', '/api/ping'])
+  process.env.WARMUP_TENANT = origTenant
+  if (origRoutes) process.env.WARM_ROUTES = origRoutes
+  else delete process.env.WARM_ROUTES
+})

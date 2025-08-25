@@ -21,6 +21,13 @@ export function getRoutes(): string[] {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
+    .map((r) => {
+      if (r === '/' || r.startsWith(`/${tenant}`) || r.startsWith('/api')) {
+        return r
+      }
+      const path = r.startsWith('/') ? r : `/${r}`
+      return `/${tenant}${path}`
+    })
 }
 
 function wait(ms: number) {
