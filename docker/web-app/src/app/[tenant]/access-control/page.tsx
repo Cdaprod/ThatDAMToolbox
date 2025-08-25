@@ -5,6 +5,7 @@
 
 import * as React from 'react';
 import { Box, Button, Container, Stack, Typography } from '@mui/material';
+import { useModal } from '@/providers/ModalProvider';
 import { MembersTable, type MemberRow } from '../../../components/access/MembersTable';
 import { InviteDialog } from '../../../components/access/InviteDialog';
 import { EditRolesDialog } from '../../../components/access/EditRolesDialog';
@@ -16,12 +17,23 @@ export default function AccessControlPage({ params }: { params: { tenant: string
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const [editMember, setEditMember] = React.useState<MemberRow | null>(null);
   const [reloadKey, setReloadKey] = React.useState(0);
+  const { openModal } = useModal();
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h4">Access Control</Typography>
-        <Button variant="contained" onClick={() => setInviteOpen(true)}>Invite Member</Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            aria-label="Provision Device"
+            onClick={() => openModal('provision-device')}
+          >
+            Provision Device
+          </Button>
+          <Button variant="contained" onClick={() => setInviteOpen(true)}>
+            Invite Member
+          </Button>
+        </Stack>
       </Stack>
 
       <MembersTable
