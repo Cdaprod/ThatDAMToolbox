@@ -32,6 +32,11 @@ test('TopBar renders account menu button', () => {
   assert.ok(html.includes('Account menu'))
 })
 
+test('TopBar includes service status chip', () => {
+  const html = renderToString(<TopBar />)
+  assert.ok(html.includes('Local-only'))
+})
+
 test('Explorer button triggers dam-explorer modal', async () => {
   let opened: string | null = null
   modalMod.useModal = () => ({ openModal: (tool: string) => { opened = tool }, closeModal() {} })

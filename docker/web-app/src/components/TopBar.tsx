@@ -9,6 +9,7 @@ import { useModal } from '@/providers/ModalProvider'
 import { useTheme, AVAILABLE_SCHEMES, ColorScheme } from '@/context/ThemeContext'
 import { useAuth } from '@/providers/AuthProvider'
 import { useIsClient } from '@/hooks/useIsClient'
+import ServiceStatusChip from './TopBar.ServiceStatusChip'
 
 export default function TopBar() {
   const { collapsed, setCollapsed } = useSidebar()
@@ -63,6 +64,7 @@ export default function TopBar() {
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
+        <ServiceStatusChip />
         <button
           type="button"
           disabled={!isClient}
