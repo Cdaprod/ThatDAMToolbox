@@ -30,6 +30,14 @@ curl -X POST http://localhost:3000/api/tenancy \
 
 Then open http://localhost:3000/signup in your browser.
 
+### Refreshing dependencies
+
+Regenerate `package-lock.json` when dependencies change:
+
+```bash
+npm run refresh-lock
+```
+
 ## Library Stats Endpoint
 
 During development you can query library statistics via:
