@@ -1,6 +1,6 @@
 // /docker/web-app/next.config.mjs
 import path from 'path';
-import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://host.docker.internal:8080';
@@ -105,7 +105,11 @@ export default function nextConfig(phase) {
       },
       // helpful when you’re hitting from phone or other LAN hosts in dev
       // Docs: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
-      allowedDevOrigins: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+      allowedDevOrigins: [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://192.168.0.22:3000',
+      ],
     };
   }
   return baseConfig;
