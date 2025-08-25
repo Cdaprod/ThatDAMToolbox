@@ -1,77 +1,184 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { videoApi } from '../../lib/videoApi'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import UploadPicker from '../primitives/UploadPicker'
+import TimelineBar from '../primitives/TimelineBar'
+import RangeField from '../primitives/RangeField'
+import ToolShell from '../primitives/ToolShell'
+import { Services } from '../../lib/services/serviceRegistry'
+import { edlToSequence } from '../../lib/media/edl'
+import type { SimpleEDL } from '../../lib/media/types'
+import { prettyDuration } from '../../lib/edl'
 import { createToolPage } from '../../lib/toolRegistry'
+import { useEdlPlayback } from '../../hooks/useEdlPlayback'
 
-/**
- * UI for the trim_idle video-api module.
- * Allows uploading a video and downloads the trimmed result.
- */
+const DEFAULT_ANALYSIS_FPS = 6
+const DEFAULT_MIN_IDLE_MS = 450
+const DEFAULT_THRESHOLD = 8
+
 function TrimIdleContent() {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   const [file, setFile] = useState<File | null>(null)
-  const [threshold, setThreshold] = useState<number>(2)
-  const [status, setStatus] = useState<'idle' | 'working' | 'error' | 'done'>('idle')
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
-  const router = useRouter()
+  const [fileUrl, setFileUrl] = useState<string | null>(null)
+  const [threshold, setThreshold] = useState<number>(DEFAULT_THRESHOLD)
+  const [minIdleMs, setMinIdleMs] = useState<number>(DEFAULT_MIN_IDLE_MS)
+  const [analysisFps, setAnalysisFps] = useState<number>(DEFAULT_ANALYSIS_FPS)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [analysis, setAnalysis] = useState<{ duration: number; kept: { start: number; end: number }[] } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  async function handleSubmit() {
+  useEffect(() => {
     if (!file) return
-    setStatus('working')
-    try {
-      const blob = await videoApi.trimIdle({ file, freeze_dur: threshold })
-      setDownloadUrl(URL.createObjectURL(blob))
-      setStatus('done')
-    } catch (err) {
-      setStatus('error')
-    }
+    const url = URL.createObjectURL(file)
+    setFileUrl(url)
+    return () => { URL.revokeObjectURL(url) }
+  }, [file])
+
+  useEffect(() => {
+    if (!fileUrl) return
+    const h = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const res = await Services.analyzeMotion(fileUrl, {
+          thresholdPct: threshold,
+          minIdleMs,
+          fps: analysisFps,
+        })
+        setAnalysis(res)
+        setError(null)
+      } catch (e: any) {
+        setError(e?.message ?? String(e))
+        setAnalysis(null)
+      } finally {
+        setLoading(false)
+      }
+    }, 220)
+    return () => clearTimeout(h)
+  }, [fileUrl, threshold, minIdleMs, analysisFps])
+
+  const edl: SimpleEDL | null = useMemo(() => {
+    if (!analysis || !file) return null
+    return { version: 'trimidle.v1', sourceName: file.name, duration: analysis.duration, kept: analysis.kept }
+  }, [analysis, file])
+
+  const totalKept = useMemo(() => {
+    if (!edl) return 0
+    return edl.kept.reduce((s, r) => s + (r.end - r.start), 0)
+  }, [edl])
+
+  function handleSeek(t: number) {
+    const v = videoRef.current
+    if (!v) return
+    v.currentTime = t
+    setCurrentTime(t)
   }
 
+  function onTimeUpdate() {
+    const v = videoRef.current
+    if (!v) return
+    setCurrentTime(v.currentTime)
+  }
+
+  async function handleExportEdl() {
+    if (!edl) return
+    const blob = new Blob([JSON.stringify(edl, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = edl.sourceName.replace(/\.[^.]+$/, '') + '.trimidle.edl.json'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  async function handleRenderDownload() {
+    if (!file || !edl) return
+    const seq = edlToSequence(edl, 'local-upload')
+    const blob = await Services.renderSequence(file, seq)
+    const a = document.createElement('a')
+    const base = file.name.replace(/\.[^.]+$/, '')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${base}_trimidle.mp4`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  useEdlPlayback(videoRef.current, edl?.kept ?? null)
+
+  const segments = edl?.kept.map(r => ({ start: r.start, end: r.end, keep: true }))
+
   return (
-    <>
-      <UploadPicker
-        onSelectFile={setFile}
-        onSelectDam={() => router.push('/dashboard/dam-explorer')}
-        onSelectCamera={() => router.push('/dashboard/camera-monitor')}
-      />
-      {file && (
-        <video
-          src={URL.createObjectURL(file)}
-          controls
-          className="w-full max-w-lg my-4"
-        />
-      )}
-      <label className="block mb-4">
-        <span className="mr-2">Idle Threshold (s)</span>
-        <input
-          type="number"
-          className="border px-2 py-1 rounded w-20"
-          value={threshold}
-          onChange={e => setThreshold(Number(e.target.value))}
-        />
-      </label>
-      <button
-        className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-        onClick={handleSubmit}
-        disabled={!file || status === 'working'}
-      >
-        Trim
-      </button>
-      {status === 'error' && (
-        <p className="text-sm text-red-600">Failed to trim video</p>
-      )}
-      {downloadUrl && (
-        <a
-          className="text-sm text-blue-600 underline"
-          href={downloadUrl}
-          download="trimmed.mp4"
-        >
-          Download trimmed video
-        </a>
-      )}
-    </>
+    <ToolShell title="Trim Idle" subtitle="Detect idle spans by motion threshold; preview & export.">
+      <div>
+        <UploadPicker onSelectFile={setFile} />
+
+        {file && (
+          <div className="mt-4">
+            <video
+              ref={videoRef}
+              src={fileUrl ?? undefined}
+              controls
+              onTimeUpdate={onTimeUpdate}
+              className="w-full rounded border border-zinc-700"
+            />
+            <div className="mt-3">
+              {edl ? (
+                <TimelineBar
+                  duration={edl.duration}
+                  segments={segments ?? []}
+                  currentTime={currentTime}
+                  onSeek={handleSeek}
+                />
+              ) : (
+                <div className="h-9 rounded bg-zinc-800 flex items-center justify-center text-xs text-zinc-400">
+                  {loading ? 'Analyzing…' : error ? 'Error' : 'Waiting…'}
+                </div>
+              )}
+              {edl && (
+                <div className="mt-2 text-xs flex items-center gap-3 text-zinc-400">
+                  <span><span className="inline-block w-3 h-3 bg-green-500 align-middle mr-1 rounded-sm" /> kept</span>
+                  <span><span className="inline-block w-3 h-3 bg-red-500 align-middle mr-1 rounded-sm" /> clipped</span>
+                  <span className="ml-auto">kept {prettyDuration(totalKept)} / {prettyDuration(edl.duration)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <aside className="space-y-4">
+        <div className="rounded border border-zinc-700 p-3 space-y-3">
+          <RangeField label="Idle Threshold" value={threshold} min={1} max={40} step={1} onChange={setThreshold} unit="% px moving" />
+          <RangeField label="Min Idle (ms)" value={minIdleMs} min={0} max={2000} step={50} onChange={setMinIdleMs} />
+          <RangeField label="Analysis FPS" value={analysisFps} min={2} max={12} step={1} onChange={setAnalysisFps} />
+          <div className="text-xs text-zinc-400">
+            Status
+            <div className="mt-1 text-zinc-200">
+              {error ? <span className="text-red-400">Error: {error}</span> : edl ? 'Ready' : loading ? 'Analyzing…' : 'Idle'}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded border border-zinc-700 p-3 space-y-2">
+          <button
+            onClick={handleExportEdl}
+            disabled={!edl}
+            className="w-full px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40"
+          >
+            Save EDL (.json)
+          </button>
+          <button
+            onClick={handleRenderDownload}
+            disabled={!file || !edl}
+            className="w-full px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-40"
+          >
+            Render & Download MP4
+          </button>
+          <div className="text-[11px] text-zinc-400">
+            Non-destructive: your original file is never modified. Rendering uses the EDL cut list.
+          </div>
+        </div>
+      </aside>
+    </ToolShell>
   )
 }
 

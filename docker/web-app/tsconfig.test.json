@@ -14,6 +14,8 @@
     "src/components/__tests__/dashboardTools.access.test.tsx",
     "src/components/__tests__/CameraMonitor.test.ts",
     "src/lib/__tests__/videoApi.trimIdle.test.ts",
+    "src/lib/__tests__/videoApi.renderEdl.test.ts",
+    "src/lib/__tests__/edl.test.ts",
     "src/providers/__tests__/reactDevtools.test.tsx",
     "src/providers/__tests__/AssetProvider.test.tsx",
     "src/hooks/__tests__/useOrientation.test.ts",
