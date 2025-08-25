@@ -32,16 +32,25 @@ EOF
 UPSTREAM="${UPSTREAM:-127.0.0.1:8080}"
 UPSTREAM_HOST="${UPSTREAM_HOST:-${HOST:-${UPSTREAM%%:*}}}"
 UPSTREAM_PORT="${UPSTREAM_PORT:-${PORT:-${UPSTREAM##*:}}}"
-export UPSTREAM_HOST UPSTREAM_PORT
+
+WEB_APP="${WEB_APP:-127.0.0.1:3000}"
+WEB_APP_HOST="${WEB_APP_HOST:-${WEB_APP%%:*}}"
+WEB_APP_PORT="${WEB_APP_PORT:-${WEB_APP##*:}}"
+
+export UPSTREAM_HOST UPSTREAM_PORT WEB_APP_HOST WEB_APP_PORT
 
 # fail fast if the upstream host cannot be resolved
 if ! getent hosts "$UPSTREAM_HOST" >/dev/null; then
   echo "entrypoint: unable to resolve upstream host '$UPSTREAM_HOST'" >&2
   exit 1
 fi
+if ! getent hosts "$WEB_APP_HOST" >/dev/null; then
+  echo "entrypoint: unable to resolve web app host '$WEB_APP_HOST'" >&2
+  exit 1
+fi
 
 # render the template into the real nginx.conf
-envsubst '${UPSTREAM_HOST} ${UPSTREAM_PORT}' \
+envsubst '${UPSTREAM_HOST} ${UPSTREAM_PORT} ${WEB_APP_HOST} ${WEB_APP_PORT}' \
   < /etc/nginx/templates/gw.tmpl > /etc/nginx/nginx.conf
 
 exec nginx -g 'daemon off;'

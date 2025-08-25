@@ -311,7 +311,9 @@ NEXTAUTH_DEBUG=false
 # Optional dev warmup settings
 # WARMUP_HOST=localhost
 # WARMUP_PORT=3000
+# WARMUP_TENANT=demo
 # WARM_ROUTES=/,/dashboard,/dashboard/camera-monitor,/dashboard/dam-explorer,/account
+# Routes are auto-prefixed with WARMUP_TENANT unless starting with /api
 ```
 
 ## API Mappings

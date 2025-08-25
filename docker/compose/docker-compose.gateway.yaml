@@ -37,8 +37,8 @@ services:
     environment:
       UPSTREAM_HOST: api-gateway
       UPSTREAM_PORT: "8080"
-      UPSTREAM: api-gateway:8080
-      SERVICE_PORT: "8080"
+      WEB_APP_HOST: video-web
+      WEB_APP_PORT: "3000"
     volumes:
       - ../../host/services/shared/entrypoint-snippet.sh:/opt/shared/entrypoint-snippet.sh:ro
       - ../../docker/nginx/entrypoint.sh:/entrypoint.sh:ro

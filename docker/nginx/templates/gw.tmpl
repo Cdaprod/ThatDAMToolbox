@@ -3,14 +3,26 @@ events { worker_connections  1024; }
 
 http {
   sendfile on;
-  upstream video_api {
+
+  upstream api_backend {
     server ${UPSTREAM_HOST}:${UPSTREAM_PORT};
+  }
+
+  upstream web_frontend {
+    server ${WEB_APP_HOST}:${WEB_APP_PORT};
   }
 
   server {
     listen 80;
+
+    location /api/ {
+      proxy_pass http://api_backend;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+    }
+
     location / {
-      proxy_pass http://video_api;
+      proxy_pass http://web_frontend;
       proxy_set_header Host $host;
       proxy_set_header X-Real-IP $remote_addr;
     }
