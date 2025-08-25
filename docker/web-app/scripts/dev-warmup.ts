@@ -28,6 +28,7 @@ export function getRoutes(): string[] {
       const path = r.startsWith('/') ? r : `/${r}`
       return `/${tenant}${path}`
     })
+
 }
 
 function wait(ms: number) {

@@ -43,7 +43,7 @@ npm run refresh-lock
 You can exercise the stub MP4 render via:
 
 ```bash
-curl -F "file=@demo.mp4" -F "edl=@edl.json" http://localhost:3000/api/video/render-edl -o out.mp4
+curl -F "file=@demo.mp4" -F "sequence=@sequence.json" http://localhost:3000/api/video/render-sequence -o out.mp4
 ```
 
 ## Library Stats Endpoint
