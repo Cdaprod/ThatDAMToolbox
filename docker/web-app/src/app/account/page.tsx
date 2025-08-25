@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { api } from '../../lib/api/client';
 import { useToast } from '@/providers/ToastProvider';
+import { getTimeZones } from '../../lib/timezones';
 
 type Profile = {
   name: string;
@@ -55,7 +56,7 @@ function AccountInner() {
         </Stack>
         <TextField label="Avatar" value={p.avatarUrl || ''} onChange={(e) => setP({ ...p, avatarUrl: e.target.value })} placeholder="https://.../me.png" />
         <TextField select label="Time Zone" value={p.timeZone} onChange={(e) => setP({ ...p, timeZone: e.target.value })}>
-          {Intl.supportedValuesOf('timeZone').map((tz) => <MenuItem key={tz} value={tz}>{tz}</MenuItem>)}
+          {getTimeZones().map((tz) => <MenuItem key={tz} value={tz}>{tz}</MenuItem>)}
         </TextField>
         <Box>
           <Button variant="contained" onClick={saveProfile}>Save Profile</Button>

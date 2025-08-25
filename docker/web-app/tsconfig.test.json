@@ -43,7 +43,8 @@
     "src/lib/auth.test.ts",
     "middleware.test.ts",
     "src/app/__tests__/pair.test.tsx",
-    "src/providers/__tests__/AppProviders.test.ts"
+    "src/providers/__tests__/AppProviders.test.ts",
+    "src/lib/__tests__/timezones.test.ts"
   ],
   "exclude": []
 }
