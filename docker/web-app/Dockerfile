@@ -21,7 +21,7 @@ FROM base AS deps
 RUN apk add --no-cache bash curl ca-certificates
 
 # copy only manifests (maximize cache)
-COPY package.json package-lock.json .npmrc* ./
+COPY package*.json .npmrc* ./
 
 # install dependencies with caching
 RUN --mount=type=cache,target=/root/.npm \
