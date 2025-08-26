@@ -44,7 +44,7 @@ test('Explorer button triggers dam-explorer modal', async () => {
   const { default: TestTopBar } = await import('../TopBar')
   const el = TestTopBar()
   const nav = el.props.children[1]
-  const button = nav.props.children[1]
+  const button = nav.props.children[2]
   button.props.onClick()
   modalMod.useModal = () => ({ openModal() {}, closeModal() {} })
   delete require.cache[topBarPath]
@@ -58,7 +58,7 @@ test('Account menu logout triggers logout handler', async () => {
   const { default: TestTopBar } = await import('../TopBar')
   const el = TestTopBar()
   const nav = el.props.children[1]
-  const menuWrapper = nav.props.children[2]
+  const menuWrapper = nav.props.children[3]
   const button = menuWrapper.props.children[0]
   button.props.onClick()
   const menu = menuWrapper.props.children[1]
@@ -67,4 +67,32 @@ test('Account menu logout triggers logout handler', async () => {
   authMod.useAuth = () => ({ user: { name: 'A' }, logout() {} })
   delete require.cache[topBarPath]
   assert.ok(loggedOut)
+})
+
+test('Account menu hidden when user missing', () => {
+  authMod.useAuth = () => ({ user: null, logout() {} })
+  delete require.cache[topBarPath]
+  const { default: TestTopBar } = require(topBarPath)
+  const html = renderToString(<TestTopBar />)
+  authMod.useAuth = () => ({ user: { name: 'A' }, logout() {} })
+  delete require.cache[topBarPath]
+  assert.ok(!html.includes('Account menu'))
+})
+
+test('Click outside closes account menu', async () => {
+  const events: Record<string, (e: any) => void> = {}
+  ;(global as any).document = {
+    addEventListener: (t: string, cb: any) => { events[t] = cb },
+    removeEventListener: (t: string) => { delete events[t] },
+  }
+  delete require.cache[topBarPath]
+  const { default: TestTopBar } = await import('../TopBar')
+  const el = TestTopBar()
+  const nav = el.props.children[1]
+  const menuWrapper = nav.props.children[3]
+  const button = menuWrapper.props.children[0]
+  button.props.onClick()
+  events['mousedown']({ target: {} })
+  assert.ok(!events['mousedown'])
+  delete (global as any).document
 })

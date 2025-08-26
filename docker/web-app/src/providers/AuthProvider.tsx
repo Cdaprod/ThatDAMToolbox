@@ -19,6 +19,10 @@ import React, {
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { setAuthToken } from '../lib/api';
+import {
+  setDefaultTenantCookie,
+  clearDefaultTenantCookie,
+} from '@/lib/tenancy/cookieClient';
 
 interface AuthState {
   token: string | null;
@@ -48,7 +52,14 @@ export default function AuthProvider({
   const pathname = usePathname() || '/';
 
   const [token, setToken] = useState<string | null>(initialToken);
-  const [tenantId, setTenantId] = useState<string | null>(initialTenantId);
+  const [tenantId, setTenantId] = useState<string | null>(() => {
+    if (initialTenantId) return initialTenantId;
+    if (typeof document !== 'undefined') {
+      const match = document.cookie.match(/(?:^|;\s*)cda_tenant=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : null;
+    }
+    return null;
+  });
   const [user, setUser] = useState<{ name?: string } | null>(null);
   const [mounted, setMounted] = useState(process.env.NODE_ENV === 'test');
   const redirected = useRef(false);
@@ -59,7 +70,9 @@ export default function AuthProvider({
     setToken(t);
     setUser(u ?? null);
     setTenantId(tenant ?? null);
-    if (tenant) sessionStorage.setItem('tenantId', tenant);
+    if (tenant) {
+      setDefaultTenantCookie(tenant).catch(() => {});
+    }
     setAuthToken(t);
   };
 
@@ -67,7 +80,7 @@ export default function AuthProvider({
     setToken(null);
     setUser(null);
     setTenantId(null);
-    sessionStorage.removeItem('tenantId');
+    clearDefaultTenantCookie().catch(() => {});
     setAuthToken(null);
     // ensure server-side session cookies are cleared
     signOut({ callbackUrl: '/login' });

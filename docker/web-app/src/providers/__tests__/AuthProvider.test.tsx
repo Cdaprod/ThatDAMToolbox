@@ -3,6 +3,13 @@ import test from 'node:test';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import AuthProvider, { useAuth } from '../AuthProvider';
+import path from 'node:path';
+
+const cookieClientPath = path.resolve(
+  __dirname,
+  '../../lib/tenancy/cookieClient.js'
+);
+const cookieClientMod = require(cookieClientPath);
 
 (global as any).__nextAuthReact = {
   signIn: async () => {},
@@ -30,18 +37,10 @@ test('AuthProvider supplies initial token', () => {
   assert.ok(html.includes('abc'));
 });
 
-test('login stores tenantId in sessionStorage', () => {
-  (global as any).sessionStorage = {
-    data: {} as Record<string, string>,
-    setItem(k: string, v: string) {
-      this.data[k] = v;
-    },
-    getItem(k: string) {
-      return this.data[k];
-    },
-    removeItem(k: string) {
-      delete this.data[k];
-    },
+test('login sets default tenant cookie', () => {
+  let called: string | null = null;
+  cookieClientMod.setDefaultTenantCookie = async (slug: string) => {
+    called = slug;
   };
 
   let ctx: ReturnType<typeof useAuth> | undefined;
@@ -58,7 +57,48 @@ test('login stores tenantId in sessionStorage', () => {
 
   ctx?.login('tkn', { name: 'A' }, 'tenant1');
 
-  assert.equal((global as any).sessionStorage.getItem('tenantId'), 'tenant1');
+  assert.equal(called, 'tenant1');
+});
+
+test('logout clears default tenant cookie', () => {
+  let cleared = false;
+  cookieClientMod.clearDefaultTenantCookie = async () => {
+    cleared = true;
+  };
+
+  let ctx: ReturnType<typeof useAuth> | undefined;
+  function Capture() {
+    ctx = useAuth();
+    return null;
+  }
+
+  renderToString(
+    <AuthProvider initialToken="tkn">
+      <Capture />
+    </AuthProvider>,
+  );
+
+  ctx?.logout();
+
+  assert.ok(cleared);
+});
+
+test('tenantId initializes from cookie', () => {
+  (global as any).document = { cookie: 'cda_tenant=acme' };
+  let ctx: ReturnType<typeof useAuth> | undefined;
+  function Capture() {
+    ctx = useAuth();
+    return null;
+  }
+
+  renderToString(
+    <AuthProvider>
+      <Capture />
+    </AuthProvider>,
+  );
+
+  assert.equal(ctx?.tenantId, 'acme');
+  delete (global as any).document;
 });
 
 test('logout invokes next-auth signOut', () => {
