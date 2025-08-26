@@ -19,7 +19,7 @@ cd docker/web-app
 npm run dev
 
 # start the tenancy API (port 8082)
-uvicorn tenancy.app:app --port 8082
+go run ../host/services/tenancy/cmd/tenancy
 # or: docker compose up tenancy
 
 # in another shell invoke the tenancy API via the web-app proxy

@@ -12,6 +12,7 @@ use (
 	./host/services/shared
 	./host/services/shared/hostcap/v4l2probe
 	./host/services/supervisor
+	./host/services/tenancy
 	./host/shared
 	./tests
 )

@@ -1,13 +1,26 @@
 # Dockerfile for Tenancy service
 # Example:
 #   docker build -t thatdamtoolbox/tenancy -f docker/tenancy/Dockerfile .
-FROM python:3.11-slim
-WORKDIR /app
-COPY docker/tenancy/requirements.txt /tmp/requirements.txt
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && pip install --no-cache-dir -r /tmp/requirements.txt \
-    && rm -rf /var/lib/apt/lists/*
-COPY tenancy/ /app/tenancy/
+
+ARG GO_VERSION=1.23
+FROM golang:${GO_VERSION}-alpine AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=auto
+WORKDIR /src
+COPY go.work go.work.sum ./
+COPY host/shared/ host/shared/
+COPY host/services/tenancy/ host/services/tenancy/
+RUN go work sync && go build -o /tenancy ./host/services/tenancy/cmd/tenancy
+
+FROM alpine:3.20 AS runtime
+ARG VCS_REF
+ARG IMAGE_TAG=dev
+LABEL org.opencontainers.image.source="https://github.com/Cdaprod/ThatDAMToolbox" \
+      org.opencontainers.image.vendor="Cdaprod" \
+      org.opencontainers.image.title="ThatDAMToolbox - tenancy" \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.version=$IMAGE_TAG \
+      org.opencontainers.image.licenses="Apache-2.0"
+RUN apk add --no-cache curl
+COPY --from=build /tenancy /usr/local/bin/tenancy
 EXPOSE 8082
-CMD ["uvicorn", "tenancy.app:app", "--host", "0.0.0.0", "--port", "8082"]
+ENTRYPOINT ["/usr/local/bin/tenancy"]
