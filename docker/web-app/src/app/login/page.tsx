@@ -2,8 +2,6 @@
 import GoogleGISButton from '@/components/auth/GoogleGISButton';
 import { getServerSession } from 'next-auth/next';
 import { getAuthOptions } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import TenantRedirect from './TenantRedirect';
 import DevSignIn from '@/components/auth/DevSignIn';
 import { Suspense } from 'react';
@@ -17,17 +15,7 @@ export default async function LoginPage() {
   const session = await getServerSession(authOptions);
   if (session) {
     const tenant = session.user?.tenant ?? 'demo';
-    // ensure cookie exists for middleware; set server-side as fallback
-    const cookieStore = await cookies();
-    cookieStore.set({
-      name: 'cda_tenant',
-      value: tenant,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    // cookie is set client-side via TenantRedirect
     return <TenantRedirect tenant={tenant} />;
   }
 

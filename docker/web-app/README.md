@@ -308,7 +308,12 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=changeme
 # Set to "true" to enable verbose NextAuth logs
 NEXTAUTH_DEBUG=false
+NEXT_DEV_ALLOWED_ORIGINS=http://192.168.0.22:3000
 ```
+
+`NEXT_DEV_ALLOWED_ORIGINS` is a comma-separated list of origins allowed to
+request Next.js assets in development, useful when testing from other LAN
+devices.
 
 ## API Mappings
 

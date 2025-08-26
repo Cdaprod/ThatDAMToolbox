@@ -7,6 +7,7 @@ import assert from 'node:assert';
 import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import LoginPage from '../login/page';
+import TenantRedirect from '../login/TenantRedirect';
 
 test('LoginPage shows development sign in when Google is missing', async () => {
   delete process.env.GOOGLE_CLIENT_ID;
@@ -34,16 +35,12 @@ test('LoginPage defers neon title to client', async () => {
   assert.ok(!html.includes('THATDAMTOOLBOX'));
 });
 
-test('LoginPage sets tenant cookie when session exists', async () => {
+test('LoginPage redirects authenticated users via TenantRedirect', async () => {
   const auth = require('next-auth/next');
   const original = auth.getServerSession;
   auth.getServerSession = async () => ({ user: { tenant: 'demo' } });
-  const { cookies } = require('next/headers');
-  const store = await cookies();
-  store.setCalls = [];
-  await LoginPage();
-  assert.equal(store.setCalls.length, 1);
-  assert.equal(store.setCalls[0].name, 'cda_tenant');
+  const el = await LoginPage();
+  assert.equal((el as any)?.type, TenantRedirect);
   auth.getServerSession = original;
 });
 
