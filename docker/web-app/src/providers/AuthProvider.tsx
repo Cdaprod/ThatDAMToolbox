@@ -15,10 +15,12 @@ import React, {
   ReactNode,
   useEffect,
   useRef,
+  useCallback,
 } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { setAuthToken } from '../lib/api';
+import { setDefaultTenantCookie } from '../lib/tenancy/cookieClient';
 
 interface AuthState {
   token: string | null;
@@ -28,7 +30,7 @@ interface AuthState {
     token: string,
     user?: { name?: string },
     tenantId?: string,
-  ) => void;
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -55,13 +57,47 @@ export default function AuthProvider({
 
   useEffect(() => setMounted(true), []);
 
-  const login = (t: string, u?: { name?: string }, tenant?: string) => {
-    setToken(t);
-    setUser(u ?? null);
-    setTenantId(tenant ?? null);
-    if (tenant) sessionStorage.setItem('tenantId', tenant);
-    setAuthToken(t);
-  };
+  const login = useCallback(
+    async (t: string, u?: { name?: string }, tenant?: string) => {
+      setToken(t);
+      setUser(u ?? null);
+      setAuthToken(t);
+
+      const applyTenant = async (slug: string) => {
+        setTenantId(slug);
+        sessionStorage.setItem('tenantId', slug);
+        try {
+          await setDefaultTenantCookie(slug);
+        } catch {}
+      };
+
+      if (tenant) {
+        await applyTenant(tenant);
+        return;
+      }
+
+      const url = process.env.NEXT_PUBLIC_TENANCY_URL;
+      if (!url) return;
+      try {
+        const payloadB64 = t.split('.')[1];
+        const decoded = JSON.parse(
+          Buffer.from(payloadB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString(),
+        );
+        const userID = decoded.sub || decoded.email;
+        const res = await fetch(`${url}/login`, {
+          method: 'POST',
+          headers: { 'X-User-ID': userID },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const slug = data.slug || data.tenant_id;
+        if (slug) await applyTenant(String(slug));
+      } catch {
+        // ignore
+      }
+    },
+    [],
+  );
 
   const logout = () => {
     setToken(null);
@@ -75,6 +111,42 @@ export default function AuthProvider({
 
   const publicRoutes = ['/', '/login', '/signup', '/pair'];
   const isDashboardPath = pathname.includes('/dashboard');
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') return;
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+    const init = () => {
+      // @ts-ignore GIS attaches to window
+      window.google?.accounts.id.initialize({
+        client_id: clientId,
+        callback: ({ credential }: any) => {
+          try {
+            const payload = JSON.parse(
+              Buffer.from(
+                credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'),
+                'base64',
+              ).toString(),
+            );
+            login(credential, { name: payload.name });
+          } catch {
+            login(credential);
+          }
+        },
+      });
+    };
+    // @ts-ignore GIS script may already be loaded
+    if (window.google?.accounts?.id) {
+      init();
+    } else {
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.defer = true;
+      s.onload = init;
+      document.head.appendChild(s);
+    }
+  }, [login]);
 
   useEffect(() => {
     if (!mounted) return;

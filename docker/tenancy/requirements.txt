@@ -1,4 +1,0 @@
-# Minimal dependencies for tenancy service
-fastapi
-uvicorn[standard]
-pydantic

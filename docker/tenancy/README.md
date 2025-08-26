@@ -1,6 +1,6 @@
 # Tenancy Container
 
-Packages the FastAPI tenancy daemon for plan reconciliation. Service code lives in the repository root under `tenancy/`.
+Packages the Go-based tenancy service.
 
 ## Usage
 ```bash
@@ -10,10 +10,7 @@ docker build -f docker/tenancy/Dockerfile -t cdaprod/tenancy .
 docker run -p 8082:8082 cdaprod/tenancy
 ```
 
-## Environment
-The daemon reads profile and cluster inputs from API requests; no required environment variables.
-
 ## Testing
 ```bash
-pytest tests/test_tenancy.py -q
+go test ./host/services/tenancy
 ```
