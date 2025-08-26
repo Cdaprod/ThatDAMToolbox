@@ -40,8 +40,13 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  const apiTenant = await getDefaultTenantViaApi();
+  if (apiTenant && cookieTenant && apiTenant !== cookieTenant) {
+    return NextResponse.redirect(new URL(`/${apiTenant}/dashboard`, url));
+  }
+
   if (pathname === "/" || pathname === "/dashboard") {
-    const tenant = cookieTenant || (await getDefaultTenantViaApi());
+    const tenant = cookieTenant || apiTenant;
     return NextResponse.redirect(new URL(tenant ? `/${tenant}/dashboard` : "/login", url));
   }
 
