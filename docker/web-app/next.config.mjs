@@ -115,7 +115,9 @@ export default function nextConfig(phase) {
       allowedDevOrigins: [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
-        'http://192.168.0.22:3000',
+        ...(process.env.NEXT_DEV_ALLOWED_ORIGINS
+          ? process.env.NEXT_DEV_ALLOWED_ORIGINS.split(',')
+          : []),
       ],
     };
   }
