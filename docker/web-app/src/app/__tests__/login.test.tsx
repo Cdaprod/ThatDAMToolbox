@@ -7,6 +7,7 @@ import assert from 'node:assert';
 import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import LoginPage from '../login/page';
+import TenantRedirect from '../login/TenantRedirect';
 
 test('LoginPage shows development sign in when Google is missing', async () => {
   delete process.env.GOOGLE_CLIENT_ID;
@@ -32,5 +33,15 @@ test('LoginPage defers void scene to client', async () => {
 test('LoginPage defers neon title to client', async () => {
   const html = renderToString(await LoginPage());
   assert.ok(!html.includes('THATDAMTOOLBOX'));
+});
+
+test('LoginPage renders TenantRedirect when session exists', async () => {
+  const auth = require('next-auth/next');
+  const original = auth.getServerSession;
+  auth.getServerSession = async () => ({ user: { tenant: 'demo' } });
+  const page = await LoginPage();
+  assert.equal(page.type, TenantRedirect);
+  assert.equal(page.props.tenant, 'demo');
+  auth.getServerSession = original;
 });
 

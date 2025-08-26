@@ -109,6 +109,7 @@ export default function nextConfig(phase) {
         'http://localhost:3000',
         'http://127.0.0.1:3000',
         'http://192.168.0.22:3000',
+        'http://172.18.0.8:3000', // container network address
       ],
     };
   }
