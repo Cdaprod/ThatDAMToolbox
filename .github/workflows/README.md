@@ -12,6 +12,7 @@ This directory contains all **CI/CD workflow definitions** for building, testing
 | deploy.yml                           | Build images and deploy via self-hosted runners |
 | generate-docker-diagram.yml          | Builds SVG architecture diagrams from docker-compose.yaml                |
 | generate-nodeprop-config.yml         | Runs NodeProp config generator & commits results                        |
+| ci-audit-and-prune.yml               | Audits workflows and suggests pruning; weekly schedule or manual        |
 
 ---
 
@@ -58,6 +59,15 @@ This directory contains all **CI/CD workflow definitions** for building, testing
 - **Triggers:**  
   - On push to any branch/tag with `.nodeprop.yaml` or `.nodeprop.yml` changes.
   - Nightly via cron (6am UTC).
+  - Manual `workflow_dispatch`.
+
+---
+
+### **ci-audit-and-prune.yml**
+- **Purpose:**
+  Inventories all workflows, analyzes recent runs, and opens pull requests with suggested path-gates, concurrency blocks, or manualization.
+- **Triggers:**
+  - Weekly via cron (Mondays 09:00 ET).
   - Manual `workflow_dispatch`.
 
 ---
